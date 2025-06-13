@@ -357,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/jobs/:id/questions", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
-      const jobId = parseInt(req.params.id);
+      const jobId = req.params.id;
       const questions = await storage.getQuestionsByJobId(jobId);
       res.json(questions);
     } catch (error) {

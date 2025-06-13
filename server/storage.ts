@@ -48,7 +48,7 @@ export interface IStorage {
   deleteJob(id: string | number): Promise<void>;
   
   // Questions
-  getQuestionsByJobId(jobId: number): Promise<Question[]>;
+  getQuestionsByJobId(jobId: string | number): Promise<Question[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   updateQuestion(id: number, question: Partial<Question>): Promise<Question>;
   deleteQuestion(id: number): Promise<void>;
@@ -386,9 +386,10 @@ export class FirebaseStorage implements IStorage {
   }
 
   // Questions
-  async getQuestionsByJobId(jobId: number): Promise<Question[]> {
+  async getQuestionsByJobId(jobId: string | number): Promise<Question[]> {
     try {
-      const q = query(collection(firebaseDb, 'questions'), where('jobId', '==', jobId));
+      const jobIdStr = String(jobId);
+      const q = query(collection(firebaseDb, 'questions'), where('jobId', '==', jobIdStr));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),

@@ -240,21 +240,36 @@ export default function JobsPage() {
     });
   };
 
-  const cancelJob = () => {
+  const cancelJob = async () => {
     if (!currentJob?.id) return;
 
-    if (confirm("Tem certeza que deseja cancelar? A vaga será removida.")) {
-      deleteJobMutation.mutate(currentJob.id, {
-        onSuccess: () => {
-          setCurrentJob(null);
-          setQuestions([]);
-          jobForm.reset();
-          toast({
-            title: "Cancelado",
-            description: "Vaga cancelada e removida.",
-          });
-        },
-      });
+    if (confirm("Tem certeza que deseja cancelar? A vaga e todas as perguntas serão removidas.")) {
+      try {
+        // Deletar todas as perguntas da vaga primeiro
+        for (const question of questions) {
+          await apiRequest("DELETE", `/api/questions/${question.id}`);
+        }
+        
+        // Deletar a vaga
+        deleteJobMutation.mutate(currentJob.id, {
+          onSuccess: () => {
+            setCurrentJob(null);
+            setQuestions([]);
+            jobForm.reset();
+            toast({
+              title: "Cancelado",
+              description: "Vaga e perguntas canceladas e removidas do banco de dados.",
+            });
+          },
+        });
+      } catch (error) {
+        console.error("Erro ao cancelar vaga:", error);
+        toast({
+          title: "Erro",
+          description: "Erro ao cancelar vaga. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -348,11 +363,10 @@ export default function JobsPage() {
     }
   };
 
-  const loadJobQuestions = async (jobId: number) => {
+  const loadJobQuestions = async (jobId: string | number) => {
     try {
       const response = await apiRequest("GET", `/api/jobs/${jobId}/questions`);
-      const questionsData = await response.json();
-      setQuestions(Array.isArray(questionsData) ? questionsData : []);
+      setQuestions(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error("Erro ao carregar perguntas:", error);
       setQuestions([]);
