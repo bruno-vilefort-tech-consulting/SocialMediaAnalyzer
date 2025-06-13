@@ -35,7 +35,7 @@ import type { Job, Question as DBQuestion, InsertJob, InsertQuestion, Client } f
 const jobFormSchema = z.object({
   title: z.string().min(1, "Nome da vaga é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
-  clientId: z.number().min(1, "Cliente é obrigatório"),
+  clientId: z.number().optional(),
 });
 
 const questionFormSchema = z.object({
@@ -198,10 +198,13 @@ export default function JobsPage() {
       return;
     }
 
+    // Para usuários master, usar o clientId selecionado; para clientes, usar o próprio clientId
+    const finalClientId = user?.role === 'master' ? data.clientId : user?.clientId || 1;
+
     const jobData: InsertJob = {
       title: data.title,
       description: data.description,
-      clientId: data.clientId,
+      clientId: finalClientId,
     };
 
     createJobMutation.mutate(jobData);
@@ -259,7 +262,7 @@ export default function JobsPage() {
       
       // Atualizar a pergunta local com o ID retornado
       const updatedQuestions = [...questions];
-      updatedQuestions[index] = { ...question, id: savedQuestion?.id || Date.now() };
+      updatedQuestions[index] = { ...question, id: (savedQuestion as any)?.id || Date.now() };
       setQuestions(updatedQuestions);
     }
 
