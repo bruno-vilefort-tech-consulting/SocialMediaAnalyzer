@@ -113,7 +113,7 @@ export class FirebaseStorage implements IStorage {
   // Users
   async getUserById(id: number): Promise<User | undefined> {
     try {
-      const userDoc = await getDoc(doc(db, 'users', id.toString()));
+      const userDoc = await getDoc(doc(firebaseDb, 'users', id.toString()));
       if (userDoc.exists()) {
         return { id: parseInt(userDoc.id), ...userDoc.data() } as User;
       }
@@ -146,7 +146,7 @@ export class FirebaseStorage implements IStorage {
         ...insertUser,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'users', id.toString()), userData);
+      await setDoc(doc(firebaseDb, 'users', id.toString()), userData);
       return { id, ...userData } as User;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
@@ -157,7 +157,7 @@ export class FirebaseStorage implements IStorage {
   // Clients
   async getClients(): Promise<Client[]> {
     try {
-      const querySnapshot = await getDocs(collection(db, 'clients'));
+      const querySnapshot = await getDocs(collection(firebaseDb, 'clients'));
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
         ...doc.data()
@@ -170,7 +170,7 @@ export class FirebaseStorage implements IStorage {
 
   async getClientById(id: number): Promise<Client | undefined> {
     try {
-      const clientDoc = await getDoc(doc(db, 'clients', id.toString()));
+      const clientDoc = await getDoc(doc(firebaseDb, 'clients', id.toString()));
       if (clientDoc.exists()) {
         return { id: parseInt(clientDoc.id), ...clientDoc.data() } as Client;
       }
@@ -183,7 +183,7 @@ export class FirebaseStorage implements IStorage {
 
   async getClientByEmail(email: string): Promise<Client | undefined> {
     try {
-      const q = query(collection(db, 'clients'), where('email', '==', email));
+      const q = query(collection(firebaseDb, 'clients'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0];
@@ -210,7 +210,7 @@ export class FirebaseStorage implements IStorage {
         contractEnd: insertClient.contractEnd || null,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'clients', id.toString()), clientData);
+      await setDoc(doc(firebaseDb, 'clients', id.toString()), clientData);
       return { id, ...clientData } as Client;
     } catch (error) {
       console.error('Erro ao criar cliente:', error);
@@ -220,7 +220,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
     try {
-      await updateDoc(doc(db, 'clients', id.toString()), clientUpdate);
+      await updateDoc(doc(firebaseDb, 'clients', id.toString()), clientUpdate);
       const updated = await this.getClientById(id);
       return updated as Client;
     } catch (error) {
@@ -231,7 +231,7 @@ export class FirebaseStorage implements IStorage {
 
   async deleteClient(id: number): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'clients', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'clients', id.toString()));
     } catch (error) {
       console.error('Erro ao deletar cliente:', error);
       throw error;
@@ -241,7 +241,7 @@ export class FirebaseStorage implements IStorage {
   // Jobs
   async getJobsByClientId(clientId: number): Promise<Job[]> {
     try {
-      const q = query(collection(db, 'jobs'), where('clientId', '==', clientId));
+      const q = query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -255,7 +255,7 @@ export class FirebaseStorage implements IStorage {
 
   async getJobById(id: number): Promise<Job | undefined> {
     try {
-      const jobDoc = await getDoc(doc(db, 'jobs', id.toString()));
+      const jobDoc = await getDoc(doc(firebaseDb, 'jobs', id.toString()));
       if (jobDoc.exists()) {
         return { id: parseInt(jobDoc.id), ...jobDoc.data() } as Job;
       }
@@ -274,7 +274,7 @@ export class FirebaseStorage implements IStorage {
         status: insertJob.status || 'active',
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'jobs', id.toString()), jobData);
+      await setDoc(doc(firebaseDb, 'jobs', id.toString()), jobData);
       return { id, ...jobData } as Job;
     } catch (error) {
       console.error('Erro ao criar job:', error);
@@ -284,7 +284,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
     try {
-      await updateDoc(doc(db, 'jobs', id.toString()), jobUpdate);
+      await updateDoc(doc(firebaseDb, 'jobs', id.toString()), jobUpdate);
       const updated = await this.getJobById(id);
       return updated as Job;
     } catch (error) {
@@ -295,7 +295,7 @@ export class FirebaseStorage implements IStorage {
 
   async deleteJob(id: number): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'jobs', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'jobs', id.toString()));
     } catch (error) {
       console.error('Erro ao deletar job:', error);
       throw error;
@@ -305,7 +305,7 @@ export class FirebaseStorage implements IStorage {
   // Questions
   async getQuestionsByJobId(jobId: number): Promise<Question[]> {
     try {
-      const q = query(collection(db, 'questions'), where('jobId', '==', jobId));
+      const q = query(collection(firebaseDb, 'questions'), where('jobId', '==', jobId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -325,7 +325,7 @@ export class FirebaseStorage implements IStorage {
         maxTime: insertQuestion.maxTime || 120,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'questions', id.toString()), questionData);
+      await setDoc(doc(firebaseDb, 'questions', id.toString()), questionData);
       return { id, ...questionData } as Question;
     } catch (error) {
       console.error('Erro ao criar question:', error);
@@ -335,7 +335,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {
     try {
-      await updateDoc(doc(db, 'questions', id.toString()), questionUpdate);
+      await updateDoc(doc(firebaseDb, 'questions', id.toString()), questionUpdate);
       const updated = await this.getQuestionById(id);
       return updated as Question;
     } catch (error) {
@@ -346,7 +346,7 @@ export class FirebaseStorage implements IStorage {
 
   async getQuestionById(id: number): Promise<Question | undefined> {
     try {
-      const questionDoc = await getDoc(doc(db, 'questions', id.toString()));
+      const questionDoc = await getDoc(doc(firebaseDb, 'questions', id.toString()));
       if (questionDoc.exists()) {
         return { id: parseInt(questionDoc.id), ...questionDoc.data() } as Question;
       }
@@ -359,7 +359,7 @@ export class FirebaseStorage implements IStorage {
 
   async deleteQuestion(id: number): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'questions', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'questions', id.toString()));
     } catch (error) {
       console.error('Erro ao deletar question:', error);
       throw error;
@@ -369,7 +369,7 @@ export class FirebaseStorage implements IStorage {
   // Candidates
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
     try {
-      const q = query(collection(db, 'candidates'), where('clientId', '==', clientId));
+      const q = query(collection(firebaseDb, 'candidates'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -383,7 +383,7 @@ export class FirebaseStorage implements IStorage {
 
   async getCandidateById(id: number): Promise<Candidate | undefined> {
     try {
-      const candidateDoc = await getDoc(doc(db, 'candidates', id.toString()));
+      const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', id.toString()));
       if (candidateDoc.exists()) {
         return { id: parseInt(candidateDoc.id), ...candidateDoc.data() } as Candidate;
       }
@@ -401,7 +401,7 @@ export class FirebaseStorage implements IStorage {
         ...insertCandidate,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'candidates', id.toString()), candidateData);
+      await setDoc(doc(firebaseDb, 'candidates', id.toString()), candidateData);
       return { id, ...candidateData } as Candidate;
     } catch (error) {
       console.error('Erro ao criar candidate:', error);
@@ -425,7 +425,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
     try {
-      await updateDoc(doc(db, 'candidates', id.toString()), candidateUpdate);
+      await updateDoc(doc(firebaseDb, 'candidates', id.toString()), candidateUpdate);
       const updated = await this.getCandidateById(id);
       return updated as Candidate;
     } catch (error) {
@@ -436,7 +436,7 @@ export class FirebaseStorage implements IStorage {
 
   async deleteCandidate(id: number): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'candidates', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'candidates', id.toString()));
     } catch (error) {
       console.error('Erro ao deletar candidate:', error);
       throw error;
@@ -446,7 +446,7 @@ export class FirebaseStorage implements IStorage {
   // Selections
   async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
     try {
-      const q = query(collection(db, 'selections'), where('clientId', '==', clientId));
+      const q = query(collection(firebaseDb, 'selections'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -460,7 +460,7 @@ export class FirebaseStorage implements IStorage {
 
   async getSelectionById(id: number): Promise<Selection | undefined> {
     try {
-      const selectionDoc = await getDoc(doc(db, 'selections', id.toString()));
+      const selectionDoc = await getDoc(doc(firebaseDb, 'selections', id.toString()));
       if (selectionDoc.exists()) {
         return { id: parseInt(selectionDoc.id), ...selectionDoc.data() } as Selection;
       }
@@ -480,7 +480,7 @@ export class FirebaseStorage implements IStorage {
         scheduledFor: insertSelection.scheduledFor || null,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'selections', id.toString()), selectionData);
+      await setDoc(doc(firebaseDb, 'selections', id.toString()), selectionData);
       return { id, ...selectionData } as Selection;
     } catch (error) {
       console.error('Erro ao criar selection:', error);
@@ -490,7 +490,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateSelection(id: number, selectionUpdate: Partial<Selection>): Promise<Selection> {
     try {
-      await updateDoc(doc(db, 'selections', id.toString()), selectionUpdate);
+      await updateDoc(doc(firebaseDb, 'selections', id.toString()), selectionUpdate);
       const updated = await this.getSelectionById(id);
       return updated as Selection;
     } catch (error) {
@@ -501,7 +501,7 @@ export class FirebaseStorage implements IStorage {
 
   async deleteSelection(id: number): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'selections', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'selections', id.toString()));
     } catch (error) {
       console.error('Erro ao deletar selection:', error);
       throw error;
@@ -511,7 +511,7 @@ export class FirebaseStorage implements IStorage {
   // Interviews
   async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
     try {
-      const q = query(collection(db, 'interviews'), where('selectionId', '==', selectionId));
+      const q = query(collection(firebaseDb, 'interviews'), where('selectionId', '==', selectionId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -525,7 +525,7 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewById(id: number): Promise<Interview | undefined> {
     try {
-      const interviewDoc = await getDoc(doc(db, 'interviews', id.toString()));
+      const interviewDoc = await getDoc(doc(firebaseDb, 'interviews', id.toString()));
       if (interviewDoc.exists()) {
         return { id: parseInt(interviewDoc.id), ...interviewDoc.data() } as Interview;
       }
@@ -538,7 +538,7 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewByToken(token: string): Promise<Interview | undefined> {
     try {
-      const q = query(collection(db, 'interviews'), where('token', '==', token));
+      const q = query(collection(firebaseDb, 'interviews'), where('token', '==', token));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0];
@@ -564,7 +564,7 @@ export class FirebaseStorage implements IStorage {
         category: insertInterview.category || null,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'interviews', id.toString()), interviewData);
+      await setDoc(doc(firebaseDb, 'interviews', id.toString()), interviewData);
       return { id, ...interviewData } as Interview;
     } catch (error) {
       console.error('Erro ao criar interview:', error);
@@ -574,7 +574,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateInterview(id: number, interviewUpdate: Partial<Interview>): Promise<Interview> {
     try {
-      await updateDoc(doc(db, 'interviews', id.toString()), interviewUpdate);
+      await updateDoc(doc(firebaseDb, 'interviews', id.toString()), interviewUpdate);
       const updated = await this.getInterviewById(id);
       return updated as Interview;
     } catch (error) {
@@ -586,7 +586,7 @@ export class FirebaseStorage implements IStorage {
   // Responses
   async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
     try {
-      const q = query(collection(db, 'responses'), where('interviewId', '==', interviewId));
+      const q = query(collection(firebaseDb, 'responses'), where('interviewId', '==', interviewId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -610,7 +610,7 @@ export class FirebaseStorage implements IStorage {
         recordingDuration: insertResponse.recordingDuration || null,
         createdAt: new Date(),
       };
-      await setDoc(doc(db, 'responses', id.toString()), responseData);
+      await setDoc(doc(firebaseDb, 'responses', id.toString()), responseData);
       return { id, ...responseData } as Response;
     } catch (error) {
       console.error('Erro ao criar response:', error);
@@ -620,7 +620,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateResponse(id: number, responseUpdate: Partial<Response>): Promise<Response> {
     try {
-      await updateDoc(doc(db, 'responses', id.toString()), responseUpdate);
+      await updateDoc(doc(firebaseDb, 'responses', id.toString()), responseUpdate);
       const updated = await this.getResponseById(id);
       return updated as Response;
     } catch (error) {
@@ -631,7 +631,7 @@ export class FirebaseStorage implements IStorage {
 
   async getResponseById(id: number): Promise<Response | undefined> {
     try {
-      const responseDoc = await getDoc(doc(db, 'responses', id.toString()));
+      const responseDoc = await getDoc(doc(firebaseDb, 'responses', id.toString()));
       if (responseDoc.exists()) {
         return { id: parseInt(responseDoc.id), ...responseDoc.data() } as Response;
       }
@@ -645,7 +645,7 @@ export class FirebaseStorage implements IStorage {
   // API Config
   async getApiConfig(): Promise<ApiConfig | undefined> {
     try {
-      const configDoc = await getDoc(doc(db, 'configs', 'main'));
+      const configDoc = await getDoc(doc(firebaseDb, 'configs', 'main'));
       if (configDoc.exists()) {
         return { id: 1, ...configDoc.data() } as ApiConfig;
       }
@@ -662,7 +662,7 @@ export class FirebaseStorage implements IStorage {
         ...config,
         updatedAt: new Date(),
       };
-      await setDoc(doc(db, 'configs', 'main'), configData);
+      await setDoc(doc(firebaseDb, 'configs', 'main'), configData);
       return { id: 1, ...configData } as ApiConfig;
     } catch (error) {
       console.error('Erro ao upsert config:', error);
@@ -678,7 +678,7 @@ export class FirebaseStorage implements IStorage {
         ...insertLog,
         sentAt: new Date(),
       };
-      await setDoc(doc(db, 'messageLogs', id.toString()), logData);
+      await setDoc(doc(firebaseDb, 'messageLogs', id.toString()), logData);
       return { id, ...logData } as MessageLog;
     } catch (error) {
       console.error('Erro ao criar log:', error);
@@ -688,7 +688,7 @@ export class FirebaseStorage implements IStorage {
 
   async getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]> {
     try {
-      const q = query(collection(db, 'messageLogs'), where('interviewId', '==', interviewId));
+      const q = query(collection(firebaseDb, 'messageLogs'), where('interviewId', '==', interviewId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({
         id: parseInt(doc.id),
@@ -708,8 +708,8 @@ export class FirebaseStorage implements IStorage {
     avgScore: number;
   }> {
     try {
-      const clientsSnapshot = await getDocs(collection(db, 'clients'));
-      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
+      const clientsSnapshot = await getDocs(collection(firebaseDb, 'clients'));
+      const interviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
       
       const totalClients = clientsSnapshot.size;
       const totalInterviews = interviewsSnapshot.size;
@@ -742,8 +742,8 @@ export class FirebaseStorage implements IStorage {
     currentUsage: number;
   }> {
     try {
-      const jobsSnapshot = await getDocs(query(collection(db, 'jobs'), where('clientId', '==', clientId)));
-      const candidatesSnapshot = await getDocs(query(collection(db, 'candidates'), where('clientId', '==', clientId)));
+      const jobsSnapshot = await getDocs(query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId)));
+      const candidatesSnapshot = await getDocs(query(collection(firebaseDb, 'candidates'), where('clientId', '==', clientId)));
       
       const jobs = jobsSnapshot.docs.map(doc => doc.data());
       const activeJobs = jobs.filter(job => job.status === 'active').length;
@@ -756,7 +756,7 @@ export class FirebaseStorage implements IStorage {
       currentMonth.setDate(1);
       currentMonth.setHours(0, 0, 0, 0);
       
-      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
+      const interviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
       const interviews = interviewsSnapshot.docs.map(doc => doc.data());
       const monthlyInterviews = interviews.filter(interview => {
         const interviewDate = new Date(interview.createdAt?.seconds ? interview.createdAt.seconds * 1000 : interview.createdAt);
@@ -1124,6 +1124,7 @@ const initializeStorage = async () => {
     if (!masterUser) {
       const hashedPassword = await bcrypt.hash('daniel580190', 10);
       await storage.createUser({
+        name: 'Daniel - Grupo Maximus',
         email: 'daniel@grupomaximuns.com.br',
         password: hashedPassword,
         role: 'master'

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
@@ -14,7 +14,7 @@ import OpenAI from "openai";
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
 const upload = multer({ dest: 'uploads/' });
 
-interface AuthRequest extends Express.Request {
+interface AuthRequest extends Request {
   user?: {
     id: number;
     email: string;
@@ -24,7 +24,7 @@ interface AuthRequest extends Express.Request {
 }
 
 // Authentication middleware
-const authenticate = async (req: AuthRequest, res: Express.Response, next: Express.NextFunction) => {
+const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
