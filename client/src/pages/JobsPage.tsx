@@ -501,7 +501,7 @@ export default function JobsPage() {
               {/* Lista de Perguntas como Blocos Editáveis */}
               {questions.length > 0 && (
                 <div className="space-y-3">
-                  {questions.map((question, index) => (
+                  {questions.sort((a, b) => a.order - b.order).map((question, index) => (
                     <Card key={question.id} className="border-emerald-200 bg-emerald-50/50 shadow-sm">
                       <CardContent className="p-5">
                         <div className="flex justify-between items-start gap-4">
@@ -707,6 +707,18 @@ export default function JobsPage() {
                           className="bg-orange-600 hover:bg-orange-700 text-white"
                         >
                           Continuar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            if (confirm(`Tem certeza que deseja excluir a vaga em rascunho "${job.title}"?`)) {
+                              deleteJobMutation.mutate(job.id);
+                            }
+                          }}
+                          className="text-red-700 border-red-300 hover:bg-red-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
