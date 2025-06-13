@@ -286,6 +286,15 @@ export default function JobsPage() {
   };
 
   const addQuestion = () => {
+    if (!currentJob?.id) {
+      toast({
+        title: "Erro",
+        description: "Inicie uma vaga antes de adicionar perguntas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (questions.length >= 10) {
       toast({
         title: "Limite atingido",
@@ -295,69 +304,85 @@ export default function JobsPage() {
       return;
     }
 
-    const newOrder = questions.length + 1;
-    setQuestions([...questions, {
+    setShowQuestionForm(true);
+    setEditingQuestion(null);
+    questionForm.reset({
       questionText: "",
       idealAnswer: "",
-      order: newOrder
-    }]);
+    });
   };
 
-  const saveQuestion = async (index: number, data: QuestionFormData) => {
-    const question = questions[index];
-    
-    if (question.id) {
+  const editQuestion = (question: QuestionForm) => {
+    setEditingQuestion(question);
+    setShowQuestionForm(true);
+    questionForm.reset({
+      questionText: question.questionText,
+      idealAnswer: question.idealAnswer,
+    });
+  };
+
+  const saveQuestion = (data: QuestionFormData) => {
+    if (!currentJob?.id) {
+      toast({
+        title: "Erro",
+        description: "Vaga não encontrada.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editingQuestion?.id) {
       // Atualizar pergunta existente
-      await updateQuestionMutation.mutateAsync({
-        id: question.id,
-        data: {
-          questionText: data.questionText,
-          idealAnswer: data.idealAnswer,
+      updateQuestionMutation.mutate({
+        id: editingQuestion.id,
+        data: data,
+      }, {
+        onSuccess: () => {
+          setShowQuestionForm(false);
+          setEditingQuestion(null);
+          questionForm.reset();
+          loadJobQuestions(currentJob.id);
         }
       });
     } else {
-      // Criar nova pergunta (precisa de jobId primeiro)
-      if (!currentJob?.id) {
-        toast({
-          title: "Erro",
-          description: "Crie a vaga primeiro antes de salvar perguntas.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Criar nova pergunta
       const questionData: InsertQuestion = {
+        ...data,
         jobId: currentJob.id,
-        questionText: data.questionText,
-        idealAnswer: data.idealAnswer,
-        order: question.order,
+        order: questions.length + 1,
       };
 
-      const savedQuestion = await createQuestionMutation.mutateAsync(questionData);
-      
-      // Atualizar a pergunta local com o ID retornado
-      const updatedQuestions = [...questions];
-      updatedQuestions[index] = { ...question, id: (savedQuestion as any)?.id || Date.now() };
-      setQuestions(updatedQuestions);
+      createQuestionMutation.mutate(questionData, {
+        onSuccess: () => {
+          setShowQuestionForm(false);
+          questionForm.reset();
+          loadJobQuestions(currentJob.id);
+        }
+      });
     }
-
-    setEditingQuestion(null);
   };
 
-  const deleteQuestion = (index: number) => {
-    const question = questions[index];
-    
-    if (question.id) {
-      deleteQuestionMutation.mutate(question.id);
+  const loadJobQuestions = async (jobId: number) => {
+    try {
+      const response = await apiRequest("GET", `/api/jobs/${jobId}/questions`);
+      const questionsData = Array.isArray(response) ? response : [];
+      setQuestions(questionsData);
+    } catch (error) {
+      console.error("Erro ao carregar perguntas:", error);
+      setQuestions([]);
     }
-    
-    const updatedQuestions = questions.filter((_, i) => i !== index);
-    // Reordenar as perguntas
-    const reorderedQuestions = updatedQuestions.map((q, i) => ({
-      ...q,
-      order: i + 1
-    }));
-    setQuestions(reorderedQuestions);
+  };
+
+  const removeQuestion = (questionId: number) => {
+    if (confirm("Tem certeza que deseja remover esta pergunta?")) {
+      deleteQuestionMutation.mutate(questionId, {
+        onSuccess: () => {
+          if (currentJob?.id) {
+            loadJobQuestions(currentJob.id);
+          }
+        }
+      });
+    }
   };
 
   const filteredJobs = jobs.filter((job: Job) =>

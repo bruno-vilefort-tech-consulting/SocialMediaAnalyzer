@@ -283,7 +283,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId || 1;
+      // Garantir que clientId seja um número válido e não muito grande
+      let clientId = 1;
+      if (req.user!.role === 'master') {
+        clientId = req.body.clientId && Number.isInteger(req.body.clientId) && req.body.clientId < 2147483647 
+          ? req.body.clientId 
+          : 1;
+      } else {
+        clientId = req.user!.clientId && req.user!.clientId < 2147483647 
+          ? req.user!.clientId 
+          : 1;
+      }
+
+      console.log('ClientId para vaga:', clientId);
       
       const jobData = insertJobSchema.parse({
         ...req.body,
