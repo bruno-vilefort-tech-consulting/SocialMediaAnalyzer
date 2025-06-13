@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building, Mic, Clock, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Building, Mic, Clock, TrendingUp, Briefcase, Users, Settings } from "lucide-react";
 
 export default function MasterDashboard() {
   const { data: stats, isLoading } = useQuery({
@@ -102,6 +103,41 @@ export default function MasterDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Ações Rápidas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2"
+              onClick={() => window.location.href = "/vagas"}
+            >
+              <Briefcase className="h-6 w-6" />
+              <span>Cadastrar Vagas</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2"
+              onClick={() => window.location.href = "/clientes"}
+            >
+              <Users className="h-6 w-6" />
+              <span>Gerenciar Clientes</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="h-16 flex-col space-y-2"
+              onClick={() => window.location.href = "/config"}
+            >
+              <Settings className="h-6 w-6" />
+              <span>Configurações</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* Charts and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

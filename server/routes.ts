@@ -285,6 +285,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Questions routes
+  app.get("/api/questions", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const jobId = parseInt(req.query.jobId as string);
+      const questions = await storage.getQuestionsByJobId(jobId);
+      res.json(questions);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch questions' });
+    }
+  });
+
+  app.get("/api/questions/count", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      // Buscar contagem de perguntas por vaga
+      const jobs = await storage.getJobs();
+      const questionsCount: Record<number, number> = {};
+      
+      for (const job of jobs) {
+        const questions = await storage.getQuestionsByJobId(job.id);
+        questionsCount[job.id] = questions.length;
+      }
+      
+      res.json(questionsCount);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch questions count' });
+    }
+  });
+
+  app.post("/api/questions", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const questionData = insertQuestionSchema.parse(req.body);
+      const question = await storage.createQuestion(questionData);
+      res.status(201).json(question);
+    } catch (error) {
+      console.error("Erro ao criar pergunta:", error);
+      res.status(400).json({ message: 'Failed to create question' });
+    }
+  });
+
   app.get("/api/jobs/:jobId/questions", authenticate, authorize(['client']), async (req, res) => {
     try {
       const jobId = parseInt(req.params.jobId);

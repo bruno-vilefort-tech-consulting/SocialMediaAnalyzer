@@ -62,6 +62,14 @@ function Router() {
         </PrivateRoute>
       </Route>
       
+      <Route path="/vagas">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <JobsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+      
       <Route path="/api-config">
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
