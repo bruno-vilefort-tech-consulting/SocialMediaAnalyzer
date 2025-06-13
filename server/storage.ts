@@ -6,6 +6,9 @@ import {
   type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
   type MessageLog, type InsertMessageLog
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, gte } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 export interface IStorage {
   // Users
@@ -462,4 +465,356 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  // Clients
+  async getClients(): Promise<Client[]> {
+    return await db.select().from(clients);
+  }
+
+  async getClientById(id: number): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
+  }
+
+  async getClientByEmail(email: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.email, email));
+    return client || undefined;
+  }
+
+  async createClient(insertClient: InsertClient): Promise<Client> {
+    const [client] = await db
+      .insert(clients)
+      .values({
+        ...insertClient,
+        status: insertClient.status || 'active',
+        monthlyLimit: insertClient.monthlyLimit || 100,
+        extraCredits: insertClient.extraCredits || 0
+      })
+      .returning();
+    return client;
+  }
+
+  async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
+    const [client] = await db
+      .update(clients)
+      .set(clientUpdate)
+      .where(eq(clients.id, id))
+      .returning();
+    return client;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  // Jobs
+  async getJobsByClientId(clientId: number): Promise<Job[]> {
+    return await db.select().from(jobs).where(eq(jobs.clientId, clientId));
+  }
+
+  async getJobById(id: number): Promise<Job | undefined> {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
+    return job || undefined;
+  }
+
+  async createJob(insertJob: InsertJob): Promise<Job> {
+    const [job] = await db
+      .insert(jobs)
+      .values({
+        ...insertJob,
+        status: insertJob.status || 'active'
+      })
+      .returning();
+    return job;
+  }
+
+  async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
+    const [job] = await db
+      .update(jobs)
+      .set(jobUpdate)
+      .where(eq(jobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteJob(id: number): Promise<void> {
+    await db.delete(jobs).where(eq(jobs.id, id));
+  }
+
+  // Questions
+  async getQuestionsByJobId(jobId: number): Promise<Question[]> {
+    return await db.select().from(questions).where(eq(questions.jobId, jobId));
+  }
+
+  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
+    const [question] = await db
+      .insert(questions)
+      .values({
+        ...insertQuestion,
+        maxTime: insertQuestion.maxTime || 120
+      })
+      .returning();
+    return question;
+  }
+
+  async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {
+    const [question] = await db
+      .update(questions)
+      .set(questionUpdate)
+      .where(eq(questions.id, id))
+      .returning();
+    return question;
+  }
+
+  async deleteQuestion(id: number): Promise<void> {
+    await db.delete(questions).where(eq(questions.id, id));
+  }
+
+  // Candidates
+  async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
+    return await db.select().from(candidates).where(eq(candidates.clientId, clientId));
+  }
+
+  async getCandidateById(id: number): Promise<Candidate | undefined> {
+    const [candidate] = await db.select().from(candidates).where(eq(candidates.id, id));
+    return candidate || undefined;
+  }
+
+  async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
+    const [candidate] = await db
+      .insert(candidates)
+      .values(insertCandidate)
+      .returning();
+    return candidate;
+  }
+
+  async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
+    return await db
+      .insert(candidates)
+      .values(insertCandidates)
+      .returning();
+  }
+
+  async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
+    const [candidate] = await db
+      .update(candidates)
+      .set(candidateUpdate)
+      .where(eq(candidates.id, id))
+      .returning();
+    return candidate;
+  }
+
+  async deleteCandidate(id: number): Promise<void> {
+    await db.delete(candidates).where(eq(candidates.id, id));
+  }
+
+  // Selections
+  async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
+    return await db.select().from(selections).where(eq(selections.clientId, clientId));
+  }
+
+  async getSelectionById(id: number): Promise<Selection | undefined> {
+    const [selection] = await db.select().from(selections).where(eq(selections.id, id));
+    return selection || undefined;
+  }
+
+  async createSelection(insertSelection: InsertSelection): Promise<Selection> {
+    const [selection] = await db
+      .insert(selections)
+      .values({
+        ...insertSelection,
+        status: insertSelection.status || 'draft'
+      })
+      .returning();
+    return selection;
+  }
+
+  async updateSelection(id: number, selectionUpdate: Partial<Selection>): Promise<Selection> {
+    const [selection] = await db
+      .update(selections)
+      .set(selectionUpdate)
+      .where(eq(selections.id, id))
+      .returning();
+    return selection;
+  }
+
+  async deleteSelection(id: number): Promise<void> {
+    await db.delete(selections).where(eq(selections.id, id));
+  }
+
+  // Interviews
+  async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
+    return await db.select().from(interviews).where(eq(interviews.selectionId, selectionId));
+  }
+
+  async getInterviewById(id: number): Promise<Interview | undefined> {
+    const [interview] = await db.select().from(interviews).where(eq(interviews.id, id));
+    return interview || undefined;
+  }
+
+  async getInterviewByToken(token: string): Promise<Interview | undefined> {
+    const [interview] = await db.select().from(interviews).where(eq(interviews.token, token));
+    return interview || undefined;
+  }
+
+  async createInterview(insertInterview: InsertInterview): Promise<Interview> {
+    const [interview] = await db
+      .insert(interviews)
+      .values({
+        ...insertInterview,
+        status: insertInterview.status || 'pending'
+      })
+      .returning();
+    return interview;
+  }
+
+  async updateInterview(id: number, interviewUpdate: Partial<Interview>): Promise<Interview> {
+    const [interview] = await db
+      .update(interviews)
+      .set(interviewUpdate)
+      .where(eq(interviews.id, id))
+      .returning();
+    return interview;
+  }
+
+  // Responses
+  async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
+    return await db.select().from(responses).where(eq(responses.interviewId, interviewId));
+  }
+
+  async createResponse(insertResponse: InsertResponse): Promise<Response> {
+    const [response] = await db
+      .insert(responses)
+      .values({
+        ...insertResponse,
+        aiAnalysis: insertResponse.aiAnalysis || {}
+      })
+      .returning();
+    return response;
+  }
+
+  async updateResponse(id: number, responseUpdate: Partial<Response>): Promise<Response> {
+    const [response] = await db
+      .update(responses)
+      .set(responseUpdate)
+      .where(eq(responses.id, id))
+      .returning();
+    return response;
+  }
+
+  // API Config
+  async getApiConfig(): Promise<ApiConfig | undefined> {
+    const [config] = await db.select().from(apiConfigs);
+    return config || undefined;
+  }
+
+  async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
+    const existing = await this.getApiConfig();
+    if (existing) {
+      const [updated] = await db
+        .update(apiConfigs)
+        .set(config)
+        .where(eq(apiConfigs.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(apiConfigs)
+        .values(config)
+        .returning();
+      return created;
+    }
+  }
+
+  // Message Logs
+  async createMessageLog(insertLog: InsertMessageLog): Promise<MessageLog> {
+    const [log] = await db
+      .insert(messageLogs)
+      .values(insertLog)
+      .returning();
+    return log;
+  }
+
+  async getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]> {
+    return await db.select().from(messageLogs).where(eq(messageLogs.interviewId, interviewId));
+  }
+
+  // Statistics
+  async getInterviewStats(): Promise<{
+    totalClients: number;
+    totalInterviews: number;
+    pendingInterviews: number;
+    avgScore: number;
+  }> {
+    const totalClients = (await db.select().from(clients)).length;
+    const allInterviews = await db.select().from(interviews);
+    const totalInterviews = allInterviews.length;
+    const pendingInterviews = allInterviews.filter(i => i.status === 'pending').length;
+    
+    const completedInterviews = allInterviews.filter(i => i.totalScore !== null);
+    const avgScore = completedInterviews.length > 0 
+      ? completedInterviews.reduce((sum, i) => sum + (i.totalScore || 0), 0) / completedInterviews.length
+      : 0;
+
+    return {
+      totalClients,
+      totalInterviews,
+      pendingInterviews,
+      avgScore
+    };
+  }
+
+  async getClientStats(clientId: number): Promise<{
+    activeJobs: number;
+    totalCandidates: number;
+    monthlyInterviews: number;
+    monthlyLimit: number;
+    currentUsage: number;
+  }> {
+    const clientJobs = await db.select().from(jobs).where(eq(jobs.clientId, clientId));
+    const activeJobs = clientJobs.filter(job => job.status === 'active').length;
+    
+    const totalCandidates = (await db.select().from(candidates).where(eq(candidates.clientId, clientId))).length;
+    
+    const client = await this.getClientById(clientId);
+    const monthlyLimit = client?.monthlyLimit || 100;
+    
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+    
+    const allInterviews = await db.select().from(interviews);
+    const monthlyInterviews = allInterviews.filter(interview => {
+      const interviewDate = new Date(interview.createdAt || '');
+      return interviewDate >= currentMonth;
+    }).length;
+
+    return {
+      activeJobs,
+      totalCandidates,
+      monthlyInterviews,
+      monthlyLimit,
+      currentUsage: monthlyInterviews
+    };
+  }
+}
+
+export const storage = new DatabaseStorage();
