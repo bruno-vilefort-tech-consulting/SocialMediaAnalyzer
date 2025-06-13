@@ -325,8 +325,11 @@ export class FirebaseStorage implements IStorage {
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
-          id: parseInt(doc.id),
-          ...data,
+          id: doc.id,
+          clientId: data.clientId,
+          nomeVaga: data.nomeVaga,
+          descricaoVaga: data.descricaoVaga,
+          status: data.status || 'ativo',
           createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
         };
       }) as Job[];
@@ -389,12 +392,19 @@ export class FirebaseStorage implements IStorage {
   async getQuestionsByJobId(jobId: string | number): Promise<Question[]> {
     try {
       const jobIdStr = String(jobId);
-      const q = query(collection(firebaseDb, 'questions'), where('jobId', '==', jobIdStr));
+      const q = query(collection(firebaseDb, 'questions'), where('vagaId', '==', jobIdStr));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Question[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: parseInt(doc.id),
+          vagaId: data.vagaId,
+          perguntaCandidato: data.perguntaCandidato,
+          respostaPerfeita: data.respostaPerfeita,
+          numeroPergunta: data.numeroPergunta,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        };
+      }) as Question[];
     } catch (error) {
       console.error('Erro ao buscar questions por job:', error);
       return [];
@@ -405,8 +415,10 @@ export class FirebaseStorage implements IStorage {
     try {
       const id = parseInt(this.generateId());
       const questionData = {
-        ...insertQuestion,
-        maxTime: insertQuestion.maxTime || 120,
+        vagaId: insertQuestion.vagaId,
+        perguntaCandidato: insertQuestion.perguntaCandidato,
+        respostaPerfeita: insertQuestion.respostaPerfeita,
+        numeroPergunta: insertQuestion.numeroPergunta,
         createdAt: new Date(),
       };
       await setDoc(doc(firebaseDb, 'questions', id.toString()), questionData);

@@ -597,9 +597,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job,
         questions: questions.map(q => ({ 
           id: q.id, 
-          questionText: q.questionText, 
-          maxTime: q.maxTime, 
-          order: q.order 
+          perguntaCandidato: q.perguntaCandidato, 
+          respostaPerfeita: q.respostaPerfeita, 
+          numeroPergunta: q.numeroPergunta 
         }))
       });
     } catch (error) {
