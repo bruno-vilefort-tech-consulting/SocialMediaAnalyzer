@@ -38,7 +38,15 @@ export const jobs = pgTable("jobs", {
   clientId: integer("client_id").references(() => clients.id).notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  status: text("status").notNull().default("active"), // 'active', 'inactive'
+  requirements: text("requirements"), // Requisitos da vaga
+  benefits: text("benefits"), // Benefícios oferecidos
+  location: text("location"), // Localização da vaga
+  workType: text("work_type"), // Presencial, Remoto, Híbrido
+  salaryRange: text("salary_range"), // Faixa salarial
+  experienceLevel: text("experience_level"), // Junior, Pleno, Senior
+  department: text("department"), // Departamento/Área
+  contractType: text("contract_type"), // CLT, PJ, Estágio, etc.
+  status: text("status").notNull().default("not_finished"), // 'not_finished', 'active', 'inactive'
   createdAt: timestamp("created_at").defaultNow(),
 });
 

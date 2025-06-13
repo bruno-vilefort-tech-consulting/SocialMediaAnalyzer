@@ -20,6 +20,14 @@ import { useAuth } from "@/hooks/useAuth";
 const jobFormSchema = insertJobSchema.extend({
   title: z.string().min(1, "Título é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
+  requirements: z.string().optional(),
+  benefits: z.string().optional(),
+  location: z.string().optional(),
+  workType: z.string().optional(),
+  salaryRange: z.string().optional(),
+  experienceLevel: z.string().optional(),
+  department: z.string().optional(),
+  contractType: z.string().optional(),
 });
 
 const questionFormSchema = insertQuestionSchema.omit({
@@ -50,6 +58,14 @@ export default function JobsPage() {
     defaultValues: {
       title: "",
       description: "",
+      requirements: "",
+      benefits: "",
+      location: "",
+      workType: "",
+      salaryRange: "",
+      experienceLevel: "",
+      department: "",
+      contractType: "",
       clientId: user?.role === 'master' ? 1 : (user?.clientId || 1),
       status: "not_finished",
     },
@@ -295,11 +311,9 @@ export default function JobsPage() {
 
   const loadJobQuestions = async (jobId: number) => {
     try {
-      const response = await fetch(`/api/jobs/${jobId}/questions`);
-      if (response.ok) {
-        const questionsData = await response.json();
-        setQuestions(Array.isArray(questionsData) ? questionsData : []);
-      }
+      const response = await apiRequest("GET", `/api/jobs/${jobId}/questions`);
+      const questionsData = await response.json();
+      setQuestions(Array.isArray(questionsData) ? questionsData : []);
     } catch (error) {
       console.error("Erro ao carregar perguntas:", error);
       setQuestions([]);
@@ -359,7 +373,7 @@ export default function JobsPage() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Título da Vaga</FormLabel>
+                        <FormLabel>Título da Vaga *</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Desenvolvedor Frontend" {...field} />
                         </FormControl>
@@ -374,11 +388,11 @@ export default function JobsPage() {
                       name="clientId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cliente</FormLabel>
+                          <FormLabel>Empresa/Cliente *</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione o cliente" />
+                                <SelectValue placeholder="Selecione a empresa" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -394,6 +408,124 @@ export default function JobsPage() {
                       )}
                     />
                   )}
+
+                  <FormField
+                    control={jobForm.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Departamento/Área</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Tecnologia, Marketing, Vendas..." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={jobForm.control}
+                    name="experienceLevel"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nível de Experiência</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o nível" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="estagio">Estágio</SelectItem>
+                            <SelectItem value="junior">Júnior</SelectItem>
+                            <SelectItem value="pleno">Pleno</SelectItem>
+                            <SelectItem value="senior">Sênior</SelectItem>
+                            <SelectItem value="especialista">Especialista</SelectItem>
+                            <SelectItem value="coordenador">Coordenador</SelectItem>
+                            <SelectItem value="gerente">Gerente</SelectItem>
+                            <SelectItem value="diretor">Diretor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={jobForm.control}
+                    name="workType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modalidade de Trabalho</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a modalidade" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="presencial">Presencial</SelectItem>
+                            <SelectItem value="remoto">Remoto</SelectItem>
+                            <SelectItem value="hibrido">Híbrido</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={jobForm.control}
+                    name="contractType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Contrato</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="clt">CLT</SelectItem>
+                            <SelectItem value="pj">PJ</SelectItem>
+                            <SelectItem value="estagio">Estágio</SelectItem>
+                            <SelectItem value="temporario">Temporário</SelectItem>
+                            <SelectItem value="terceirizado">Terceirizado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={jobForm.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Localização</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: São Paulo - SP" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={jobForm.control}
+                    name="salaryRange"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Faixa Salarial</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: R$ 5.000 - R$ 8.000" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <FormField
@@ -401,11 +533,47 @@ export default function JobsPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição da Vaga</FormLabel>
+                      <FormLabel>Descrição da Vaga *</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Descreva as responsabilidades, requisitos e benefícios..."
+                          placeholder="Descreva as principais responsabilidades e atividades da vaga..."
                           className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={jobForm.control}
+                  name="requirements"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Requisitos e Qualificações</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Liste os requisitos técnicos, formação acadêmica, experiências necessárias..."
+                          className="min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={jobForm.control}
+                  name="benefits"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Benefícios Oferecidos</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Liste os benefícios: plano de saúde, vale refeição, home office..."
+                          className="min-h-[80px]"
                           {...field}
                         />
                       </FormControl>
