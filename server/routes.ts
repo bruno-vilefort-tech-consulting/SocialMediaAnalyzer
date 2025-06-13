@@ -145,13 +145,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/clients", authenticate, authorize(['master']), async (req, res) => {
     try {
+      console.log("Dados recebidos:", req.body);
       const clientData = insertClientSchema.parse(req.body);
+      console.log("Dados validados:", clientData);
+      
       clientData.password = await bcrypt.hash(clientData.password, 10);
+      console.log("Senha hasheada com sucesso");
       
       const client = await storage.createClient(clientData);
+      console.log("Cliente criado com sucesso:", client);
       res.status(201).json(client);
     } catch (error) {
-      res.status(400).json({ message: 'Failed to create client' });
+      console.error("Erro detalhado ao criar cliente:", error);
+      res.status(400).json({ 
+        message: 'Failed to create client',
+        error: error.message 
+      });
     }
   });
 

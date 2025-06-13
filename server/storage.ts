@@ -158,10 +158,17 @@ export class FirebaseStorage implements IStorage {
   async getClients(): Promise<Client[]> {
     try {
       const querySnapshot = await getDocs(collection(firebaseDb, 'clients'));
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Client[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: parseInt(doc.id),
+          ...data,
+          contractStart: data.contractStart ? new Date(data.contractStart) : null,
+          additionalLimitExpiry: data.additionalLimitExpiry ? new Date(data.additionalLimitExpiry) : null,
+          contractEnd: data.contractEnd ? new Date(data.contractEnd) : null,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        };
+      }) as Client[];
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       return [];
@@ -172,7 +179,15 @@ export class FirebaseStorage implements IStorage {
     try {
       const clientDoc = await getDoc(doc(firebaseDb, 'clients', id.toString()));
       if (clientDoc.exists()) {
-        return { id: parseInt(clientDoc.id), ...clientDoc.data() } as Client;
+        const data = clientDoc.data();
+        return {
+          id: parseInt(clientDoc.id),
+          ...data,
+          contractStart: data.contractStart ? new Date(data.contractStart) : null,
+          additionalLimitExpiry: data.additionalLimitExpiry ? new Date(data.additionalLimitExpiry) : null,
+          contractEnd: data.contractEnd ? new Date(data.contractEnd) : null,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        } as Client;
       }
       return undefined;
     } catch (error) {
@@ -198,22 +213,47 @@ export class FirebaseStorage implements IStorage {
 
   async createClient(insertClient: InsertClient): Promise<Client> {
     try {
-      const id = parseInt(this.generateId());
+      console.log('Firebase createClient iniciado com dados:', insertClient);
+      
+      // Gerar ID único baseado em timestamp
+      const id = Date.now();
+      
+      // Converter datas para formato serializable
       const clientData = {
-        ...insertClient,
+        id,
+        companyName: insertClient.companyName,
+        email: insertClient.email,
+        password: insertClient.password,
+        cnpj: insertClient.cnpj,
+        phone: insertClient.phone,
         status: insertClient.status || 'active',
         monthlyLimit: insertClient.monthlyLimit || 100,
         additionalLimit: insertClient.additionalLimit || 0,
-        additionalLimitExpiry: insertClient.additionalLimitExpiry || null,
-        contractStart: insertClient.contractStart || null,
-        contractEnd: insertClient.contractEnd || null,
-        createdAt: new Date(),
+        additionalLimitExpiry: insertClient.additionalLimitExpiry ? 
+          insertClient.additionalLimitExpiry.toISOString() : null,
+        contractStart: insertClient.contractStart ? 
+          insertClient.contractStart.toISOString() : new Date().toISOString(),
+        contractEnd: insertClient.contractEnd ? 
+          insertClient.contractEnd.toISOString() : null,
+        createdAt: new Date().toISOString(),
       };
+
+      console.log('Dados processados para Firebase:', clientData);
+      
       await setDoc(doc(firebaseDb, 'clients', id.toString()), clientData);
-      return { id, ...clientData } as Client;
+      console.log('Cliente salvo no Firebase com ID:', id);
+      
+      // Retornar com datas convertidas de volta para Date objects
+      return {
+        ...clientData,
+        contractStart: clientData.contractStart ? new Date(clientData.contractStart) : null,
+        additionalLimitExpiry: clientData.additionalLimitExpiry ? new Date(clientData.additionalLimitExpiry) : null,
+        contractEnd: clientData.contractEnd ? new Date(clientData.contractEnd) : null,
+        createdAt: new Date(clientData.createdAt),
+      } as Client;
     } catch (error) {
-      console.error('Erro ao criar cliente:', error);
-      throw error;
+      console.error('Erro detalhado ao criar cliente no Firebase:', error);
+      throw new Error(`Falha ao criar cliente: ${error.message}`);
     }
   }
 
