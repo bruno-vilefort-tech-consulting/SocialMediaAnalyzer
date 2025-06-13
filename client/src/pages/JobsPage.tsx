@@ -169,27 +169,6 @@ export default function JobsPage() {
     });
   };
 
-  const saveJobInfo = (data: JobFormData) => {
-    if (!currentJob?.id) return;
-
-    updateJobMutation.mutate({
-      id: currentJob.id,
-      data: {
-        title: data.title,
-        description: data.description,
-        clientId: data.clientId,
-      },
-    }, {
-      onSuccess: (updatedJob) => {
-        setCurrentJob(updatedJob);
-        toast({
-          title: "Sucesso",
-          description: "Informações da vaga salvas!",
-        });
-      },
-    });
-  };
-
   const finalizeJob = () => {
     if (!currentJob?.id || questions.length === 0) {
       toast({
@@ -200,9 +179,18 @@ export default function JobsPage() {
       return;
     }
 
-    // Primeiro salvar as informações da vaga
+    // Validar se os campos obrigatórios estão preenchidos
     const jobData = jobForm.getValues();
-    
+    if (!jobData.title || !jobData.description) {
+      toast({
+        title: "Erro",
+        description: "Preencha o título e descrição da vaga.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Salvar todas as informações da vaga e ativar
     updateJobMutation.mutate({
       id: currentJob.id,
       data: { 
@@ -407,7 +395,7 @@ export default function JobsPage() {
           <CardContent className="space-y-6">
             {/* Formulário da Vaga */}
             <Form {...jobForm}>
-              <form onSubmit={jobForm.handleSubmit(saveJobInfo)} className="space-y-4">
+              <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={jobForm.control}
@@ -468,14 +456,7 @@ export default function JobsPage() {
                     </FormItem>
                   )}
                 />
-
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={updateJobMutation.isPending}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {updateJobMutation.isPending ? "Salvando..." : "Salvar Informações"}
-                  </Button>
-                </div>
-              </form>
+              </div>
             </Form>
 
             <Separator />
@@ -501,39 +482,56 @@ export default function JobsPage() {
               {questions.length > 0 && (
                 <div className="space-y-3">
                   {questions.map((question, index) => (
-                    <Card key={question.id} className="border-slate-200">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                    <Card key={question.id} className="border-emerald-200 bg-emerald-50/50 shadow-sm">
+                      <CardContent className="p-5">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 space-y-3">
+                            {/* Header da pergunta */}
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">
+                                {index + 1}
+                              </div>
+                              <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-3 py-1 rounded-full">
                                 Pergunta {index + 1}
                               </span>
                             </div>
-                            <p className="text-sm font-medium text-slate-900 mb-2">
-                              {question.questionText}
-                            </p>
-                            <p className="text-sm text-slate-600">
-                              <strong>Resposta ideal:</strong> {question.idealAnswer}
-                            </p>
+                            
+                            {/* Conteúdo da pergunta */}
+                            <div className="pl-11 space-y-2">
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-700 mb-1">Pergunta:</h4>
+                                <p className="text-sm text-slate-900 font-medium bg-white px-3 py-2 rounded-md border border-emerald-200">
+                                  {question.questionText}
+                                </p>
+                              </div>
+                              
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-700 mb-1">Resposta Ideal:</h4>
+                                <p className="text-sm text-slate-700 bg-white px-3 py-2 rounded-md border border-emerald-200">
+                                  {question.idealAnswer}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex gap-2 ml-4">
+                          
+                          {/* Botões de ação */}
+                          <div className="flex flex-col gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => editQuestion(question)}
-                              className="text-blue-600 hover:text-blue-700"
+                              className="text-blue-600 hover:text-blue-700 border-blue-300 hover:bg-blue-50"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              <Edit3 className="w-4 h-4 mr-1" />
                               Editar
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => removeQuestion(question.id)}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4 mr-1" />
                               Remover
                             </Button>
                           </div>
@@ -704,6 +702,7 @@ export default function JobsPage() {
                         <Button 
                           size="sm" 
                           variant="outline"
+                          onClick={() => setCurrentJob(job)}
                           className="text-green-700 border-green-300 hover:bg-green-100"
                         >
                           <Edit3 className="w-4 h-4 mr-1" />
@@ -712,6 +711,11 @@ export default function JobsPage() {
                         <Button 
                           size="sm" 
                           variant="outline"
+                          onClick={() => {
+                            if (confirm(`Tem certeza que deseja excluir a vaga "${job.title}"?`)) {
+                              deleteJobMutation.mutate(job.id);
+                            }
+                          }}
                           className="text-red-700 border-red-300 hover:bg-red-100"
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
