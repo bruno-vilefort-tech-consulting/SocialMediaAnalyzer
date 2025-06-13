@@ -7,6 +7,11 @@ import {
 } from "@shared/schema";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "firebase/firestore";
+import { db as pgDb } from "./db";
+import { eq } from "drizzle-orm";
+import {
+  users, clients, jobs, questions, candidates, selections, interviews, responses, apiConfigs, messageLogs
+} from "@shared/schema";
 import bcrypt from "bcrypt";
 
 // Initialize Firebase
@@ -19,7 +24,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const firebaseDb = getFirestore(app);
 
 export interface IStorage {
   // Users
@@ -121,7 +126,7 @@ export class FirebaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      const q = query(collection(db, 'users'), where('email', '==', email));
+      const q = query(collection(firebaseDb, 'users'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0];
@@ -772,8 +777,345 @@ export class FirebaseStorage implements IStorage {
   }
 }
 
+export class DatabaseStorage implements IStorage {
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await pgDb.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await pgDb.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await pgDb
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  // Clients
+  async getClients(): Promise<Client[]> {
+    return await pgDb.select().from(clients);
+  }
+
+  async getClientById(id: number): Promise<Client | undefined> {
+    const [client] = await pgDb.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
+  }
+
+  async getClientByEmail(email: string): Promise<Client | undefined> {
+    const [client] = await pgDb.select().from(clients).where(eq(clients.email, email));
+    return client || undefined;
+  }
+
+  async createClient(insertClient: InsertClient): Promise<Client> {
+    const [client] = await pgDb
+      .insert(clients)
+      .values(insertClient)
+      .returning();
+    return client;
+  }
+
+  async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
+    const [client] = await pgDb
+      .update(clients)
+      .set(clientUpdate)
+      .where(eq(clients.id, id))
+      .returning();
+    return client;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await pgDb.delete(clients).where(eq(clients.id, id));
+  }
+
+  // Jobs
+  async getJobsByClientId(clientId: number): Promise<Job[]> {
+    return await pgDb.select().from(jobs).where(eq(jobs.clientId, clientId));
+  }
+
+  async getJobById(id: number): Promise<Job | undefined> {
+    const [job] = await pgDb.select().from(jobs).where(eq(jobs.id, id));
+    return job || undefined;
+  }
+
+  async createJob(insertJob: InsertJob): Promise<Job> {
+    const [job] = await pgDb
+      .insert(jobs)
+      .values(insertJob)
+      .returning();
+    return job;
+  }
+
+  async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
+    const [job] = await pgDb
+      .update(jobs)
+      .set(jobUpdate)
+      .where(eq(jobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async deleteJob(id: number): Promise<void> {
+    await pgDb.delete(jobs).where(eq(jobs.id, id));
+  }
+
+  // Questions
+  async getQuestionsByJobId(jobId: number): Promise<Question[]> {
+    return await pgDb.select().from(questions).where(eq(questions.jobId, jobId));
+  }
+
+  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
+    const [question] = await pgDb
+      .insert(questions)
+      .values(insertQuestion)
+      .returning();
+    return question;
+  }
+
+  async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {
+    const [question] = await pgDb
+      .update(questions)
+      .set(questionUpdate)
+      .where(eq(questions.id, id))
+      .returning();
+    return question;
+  }
+
+  async deleteQuestion(id: number): Promise<void> {
+    await pgDb.delete(questions).where(eq(questions.id, id));
+  }
+
+  // Candidates
+  async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
+    return await pgDb.select().from(candidates).where(eq(candidates.clientId, clientId));
+  }
+
+  async getCandidateById(id: number): Promise<Candidate | undefined> {
+    const [candidate] = await pgDb.select().from(candidates).where(eq(candidates.id, id));
+    return candidate || undefined;
+  }
+
+  async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
+    const [candidate] = await pgDb
+      .insert(candidates)
+      .values(insertCandidate)
+      .returning();
+    return candidate;
+  }
+
+  async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
+    const createdCandidates = await pgDb
+      .insert(candidates)
+      .values(insertCandidates)
+      .returning();
+    return createdCandidates;
+  }
+
+  async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
+    const [candidate] = await pgDb
+      .update(candidates)
+      .set(candidateUpdate)
+      .where(eq(candidates.id, id))
+      .returning();
+    return candidate;
+  }
+
+  async deleteCandidate(id: number): Promise<void> {
+    await pgDb.delete(candidates).where(eq(candidates.id, id));
+  }
+
+  // Selections
+  async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
+    return await pgDb.select().from(selections).where(eq(selections.clientId, clientId));
+  }
+
+  async getSelectionById(id: number): Promise<Selection | undefined> {
+    const [selection] = await pgDb.select().from(selections).where(eq(selections.id, id));
+    return selection || undefined;
+  }
+
+  async createSelection(insertSelection: InsertSelection): Promise<Selection> {
+    const [selection] = await pgDb
+      .insert(selections)
+      .values(insertSelection)
+      .returning();
+    return selection;
+  }
+
+  async updateSelection(id: number, selectionUpdate: Partial<Selection>): Promise<Selection> {
+    const [selection] = await pgDb
+      .update(selections)
+      .set(selectionUpdate)
+      .where(eq(selections.id, id))
+      .returning();
+    return selection;
+  }
+
+  async deleteSelection(id: number): Promise<void> {
+    await pgDb.delete(selections).where(eq(selections.id, id));
+  }
+
+  // Interviews
+  async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
+    return await pgDb.select().from(interviews).where(eq(interviews.selectionId, selectionId));
+  }
+
+  async getInterviewById(id: number): Promise<Interview | undefined> {
+    const [interview] = await pgDb.select().from(interviews).where(eq(interviews.id, id));
+    return interview || undefined;
+  }
+
+  async getInterviewByToken(token: string): Promise<Interview | undefined> {
+    const [interview] = await pgDb.select().from(interviews).where(eq(interviews.token, token));
+    return interview || undefined;
+  }
+
+  async createInterview(insertInterview: InsertInterview): Promise<Interview> {
+    const [interview] = await pgDb
+      .insert(interviews)
+      .values(insertInterview)
+      .returning();
+    return interview;
+  }
+
+  async updateInterview(id: number, interviewUpdate: Partial<Interview>): Promise<Interview> {
+    const [interview] = await pgDb
+      .update(interviews)
+      .set(interviewUpdate)
+      .where(eq(interviews.id, id))
+      .returning();
+    return interview;
+  }
+
+  // Responses
+  async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
+    return await pgDb.select().from(responses).where(eq(responses.interviewId, interviewId));
+  }
+
+  async createResponse(insertResponse: InsertResponse): Promise<Response> {
+    const [response] = await pgDb
+      .insert(responses)
+      .values(insertResponse)
+      .returning();
+    return response;
+  }
+
+  async updateResponse(id: number, responseUpdate: Partial<Response>): Promise<Response> {
+    const [response] = await pgDb
+      .update(responses)
+      .set(responseUpdate)
+      .where(eq(responses.id, id))
+      .returning();
+    return response;
+  }
+
+  // API Config
+  async getApiConfig(): Promise<ApiConfig | undefined> {
+    const [config] = await pgDb.select().from(apiConfigs);
+    return config || undefined;
+  }
+
+  async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
+    const existing = await this.getApiConfig();
+    if (existing) {
+      const [updated] = await pgDb
+        .update(apiConfigs)
+        .set(config)
+        .where(eq(apiConfigs.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await pgDb
+        .insert(apiConfigs)
+        .values(config)
+        .returning();
+      return created;
+    }
+  }
+
+  // Message Logs
+  async createMessageLog(insertLog: InsertMessageLog): Promise<MessageLog> {
+    const [log] = await pgDb
+      .insert(messageLogs)
+      .values(insertLog)
+      .returning();
+    return log;
+  }
+
+  async getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]> {
+    return await pgDb.select().from(messageLogs).where(eq(messageLogs.interviewId, interviewId));
+  }
+
+  // Statistics
+  async getInterviewStats(): Promise<{
+    totalClients: number;
+    totalInterviews: number;
+    pendingInterviews: number;
+    avgScore: number;
+  }> {
+    const allClients = await pgDb.select().from(clients);
+    const allInterviews = await pgDb.select().from(interviews);
+    
+    const totalClients = allClients.length;
+    const totalInterviews = allInterviews.length;
+    const pendingInterviews = allInterviews.filter((i: any) => i.status === 'pending').length;
+    
+    const completedInterviews = allInterviews.filter((i: any) => i.totalScore !== null);
+    const avgScore = completedInterviews.length > 0 
+      ? completedInterviews.reduce((sum: any, i: any) => sum + (i.totalScore || 0), 0) / completedInterviews.length
+      : 0;
+
+    return {
+      totalClients,
+      totalInterviews,
+      pendingInterviews,
+      avgScore
+    };
+  }
+
+  async getClientStats(clientId: number): Promise<{
+    activeJobs: number;
+    totalCandidates: number;
+    monthlyInterviews: number;
+    monthlyLimit: number;
+    currentUsage: number;
+  }> {
+    const clientJobs = await pgDb.select().from(jobs).where(eq(jobs.clientId, clientId));
+    const activeJobs = clientJobs.filter((job: any) => job.status === 'active').length;
+    
+    const clientCandidates = await pgDb.select().from(candidates).where(eq(candidates.clientId, clientId));
+    const totalCandidates = clientCandidates.length;
+    
+    const client = await this.getClientById(clientId);
+    const monthlyLimit = client?.monthlyLimit || 100;
+    
+    // Count interviews from current month
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+    
+    const allInterviews = await pgDb.select().from(interviews);
+    const monthlyInterviews = allInterviews.filter((interview: any) => {
+      const interviewDate = new Date(interview.createdAt || '');
+      return interviewDate >= currentMonth;
+    }).length;
+
+    return {
+      activeJobs,
+      totalCandidates,
+      monthlyInterviews,
+      monthlyLimit,
+      currentUsage: monthlyInterviews
+    };
+  }
+}
+
 // Initialize storage and create master user if needed
-export const storage = new FirebaseStorage();
+export const storage = new DatabaseStorage();
 
 // Create master user on startup
 const initializeStorage = async () => {
