@@ -371,7 +371,7 @@ export default function ClientsPage() {
                           <h3 className="text-lg font-semibold text-slate-900">{client.companyName}</h3>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                           <div>
                             <span className="text-sm font-medium text-slate-700">CNPJ:</span>
                             <p className="text-slate-900">{client.cnpj}</p>
@@ -384,7 +384,6 @@ export default function ClientsPage() {
                             <span className="text-sm font-medium text-slate-700">Telefone:</span>
                             <p className="text-slate-900">{client.phone}</p>
                           </div>
-
                         </div>
                         
                         <div className="flex items-center gap-4 text-sm text-slate-500">
