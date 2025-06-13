@@ -298,7 +298,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/jobs/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.put("/api/jobs/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const job = await storage.updateJob(id, req.body);
+      res.json(job);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update job' });
+    }
+  });
+
+  app.patch("/api/jobs/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const job = await storage.updateJob(id, req.body);

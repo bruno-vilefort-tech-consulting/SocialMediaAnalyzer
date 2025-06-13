@@ -222,11 +222,19 @@ export default function JobsPage() {
   };
 
   const startNewJob = () => {
+    // Obter clientId correto e seguro
+    let clientId = 1;
+    if (user?.role === 'master' && clients && clients.length > 0) {
+      clientId = clients[0].id;
+    } else if (user?.clientId) {
+      clientId = user.clientId;
+    }
+
     // Criar vaga inicial "não finalizada" automaticamente
     const initialJobData: InsertJob = {
       title: "Não finalizada",
       description: "Vaga em processo de criação",
-      clientId: user?.role === 'master' ? (clients?.[0]?.id || 1) : (user?.clientId || 1),
+      clientId: clientId,
       status: "draft",
     };
 
@@ -598,12 +606,12 @@ export default function JobsPage() {
                 <div className="flex gap-3">
                   <Button
                     type="submit"
-                    disabled={createJobMutation.isPending || questions.length === 0}
+                    disabled={finalizeJobMutation.isPending || questions.length === 0}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    {createJobMutation.isPending ? "Cadastrando..." : "Cadastrar Vaga"}
+                    {finalizeJobMutation.isPending ? "Finalizando..." : "Finalizar Vaga"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
+                  <Button type="button" variant="outline" onClick={cancelJob}>
                     Cancelar
                   </Button>
                 </div>
