@@ -138,7 +138,20 @@ export default function ClientsPage() {
   const startNewClient = () => {
     setShowNewClientForm(true);
     setEditingClient(null);
-    clientForm.reset();
+    clientForm.reset({
+      companyName: "",
+      cnpj: "",
+      email: "",
+      phone: "",
+      monthlyLimit: 5,
+      status: "active",
+      contractStart: new Date(),
+      contractEnd: undefined,
+      isIndefiniteContract: false,
+      responsibleName: "",
+      responsiblePhone: "",
+      responsibleEmail: "",
+    });
   };
 
   const startEditClient = (client: Client) => {
