@@ -76,12 +76,7 @@ export default function JobsPage() {
   // Mutations
   const createJobMutation = useMutation({
     mutationFn: async (jobData: InsertJob) => {
-      const response = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jobData),
-      });
-      if (!response.ok) throw new Error("Falha ao criar vaga");
+      const response = await apiRequest("POST", "/api/jobs", jobData);
       return response.json();
     },
     onSuccess: (newJob: Job) => {
@@ -93,12 +88,7 @@ export default function JobsPage() {
 
   const updateJobMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Job> }) => {
-      const response = await fetch(`/api/jobs/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Falha ao atualizar vaga");
+      const response = await apiRequest("PATCH", `/api/jobs/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -108,10 +98,7 @@ export default function JobsPage() {
 
   const deleteJobMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/jobs/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Falha ao deletar vaga");
+      await apiRequest("DELETE", `/api/jobs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
@@ -120,12 +107,7 @@ export default function JobsPage() {
 
   const createQuestionMutation = useMutation({
     mutationFn: async (questionData: InsertQuestion) => {
-      const response = await fetch("/api/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(questionData),
-      });
-      if (!response.ok) throw new Error("Falha ao criar pergunta");
+      const response = await apiRequest("POST", "/api/questions", questionData);
       return response.json();
     },
     onSuccess: () => {
@@ -139,12 +121,7 @@ export default function JobsPage() {
 
   const updateQuestionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Question> }) => {
-      const response = await fetch(`/api/questions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Falha ao atualizar pergunta");
+      const response = await apiRequest("PATCH", `/api/questions/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -159,10 +136,7 @@ export default function JobsPage() {
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/questions/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Falha ao deletar pergunta");
+      await apiRequest("DELETE", `/api/questions/${id}`);
     },
     onSuccess: () => {
       if (currentJob?.id) {
