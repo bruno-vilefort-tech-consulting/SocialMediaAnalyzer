@@ -278,14 +278,35 @@ export class FirebaseStorage implements IStorage {
   }
 
   // Jobs
+  async getJobs(): Promise<Job[]> {
+    try {
+      const querySnapshot = await getDocs(collection(firebaseDb, 'jobs'));
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: parseInt(doc.id),
+          ...data,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        };
+      }) as Job[];
+    } catch (error) {
+      console.error('Erro ao buscar todas as vagas:', error);
+      return [];
+    }
+  }
+
   async getJobsByClientId(clientId: number): Promise<Job[]> {
     try {
       const q = query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Job[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: parseInt(doc.id),
+          ...data,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        };
+      }) as Job[];
     } catch (error) {
       console.error('Erro ao buscar jobs por cliente:', error);
       return [];

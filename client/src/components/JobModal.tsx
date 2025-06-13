@@ -1,20 +1,49 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Save, Edit, Trash2, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Job, Question, InsertJob, InsertQuestion } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import type { Job, InsertJob, Question, InsertQuestion } from "@shared/schema";
+
+// Schema de validação para vaga
+const jobFormSchema = z.object({
+  title: z.string().min(1, "Nome da vaga é obrigatório").max(100, "Nome da vaga deve ter no máximo 100 caracteres"),
+  description: z.string().min(1, "Descrição da vaga é obrigatória").max(1000, "Descrição deve ter no máximo 1000 caracteres"),
+});
+
+// Schema de validação para pergunta
+const questionFormSchema = z.object({
+  questionText: z.string().min(1, "Pergunta é obrigatória").max(100, "Pergunta deve ter no máximo 100 caracteres"),
+  idealAnswer: z.string().min(1, "Resposta perfeita é obrigatória").max(1000, "Resposta deve ter no máximo 1000 caracteres"),
+});
+
+type JobFormData = z.infer<typeof jobFormSchema>;
+type QuestionFormData = z.infer<typeof questionFormSchema>;
 
 interface JobModalProps {
   isOpen: boolean;
@@ -26,78 +55,126 @@ interface QuestionForm {
   id?: number;
   questionText: string;
   idealAnswer: string;
-  maxTime: number;
   order: number;
+  isEditing?: boolean;
+  isNew?: boolean;
 }
 
 export default function JobModal({ isOpen, onClose, job }: JobModalProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState<QuestionForm[]>([]);
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const [questions, setQuestions] = useState<QuestionForm[]>([]);
+  const [showNewQuestion, setShowNewQuestion] = useState(false);
+  const [newQuestion, setNewQuestion] = useState<QuestionFormData>({
+    questionText: "",
+    idealAnswer: ""
+  });
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
 
-  // Load existing questions if editing
-  const { data: existingQuestions } = useQuery({
-    queryKey: ["/api/jobs", job?.id, "questions"],
-    enabled: !!job?.id,
+  const form = useForm<JobFormData>({
+    resolver: zodResolver(jobFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+    },
   });
 
-  useEffect(() => {
-    if (job) {
-      setTitle(job.title);
-      setDescription(job.description);
-    } else {
-      setTitle("");
-      setDescription("");
-      setQuestions([]);
-    }
-  }, [job]);
+  const questionForm = useForm<QuestionFormData>({
+    resolver: zodResolver(questionFormSchema),
+    defaultValues: {
+      questionText: "",
+      idealAnswer: ""
+    },
+  });
 
+  // Reset form quando modal abre/fecha ou quando job muda
   useEffect(() => {
-    if (existingQuestions) {
-      setQuestions(existingQuestions.map((q: Question) => ({
-        id: q.id,
-        questionText: q.questionText,
-        idealAnswer: q.idealAnswer,
-        maxTime: q.maxTime,
-        order: q.order,
-      })));
+    if (isOpen) {
+      if (job) {
+        form.reset({
+          title: job.title,
+          description: job.description,
+        });
+        // Carregar perguntas existentes se estiver editando
+        loadExistingQuestions(job.id);
+      } else {
+        form.reset({
+          title: "",
+          description: "",
+        });
+        setQuestions([]);
+      }
+      setShowNewQuestion(false);
+      setEditingQuestionIndex(null);
     }
-  }, [existingQuestions]);
+  }, [isOpen, job, form]);
 
+  const loadExistingQuestions = async (jobId: number) => {
+    try {
+      const response = await fetch(`/api/questions?jobId=${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+      });
+      if (response.ok) {
+        const existingQuestions = await response.json();
+        setQuestions(existingQuestions.map((q: Question, index: number) => ({
+          id: q.id,
+          questionText: q.questionText,
+          idealAnswer: q.idealAnswer,
+          order: q.order || index + 1,
+          isEditing: false,
+          isNew: false,
+        })));
+      }
+    } catch (error) {
+      console.error("Erro ao carregar perguntas:", error);
+    }
+  };
+
+  // Mutation para criar vaga
   const createJobMutation = useMutation({
     mutationFn: (jobData: InsertJob) => apiRequest("POST", "/api/jobs", jobData),
     onSuccess: async (response) => {
-      const newJob = await response.json();
-      await saveQuestions(newJob.id);
+      const createdJob = await response.json();
+      
+      // Salvar perguntas se existirem
+      if (questions.length > 0) {
+        await saveQuestionsForJob(createdJob.id);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({
-        title: "Vaga criada",
-        description: "Vaga foi criada com sucesso",
+        title: "Sucesso!",
+        description: "Vaga cadastrada com sucesso",
       });
       onClose();
     },
     onError: () => {
       toast({
         title: "Erro",
-        description: "Falha ao criar vaga",
+        description: "Falha ao cadastrar vaga",
         variant: "destructive",
       });
     },
   });
 
+  // Mutation para atualizar vaga
   const updateJobMutation = useMutation({
-    mutationFn: ({ id, jobData }: { id: number; jobData: Partial<Job> }) =>
-      apiRequest("PUT", `/api/jobs/${id}`, jobData),
+    mutationFn: (jobData: Partial<Job>) => 
+      apiRequest("PUT", `/api/jobs/${job!.id}`, jobData),
     onSuccess: async () => {
-      if (job?.id) {
-        await saveQuestions(job.id);
+      // Salvar perguntas atualizadas
+      if (questions.length > 0) {
+        await saveQuestionsForJob(job!.id);
       }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({
-        title: "Vaga atualizada",
-        description: "Vaga foi atualizada com sucesso",
+        title: "Sucesso!",
+        description: "Vaga atualizada com sucesso",
       });
       onClose();
     },
@@ -110,266 +187,415 @@ export default function JobModal({ isOpen, onClose, job }: JobModalProps) {
     },
   });
 
-  const saveQuestions = async (jobId: number) => {
-    // Delete existing questions and create new ones
-    // In a real implementation, you'd want to be more sophisticated about this
-    for (const question of questions) {
-      if (question.id) {
-        await apiRequest("DELETE", `/api/questions/${question.id}`);
-      }
-    }
-
+  const saveQuestionsForJob = async (jobId: number) => {
     for (const question of questions) {
       const questionData: InsertQuestion = {
         jobId,
         questionText: question.questionText,
         idealAnswer: question.idealAnswer,
-        maxTime: question.maxTime,
+        maxTime: 180, // 3 minutos padrão
         order: question.order,
       };
-      await apiRequest("POST", `/api/jobs/${jobId}/questions`, questionData);
+
+      if (question.id && !question.isNew) {
+        // Atualizar pergunta existente
+        await apiRequest("PUT", `/api/questions/${question.id}`, questionData);
+      } else {
+        // Criar nova pergunta
+        await apiRequest("POST", "/api/questions", questionData);
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title.trim() || !description.trim()) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o título e descrição da vaga",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (questions.length === 0) {
-      toast({
-        title: "Perguntas necessárias",
-        description: "Adicione pelo menos uma pergunta para a entrevista",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const jobData = {
-      title: title.trim(),
-      description: description.trim(),
-      status: "active" as const,
+  const onSubmit = (data: JobFormData) => {
+    const jobData: InsertJob = {
+      ...data,
+      clientId: user?.clientId || user?.id || 0,
     };
 
     if (job) {
-      updateJobMutation.mutate({ id: job.id, jobData });
+      updateJobMutation.mutate(jobData);
     } else {
       createJobMutation.mutate(jobData);
     }
   };
 
-  const addQuestion = () => {
+  const handleAddQuestion = () => {
     if (questions.length >= 10) {
       toast({
         title: "Limite atingido",
-        description: "Máximo de 10 perguntas por vaga",
+        description: "Não é possível adicionar mais de 10 perguntas",
         variant: "destructive",
       });
       return;
     }
-
-    setQuestions(prev => [
-      ...prev,
-      {
-        questionText: "",
-        idealAnswer: "",
-        maxTime: 180, // 3 minutes default
-        order: prev.length + 1,
-      }
-    ]);
+    setShowNewQuestion(true);
+    questionForm.reset();
   };
 
-  const removeQuestion = (index: number) => {
-    setQuestions(prev => prev.filter((_, i) => i !== index));
+  const handleSaveNewQuestion = (data: QuestionFormData) => {
+    const newQuestionForm: QuestionForm = {
+      questionText: data.questionText,
+      idealAnswer: data.idealAnswer,
+      order: questions.length + 1,
+      isNew: true,
+    };
+
+    setQuestions([...questions, newQuestionForm]);
+    setShowNewQuestion(false);
+    questionForm.reset();
+    
+    toast({
+      title: "Pergunta adicionada",
+      description: "Pergunta salva com sucesso",
+    });
   };
 
-  const updateQuestion = (index: number, field: keyof QuestionForm, value: string | number) => {
-    setQuestions(prev => prev.map((q, i) => 
-      i === index ? { ...q, [field]: value } : q
-    ));
+  const handleEditQuestion = (index: number) => {
+    setEditingQuestionIndex(index);
+    const question = questions[index];
+    questionForm.reset({
+      questionText: question.questionText,
+      idealAnswer: question.idealAnswer,
+    });
+  };
+
+  const handleSaveEditQuestion = (data: QuestionFormData) => {
+    if (editingQuestionIndex !== null) {
+      const updatedQuestions = [...questions];
+      updatedQuestions[editingQuestionIndex] = {
+        ...updatedQuestions[editingQuestionIndex],
+        questionText: data.questionText,
+        idealAnswer: data.idealAnswer,
+      };
+      setQuestions(updatedQuestions);
+      setEditingQuestionIndex(null);
+      questionForm.reset();
+
+      toast({
+        title: "Pergunta atualizada",
+        description: "Pergunta editada com sucesso",
+      });
+    }
+  };
+
+  const handleRemoveQuestion = (index: number) => {
+    const updatedQuestions = questions.filter((_, i) => i !== index);
+    // Reordenar perguntas
+    const reorderedQuestions = updatedQuestions.map((q, i) => ({
+      ...q,
+      order: i + 1,
+    }));
+    setQuestions(reorderedQuestions);
+
+    toast({
+      title: "Pergunta removida",
+      description: "Pergunta removida com sucesso",
+    });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-screen overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {job ? "Editar Vaga" : "Nova Vaga"}
+          <DialogTitle className="text-xl font-bold">
+            {job ? "Editar Vaga" : "Cadastrar Nova Vaga"}
           </DialogTitle>
+          <DialogDescription>
+            {job ? "Atualize as informações da vaga" : "Preencha as informações para criar uma nova vaga"}
+          </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="title">Nome da Vaga</Label>
-              <Input
-                id="title"
-                placeholder="Ex: Desenvolvedor Frontend"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-                required
-              />
-              <div className="text-xs text-slate-500 mt-1">
-                {title.length}/100 caracteres
-              </div>
-            </div>
-            
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <select 
-                id="status"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                defaultValue="active"
-              >
-                <option value="active">Ativa</option>
-                <option value="inactive">Inativa</option>
-              </select>
-            </div>
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Descrição Interna</Label>
-            <Textarea
-              id="description"
-              rows={4}
-              placeholder="Descrição detalhada da vaga para uso interno..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-              required
-            />
-            <div className="text-xs text-slate-500 mt-1">
-              {description.length}/500 caracteres
-            </div>
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <Label>Perguntas da Entrevista</Label>
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={addQuestion}
-                disabled={questions.length >= 10}
-              >
-                <Plus className="mr-1 h-4 w-4" />
-                Adicionar Pergunta
-              </Button>
-            </div>
-            
-            <div className="space-y-4">
-              {questions.map((question, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center">
-                        <GripVertical className="h-4 w-4 text-slate-400 mr-2" />
-                        <span className="text-sm font-medium text-slate-700">
-                          Pergunta {index + 1}
-                        </span>
-                      </div>
-                      <Button 
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeQuestion(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs text-slate-500">
-                          Texto da Pergunta (até 200 caracteres)
-                        </Label>
-                        <Textarea
-                          rows={2}
-                          placeholder="Ex: Conte sobre sua experiência com React.js..."
-                          value={question.questionText}
-                          onChange={(e) => updateQuestion(index, "questionText", e.target.value)}
-                          maxLength={200}
-                          required
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Informações da Vaga */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Informações da Vaga</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome da Vaga *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ex: Desenvolvedor Frontend"
+                          maxLength={100}
+                          {...field} 
                         />
-                        <div className="text-xs text-slate-500">
-                          {question.questionText.length}/200 caracteres
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <Label className="text-xs text-slate-500">
-                          Resposta Ideal (até 1000 caracteres)
-                        </Label>
-                        <Textarea
-                          rows={3}
-                          placeholder="Critérios para análise da resposta..."
-                          value={question.idealAnswer}
-                          onChange={(e) => updateQuestion(index, "idealAnswer", e.target.value)}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição da Vaga *</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Descreva a vaga para uso interno..."
                           maxLength={1000}
-                          required
+                          rows={4}
+                          className="resize-none"
+                          {...field} 
                         />
-                        <div className="text-xs text-slate-500">
-                          {question.idealAnswer.length}/1000 caracteres
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Perguntas da Entrevista */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  Perguntas da Entrevista
+                  <Badge variant="outline">
+                    {questions.length}/10 perguntas
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Lista de perguntas existentes */}
+                {questions.map((question, index) => (
+                  <Card key={index} className="border-l-4 border-l-primary">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-medium text-slate-900">
+                          Pergunta {question.order}
+                        </h4>
+                        <div className="flex space-x-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditQuestion(index)}
+                            disabled={editingQuestionIndex === index}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveQuestion(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-xs text-slate-500">
-                            Tempo Máximo (segundos)
-                          </Label>
-                          <Input
-                            type="number"
-                            min="30"
-                            max="600"
-                            value={question.maxTime}
-                            onChange={(e) => updateQuestion(index, "maxTime", parseInt(e.target.value) || 180)}
-                            required
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <div className="text-xs text-slate-500">
-                            = {Math.floor(question.maxTime / 60)}:{(question.maxTime % 60).toString().padStart(2, '0')} min
+
+                      {editingQuestionIndex === index ? (
+                        <Form {...questionForm}>
+                          <form onSubmit={questionForm.handleSubmit(handleSaveEditQuestion)} className="space-y-3">
+                            <FormField
+                              control={questionForm.control}
+                              name="questionText"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Pergunta ao candidato</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="Digite a pergunta..."
+                                      maxLength={100}
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={questionForm.control}
+                              name="idealAnswer"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Resposta Perfeita</FormLabel>
+                                  <FormControl>
+                                    <Textarea 
+                                      placeholder="Escreva uma resposta perfeita para a pergunta acima..."
+                                      maxLength={1000}
+                                      rows={3}
+                                      className="resize-none max-h-20 overflow-y-auto"
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                  <p className="text-xs text-slate-600">
+                                    Esta resposta será utilizada para classificar os melhores candidatos
+                                  </p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <div className="flex space-x-2">
+                              <Button type="submit" size="sm">
+                                <Save className="h-4 w-4 mr-1" />
+                                Salvar
+                              </Button>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setEditingQuestionIndex(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </form>
+                        </Form>
+                      ) : (
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">Pergunta:</p>
+                            <p className="text-sm text-slate-900">{question.questionText}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">Resposta Perfeita:</p>
+                            <div className="max-h-20 overflow-y-auto bg-slate-50 p-2 rounded text-sm text-slate-900">
+                              {question.idealAnswer}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {questions.length === 0 && (
-                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-lg">
-                  <p className="text-slate-500 mb-4">Nenhuma pergunta adicionada ainda</p>
-                  <Button type="button" variant="outline" onClick={addQuestion}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Primeira Pergunta
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Formulário para nova pergunta */}
+                {showNewQuestion && (
+                  <Card className="border-dashed">
+                    <CardContent className="p-4">
+                      <h4 className="font-medium text-slate-900 mb-3">
+                        Nova Pergunta {questions.length + 1}
+                      </h4>
+
+                      <Form {...questionForm}>
+                        <form onSubmit={questionForm.handleSubmit(handleSaveNewQuestion)} className="space-y-3">
+                          <FormField
+                            control={questionForm.control}
+                            name="questionText"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Pergunta ao candidato</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Digite a pergunta..."
+                                    maxLength={100}
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={questionForm.control}
+                            name="idealAnswer"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Resposta Perfeita</FormLabel>
+                                <FormControl>
+                                  <Textarea 
+                                    placeholder="Escreva uma resposta perfeita para a pergunta acima..."
+                                    maxLength={1000}
+                                    rows={3}
+                                    className="resize-none max-h-20 overflow-y-auto"
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <p className="text-xs text-slate-600">
+                                  Esta resposta será utilizada para classificar os melhores candidatos
+                                </p>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="flex space-x-2">
+                            <Button type="submit" size="sm">
+                              <Save className="h-4 w-4 mr-1" />
+                              Salvar Pergunta {questions.length + 1}
+                            </Button>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setShowNewQuestion(false)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Botão para adicionar pergunta */}
+                {!showNewQuestion && questions.length < 10 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddQuestion}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Acrescentar Perguntas da Entrevista
                   </Button>
-                </div>
-              )}
+                )}
+
+                {questions.length >= 10 && (
+                  <div className="flex items-center space-x-2 text-amber-600 bg-amber-50 p-3 rounded-lg">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">
+                      Limite máximo de 10 perguntas atingido
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Botões */}
+            <div className="flex justify-end space-x-4 pt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={createJobMutation.isPending || updateJobMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={createJobMutation.isPending || updateJobMutation.isPending}
+              >
+                {createJobMutation.isPending || updateJobMutation.isPending ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Salvando...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {job ? "Atualizar Vaga" : "Cadastrar Vaga"}
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-6 border-t border-slate-200">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createJobMutation.isPending || updateJobMutation.isPending}
-            >
-              {job ? "Atualizar Vaga" : "Criar Vaga"}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

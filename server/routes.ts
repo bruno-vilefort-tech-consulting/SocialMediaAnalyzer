@@ -232,26 +232,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/jobs", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.get("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.clientId!;
-      const jobs = await storage.getJobsByClientId(clientId);
+      let jobs;
+      if (req.user!.role === 'master') {
+        // Master pode ver todas as vagas
+        jobs = await storage.getJobs();
+      } else {
+        // Cliente vê apenas suas vagas
+        const clientId = req.user!.clientId!;
+        jobs = await storage.getJobsByClientId(clientId);
+      }
       res.json(jobs);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch jobs' });
     }
   });
 
-  app.post("/api/jobs", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const jobData = insertJobSchema.parse({
         ...req.body,
-        clientId: req.user!.clientId!
+        clientId: req.user!.clientId || req.user!.id
       });
       
       const job = await storage.createJob(jobData);
       res.status(201).json(job);
     } catch (error) {
+      console.error("Erro ao criar vaga:", error);
       res.status(400).json({ message: 'Failed to create job' });
     }
   });
