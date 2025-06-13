@@ -34,7 +34,7 @@ export const clients = pgTable("clients", {
 
 // Job positions
 export const jobs = pgTable("jobs", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -53,7 +53,7 @@ export const jobs = pgTable("jobs", {
 // Interview questions for each job
 export const questions = pgTable("questions", {
   id: serial("id").primaryKey(),
-  jobId: integer("job_id").references(() => jobs.id).notNull(),
+  jobId: text("job_id").references(() => jobs.id).notNull(),
   questionText: text("question_text").notNull(),
   idealAnswer: text("ideal_answer").notNull(),
   maxTime: integer("max_time").notNull().default(180), // seconds
@@ -145,7 +145,13 @@ export const messageLogs = pgTable("message_logs", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true });
-export const insertQuestionSchema = createInsertSchema(questions).omit({ id: true, createdAt: true });
+export const insertQuestionSchema = z.object({
+  jobId: z.union([z.string(), z.number()]).transform(val => String(val)),
+  questionText: z.string(),
+  idealAnswer: z.string(),
+  maxTime: z.number().default(180),
+  order: z.number(),
+});
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });
