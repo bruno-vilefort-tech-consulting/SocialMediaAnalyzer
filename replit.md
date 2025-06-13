@@ -115,11 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 13, 2025: Database migration completed - Replaced in-memory storage with PostgreSQL
-  - Created DatabaseStorage class implementing all IStorage interface methods
-  - Successfully pushed schema to PostgreSQL using Drizzle migrations
-  - Master user account migrated to database with secure authentication
-  - All data persistence now uses PostgreSQL for production-ready scalability
+- June 13, 2025: Database migration completed - System migrated to Firebase Firestore
+  - Successfully migrated from PostgreSQL to Firebase Firestore as primary database
+  - FirebaseStorage class fully implemented with all IStorage interface methods
+  - Firebase Firestore API enabled and configured with security rules
+  - Master user account active in Firebase: daniel@grupomaximuns.com.br / daniel580190
+  - All data persistence now uses Firebase Firestore for real-time capabilities and scalability
+  - Authentication and authorization working perfectly with Firebase backend
 
 ## Changelog
 
