@@ -111,7 +111,7 @@ The system uses a comprehensive PostgreSQL schema with the following main entiti
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language in Brazilian Portuguese (português brasileiro).
 
 ## Recent Changes
 
