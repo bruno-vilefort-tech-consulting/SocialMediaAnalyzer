@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, 
   Search, 
@@ -28,12 +29,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import type { Job, Question as DBQuestion, InsertJob, InsertQuestion } from "@shared/schema";
+import type { Job, Question as DBQuestion, InsertJob, InsertQuestion, Client } from "@shared/schema";
 
 // Schemas de validação
 const jobFormSchema = z.object({
   title: z.string().min(1, "Nome da vaga é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
+  clientId: z.number().min(1, "Cliente é obrigatório"),
 });
 
 const questionFormSchema = z.object({
@@ -69,6 +71,7 @@ export default function JobsPage() {
     defaultValues: {
       title: "",
       description: "",
+      clientId: user?.role === 'master' ? 0 : user?.clientId || 1,
     },
   });
 
@@ -82,8 +85,14 @@ export default function JobsPage() {
   });
 
   // Query para buscar vagas
-  const { data: jobs = [], isLoading } = useQuery({
+  const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
+  });
+
+  // Query para buscar clientes (apenas para usuários master)
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    enabled: user?.role === 'master',
   });
 
   // Mutation para criar vaga
@@ -192,7 +201,7 @@ export default function JobsPage() {
     const jobData: InsertJob = {
       title: data.title,
       description: data.description,
-      clientId: user?.role === 'master' ? 1 : user?.clientId || 1,
+      clientId: data.clientId,
     };
 
     createJobMutation.mutate(jobData);
@@ -319,6 +328,34 @@ export default function JobsPage() {
               <form onSubmit={jobForm.handleSubmit(onSubmitJob)} className="space-y-6">
                 {/* Dados da Vaga */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Seleção de Cliente - apenas para usuários master */}
+                  {user?.role === 'master' && (
+                    <FormField
+                      control={jobForm.control}
+                      name="clientId"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Cliente</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString() || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um cliente para esta vaga" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id.toString()}>
+                                  {client.companyName} - {client.email}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  
                   <FormField
                     control={jobForm.control}
                     name="title"
@@ -563,7 +600,7 @@ export default function JobsPage() {
                         <div className="flex items-center gap-4 text-sm text-slate-500">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            <span>Criada em {format(new Date(job.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            <span>Criada em {job.createdAt ? format(new Date(job.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "Data não disponível"}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <MessageSquare className="w-4 h-4" />
