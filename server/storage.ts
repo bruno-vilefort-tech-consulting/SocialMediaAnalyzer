@@ -269,7 +269,10 @@ export class FirebaseStorage implements IStorage {
         processedUpdate.contractStart = processedUpdate.contractStart.toISOString() as any;
       }
       
-      if (processedUpdate.contractEnd && processedUpdate.contractEnd instanceof Date) {
+      // Para contractEnd: se for null, manter null; se for Date, converter para ISO
+      if (processedUpdate.contractEnd === null) {
+        processedUpdate.contractEnd = null as any;
+      } else if (processedUpdate.contractEnd && processedUpdate.contractEnd instanceof Date) {
         processedUpdate.contractEnd = processedUpdate.contractEnd.toISOString() as any;
       }
       

@@ -175,10 +175,14 @@ export default function ClientsPage() {
 
   const onSubmitClient = (data: ClientFormData) => {
     if (editingClient) {
-      // Atualizar cliente existente
+      // Atualizar cliente existente - processar dados antes de enviar
+      const processedData = {
+        ...data,
+        contractEnd: data.isIndefiniteContract ? null : data.contractEnd,
+      };
       updateClientMutation.mutate({
         id: editingClient.id,
-        data: data,
+        data: processedData,
       });
     } else {
       // Criar novo cliente

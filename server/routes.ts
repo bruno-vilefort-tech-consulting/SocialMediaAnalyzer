@@ -200,7 +200,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (updates.contractStart) {
         updates.contractStart = new Date(updates.contractStart);
       }
-      if (updates.contractEnd) {
+      
+      // Se contractEnd for null (contrato indeterminado), manter como null
+      // Se contractEnd tiver valor, converter para Date
+      if (updates.contractEnd === null) {
+        updates.contractEnd = null;
+      } else if (updates.contractEnd) {
         updates.contractEnd = new Date(updates.contractEnd);
       }
       
