@@ -251,9 +251,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
+      const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId || 1;
+      
       const jobData = insertJobSchema.parse({
         ...req.body,
-        clientId: req.user!.clientId || req.user!.id
+        clientId: clientId
       });
       
       const job = await storage.createJob(jobData);
@@ -348,13 +350,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/questions/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.patch("/api/questions/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const question = await storage.updateQuestion(id, req.body);
       res.json(question);
     } catch (error) {
       res.status(400).json({ message: 'Failed to update question' });
+    }
+  });
+
+  app.delete("/api/questions/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteQuestion(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to delete question' });
     }
   });
 
