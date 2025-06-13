@@ -263,7 +263,10 @@ export default function JobsPage() {
   };
 
   const addQuestion = () => {
+    console.log("addQuestion called, currentJob:", currentJob);
+    
     if (!currentJob?.id) {
+      console.log("currentJob não encontrado:", currentJob);
       toast({
         title: "Erro",
         description: "Inicie uma vaga primeiro.",
