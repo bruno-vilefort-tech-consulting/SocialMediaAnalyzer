@@ -66,8 +66,6 @@ export default function JobsPage() {
       experienceLevel: "",
       department: "",
       contractType: "",
-      clientId: user?.role === 'master' ? 1 : (user?.clientId || 1),
-      status: "not_finished",
     },
   });
 
@@ -80,11 +78,11 @@ export default function JobsPage() {
   });
 
   // Queries
-  const { data: jobs = [], isLoading } = useQuery<Job[]>({
+  const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["/api/jobs"],
   });
 
-  const { data: clients = [] } = useQuery<Client[]>({
+  const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
     enabled: user?.role === 'master',
   });
@@ -93,19 +91,18 @@ export default function JobsPage() {
   const createJobMutation = useMutation({
     mutationFn: async (jobData: InsertJob) => {
       const response = await apiRequest("POST", "/api/jobs", jobData);
-      return response.json();
+      return response;
     },
     onSuccess: (newJob: Job) => {
       setCurrentJob(newJob);
-      setQuestions([]);
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
     },
   });
 
   const updateJobMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<Job> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Job> }) => {
       const response = await apiRequest("PATCH", `/api/jobs/${id}`, data);
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
@@ -113,7 +110,7 @@ export default function JobsPage() {
   });
 
   const deleteJobMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/jobs/${id}`);
     },
     onSuccess: () => {
@@ -124,29 +121,14 @@ export default function JobsPage() {
   const createQuestionMutation = useMutation({
     mutationFn: async (questionData: InsertQuestion) => {
       const response = await apiRequest("POST", "/api/questions", questionData);
-      return response.json();
-    },
-    onSuccess: () => {
-      if (currentJob?.id) {
-        loadJobQuestions(currentJob.id);
-      }
-      setShowQuestionForm(false);
-      questionForm.reset();
+      return response;
     },
   });
 
   const updateQuestionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<Question> }) => {
       const response = await apiRequest("PATCH", `/api/questions/${id}`, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      if (currentJob?.id) {
-        loadJobQuestions(currentJob.id);
-      }
-      setShowQuestionForm(false);
-      setEditingQuestion(null);
-      questionForm.reset();
+      return response;
     },
   });
 
@@ -318,7 +300,6 @@ export default function JobsPage() {
           setShowQuestionForm(false);
           setEditingQuestion(null);
           questionForm.reset();
-          // Recarregar perguntas após edição
           loadJobQuestions(currentJob.id);
           toast({
             title: "Sucesso",
@@ -337,7 +318,6 @@ export default function JobsPage() {
         onSuccess: (newQuestion) => {
           setShowQuestionForm(false);
           questionForm.reset();
-          // Adicionar a nova pergunta à lista local imediatamente
           setQuestions(prev => [...prev, newQuestion]);
           toast({
             title: "Sucesso", 
@@ -349,14 +329,19 @@ export default function JobsPage() {
   };
 
   const removeQuestion = (questionId: number) => {
-    if (confirm("Tem certeza que deseja remover esta pergunta?")) {
+    if (confirm("Tem certeza que deseja remover esta pergunta do banco de dados?")) {
       deleteQuestionMutation.mutate(questionId, {
         onSuccess: () => {
-          // Remover da lista local imediatamente
-          setQuestions(prev => prev.filter(q => q.id !== questionId));
           toast({
             title: "Sucesso",
-            description: "Pergunta removida com sucesso!",
+            description: "Pergunta removida do banco de dados!",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Erro",
+            description: "Erro ao remover pergunta. Tente novamente.",
+            variant: "destructive",
           });
         }
       });
@@ -373,14 +358,14 @@ export default function JobsPage() {
     }
   };
 
-  const activeJobs = jobs.filter((job) =>
+  const activeJobs = jobs.filter((job: Job) =>
     job.status === "active" && (
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.description.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
-  const draftJobs = jobs.filter((job) =>
+  const draftJobs = jobs.filter((job: Job) =>
     job.status === "not_finished"
   );
 
@@ -413,15 +398,14 @@ export default function JobsPage() {
         </Button>
       </div>
 
-      {/* Formulário de Nova Vaga */}
+      {/* Formulário de criação de vaga */}
       {currentJob && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="text-blue-900">
-              {currentJob.status === "not_finished" ? "Nova Vaga (Em Criação)" : "Editando Vaga"}
-            </CardTitle>
+            <CardTitle className="text-blue-900">Criar Nova Vaga</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
+            {/* Formulário da Vaga */}
             <Form {...jobForm}>
               <form onSubmit={jobForm.handleSubmit(saveJobInfo)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -430,9 +414,9 @@ export default function JobsPage() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Título da Vaga *</FormLabel>
+                        <FormLabel>Título da Vaga</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Desenvolvedor Frontend" {...field} />
+                          <Input placeholder="Digite o título da vaga..." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -445,11 +429,11 @@ export default function JobsPage() {
                       name="clientId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Empresa/Cliente *</FormLabel>
+                          <FormLabel>Cliente</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione a empresa" />
+                                <SelectValue placeholder="Selecione o cliente" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -465,124 +449,6 @@ export default function JobsPage() {
                       )}
                     />
                   )}
-
-                  <FormField
-                    control={jobForm.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Departamento/Área</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Tecnologia, Marketing, Vendas..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={jobForm.control}
-                    name="experienceLevel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nível de Experiência</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o nível" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="estagio">Estágio</SelectItem>
-                            <SelectItem value="junior">Júnior</SelectItem>
-                            <SelectItem value="pleno">Pleno</SelectItem>
-                            <SelectItem value="senior">Sênior</SelectItem>
-                            <SelectItem value="especialista">Especialista</SelectItem>
-                            <SelectItem value="coordenador">Coordenador</SelectItem>
-                            <SelectItem value="gerente">Gerente</SelectItem>
-                            <SelectItem value="diretor">Diretor</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={jobForm.control}
-                    name="workType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Modalidade de Trabalho</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a modalidade" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="presencial">Presencial</SelectItem>
-                            <SelectItem value="remoto">Remoto</SelectItem>
-                            <SelectItem value="hibrido">Híbrido</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={jobForm.control}
-                    name="contractType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Contrato</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="clt">CLT</SelectItem>
-                            <SelectItem value="pj">PJ</SelectItem>
-                            <SelectItem value="estagio">Estágio</SelectItem>
-                            <SelectItem value="temporario">Temporário</SelectItem>
-                            <SelectItem value="terceirizado">Terceirizado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={jobForm.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Localização</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: São Paulo - SP" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={jobForm.control}
-                    name="salaryRange"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Faixa Salarial</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: R$ 5.000 - R$ 8.000" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 <FormField
@@ -590,11 +456,11 @@ export default function JobsPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descrição da Vaga *</FormLabel>
+                      <FormLabel>Descrição</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Descreva as principais responsabilidades e atividades da vaga..."
-                          className="min-h-[100px]"
+                          placeholder="Descreva a vaga detalhadamente..."
+                          rows={4}
                           {...field}
                         />
                       </FormControl>
@@ -603,98 +469,48 @@ export default function JobsPage() {
                   )}
                 />
 
-                <FormField
-                  control={jobForm.control}
-                  name="requirements"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Requisitos e Qualificações</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Liste os requisitos técnicos, formação acadêmica, experiências necessárias..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={jobForm.control}
-                  name="benefits"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Benefícios Oferecidos</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Liste os benefícios: plano de saúde, vale refeição, home office..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+                <div className="flex gap-3">
+                  <Button type="submit" disabled={updateJobMutation.isPending}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {updateJobMutation.isPending ? "Salvando..." : "Salvar Informações"}
+                  </Button>
+                </div>
               </form>
             </Form>
 
-            <Separator className="my-6" />
+            <Separator />
 
             {/* Seção de Perguntas */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Perguntas da Entrevista 
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      questions.length === 0 
-                        ? 'bg-gray-100 text-gray-800' 
-                        : questions.length >= 10 
-                        ? 'bg-red-100 text-red-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {questions.length}/10 perguntas
-                    </span>
-                    {questions.length > 0 && (
-                      <span className="text-xs text-green-600 font-medium">
-                        ✓ Pronto para criar vaga
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Button 
-                  onClick={addQuestion} 
-                  variant="outline" 
-                  size="sm"
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Perguntas da Entrevista ({questions.length}/10)
+                </h3>
+                <Button
+                  onClick={addQuestion}
                   disabled={questions.length >= 10}
-                  className={questions.length >= 10 ? 'opacity-50 cursor-not-allowed' : ''}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  {questions.length >= 10 ? 'Limite atingido' : 'Adicionar Pergunta'}
+                  Adicionar Pergunta
                 </Button>
               </div>
 
-              {/* Lista de Perguntas Salvas */}
+              {/* Lista de Perguntas como Blocos Editáveis */}
               {questions.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-medium text-slate-900 mb-3">Perguntas Cadastradas:</h4>
                   {questions.map((question, index) => (
-                    <Card key={question.id} className="border-green-200 bg-green-50">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start justify-between">
+                    <Card key={question.id} className="border-slate-200">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Pergunta {index + 1} - Salva
+                              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                                Pergunta {index + 1}
                               </span>
                             </div>
-                            <p className="font-medium text-slate-900 mb-2">
+                            <p className="text-sm font-medium text-slate-900 mb-2">
                               {question.questionText}
                             </p>
                             <p className="text-sm text-slate-600">
@@ -800,90 +616,60 @@ export default function JobsPage() {
                   </CardContent>
                 </Card>
               )}
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Botões de Ação */}
-              <div className="flex gap-3">
-                <Button
-                  onClick={finalizeJob}
-                  disabled={updateJobMutation.isPending || questions.length === 0}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {updateJobMutation.isPending ? "Criando..." : "Criar Vaga"}
-                </Button>
-                <Button type="button" variant="outline" onClick={cancelJob}>
-                  Cancelar
-                </Button>
-              </div>
+            {/* Botões de Ação */}
+            <div className="flex gap-3">
+              <Button
+                onClick={finalizeJob}
+                disabled={updateJobMutation.isPending || questions.length === 0}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {updateJobMutation.isPending ? "Criando..." : "Criar Vaga"}
+              </Button>
+              <Button type="button" variant="outline" onClick={cancelJob}>
+                Cancelar
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
+      {/* Busca */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <Input
+          placeholder="Buscar vagas..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       {/* Vagas em Rascunho */}
       {draftJobs.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card>
           <CardHeader>
             <CardTitle className="text-orange-900">Vagas em Rascunho</CardTitle>
-            <p className="text-orange-700 text-sm">Vagas não finalizadas que podem ser continuadas</p>
+            <p className="text-orange-600 text-sm">Vagas não finalizadas que precisam ser completadas</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {draftJobs.map((job) => (
-                <Card key={job.id} className="border-orange-200 bg-white">
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            Em Rascunho
-                          </span>
-                        </div>
-                        <h3 className="font-semibold text-slate-900 mb-2">
-                          {job.title || "Nova Vaga (não finalizada)"}
-                        </h3>
-                        <p className="text-slate-600 text-sm mb-2">
-                          {job.description || "Vaga em processo de criação"}
-                        </p>
-                        <div className="text-xs text-slate-500">
-                          Criada em: {job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 ml-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {draftJobs.map((job: Job) => (
+                <Card key={job.id} className="border-orange-200 bg-orange-50">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-orange-900">{job.title}</h3>
+                      <p className="text-sm text-orange-700">{job.description}</p>
+                      <div className="flex gap-2 pt-2">
                         <Button 
                           size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setCurrentJob(job);
-                            jobForm.reset({
-                              title: job.title || "",
-                              description: job.description || "",
-                              requirements: job.requirements || "",
-                              benefits: job.benefits || "",
-                              location: job.location || "",
-                              workType: job.workType || "",
-                              salaryRange: job.salaryRange || "",
-                              experienceLevel: job.experienceLevel || "",
-                              department: job.department || "",
-                              contractType: job.contractType || "",
-                              clientId: job.clientId,
-                              status: "not_finished",
-                            });
-                            loadJobQuestions(job.id);
-                          }}
-                          className="text-blue-600 hover:text-blue-700"
+                          onClick={() => setCurrentJob(job)}
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
                         >
-                          <Edit3 className="w-4 h-4 mr-1" />
-                          Continuar Editando
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => deleteJobMutation.mutate(job.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                          Continuar
                         </Button>
                       </div>
                     </div>
@@ -895,61 +681,41 @@ export default function JobsPage() {
         </Card>
       )}
 
-      {/* Busca de Vagas Ativas */}
+      {/* Vagas Ativas */}
       <Card>
         <CardHeader>
           <CardTitle>Vagas Ativas</CardTitle>
+          <p className="text-slate-600 text-sm">Vagas publicadas e disponíveis para candidatos</p>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 mb-4">
-            <Search className="w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Buscar vagas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
-          </div>
-
           {activeJobs.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500">Nenhuma vaga ativa encontrada.</p>
+              <p className="text-slate-500">Nenhuma vaga ativa encontrada</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {activeJobs.map((job) => (
-                <Card key={job.id} className="border-slate-200">
-                  <CardContent className="pt-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Ativa
-                          </span>
-                        </div>
-                        <h3 className="font-semibold text-slate-900 mb-2">{job.title}</h3>
-                        <p className="text-slate-600 text-sm mb-2">{job.description}</p>
-                        {job.location && (
-                          <p className="text-slate-500 text-xs mb-1">📍 {job.location}</p>
-                        )}
-                        {job.salaryRange && (
-                          <p className="text-slate-500 text-xs mb-1">💰 {job.salaryRange}</p>
-                        )}
-                        <div className="text-xs text-slate-500">
-                          Criada em: {job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button size="sm" variant="outline">
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeJobs.map((job: Job) => (
+                <Card key={job.id} className="border-green-200 bg-green-50">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-green-900">{job.title}</h3>
+                      <p className="text-sm text-green-700">{job.description}</p>
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          size="sm" 
                           variant="outline"
-                          onClick={() => deleteJobMutation.mutate(job.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-green-700 border-green-300 hover:bg-green-100"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit3 className="w-4 h-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="text-red-700 border-red-300 hover:bg-red-100"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Excluir
                         </Button>
                       </div>
                     </div>
