@@ -1,82 +1,60 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Briefcase,
-  MessageSquare,
-  Calendar,
-  Building,
-  Save,
-  X,
-  Check
-} from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import type { Job, Question as DBQuestion, InsertJob, InsertQuestion, Client } from "@shared/schema";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Plus, Edit3, Trash2, Save, X } from "lucide-react";
+import { insertJobSchema, insertQuestionSchema, type Job, type Question, type Client, type InsertJob, type InsertQuestion } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
-// Schemas de validação
-const jobFormSchema = z.object({
-  title: z.string().min(1, "Nome da vaga é obrigatório"),
+// Schemas para formulários
+const jobFormSchema = insertJobSchema.extend({
+  title: z.string().min(1, "Título é obrigatório"),
   description: z.string().min(1, "Descrição é obrigatória"),
-  clientId: z.number().optional(),
 });
 
-const questionFormSchema = z.object({
-  questionText: z.string().min(1, "Pergunta é obrigatória").max(100, "Máximo 100 caracteres"),
-  idealAnswer: z.string().min(1, "Resposta perfeita é obrigatória").max(1000, "Máximo 1000 caracteres"),
+const questionFormSchema = insertQuestionSchema.omit({
+  jobId: true,
+  order: true,
+}).extend({
+  questionText: z.string().min(1, "Pergunta é obrigatória"),
+  idealAnswer: z.string().min(1, "Resposta ideal é obrigatória"),
 });
 
 type JobFormData = z.infer<typeof jobFormSchema>;
 type QuestionFormData = z.infer<typeof questionFormSchema>;
 
-interface QuestionForm {
-  id?: number;
-  jobId?: number;
-  questionText: string;
-  idealAnswer: string;
-  order: number;
-}
-
 export default function JobsPage() {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { user } = useAuth();
   
-  const [showNewJobForm, setShowNewJobForm] = useState(false);
-  const [currentJob, setCurrentJob] = useState<Job | null>(null);
-  const [questions, setQuestions] = useState<QuestionForm[]>([]);
-  const [showQuestionForm, setShowQuestionForm] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<QuestionForm | null>(null);
+  // Estados principais
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentJob, setCurrentJob] = useState<Job | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
 
-  // Form para nova vaga
+  // Formulários
   const jobForm = useForm<JobFormData>({
     resolver: zodResolver(jobFormSchema),
     defaultValues: {
       title: "",
       description: "",
-      clientId: user?.role === 'master' ? 0 : user?.clientId || 1,
+      clientId: user?.role === 'master' ? 1 : (user?.clientId || 1),
+      status: "not_finished",
     },
   });
 
-  // Form para nova pergunta
   const questionForm = useForm<QuestionFormData>({
     resolver: zodResolver(questionFormSchema),
     defaultValues: {
@@ -85,203 +63,202 @@ export default function JobsPage() {
     },
   });
 
-  // Query para buscar vagas
+  // Queries
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
   });
 
-  // Query para buscar clientes (apenas para usuários master)
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
     enabled: user?.role === 'master',
   });
 
-  // Mutation para criar vaga inicial (não finalizada)
-  const createInitialJobMutation = useMutation({
-    mutationFn: (jobData: InsertJob) => apiRequest("POST", "/api/jobs", jobData),
+  // Mutations
+  const createJobMutation = useMutation({
+    mutationFn: async (jobData: InsertJob) => {
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobData),
+      });
+      if (!response.ok) throw new Error("Falha ao criar vaga");
+      return response.json();
+    },
     onSuccess: (newJob: Job) => {
       setCurrentJob(newJob);
+      setQuestions([]);
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao iniciar vaga.",
-        variant: "destructive",
-      });
     },
   });
 
-  // Mutation para finalizar vaga
-  const finalizeJobMutation = useMutation({
-    mutationFn: (jobData: { id: number; data: Partial<Job> }) => 
-      apiRequest("PATCH", `/api/jobs/${jobData.id}`, jobData.data),
+  const updateJobMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Job> }) => {
+      const response = await fetch(`/api/jobs/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Falha ao atualizar vaga");
+      return response.json();
+    },
     onSuccess: () => {
-      toast({
-        title: "Sucesso!",
-        description: "Vaga finalizada com sucesso.",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      resetForm();
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao finalizar vaga.",
-        variant: "destructive",
-      });
     },
   });
 
-  // Mutation para deletar vaga (cancelar)
   const deleteJobMutation = useMutation({
-    mutationFn: (jobId: number) => apiRequest("DELETE", `/api/jobs/${jobId}`),
-    onSuccess: () => {
-      toast({
-        title: "Cancelado",
-        description: "Vaga removida do sistema.",
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/jobs/${id}`, {
+        method: "DELETE",
       });
+      if (!response.ok) throw new Error("Falha ao deletar vaga");
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      resetForm();
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao cancelar vaga.",
-        variant: "destructive",
-      });
     },
   });
 
-  // Mutation para criar pergunta
   const createQuestionMutation = useMutation({
-    mutationFn: (questionData: InsertQuestion) => apiRequest("POST", "/api/questions", questionData),
-    onSuccess: () => {
-      toast({
-        title: "Sucesso!",
-        description: "Pergunta salva com sucesso.",
+    mutationFn: async (questionData: InsertQuestion) => {
+      const response = await fetch("/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(questionData),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      if (!response.ok) throw new Error("Falha ao criar pergunta");
+      return response.json();
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar pergunta.",
-        variant: "destructive",
-      });
+    onSuccess: () => {
+      if (currentJob?.id) {
+        loadJobQuestions(currentJob.id);
+      }
+      setShowQuestionForm(false);
+      questionForm.reset();
     },
   });
 
-  // Mutation para atualizar pergunta
   const updateQuestionMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<QuestionForm> }) => 
-      apiRequest("PATCH", `/api/questions/${id}`, data),
-    onSuccess: () => {
-      toast({
-        title: "Sucesso!",
-        description: "Pergunta atualizada com sucesso.",
+    mutationFn: async ({ id, data }: { id: number; data: Partial<Question> }) => {
+      const response = await fetch(`/api/questions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      if (!response.ok) throw new Error("Falha ao atualizar pergunta");
+      return response.json();
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar pergunta.",
-        variant: "destructive",
-      });
+    onSuccess: () => {
+      if (currentJob?.id) {
+        loadJobQuestions(currentJob.id);
+      }
+      setShowQuestionForm(false);
+      setEditingQuestion(null);
+      questionForm.reset();
     },
   });
 
-  // Mutation para deletar pergunta
   const deleteQuestionMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/questions/${id}`),
-    onSuccess: () => {
-      toast({
-        title: "Sucesso!",
-        description: "Pergunta removida com sucesso.",
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/questions/${id}`, {
+        method: "DELETE",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      if (!response.ok) throw new Error("Falha ao deletar pergunta");
     },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Erro ao remover pergunta.",
-        variant: "destructive",
-      });
+    onSuccess: () => {
+      if (currentJob?.id) {
+        loadJobQuestions(currentJob.id);
+      }
     },
   });
 
-  const resetForm = () => {
-    setShowNewJobForm(false);
-    setCurrentJob(null);
-    setQuestions([]);
-    setEditingQuestion(null);
-    setShowQuestionForm(false);
-    jobForm.reset();
-    questionForm.reset();
-  };
-
+  // Funções principais
   const startNewJob = () => {
-    // Obter clientId correto e seguro
-    let clientId = 1;
-    if (user?.role === 'master' && clients && clients.length > 0) {
-      clientId = clients[0].id;
-    } else if (user?.clientId) {
-      clientId = user.clientId;
-    }
-
-    // Criar vaga inicial "não finalizada" automaticamente
-    const initialJobData: InsertJob = {
-      title: "Não finalizada",
+    const jobData: InsertJob = {
+      title: "Nova Vaga (não finalizada)",
       description: "Vaga em processo de criação",
-      clientId: clientId,
-      status: "draft",
+      clientId: user?.role === 'master' ? 1 : user?.clientId || 1,
+      status: "not_finished",
     };
 
-    createInitialJobMutation.mutate(initialJobData);
-    setShowNewJobForm(true);
-    setQuestions([]);
-    setEditingQuestion(null);
-    setShowQuestionForm(false);
+    createJobMutation.mutate(jobData, {
+      onSuccess: (newJob) => {
+        toast({
+          title: "Vaga Iniciada",
+          description: "Vaga criada automaticamente. Adicione as informações.",
+        });
+        
+        jobForm.reset({
+          title: "",
+          description: "",
+          clientId: newJob.clientId,
+          status: "not_finished",
+        });
+      },
+    });
   };
 
-  const onSubmitJob = (data: JobFormData) => {
-    if (!currentJob?.id) {
+  const saveJobInfo = (data: JobFormData) => {
+    if (!currentJob?.id) return;
+
+    updateJobMutation.mutate({
+      id: currentJob.id,
+      data: {
+        title: data.title,
+        description: data.description,
+        clientId: data.clientId,
+      },
+    }, {
+      onSuccess: (updatedJob) => {
+        setCurrentJob(updatedJob);
+        toast({
+          title: "Sucesso",
+          description: "Informações da vaga salvas!",
+        });
+      },
+    });
+  };
+
+  const finalizeJob = () => {
+    if (!currentJob?.id || questions.length === 0) {
       toast({
         title: "Erro",
-        description: "Nenhuma vaga em edição.",
+        description: "Adicione pelo menos uma pergunta antes de finalizar.",
         variant: "destructive",
       });
       return;
     }
 
-    if (questions.length === 0) {
-      toast({
-        title: "Atenção",
-        description: "Adicione pelo menos uma pergunta antes de finalizar a vaga.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Finalizar vaga com dados atualizados
-    const jobUpdateData = {
-      title: data.title,
-      description: data.description,
-      status: "active",
-    };
-
-    finalizeJobMutation.mutate({
+    updateJobMutation.mutate({
       id: currentJob.id,
-      data: jobUpdateData,
+      data: { status: "active" },
+    }, {
+      onSuccess: () => {
+        setCurrentJob(null);
+        setQuestions([]);
+        jobForm.reset();
+        toast({
+          title: "Sucesso",
+          description: "Vaga finalizada e ativada!",
+        });
+      },
     });
   };
 
   const cancelJob = () => {
-    if (currentJob?.id) {
-      deleteJobMutation.mutate(currentJob.id);
-    } else {
-      resetForm();
+    if (!currentJob?.id) return;
+
+    if (confirm("Tem certeza que deseja cancelar? A vaga será removida.")) {
+      deleteJobMutation.mutate(currentJob.id, {
+        onSuccess: () => {
+          setCurrentJob(null);
+          setQuestions([]);
+          jobForm.reset();
+          toast({
+            title: "Cancelado",
+            description: "Vaga cancelada e removida.",
+          });
+        },
+      });
     }
   };
 
@@ -289,7 +266,7 @@ export default function JobsPage() {
     if (!currentJob?.id) {
       toast({
         title: "Erro",
-        description: "Inicie uma vaga antes de adicionar perguntas.",
+        description: "Inicie uma vaga primeiro.",
         variant: "destructive",
       });
       return;
@@ -306,13 +283,10 @@ export default function JobsPage() {
 
     setShowQuestionForm(true);
     setEditingQuestion(null);
-    questionForm.reset({
-      questionText: "",
-      idealAnswer: "",
-    });
+    questionForm.reset();
   };
 
-  const editQuestion = (question: QuestionForm) => {
+  const editQuestion = (question: Question) => {
     setEditingQuestion(question);
     setShowQuestionForm(true);
     questionForm.reset({
@@ -322,73 +296,55 @@ export default function JobsPage() {
   };
 
   const saveQuestion = (data: QuestionFormData) => {
-    if (!currentJob?.id) {
-      toast({
-        title: "Erro",
-        description: "Vaga não encontrada.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!currentJob?.id) return;
 
     if (editingQuestion?.id) {
-      // Atualizar pergunta existente
       updateQuestionMutation.mutate({
         id: editingQuestion.id,
-        data: data,
-      }, {
-        onSuccess: () => {
-          setShowQuestionForm(false);
-          setEditingQuestion(null);
-          questionForm.reset();
-          loadJobQuestions(currentJob.id);
-        }
+        data,
       });
     } else {
-      // Criar nova pergunta
       const questionData: InsertQuestion = {
         ...data,
         jobId: currentJob.id,
         order: questions.length + 1,
       };
+      createQuestionMutation.mutate(questionData);
+    }
+  };
 
-      createQuestionMutation.mutate(questionData, {
-        onSuccess: () => {
-          setShowQuestionForm(false);
-          questionForm.reset();
-          loadJobQuestions(currentJob.id);
-        }
-      });
+  const removeQuestion = (questionId: number) => {
+    if (confirm("Tem certeza que deseja remover esta pergunta?")) {
+      deleteQuestionMutation.mutate(questionId);
     }
   };
 
   const loadJobQuestions = async (jobId: number) => {
     try {
-      const response = await apiRequest("GET", `/api/jobs/${jobId}/questions`);
-      const questionsData = Array.isArray(response) ? response : [];
-      setQuestions(questionsData);
+      const response = await fetch(`/api/jobs/${jobId}/questions`);
+      if (response.ok) {
+        const questionsData = await response.json();
+        setQuestions(Array.isArray(questionsData) ? questionsData : []);
+      }
     } catch (error) {
       console.error("Erro ao carregar perguntas:", error);
       setQuestions([]);
     }
   };
 
-  const removeQuestion = (questionId: number) => {
-    if (confirm("Tem certeza que deseja remover esta pergunta?")) {
-      deleteQuestionMutation.mutate(questionId, {
-        onSuccess: () => {
-          if (currentJob?.id) {
-            loadJobQuestions(currentJob.id);
-          }
-        }
-      });
-    }
-  };
-
   const filteredJobs = jobs.filter((job: Job) =>
-    job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.description.toLowerCase().includes(searchTerm.toLowerCase())
+    job.status === "active" && (
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
+
+  // Carregar perguntas quando currentJob mudar
+  useEffect(() => {
+    if (currentJob?.id) {
+      loadJobQuestions(currentJob.id);
+    }
+  }, [currentJob?.id]);
 
   if (isLoading) {
     return (
@@ -404,51 +360,57 @@ export default function JobsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Gerenciar Vagas</h1>
-          <p className="text-slate-600">Cadastre e gerencie vagas de emprego</p>
+          <p className="text-slate-600 mt-1">Crie e gerencie vagas de emprego</p>
         </div>
-        
-        {!showNewJobForm && (
-          <Button onClick={startNewJob} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Vaga
-          </Button>
-        )}
+        <Button onClick={startNewJob} disabled={!!currentJob} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Nova Vaga
+        </Button>
       </div>
 
       {/* Formulário de Nova Vaga */}
-      {showNewJobForm && (
-        <Card className="border-2 border-primary/20">
+      {currentJob && (
+        <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-primary">Cadastrar Nova Vaga</CardTitle>
-              <Button variant="ghost" size="sm" onClick={resetForm}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+            <CardTitle className="text-blue-900">
+              {currentJob.status === "not_finished" ? "Nova Vaga (Em Criação)" : "Editando Vaga"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...jobForm}>
-              <form onSubmit={jobForm.handleSubmit(onSubmitJob)} className="space-y-6">
-                {/* Dados da Vaga */}
+              <form onSubmit={jobForm.handleSubmit(saveJobInfo)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Seleção de Cliente - apenas para usuários master */}
+                  <FormField
+                    control={jobForm.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Título da Vaga</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Desenvolvedor Frontend" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   {user?.role === 'master' && (
                     <FormField
                       control={jobForm.control}
                       name="clientId"
                       render={({ field }) => (
-                        <FormItem className="md:col-span-2">
+                        <FormItem>
                           <FormLabel>Cliente</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString() || ""}>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione um cliente para esta vaga" />
+                                <SelectValue placeholder="Selecione o cliente" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {clients.map((client) => (
+                              {clients.map((client: Client) => (
                                 <SelectItem key={client.id} value={client.id.toString()}>
-                                  {client.companyName} - {client.email}
+                                  {client.companyName}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -458,282 +420,240 @@ export default function JobsPage() {
                       )}
                     />
                   )}
-                  
-                  <FormField
-                    control={jobForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome da Vaga</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Desenvolvedor Full Stack" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div></div>
-                  
-                  <FormField
-                    control={jobForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Descrição da Vaga</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Descreva as responsabilidades e requisitos da vaga..."
-                            className="min-h-[100px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
-                <Separator />
+                <FormField
+                  control={jobForm.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descrição da Vaga</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Descreva as responsabilidades, requisitos e benefícios..."
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                {/* Perguntas da Entrevista */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Perguntas da Entrevista</h3>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {questions.length}/10 perguntas
-                      </Badge>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addQuestion}
-                        disabled={questions.length >= 10}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Adicionar Pergunta
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {questions.map((question, index) => (
-                      <Card key={index} className="border-slate-200">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary">Pergunta {index + 1}</Badge>
-                              {question.id && <Badge variant="outline" className="text-green-600">Salva</Badge>}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingQuestion(editingQuestion === index ? null : index)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteQuestion(index)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {editingQuestion === index ? (
-                            <Form {...questionForm}>
-                              <form
-                                onSubmit={questionForm.handleSubmit((data) => saveQuestion(index, data))}
-                                className="space-y-4"
-                              >
-                                <FormField
-                                  control={questionForm.control}
-                                  name="questionText"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Pergunta ao Candidato (máx. 100 caracteres)</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          placeholder="Digite a pergunta..."
-                                          maxLength={100}
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={questionForm.control}
-                                  name="idealAnswer"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Resposta Perfeita (máx. 1000 caracteres)</FormLabel>
-                                      <FormControl>
-                                        <Textarea
-                                          placeholder="Descreva a resposta ideal para esta pergunta..."
-                                          maxLength={1000}
-                                          className="min-h-[80px]"
-                                          {...field}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <div className="flex gap-2">
-                                  <Button type="submit" size="sm">
-                                    <Save className="w-4 h-4 mr-1" />
-                                    Salvar Pergunta
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setEditingQuestion(null)}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              </form>
-                            </Form>
-                          ) : (
-                            <div className="space-y-2">
-                              <div>
-                                <span className="text-sm font-medium text-slate-700">Pergunta:</span>
-                                <p className="text-slate-900">{question.questionText || "Clique em editar para adicionar a pergunta"}</p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-slate-700">Resposta Perfeita:</span>
-                                <p className="text-slate-600 text-sm">{question.idealAnswer || "Clique em editar para adicionar a resposta perfeita"}</p>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Botões de Ação */}
                 <div className="flex gap-3">
-                  <Button
-                    type="submit"
-                    disabled={finalizeJobMutation.isPending || questions.length === 0}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {finalizeJobMutation.isPending ? "Finalizando..." : "Finalizar Vaga"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={cancelJob}>
-                    Cancelar
+                  <Button type="submit" disabled={updateJobMutation.isPending}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {updateJobMutation.isPending ? "Salvando..." : "Salvar Informações"}
                   </Button>
                 </div>
               </form>
             </Form>
+
+            <Separator className="my-6" />
+
+            {/* Seção de Perguntas */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Perguntas da Entrevista ({questions.length}/10)
+                </h3>
+                <Button 
+                  onClick={addQuestion} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={questions.length >= 10}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Pergunta
+                </Button>
+              </div>
+
+              {/* Lista de Perguntas */}
+              {questions.length > 0 && (
+                <div className="space-y-3">
+                  {questions.map((question, index) => (
+                    <Card key={question.id} className="border-slate-200">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-slate-900 mb-2">
+                              {index + 1}. {question.questionText}
+                            </p>
+                            <p className="text-sm text-slate-600">
+                              <strong>Resposta ideal:</strong> {question.idealAnswer}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => editQuestion(question)}
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => removeQuestion(question.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Formulário de Pergunta */}
+              {showQuestionForm && (
+                <Card className="border-green-200 bg-green-50">
+                  <CardHeader>
+                    <CardTitle className="text-green-900">
+                      {editingQuestion ? "Editar Pergunta" : "Nova Pergunta"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...questionForm}>
+                      <form onSubmit={questionForm.handleSubmit(saveQuestion)} className="space-y-4">
+                        <FormField
+                          control={questionForm.control}
+                          name="questionText"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Pergunta</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Digite a pergunta da entrevista..."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={questionForm.control}
+                          name="idealAnswer"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Resposta Ideal</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Digite a resposta ideal esperada..."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex gap-3">
+                          <Button 
+                            type="submit" 
+                            disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            {createQuestionMutation.isPending || updateQuestionMutation.isPending ? "Salvando..." : "Salvar Pergunta"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowQuestionForm(false);
+                              setEditingQuestion(null);
+                              questionForm.reset();
+                            }}
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Separator />
+
+              {/* Botões de Ação */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={finalizeJob}
+                  disabled={updateJobMutation.isPending || questions.length === 0}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {updateJobMutation.isPending ? "Finalizando..." : "Finalizar Vaga"}
+                </Button>
+                <Button type="button" variant="outline" onClick={cancelJob}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Lista de Vagas Existentes */}
-      {!showNewJobForm && (
-        <>
-          {/* Busca */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <Input
-                placeholder="Buscar vagas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+      {/* Busca de Vagas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Vagas Ativas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-2 mb-4">
+            <Search className="w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Buscar vagas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
           </div>
 
-          {/* Lista de Vagas */}
-          <div className="grid gap-4">
-            {filteredJobs.length === 0 ? (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center">
-                    <Briefcase className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900 mb-2">
-                      {searchTerm ? "Nenhuma vaga encontrada" : "Nenhuma vaga cadastrada"}
-                    </h3>
-                    <p className="text-slate-600 mb-6">
-                      {searchTerm 
-                        ? "Tente ajustar os termos de busca." 
-                        : "Comece criando sua primeira vaga."
-                      }
-                    </p>
-                    {!searchTerm && (
-                      <Button onClick={startNewJob}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Criar Primeira Vaga
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredJobs.map((job: Job) => (
-                <Card key={job.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
+          {filteredJobs.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-slate-500">Nenhuma vaga encontrada.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredJobs.map((job: Job) => (
+                <Card key={job.id} className="border-slate-200">
+                  <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Briefcase className="w-5 h-5 text-primary" />
-                          <h3 className="text-lg font-semibold text-slate-900">{job.title}</h3>
-                        </div>
-                        
-                        <p className="text-slate-600 mb-4 line-clamp-2">{job.description}</p>
-                        
-                        <div className="flex items-center gap-4 text-sm text-slate-500">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>Criada em {job.createdAt ? format(new Date(job.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "Data não disponível"}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MessageSquare className="w-4 h-4" />
-                            <span>Perguntas cadastradas</span>
-                          </div>
-                          {user?.role === 'master' && (
-                            <div className="flex items-center gap-1">
-                              <Building className="w-4 h-4" />
-                              <span>Cliente #{job.clientId}</span>
-                            </div>
-                          )}
+                        <h3 className="font-semibold text-slate-900 mb-2">{job.title}</h3>
+                        <p className="text-slate-600 text-sm mb-2">{job.description}</p>
+                        <div className="text-xs text-slate-500">
+                          Criada em: {job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
                         </div>
                       </div>
-                      
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4" />
+                      <div className="flex gap-2 ml-4">
+                        <Button size="sm" variant="outline">
+                          <Edit3 className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteJobMutation.mutate(job.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
-        </>
-      )}
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
