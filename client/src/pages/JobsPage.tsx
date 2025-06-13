@@ -60,9 +60,10 @@ export default function JobsPage() {
   const queryClient = useQueryClient();
   
   const [showNewJobForm, setShowNewJobForm] = useState(false);
-  const [currentJob, setCurrentJob] = useState<Partial<Job> | null>(null);
+  const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
-  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<QuestionForm | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Form para nova vaga
@@ -95,13 +96,30 @@ export default function JobsPage() {
     enabled: user?.role === 'master',
   });
 
-  // Mutation para criar vaga
-  const createJobMutation = useMutation({
+  // Mutation para criar vaga inicial (não finalizada)
+  const createInitialJobMutation = useMutation({
     mutationFn: (jobData: InsertJob) => apiRequest("POST", "/api/jobs", jobData),
+    onSuccess: (newJob: Job) => {
+      setCurrentJob(newJob);
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao iniciar vaga.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para finalizar vaga
+  const finalizeJobMutation = useMutation({
+    mutationFn: (jobData: { id: number; data: Partial<Job> }) => 
+      apiRequest("PATCH", `/api/jobs/${jobData.id}`, jobData.data),
     onSuccess: () => {
       toast({
         title: "Sucesso!",
-        description: "Vaga criada com sucesso.",
+        description: "Vaga finalizada com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       resetForm();
@@ -109,7 +127,27 @@ export default function JobsPage() {
     onError: () => {
       toast({
         title: "Erro",
-        description: "Erro ao criar vaga.",
+        description: "Erro ao finalizar vaga.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para deletar vaga (cancelar)
+  const deleteJobMutation = useMutation({
+    mutationFn: (jobId: number) => apiRequest("DELETE", `/api/jobs/${jobId}`),
+    onSuccess: () => {
+      toast({
+        title: "Cancelado",
+        description: "Vaga removida do sistema.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao cancelar vaga.",
         variant: "destructive",
       });
     },
@@ -178,36 +216,65 @@ export default function JobsPage() {
     setCurrentJob(null);
     setQuestions([]);
     setEditingQuestion(null);
+    setShowQuestionForm(false);
     jobForm.reset();
     questionForm.reset();
   };
 
   const startNewJob = () => {
+    // Criar vaga inicial "não finalizada" automaticamente
+    const initialJobData: InsertJob = {
+      title: "Não finalizada",
+      description: "Vaga em processo de criação",
+      clientId: user?.role === 'master' ? (clients?.[0]?.id || 1) : (user?.clientId || 1),
+      status: "draft",
+    };
+
+    createInitialJobMutation.mutate(initialJobData);
     setShowNewJobForm(true);
-    setCurrentJob({ title: "", description: "" });
     setQuestions([]);
+    setEditingQuestion(null);
+    setShowQuestionForm(false);
   };
 
   const onSubmitJob = (data: JobFormData) => {
-    if (questions.length === 0) {
+    if (!currentJob?.id) {
       toast({
-        title: "Atenção",
-        description: "Adicione pelo menos uma pergunta antes de cadastrar a vaga.",
+        title: "Erro",
+        description: "Nenhuma vaga em edição.",
         variant: "destructive",
       });
       return;
     }
 
-    // Para usuários master, usar o clientId selecionado; para clientes, usar o próprio clientId
-    const finalClientId = user?.role === 'master' ? data.clientId : user?.clientId || 1;
+    if (questions.length === 0) {
+      toast({
+        title: "Atenção",
+        description: "Adicione pelo menos uma pergunta antes de finalizar a vaga.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const jobData: InsertJob = {
+    // Finalizar vaga com dados atualizados
+    const jobUpdateData = {
       title: data.title,
       description: data.description,
-      clientId: finalClientId,
+      status: "active",
     };
 
-    createJobMutation.mutate(jobData);
+    finalizeJobMutation.mutate({
+      id: currentJob.id,
+      data: jobUpdateData,
+    });
+  };
+
+  const cancelJob = () => {
+    if (currentJob?.id) {
+      deleteJobMutation.mutate(currentJob.id);
+    } else {
+      resetForm();
+    }
   };
 
   const addQuestion = () => {
