@@ -1,14 +1,25 @@
-import { 
-  users, clients, jobs, questions, candidates, selections, interviews, responses, apiConfigs, messageLogs,
-  type User, type InsertUser, type Client, type InsertClient, type Job, type InsertJob,
-  type Question, type InsertQuestion, type Candidate, type InsertCandidate,
-  type Selection, type InsertSelection, type Interview, type InsertInterview,
-  type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
-  type MessageLog, type InsertMessageLog
+import {
+  type User, type InsertUser, type Client, type InsertClient,
+  type Job, type InsertJob, type Question, type InsertQuestion,
+  type Candidate, type InsertCandidate, type Selection, type InsertSelection,
+  type Interview, type InsertInterview, type Response, type InsertResponse,
+  type ApiConfig, type InsertApiConfig, type MessageLog, type InsertMessageLog
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, and, gte } from "drizzle-orm";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "firebase/firestore";
 import bcrypt from "bcrypt";
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 export interface IStorage {
   // Users
@@ -89,672 +100,599 @@ export interface IStorage {
   }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User> = new Map();
-  private clients: Map<number, Client> = new Map();
-  private jobs: Map<number, Job> = new Map();
-  private questions: Map<number, Question> = new Map();
-  private candidates: Map<number, Candidate> = new Map();
-  private selections: Map<number, Selection> = new Map();
-  private interviews: Map<number, Interview> = new Map();
-  private responses: Map<number, Response> = new Map();
-  private messageLogs: Map<number, MessageLog> = new Map();
-  private apiConfig: ApiConfig | undefined;
-  
-  private userIdCounter = 1;
-  private clientIdCounter = 1;
-  private jobIdCounter = 1;
-  private questionIdCounter = 1;
-  private candidateIdCounter = 1;
-  private selectionIdCounter = 1;
-  private interviewIdCounter = 1;
-  private responseIdCounter = 1;
-  private messageLogIdCounter = 1;
-
-  constructor() {
-    // Initialize with master user
-    this.users.set(1, {
-      id: 1,
-      email: "daniel@grupomaximuns.com.br",
-      password: "$2b$10$RUhQimJpRo.m.uEQte7kReMSDsJoX3hOsHCBTBLmB7pEufmbV.61e", // hashed version of "daniel580190"
-      role: "master",
-      name: "Daniel Maximus",
-      createdAt: new Date(),
-    });
-    this.userIdCounter = 2;
+export class FirebaseStorage implements IStorage {
+  private generateId(): string {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
   // Users
   async getUserById(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { 
-      ...insertUser, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.users.set(id, user);
-    return user;
-  }
-
-  // Clients
-  async getClients(): Promise<Client[]> {
-    return Array.from(this.clients.values());
-  }
-
-  async getClientById(id: number): Promise<Client | undefined> {
-    return this.clients.get(id);
-  }
-
-  async getClientByEmail(email: string): Promise<Client | undefined> {
-    return Array.from(this.clients.values()).find(client => client.email === email);
-  }
-
-  async createClient(insertClient: InsertClient): Promise<Client> {
-    const id = this.clientIdCounter++;
-    const client: Client = { 
-      ...insertClient, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.clients.set(id, client);
-    return client;
-  }
-
-  async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
-    const existing = this.clients.get(id);
-    if (!existing) throw new Error("Client not found");
-    
-    const updated = { ...existing, ...clientUpdate };
-    this.clients.set(id, updated);
-    return updated;
-  }
-
-  async deleteClient(id: number): Promise<void> {
-    this.clients.delete(id);
-  }
-
-  // Jobs
-  async getJobsByClientId(clientId: number): Promise<Job[]> {
-    return Array.from(this.jobs.values()).filter(job => job.clientId === clientId);
-  }
-
-  async getJobById(id: number): Promise<Job | undefined> {
-    return this.jobs.get(id);
-  }
-
-  async createJob(insertJob: InsertJob): Promise<Job> {
-    const id = this.jobIdCounter++;
-    const job: Job = { 
-      ...insertJob, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.jobs.set(id, job);
-    return job;
-  }
-
-  async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
-    const existing = this.jobs.get(id);
-    if (!existing) throw new Error("Job not found");
-    
-    const updated = { ...existing, ...jobUpdate };
-    this.jobs.set(id, updated);
-    return updated;
-  }
-
-  async deleteJob(id: number): Promise<void> {
-    this.jobs.delete(id);
-  }
-
-  // Questions
-  async getQuestionsByJobId(jobId: number): Promise<Question[]> {
-    return Array.from(this.questions.values())
-      .filter(q => q.jobId === jobId)
-      .sort((a, b) => a.order - b.order);
-  }
-
-  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
-    const id = this.questionIdCounter++;
-    const question: Question = { 
-      ...insertQuestion, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.questions.set(id, question);
-    return question;
-  }
-
-  async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {
-    const existing = this.questions.get(id);
-    if (!existing) throw new Error("Question not found");
-    
-    const updated = { ...existing, ...questionUpdate };
-    this.questions.set(id, updated);
-    return updated;
-  }
-
-  async deleteQuestion(id: number): Promise<void> {
-    this.questions.delete(id);
-  }
-
-  // Candidates
-  async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
-    return Array.from(this.candidates.values()).filter(c => c.clientId === clientId);
-  }
-
-  async getCandidateById(id: number): Promise<Candidate | undefined> {
-    return this.candidates.get(id);
-  }
-
-  async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
-    const id = this.candidateIdCounter++;
-    const candidate: Candidate = { 
-      ...insertCandidate, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.candidates.set(id, candidate);
-    return candidate;
-  }
-
-  async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
-    const candidates: Candidate[] = [];
-    for (const insertCandidate of insertCandidates) {
-      const candidate = await this.createCandidate(insertCandidate);
-      candidates.push(candidate);
+    try {
+      const userDoc = await getDoc(doc(db, 'users', id.toString()));
+      if (userDoc.exists()) {
+        return { id: parseInt(userDoc.id), ...userDoc.data() } as User;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar usuário por ID:', error);
+      return undefined;
     }
-    return candidates;
-  }
-
-  async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
-    const existing = this.candidates.get(id);
-    if (!existing) throw new Error("Candidate not found");
-    
-    const updated = { ...existing, ...candidateUpdate };
-    this.candidates.set(id, updated);
-    return updated;
-  }
-
-  async deleteCandidate(id: number): Promise<void> {
-    this.candidates.delete(id);
-  }
-
-  // Selections
-  async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
-    return Array.from(this.selections.values()).filter(s => s.clientId === clientId);
-  }
-
-  async getSelectionById(id: number): Promise<Selection | undefined> {
-    return this.selections.get(id);
-  }
-
-  async createSelection(insertSelection: InsertSelection): Promise<Selection> {
-    const id = this.selectionIdCounter++;
-    const selection: Selection = { 
-      ...insertSelection, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.selections.set(id, selection);
-    return selection;
-  }
-
-  async updateSelection(id: number, selectionUpdate: Partial<Selection>): Promise<Selection> {
-    const existing = this.selections.get(id);
-    if (!existing) throw new Error("Selection not found");
-    
-    const updated = { ...existing, ...selectionUpdate };
-    this.selections.set(id, updated);
-    return updated;
-  }
-
-  async deleteSelection(id: number): Promise<void> {
-    this.selections.delete(id);
-  }
-
-  // Interviews
-  async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
-    return Array.from(this.interviews.values()).filter(i => i.selectionId === selectionId);
-  }
-
-  async getInterviewById(id: number): Promise<Interview | undefined> {
-    return this.interviews.get(id);
-  }
-
-  async getInterviewByToken(token: string): Promise<Interview | undefined> {
-    return Array.from(this.interviews.values()).find(i => i.token === token);
-  }
-
-  async createInterview(insertInterview: InsertInterview): Promise<Interview> {
-    const id = this.interviewIdCounter++;
-    const interview: Interview = { 
-      ...insertInterview, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.interviews.set(id, interview);
-    return interview;
-  }
-
-  async updateInterview(id: number, interviewUpdate: Partial<Interview>): Promise<Interview> {
-    const existing = this.interviews.get(id);
-    if (!existing) throw new Error("Interview not found");
-    
-    const updated = { ...existing, ...interviewUpdate };
-    this.interviews.set(id, updated);
-    return updated;
-  }
-
-  // Responses
-  async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
-    return Array.from(this.responses.values()).filter(r => r.interviewId === interviewId);
-  }
-
-  async createResponse(insertResponse: InsertResponse): Promise<Response> {
-    const id = this.responseIdCounter++;
-    const response: Response = { 
-      ...insertResponse, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.responses.set(id, response);
-    return response;
-  }
-
-  async updateResponse(id: number, responseUpdate: Partial<Response>): Promise<Response> {
-    const existing = this.responses.get(id);
-    if (!existing) throw new Error("Response not found");
-    
-    const updated = { ...existing, ...responseUpdate };
-    this.responses.set(id, updated);
-    return updated;
-  }
-
-  // API Config
-  async getApiConfig(): Promise<ApiConfig | undefined> {
-    return this.apiConfig;
-  }
-
-  async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
-    const apiConfig: ApiConfig = {
-      ...config,
-      id: 1,
-      updatedAt: new Date()
-    };
-    this.apiConfig = apiConfig;
-    return apiConfig;
-  }
-
-  // Message Logs
-  async createMessageLog(insertLog: InsertMessageLog): Promise<MessageLog> {
-    const id = this.messageLogIdCounter++;
-    const log: MessageLog = { 
-      ...insertLog, 
-      id, 
-      sentAt: new Date() 
-    };
-    this.messageLogs.set(id, log);
-    return log;
-  }
-
-  async getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]> {
-    return Array.from(this.messageLogs.values()).filter(l => l.interviewId === interviewId);
-  }
-
-  // Statistics
-  async getInterviewStats(): Promise<{
-    totalClients: number;
-    totalInterviews: number;
-    pendingInterviews: number;
-    avgScore: number;
-  }> {
-    const totalClients = this.clients.size;
-    const allInterviews = Array.from(this.interviews.values());
-    const totalInterviews = allInterviews.length;
-    const pendingInterviews = allInterviews.filter(i => i.status === 'pending').length;
-    const completedInterviews = allInterviews.filter(i => i.status === 'completed' && i.totalScore);
-    const avgScore = completedInterviews.length > 0 
-      ? Math.round(completedInterviews.reduce((sum, i) => sum + (i.totalScore || 0), 0) / completedInterviews.length)
-      : 0;
-
-    return {
-      totalClients,
-      totalInterviews,
-      pendingInterviews,
-      avgScore
-    };
-  }
-
-  async getClientStats(clientId: number): Promise<{
-    activeJobs: number;
-    totalCandidates: number;
-    monthlyInterviews: number;
-    monthlyLimit: number;
-    currentUsage: number;
-  }> {
-    const clientJobs = Array.from(this.jobs.values()).filter(j => j.clientId === clientId);
-    const activeJobs = clientJobs.filter(j => j.status === 'active').length;
-    const totalCandidates = Array.from(this.candidates.values()).filter(c => c.clientId === clientId).length;
-    
-    const client = await this.getClientById(clientId);
-    const monthlyLimit = client?.monthlyLimit || 0;
-    
-    // Calculate current month interviews
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyInterviews = Array.from(this.interviews.values()).filter(i => {
-      const selection = this.selections.get(i.selectionId);
-      return selection?.clientId === clientId && i.createdAt && i.createdAt >= startOfMonth;
-    }).length;
-
-    return {
-      activeJobs,
-      totalCandidates,
-      monthlyInterviews,
-      monthlyLimit,
-      currentUsage: monthlyInterviews
-    };
-  }
-}
-
-export class DatabaseStorage implements IStorage {
-  async getUserById(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user || undefined;
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0];
+        return { id: parseInt(docData.id), ...docData.data() } as User;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar usuário por email:', error);
+      return undefined;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
-    return user;
+    try {
+      const id = parseInt(this.generateId());
+      const userData = {
+        ...insertUser,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'users', id.toString()), userData);
+      return { id, ...userData } as User;
+    } catch (error) {
+      console.error('Erro ao criar usuário:', error);
+      throw error;
+    }
   }
 
   // Clients
   async getClients(): Promise<Client[]> {
-    return await db.select().from(clients);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'clients'));
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Client[];
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error);
+      return [];
+    }
   }
 
   async getClientById(id: number): Promise<Client | undefined> {
-    const [client] = await db.select().from(clients).where(eq(clients.id, id));
-    return client || undefined;
+    try {
+      const clientDoc = await getDoc(doc(db, 'clients', id.toString()));
+      if (clientDoc.exists()) {
+        return { id: parseInt(clientDoc.id), ...clientDoc.data() } as Client;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar cliente por ID:', error);
+      return undefined;
+    }
   }
 
   async getClientByEmail(email: string): Promise<Client | undefined> {
-    const [client] = await db.select().from(clients).where(eq(clients.email, email));
-    return client || undefined;
+    try {
+      const q = query(collection(db, 'clients'), where('email', '==', email));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0];
+        return { id: parseInt(docData.id), ...docData.data() } as Client;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar cliente por email:', error);
+      return undefined;
+    }
   }
 
   async createClient(insertClient: InsertClient): Promise<Client> {
-    const [client] = await db
-      .insert(clients)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const clientData = {
         ...insertClient,
         status: insertClient.status || 'active',
         monthlyLimit: insertClient.monthlyLimit || 100,
-        extraCredits: insertClient.extraCredits || 0
-      })
-      .returning();
-    return client;
+        extraCredits: insertClient.extraCredits || 0,
+        phone: insertClient.phone || null,
+        creditsValidUntil: insertClient.creditsValidUntil || null,
+        contractStart: insertClient.contractStart || null,
+        contractEnd: insertClient.contractEnd || null,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'clients', id.toString()), clientData);
+      return { id, ...clientData } as Client;
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+      throw error;
+    }
   }
 
   async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
-    const [client] = await db
-      .update(clients)
-      .set(clientUpdate)
-      .where(eq(clients.id, id))
-      .returning();
-    return client;
+    try {
+      await updateDoc(doc(db, 'clients', id.toString()), clientUpdate);
+      const updated = await this.getClientById(id);
+      return updated as Client;
+    } catch (error) {
+      console.error('Erro ao atualizar cliente:', error);
+      throw error;
+    }
   }
 
   async deleteClient(id: number): Promise<void> {
-    await db.delete(clients).where(eq(clients.id, id));
+    try {
+      await deleteDoc(doc(db, 'clients', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar cliente:', error);
+      throw error;
+    }
   }
 
   // Jobs
   async getJobsByClientId(clientId: number): Promise<Job[]> {
-    return await db.select().from(jobs).where(eq(jobs.clientId, clientId));
+    try {
+      const q = query(collection(db, 'jobs'), where('clientId', '==', clientId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Job[];
+    } catch (error) {
+      console.error('Erro ao buscar jobs por cliente:', error);
+      return [];
+    }
   }
 
   async getJobById(id: number): Promise<Job | undefined> {
-    const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
-    return job || undefined;
+    try {
+      const jobDoc = await getDoc(doc(db, 'jobs', id.toString()));
+      if (jobDoc.exists()) {
+        return { id: parseInt(jobDoc.id), ...jobDoc.data() } as Job;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar job por ID:', error);
+      return undefined;
+    }
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
-    const [job] = await db
-      .insert(jobs)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const jobData = {
         ...insertJob,
-        status: insertJob.status || 'active'
-      })
-      .returning();
-    return job;
+        status: insertJob.status || 'active',
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'jobs', id.toString()), jobData);
+      return { id, ...jobData } as Job;
+    } catch (error) {
+      console.error('Erro ao criar job:', error);
+      throw error;
+    }
   }
 
   async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
-    const [job] = await db
-      .update(jobs)
-      .set(jobUpdate)
-      .where(eq(jobs.id, id))
-      .returning();
-    return job;
+    try {
+      await updateDoc(doc(db, 'jobs', id.toString()), jobUpdate);
+      const updated = await this.getJobById(id);
+      return updated as Job;
+    } catch (error) {
+      console.error('Erro ao atualizar job:', error);
+      throw error;
+    }
   }
 
   async deleteJob(id: number): Promise<void> {
-    await db.delete(jobs).where(eq(jobs.id, id));
+    try {
+      await deleteDoc(doc(db, 'jobs', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar job:', error);
+      throw error;
+    }
   }
 
   // Questions
   async getQuestionsByJobId(jobId: number): Promise<Question[]> {
-    return await db.select().from(questions).where(eq(questions.jobId, jobId));
+    try {
+      const q = query(collection(db, 'questions'), where('jobId', '==', jobId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Question[];
+    } catch (error) {
+      console.error('Erro ao buscar questions por job:', error);
+      return [];
+    }
   }
 
   async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
-    const [question] = await db
-      .insert(questions)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const questionData = {
         ...insertQuestion,
-        maxTime: insertQuestion.maxTime || 120
-      })
-      .returning();
-    return question;
+        maxTime: insertQuestion.maxTime || 120,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'questions', id.toString()), questionData);
+      return { id, ...questionData } as Question;
+    } catch (error) {
+      console.error('Erro ao criar question:', error);
+      throw error;
+    }
   }
 
   async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {
-    const [question] = await db
-      .update(questions)
-      .set(questionUpdate)
-      .where(eq(questions.id, id))
-      .returning();
-    return question;
+    try {
+      await updateDoc(doc(db, 'questions', id.toString()), questionUpdate);
+      const updated = await this.getQuestionById(id);
+      return updated as Question;
+    } catch (error) {
+      console.error('Erro ao atualizar question:', error);
+      throw error;
+    }
+  }
+
+  async getQuestionById(id: number): Promise<Question | undefined> {
+    try {
+      const questionDoc = await getDoc(doc(db, 'questions', id.toString()));
+      if (questionDoc.exists()) {
+        return { id: parseInt(questionDoc.id), ...questionDoc.data() } as Question;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar question por ID:', error);
+      return undefined;
+    }
   }
 
   async deleteQuestion(id: number): Promise<void> {
-    await db.delete(questions).where(eq(questions.id, id));
+    try {
+      await deleteDoc(doc(db, 'questions', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar question:', error);
+      throw error;
+    }
   }
 
   // Candidates
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
-    return await db.select().from(candidates).where(eq(candidates.clientId, clientId));
+    try {
+      const q = query(collection(db, 'candidates'), where('clientId', '==', clientId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Candidate[];
+    } catch (error) {
+      console.error('Erro ao buscar candidates por cliente:', error);
+      return [];
+    }
   }
 
   async getCandidateById(id: number): Promise<Candidate | undefined> {
-    const [candidate] = await db.select().from(candidates).where(eq(candidates.id, id));
-    return candidate || undefined;
+    try {
+      const candidateDoc = await getDoc(doc(db, 'candidates', id.toString()));
+      if (candidateDoc.exists()) {
+        return { id: parseInt(candidateDoc.id), ...candidateDoc.data() } as Candidate;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar candidate por ID:', error);
+      return undefined;
+    }
   }
 
   async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
-    const [candidate] = await db
-      .insert(candidates)
-      .values(insertCandidate)
-      .returning();
-    return candidate;
+    try {
+      const id = parseInt(this.generateId());
+      const candidateData = {
+        ...insertCandidate,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'candidates', id.toString()), candidateData);
+      return { id, ...candidateData } as Candidate;
+    } catch (error) {
+      console.error('Erro ao criar candidate:', error);
+      throw error;
+    }
   }
 
   async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
-    return await db
-      .insert(candidates)
-      .values(insertCandidates)
-      .returning();
+    try {
+      const candidates = [];
+      for (const insertCandidate of insertCandidates) {
+        const candidate = await this.createCandidate(insertCandidate);
+        candidates.push(candidate);
+      }
+      return candidates;
+    } catch (error) {
+      console.error('Erro ao criar candidates em lote:', error);
+      throw error;
+    }
   }
 
   async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
-    const [candidate] = await db
-      .update(candidates)
-      .set(candidateUpdate)
-      .where(eq(candidates.id, id))
-      .returning();
-    return candidate;
+    try {
+      await updateDoc(doc(db, 'candidates', id.toString()), candidateUpdate);
+      const updated = await this.getCandidateById(id);
+      return updated as Candidate;
+    } catch (error) {
+      console.error('Erro ao atualizar candidate:', error);
+      throw error;
+    }
   }
 
   async deleteCandidate(id: number): Promise<void> {
-    await db.delete(candidates).where(eq(candidates.id, id));
+    try {
+      await deleteDoc(doc(db, 'candidates', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar candidate:', error);
+      throw error;
+    }
   }
 
   // Selections
   async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
-    return await db.select().from(selections).where(eq(selections.clientId, clientId));
+    try {
+      const q = query(collection(db, 'selections'), where('clientId', '==', clientId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Selection[];
+    } catch (error) {
+      console.error('Erro ao buscar selections por cliente:', error);
+      return [];
+    }
   }
 
   async getSelectionById(id: number): Promise<Selection | undefined> {
-    const [selection] = await db.select().from(selections).where(eq(selections.id, id));
-    return selection || undefined;
+    try {
+      const selectionDoc = await getDoc(doc(db, 'selections', id.toString()));
+      if (selectionDoc.exists()) {
+        return { id: parseInt(selectionDoc.id), ...selectionDoc.data() } as Selection;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar selection por ID:', error);
+      return undefined;
+    }
   }
 
   async createSelection(insertSelection: InsertSelection): Promise<Selection> {
-    const [selection] = await db
-      .insert(selections)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const selectionData = {
         ...insertSelection,
-        status: insertSelection.status || 'draft'
-      })
-      .returning();
-    return selection;
+        status: insertSelection.status || 'draft',
+        scheduledFor: insertSelection.scheduledFor || null,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'selections', id.toString()), selectionData);
+      return { id, ...selectionData } as Selection;
+    } catch (error) {
+      console.error('Erro ao criar selection:', error);
+      throw error;
+    }
   }
 
   async updateSelection(id: number, selectionUpdate: Partial<Selection>): Promise<Selection> {
-    const [selection] = await db
-      .update(selections)
-      .set(selectionUpdate)
-      .where(eq(selections.id, id))
-      .returning();
-    return selection;
+    try {
+      await updateDoc(doc(db, 'selections', id.toString()), selectionUpdate);
+      const updated = await this.getSelectionById(id);
+      return updated as Selection;
+    } catch (error) {
+      console.error('Erro ao atualizar selection:', error);
+      throw error;
+    }
   }
 
   async deleteSelection(id: number): Promise<void> {
-    await db.delete(selections).where(eq(selections.id, id));
+    try {
+      await deleteDoc(doc(db, 'selections', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar selection:', error);
+      throw error;
+    }
   }
 
   // Interviews
   async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
-    return await db.select().from(interviews).where(eq(interviews.selectionId, selectionId));
+    try {
+      const q = query(collection(db, 'interviews'), where('selectionId', '==', selectionId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Interview[];
+    } catch (error) {
+      console.error('Erro ao buscar interviews por selection:', error);
+      return [];
+    }
   }
 
   async getInterviewById(id: number): Promise<Interview | undefined> {
-    const [interview] = await db.select().from(interviews).where(eq(interviews.id, id));
-    return interview || undefined;
+    try {
+      const interviewDoc = await getDoc(doc(db, 'interviews', id.toString()));
+      if (interviewDoc.exists()) {
+        return { id: parseInt(interviewDoc.id), ...interviewDoc.data() } as Interview;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar interview por ID:', error);
+      return undefined;
+    }
   }
 
   async getInterviewByToken(token: string): Promise<Interview | undefined> {
-    const [interview] = await db.select().from(interviews).where(eq(interviews.token, token));
-    return interview || undefined;
+    try {
+      const q = query(collection(db, 'interviews'), where('token', '==', token));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0];
+        return { id: parseInt(docData.id), ...docData.data() } as Interview;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar interview por token:', error);
+      return undefined;
+    }
   }
 
   async createInterview(insertInterview: InsertInterview): Promise<Interview> {
-    const [interview] = await db
-      .insert(interviews)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const interviewData = {
         ...insertInterview,
-        status: insertInterview.status || 'pending'
-      })
-      .returning();
-    return interview;
+        status: insertInterview.status || 'pending',
+        startedAt: insertInterview.startedAt || null,
+        completedAt: insertInterview.completedAt || null,
+        totalScore: insertInterview.totalScore || null,
+        aiAnalysis: insertInterview.aiAnalysis || {},
+        category: insertInterview.category || null,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'interviews', id.toString()), interviewData);
+      return { id, ...interviewData } as Interview;
+    } catch (error) {
+      console.error('Erro ao criar interview:', error);
+      throw error;
+    }
   }
 
   async updateInterview(id: number, interviewUpdate: Partial<Interview>): Promise<Interview> {
-    const [interview] = await db
-      .update(interviews)
-      .set(interviewUpdate)
-      .where(eq(interviews.id, id))
-      .returning();
-    return interview;
+    try {
+      await updateDoc(doc(db, 'interviews', id.toString()), interviewUpdate);
+      const updated = await this.getInterviewById(id);
+      return updated as Interview;
+    } catch (error) {
+      console.error('Erro ao atualizar interview:', error);
+      throw error;
+    }
   }
 
   // Responses
   async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
-    return await db.select().from(responses).where(eq(responses.interviewId, interviewId));
+    try {
+      const q = query(collection(db, 'responses'), where('interviewId', '==', interviewId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Response[];
+    } catch (error) {
+      console.error('Erro ao buscar responses por interview:', error);
+      return [];
+    }
   }
 
   async createResponse(insertResponse: InsertResponse): Promise<Response> {
-    const [response] = await db
-      .insert(responses)
-      .values({
+    try {
+      const id = parseInt(this.generateId());
+      const responseData = {
         ...insertResponse,
-        aiAnalysis: insertResponse.aiAnalysis || {}
-      })
-      .returning();
-    return response;
+        aiAnalysis: insertResponse.aiAnalysis || {},
+        audioUrl: insertResponse.audioUrl || null,
+        transcription: insertResponse.transcription || null,
+        score: insertResponse.score || null,
+        recordingDuration: insertResponse.recordingDuration || null,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(db, 'responses', id.toString()), responseData);
+      return { id, ...responseData } as Response;
+    } catch (error) {
+      console.error('Erro ao criar response:', error);
+      throw error;
+    }
   }
 
   async updateResponse(id: number, responseUpdate: Partial<Response>): Promise<Response> {
-    const [response] = await db
-      .update(responses)
-      .set(responseUpdate)
-      .where(eq(responses.id, id))
-      .returning();
-    return response;
+    try {
+      await updateDoc(doc(db, 'responses', id.toString()), responseUpdate);
+      const updated = await this.getResponseById(id);
+      return updated as Response;
+    } catch (error) {
+      console.error('Erro ao atualizar response:', error);
+      throw error;
+    }
+  }
+
+  async getResponseById(id: number): Promise<Response | undefined> {
+    try {
+      const responseDoc = await getDoc(doc(db, 'responses', id.toString()));
+      if (responseDoc.exists()) {
+        return { id: parseInt(responseDoc.id), ...responseDoc.data() } as Response;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar response por ID:', error);
+      return undefined;
+    }
   }
 
   // API Config
   async getApiConfig(): Promise<ApiConfig | undefined> {
-    const [config] = await db.select().from(apiConfigs);
-    return config || undefined;
+    try {
+      const configDoc = await getDoc(doc(db, 'configs', 'main'));
+      if (configDoc.exists()) {
+        return { id: 1, ...configDoc.data() } as ApiConfig;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar config:', error);
+      return undefined;
+    }
   }
 
   async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
-    const existing = await this.getApiConfig();
-    if (existing) {
-      const [updated] = await db
-        .update(apiConfigs)
-        .set(config)
-        .where(eq(apiConfigs.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      const [created] = await db
-        .insert(apiConfigs)
-        .values(config)
-        .returning();
-      return created;
+    try {
+      const configData = {
+        ...config,
+        updatedAt: new Date(),
+      };
+      await setDoc(doc(db, 'configs', 'main'), configData);
+      return { id: 1, ...configData } as ApiConfig;
+    } catch (error) {
+      console.error('Erro ao upsert config:', error);
+      throw error;
     }
   }
 
   // Message Logs
   async createMessageLog(insertLog: InsertMessageLog): Promise<MessageLog> {
-    const [log] = await db
-      .insert(messageLogs)
-      .values(insertLog)
-      .returning();
-    return log;
+    try {
+      const id = parseInt(this.generateId());
+      const logData = {
+        ...insertLog,
+        sentAt: new Date(),
+      };
+      await setDoc(doc(db, 'messageLogs', id.toString()), logData);
+      return { id, ...logData } as MessageLog;
+    } catch (error) {
+      console.error('Erro ao criar log:', error);
+      throw error;
+    }
   }
 
   async getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]> {
-    return await db.select().from(messageLogs).where(eq(messageLogs.interviewId, interviewId));
+    try {
+      const q = query(collection(db, 'messageLogs'), where('interviewId', '==', interviewId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as MessageLog[];
+    } catch (error) {
+      console.error('Erro ao buscar logs por interview:', error);
+      return [];
+    }
   }
 
   // Statistics
@@ -764,22 +702,31 @@ export class DatabaseStorage implements IStorage {
     pendingInterviews: number;
     avgScore: number;
   }> {
-    const totalClients = (await db.select().from(clients)).length;
-    const allInterviews = await db.select().from(interviews);
-    const totalInterviews = allInterviews.length;
-    const pendingInterviews = allInterviews.filter(i => i.status === 'pending').length;
-    
-    const completedInterviews = allInterviews.filter(i => i.totalScore !== null);
-    const avgScore = completedInterviews.length > 0 
-      ? completedInterviews.reduce((sum, i) => sum + (i.totalScore || 0), 0) / completedInterviews.length
-      : 0;
+    try {
+      const clientsSnapshot = await getDocs(collection(db, 'clients'));
+      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
+      
+      const totalClients = clientsSnapshot.size;
+      const totalInterviews = interviewsSnapshot.size;
+      
+      const interviews = interviewsSnapshot.docs.map(doc => doc.data());
+      const pendingInterviews = interviews.filter(i => i.status === 'pending').length;
+      
+      const completedInterviews = interviews.filter(i => i.totalScore !== null && i.totalScore !== undefined);
+      const avgScore = completedInterviews.length > 0 
+        ? completedInterviews.reduce((sum, i) => sum + (i.totalScore || 0), 0) / completedInterviews.length
+        : 0;
 
-    return {
-      totalClients,
-      totalInterviews,
-      pendingInterviews,
-      avgScore
-    };
+      return {
+        totalClients,
+        totalInterviews,
+        pendingInterviews,
+        avgScore
+      };
+    } catch (error) {
+      console.error('Erro ao calcular estatísticas:', error);
+      return { totalClients: 0, totalInterviews: 0, pendingInterviews: 0, avgScore: 0 };
+    }
   }
 
   async getClientStats(clientId: number): Promise<{
@@ -789,32 +736,63 @@ export class DatabaseStorage implements IStorage {
     monthlyLimit: number;
     currentUsage: number;
   }> {
-    const clientJobs = await db.select().from(jobs).where(eq(jobs.clientId, clientId));
-    const activeJobs = clientJobs.filter(job => job.status === 'active').length;
-    
-    const totalCandidates = (await db.select().from(candidates).where(eq(candidates.clientId, clientId))).length;
-    
-    const client = await this.getClientById(clientId);
-    const monthlyLimit = client?.monthlyLimit || 100;
-    
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    currentMonth.setHours(0, 0, 0, 0);
-    
-    const allInterviews = await db.select().from(interviews);
-    const monthlyInterviews = allInterviews.filter(interview => {
-      const interviewDate = new Date(interview.createdAt || '');
-      return interviewDate >= currentMonth;
-    }).length;
+    try {
+      const jobsSnapshot = await getDocs(query(collection(db, 'jobs'), where('clientId', '==', clientId)));
+      const candidatesSnapshot = await getDocs(query(collection(db, 'candidates'), where('clientId', '==', clientId)));
+      
+      const jobs = jobsSnapshot.docs.map(doc => doc.data());
+      const activeJobs = jobs.filter(job => job.status === 'active').length;
+      const totalCandidates = candidatesSnapshot.size;
+      
+      const client = await this.getClientById(clientId);
+      const monthlyLimit = client?.monthlyLimit || 100;
+      
+      const currentMonth = new Date();
+      currentMonth.setDate(1);
+      currentMonth.setHours(0, 0, 0, 0);
+      
+      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
+      const interviews = interviewsSnapshot.docs.map(doc => doc.data());
+      const monthlyInterviews = interviews.filter(interview => {
+        const interviewDate = new Date(interview.createdAt?.seconds ? interview.createdAt.seconds * 1000 : interview.createdAt);
+        return interviewDate >= currentMonth;
+      }).length;
 
-    return {
-      activeJobs,
-      totalCandidates,
-      monthlyInterviews,
-      monthlyLimit,
-      currentUsage: monthlyInterviews
-    };
+      return {
+        activeJobs,
+        totalCandidates,
+        monthlyInterviews,
+        monthlyLimit,
+        currentUsage: monthlyInterviews
+      };
+    } catch (error) {
+      console.error('Erro ao calcular estatísticas do cliente:', error);
+      return { activeJobs: 0, totalCandidates: 0, monthlyInterviews: 0, monthlyLimit: 100, currentUsage: 0 };
+    }
   }
 }
 
-export const storage = new DatabaseStorage();
+// Initialize storage and create master user if needed
+export const storage = new FirebaseStorage();
+
+// Create master user on startup
+const initializeStorage = async () => {
+  try {
+    const masterUser = await storage.getUserByEmail('daniel@grupomaximuns.com.br');
+    if (!masterUser) {
+      const hashedPassword = await bcrypt.hash('daniel580190', 10);
+      await storage.createUser({
+        email: 'daniel@grupomaximuns.com.br',
+        password: hashedPassword,
+        role: 'master'
+      });
+      console.log('✅ Usuário master criado no Firebase');
+    } else {
+      console.log('✅ Usuário master já existe no Firebase');
+    }
+  } catch (error) {
+    console.error('❌ Erro ao inicializar storage:', error);
+  }
+};
+
+initializeStorage();
