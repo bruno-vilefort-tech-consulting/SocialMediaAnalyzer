@@ -47,73 +47,142 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   };
 
   return (
-    <div className={cn(
-      "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
-      isOpen ? "translate-x-0" : "-translate-x-full"
-    )}>
-      <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
-        <div className="flex items-center">
-          <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-            <Mic className="text-white text-sm" />
+    <>
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-50 lg:bg-white lg:shadow-xl">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+              <Mic className="text-white text-sm" />
+            </div>
+            <span className="ml-3 font-semibold text-slate-900">Maximus IA</span>
           </div>
-          <span className="ml-3 font-semibold text-slate-900">Maximus IA</span>
         </div>
-        <button onClick={onClose} className="lg:hidden">
-          <X className="h-5 w-5 text-slate-500" />
-        </button>
+        
+        {/* Navigation Menu */}
+        <nav className="flex-1 mt-6 px-3 pb-20 overflow-y-auto">
+          <div className="space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleNavigation(item.path)}
+                  className={cn(
+                    "w-full group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    isActive 
+                      ? "bg-primary/10 text-primary border-r-2 border-primary" 
+                      : "text-slate-700 hover:bg-slate-100 hover:text-primary"
+                  )}
+                >
+                  <Icon className={cn(
+                    "mr-3 h-5 w-5",
+                    isActive ? "text-primary" : "text-slate-400 group-hover:text-primary"
+                  )} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+        
+        {/* User Profile */}
+        <div className="absolute bottom-0 w-64 p-4 border-t border-slate-200 bg-white">
+          <div className="flex items-center">
+            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
+              {user?.role === "master" ? (
+                <Crown className="h-5 w-5 text-white" />
+              ) : (
+                <Building className="h-5 w-5 text-white" />
+              )}
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="text-sm font-medium text-slate-900 truncate">{user?.name}</div>
+              <div className="text-xs text-slate-500 capitalize">{user?.role}</div>
+            </div>
+            <button 
+              onClick={logout}
+              className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded"
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
-      
-      {/* Navigation Menu */}
-      <nav className="mt-6 px-3">
-        <div className="space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.path;
-            
-            return (
-              <button
-                key={item.path}
-                onClick={() => handleNavigation(item.path)}
-                className={cn(
-                  "w-full group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                  isActive 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-slate-700 hover:bg-slate-100 hover:text-primary"
-                )}
-              >
-                <Icon className={cn(
-                  "mr-3 h-5 w-5",
-                  isActive ? "text-primary" : "text-slate-400 group-hover:text-primary"
-                )} />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-      
-      {/* User Profile */}
-      <div className="absolute bottom-0 w-full p-3 border-t border-slate-200">
-        <div className="flex items-center">
-          <div className="h-8 w-8 bg-slate-300 rounded-full flex items-center justify-center">
-            {user?.role === "master" ? (
-              <Crown className="h-4 w-4 text-slate-600" />
-            ) : (
-              <Building className="h-4 w-4 text-slate-600" />
-            )}
+
+      {/* Mobile Sidebar */}
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:hidden",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+              <Mic className="text-white text-sm" />
+            </div>
+            <span className="ml-3 font-semibold text-slate-900">Maximus IA</span>
           </div>
-          <div className="ml-3 flex-1">
-            <div className="text-sm font-medium text-slate-900">{user?.name}</div>
-            <div className="text-xs text-slate-500 capitalize">{user?.role}</div>
-          </div>
-          <button 
-            onClick={logout}
-            className="text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100">
+            <X className="h-5 w-5 text-slate-500" />
           </button>
         </div>
+        
+        {/* Mobile Navigation Menu */}
+        <nav className="flex-1 mt-6 px-3 pb-20 overflow-y-auto">
+          <div className="space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.path;
+              
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleNavigation(item.path)}
+                  className={cn(
+                    "w-full group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    isActive 
+                      ? "bg-primary/10 text-primary" 
+                      : "text-slate-700 hover:bg-slate-100 hover:text-primary"
+                  )}
+                >
+                  <Icon className={cn(
+                    "mr-3 h-5 w-5",
+                    isActive ? "text-primary" : "text-slate-400 group-hover:text-primary"
+                  )} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+        
+        {/* Mobile User Profile */}
+        <div className="absolute bottom-0 w-64 p-4 border-t border-slate-200 bg-white">
+          <div className="flex items-center">
+            <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
+              {user?.role === "master" ? (
+                <Crown className="h-5 w-5 text-white" />
+              ) : (
+                <Building className="h-5 w-5 text-white" />
+              )}
+            </div>
+            <div className="ml-3 flex-1">
+              <div className="text-sm font-medium text-slate-900 truncate">{user?.name}</div>
+              <div className="text-xs text-slate-500 capitalize">{user?.role}</div>
+            </div>
+            <button 
+              onClick={logout}
+              className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded"
+              title="Sair"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

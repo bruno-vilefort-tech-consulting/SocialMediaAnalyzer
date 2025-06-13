@@ -16,7 +16,7 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -31,11 +31,13 @@ export default function Layout({ children }: LayoutProps) {
         onClose={() => setIsMobileMenuOpen(false)} 
       />
       
-      {/* Main Content */}
-      <div className="lg:pl-64 flex flex-col min-h-screen">
+      {/* Main Content Container */}
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
         <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          {children}
+        <main className="flex-1 p-6 bg-slate-50 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

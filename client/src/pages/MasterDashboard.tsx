@@ -31,65 +31,72 @@ export default function MasterDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Dashboard Master</h2>
-        <p className="text-slate-600">Visão geral do sistema e clientes corporativos</p>
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="bg-gradient-to-r from-primary to-primary/80 -mx-6 -mt-6 px-6 pt-6 pb-8 mb-8">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold text-white mb-2">Dashboard Master</h1>
+          <p className="text-primary-foreground/80">Visão geral completa do sistema e clientes corporativos</p>
+        </div>
       </div>
       
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Building className="text-primary" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-slate-900 mb-1">{stats?.totalClients || 0}</div>
+                <div className="text-sm font-medium text-slate-600">Clientes Ativos</div>
+                <div className="text-xs text-slate-400 mt-1">Empresas cadastradas</div>
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{stats?.totalClients || 0}</div>
-                <div className="text-sm text-slate-500">Clientes Ativos</div>
+              <div className="h-14 w-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <Building className="text-white h-7 w-7" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Mic className="text-green-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-slate-900 mb-1">{stats?.totalInterviews || 0}</div>
+                <div className="text-sm font-medium text-slate-600">Entrevistas Realizadas</div>
+                <div className="text-xs text-slate-400 mt-1">Total no sistema</div>
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{stats?.totalInterviews || 0}</div>
-                <div className="text-sm text-slate-500">Entrevistas Realizadas</div>
+              <div className="h-14 w-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                <Mic className="text-white h-7 w-7" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="text-yellow-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-slate-900 mb-1">{stats?.pendingInterviews || 0}</div>
+                <div className="text-sm font-medium text-slate-600">Entrevistas Pendentes</div>
+                <div className="text-xs text-slate-400 mt-1">Aguardando resposta</div>
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{stats?.pendingInterviews || 0}</div>
-                <div className="text-sm text-slate-500">Entrevistas Pendentes</div>
+              <div className="h-14 w-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
+                <Clock className="text-white h-7 w-7" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow duration-200">
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="text-purple-600" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-slate-900 mb-1">{Math.round(stats?.avgScore || 0)}%</div>
+                <div className="text-sm font-medium text-slate-600">Score Médio</div>
+                <div className="text-xs text-slate-400 mt-1">Avaliação geral</div>
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{stats?.avgScore || 0}%</div>
-                <div className="text-sm text-slate-500">Score Médio</div>
+              <div className="h-14 w-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <TrendingUp className="text-white h-7 w-7" />
               </div>
             </div>
           </CardContent>
