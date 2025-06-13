@@ -146,7 +146,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", authenticate, authorize(['master']), async (req, res) => {
     try {
       console.log("Dados recebidos:", req.body);
-      const clientData = insertClientSchema.parse(req.body);
+      
+      // Converter strings de data para objetos Date antes da validação
+      const processedData = {
+        ...req.body,
+        contractStart: req.body.contractStart ? new Date(req.body.contractStart) : undefined,
+        additionalLimitExpiry: req.body.additionalLimitExpiry ? new Date(req.body.additionalLimitExpiry) : undefined,
+        contractEnd: req.body.contractEnd ? new Date(req.body.contractEnd) : undefined,
+      };
+      
+      console.log("Dados processados:", processedData);
+      
+      const clientData = insertClientSchema.parse(processedData);
       console.log("Dados validados:", clientData);
       
       clientData.password = await bcrypt.hash(clientData.password, 10);
