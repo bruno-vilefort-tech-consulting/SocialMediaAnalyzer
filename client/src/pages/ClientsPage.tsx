@@ -150,83 +150,102 @@ export default function ClientsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-4">
           {filteredClients.map((client) => (
-            <Card key={client.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Building className="text-primary" />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleOpenModal(client)}
-                      title="Editar cliente"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteClient(client.id)}
-                      disabled={deleteClientMutation.isPending}
-                      title="Remover cliente"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">{client.companyName}</h3>
-                <p className="text-sm text-slate-600 mb-4">{client.email}</p>
-                
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">CNPJ:</span>
-                    <span className="text-slate-900 font-mono">{client.cnpj}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Telefone:</span>
-                    <span className="text-slate-900">{client.phone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Limite Mensal:</span>
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-3 w-3 text-slate-400" />
-                      <span className="text-slate-900 font-medium">{client.monthlyLimit}</span>
+            <Card key={client.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  {/* Lado esquerdo - Ícone e informações principais */}
+                  <div className="flex items-center space-x-4">
+                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Building className="text-primary h-5 w-5" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-slate-900 truncate">{client.companyName}</h3>
+                      <p className="text-sm text-slate-600">{client.email}</p>
                     </div>
                   </div>
-                  {client.additionalLimit && client.additionalLimit > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Limite Extra:</span>
-                      <div className="flex items-center space-x-1">
-                        <Plus className="h-3 w-3 text-blue-500" />
-                        <span className="text-blue-600 font-medium">{client.additionalLimit}</span>
+
+                  {/* Centro - Informações dos limites e contrato */}
+                  <div className="hidden md:flex items-center space-x-8 text-sm">
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">CNPJ</p>
+                      <p className="font-mono text-slate-900">{client.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}</p>
+                    </div>
+                    
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Limite Mensal</p>
+                      <div className="flex items-center justify-center space-x-1">
+                        <Users className="h-3 w-3 text-slate-400" />
+                        <span className="font-medium text-slate-900">{client.monthlyLimit}</span>
                       </div>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Contrato:</span>
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3 text-slate-400" />
-                      <span className="text-slate-900 text-xs">
-                        {client.contractStart 
-                          ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR })
-                          : "Não definido"
-                        }
-                      </span>
+
+                    {client.additionalLimit && client.additionalLimit > 0 && (
+                      <div className="text-center">
+                        <p className="text-slate-500 text-xs">Limite Extra</p>
+                        <div className="flex items-center justify-center space-x-1">
+                          <Plus className="h-3 w-3 text-blue-500" />
+                          <span className="font-medium text-blue-600">{client.additionalLimit}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-center">
+                      <p className="text-slate-500 text-xs">Contrato</p>
+                      <div className="flex items-center justify-center space-x-1">
+                        <Calendar className="h-3 w-3 text-slate-400" />
+                        <span className="text-slate-900 text-xs">
+                          {client.contractStart 
+                            ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR })
+                            : "Não definido"
+                          }
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                    <span className="text-slate-500">Status:</span>
+
+                  {/* Lado direito - Status e ações */}
+                  <div className="flex items-center space-x-3">
                     <Badge 
                       variant={client.status === "active" ? "default" : "secondary"}
                       className={client.status === "active" ? "bg-green-100 text-green-800 border-green-200" : ""}
                     >
                       {client.status === "active" ? "Ativo" : "Inativo"}
                     </Badge>
+
+                    <div className="flex space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleOpenModal(client)}
+                        title="Editar cliente"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteClient(client.id)}
+                        disabled={deleteClientMutation.isPending}
+                        title="Remover cliente"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações extras para mobile */}
+                <div className="md:hidden mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">CNPJ: </span>
+                    <span className="font-mono text-slate-900">{client.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Limite: </span>
+                    <span className="font-medium text-slate-900">{client.monthlyLimit}</span>
                   </div>
                 </div>
               </CardContent>
