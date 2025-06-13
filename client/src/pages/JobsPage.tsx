@@ -212,15 +212,21 @@ export default function JobsPage() {
     if (!currentJob?.id || questions.length === 0) {
       toast({
         title: "Erro",
-        description: "Adicione pelo menos uma pergunta antes de finalizar.",
+        description: "Adicione pelo menos uma pergunta antes de criar a vaga.",
         variant: "destructive",
       });
       return;
     }
 
+    // Primeiro salvar as informações da vaga
+    const jobData = jobForm.getValues();
+    
     updateJobMutation.mutate({
       id: currentJob.id,
-      data: { status: "active" },
+      data: { 
+        ...jobData,
+        status: "active" 
+      },
     }, {
       onSuccess: () => {
         setCurrentJob(null);
@@ -228,7 +234,7 @@ export default function JobsPage() {
         jobForm.reset();
         toast({
           title: "Sucesso",
-          description: "Vaga finalizada e ativada!",
+          description: "Vaga criada e ativada com sucesso!",
         });
       },
     });
@@ -320,11 +326,15 @@ export default function JobsPage() {
     }
   };
 
-  const filteredJobs = jobs.filter((job) =>
+  const activeJobs = jobs.filter((job) =>
     job.status === "active" && (
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.description.toLowerCase().includes(searchTerm.toLowerCase())
     )
+  );
+
+  const draftJobs = jobs.filter((job) =>
+    job.status === "not_finished"
   );
 
   // Carregar perguntas quando currentJob mudar
@@ -582,12 +592,6 @@ export default function JobsPage() {
                   )}
                 />
 
-                <div className="flex gap-3">
-                  <Button type="submit" disabled={updateJobMutation.isPending}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {updateJobMutation.isPending ? "Salvando..." : "Salvar Informações"}
-                  </Button>
-                </div>
               </form>
             </Form>
 
@@ -610,16 +614,22 @@ export default function JobsPage() {
                 </Button>
               </div>
 
-              {/* Lista de Perguntas */}
+              {/* Lista de Perguntas Salvas */}
               {questions.length > 0 && (
                 <div className="space-y-3">
+                  <h4 className="font-medium text-slate-900 mb-3">Perguntas Cadastradas:</h4>
                   {questions.map((question, index) => (
-                    <Card key={question.id} className="border-slate-200">
+                    <Card key={question.id} className="border-green-200 bg-green-50">
                       <CardContent className="pt-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Pergunta {index + 1} - Salva
+                              </span>
+                            </div>
                             <p className="font-medium text-slate-900 mb-2">
-                              {index + 1}. {question.questionText}
+                              {question.questionText}
                             </p>
                             <p className="text-sm text-slate-600">
                               <strong>Resposta ideal:</strong> {question.idealAnswer}
@@ -630,8 +640,10 @@ export default function JobsPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => editQuestion(question)}
+                              className="text-blue-600 hover:text-blue-700"
                             >
                               <Edit3 className="w-4 h-4" />
+                              Editar
                             </Button>
                             <Button
                               size="sm"
@@ -640,6 +652,7 @@ export default function JobsPage() {
                               className="text-red-600 hover:text-red-700"
                             >
                               <Trash2 className="w-4 h-4" />
+                              Remover
                             </Button>
                           </div>
                         </div>
@@ -731,7 +744,7 @@ export default function JobsPage() {
                   disabled={updateJobMutation.isPending || questions.length === 0}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  {updateJobMutation.isPending ? "Finalizando..." : "Finalizar Vaga"}
+                  {updateJobMutation.isPending ? "Criando..." : "Criar Vaga"}
                 </Button>
                 <Button type="button" variant="outline" onClick={cancelJob}>
                   Cancelar
@@ -742,7 +755,81 @@ export default function JobsPage() {
         </Card>
       )}
 
-      {/* Busca de Vagas */}
+      {/* Vagas em Rascunho */}
+      {draftJobs.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-900">Vagas em Rascunho</CardTitle>
+            <p className="text-orange-700 text-sm">Vagas não finalizadas que podem ser continuadas</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {draftJobs.map((job) => (
+                <Card key={job.id} className="border-orange-200 bg-white">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Em Rascunho
+                          </span>
+                        </div>
+                        <h3 className="font-semibold text-slate-900 mb-2">
+                          {job.title || "Nova Vaga (não finalizada)"}
+                        </h3>
+                        <p className="text-slate-600 text-sm mb-2">
+                          {job.description || "Vaga em processo de criação"}
+                        </p>
+                        <div className="text-xs text-slate-500">
+                          Criada em: {job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setCurrentJob(job);
+                            jobForm.reset({
+                              title: job.title || "",
+                              description: job.description || "",
+                              requirements: job.requirements || "",
+                              benefits: job.benefits || "",
+                              location: job.location || "",
+                              workType: job.workType || "",
+                              salaryRange: job.salaryRange || "",
+                              experienceLevel: job.experienceLevel || "",
+                              department: job.department || "",
+                              contractType: job.contractType || "",
+                              clientId: job.clientId,
+                              status: "not_finished",
+                            });
+                            loadJobQuestions(job.id);
+                          }}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Edit3 className="w-4 h-4 mr-1" />
+                          Continuar Editando
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteJobMutation.mutate(job.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Busca de Vagas Ativas */}
       <Card>
         <CardHeader>
           <CardTitle>Vagas Ativas</CardTitle>
@@ -758,19 +845,30 @@ export default function JobsPage() {
             />
           </div>
 
-          {filteredJobs.length === 0 ? (
+          {activeJobs.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-slate-500">Nenhuma vaga encontrada.</p>
+              <p className="text-slate-500">Nenhuma vaga ativa encontrada.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredJobs.map((job: Job) => (
+              {activeJobs.map((job) => (
                 <Card key={job.id} className="border-slate-200">
                   <CardContent className="pt-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Ativa
+                          </span>
+                        </div>
                         <h3 className="font-semibold text-slate-900 mb-2">{job.title}</h3>
                         <p className="text-slate-600 text-sm mb-2">{job.description}</p>
+                        {job.location && (
+                          <p className="text-slate-500 text-xs mb-1">📍 {job.location}</p>
+                        )}
+                        {job.salaryRange && (
+                          <p className="text-slate-500 text-xs mb-1">💰 {job.salaryRange}</p>
+                        )}
                         <div className="text-xs text-slate-500">
                           Criada em: {job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
                         </div>
