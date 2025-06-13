@@ -332,7 +332,7 @@ export default function JobsPage() {
     }
   };
 
-  const filteredJobs = jobs.filter((job: Job) =>
+  const filteredJobs = jobs.filter((job) =>
     job.status === "active" && (
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.description.toLowerCase().includes(searchTerm.toLowerCase())

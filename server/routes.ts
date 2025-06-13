@@ -351,6 +351,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/jobs/:id/questions", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id);
+      const questions = await storage.getQuestionsByJobId(jobId);
+      res.json(questions);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch questions' });
+    }
+  });
+
   app.get("/api/questions/count", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       // Buscar contagem de perguntas por vaga
@@ -376,6 +386,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Erro ao criar pergunta:", error);
       res.status(400).json({ message: 'Failed to create question' });
+    }
+  });
+
+  app.patch("/api/questions/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const question = await storage.updateQuestion(id, req.body);
+      res.json(question);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to update question' });
+    }
+  });
+
+  app.delete("/api/questions/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteQuestion(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to delete question' });
     }
   });
 
