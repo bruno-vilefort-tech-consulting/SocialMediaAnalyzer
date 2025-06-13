@@ -91,10 +91,9 @@ export default function JobsPage() {
   const createJobMutation = useMutation({
     mutationFn: async (jobData: InsertJob) => {
       const response = await apiRequest("POST", "/api/jobs", jobData);
-      return response;
+      return response.json();
     },
-    onSuccess: (newJob: Job) => {
-      setCurrentJob(newJob);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
     },
   });
@@ -154,6 +153,7 @@ export default function JobsPage() {
 
     createJobMutation.mutate(jobData, {
       onSuccess: (newJob) => {
+        console.log("Vaga criada com sucesso:", newJob);
         setCurrentJob(newJob); // Definir currentJob para permitir adicionar perguntas
         toast({
           title: "Vaga Iniciada",
