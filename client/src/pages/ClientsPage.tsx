@@ -1,26 +1,94 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building, Edit, Trash2, Filter, Calendar, Users } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Plus, Building, Edit, Trash2, Filter, Calendar, Users, X, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import ClientModal from "@/components/ClientModal";
-import type { Client } from "@shared/schema";
+import type { Client, InsertClient } from "@shared/schema";
+
+// Schema de validação
+const clientFormSchema = z.object({
+  companyName: z.string().min(1, "Nome da empresa é obrigatório"),
+  cnpj: z.string().min(14, "CNPJ deve ter pelo menos 14 caracteres"),
+  email: z.string().email("Email inválido"),
+  phone: z.string().min(10, "Telefone deve ter pelo menos 10 caracteres"),
+  monthlyLimit: z.number().min(1, "Limite mensal deve ser pelo menos 1"),
+});
+
+type ClientFormData = z.infer<typeof clientFormSchema>;
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [showNewClientForm, setShowNewClientForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Form para novo cliente
+  const clientForm = useForm<ClientFormData>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: {
+      companyName: "",
+      cnpj: "",
+      email: "",
+      phone: "",
+      monthlyLimit: 5,
+    },
+  });
+
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+  });
+
+  // Mutation para criar cliente
+  const createClientMutation = useMutation({
+    mutationFn: (clientData: InsertClient) => apiRequest("POST", "/api/clients", clientData),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso!",
+        description: "Cliente criado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar cliente.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para atualizar cliente
+  const updateClientMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Client> }) => 
+      apiRequest("PATCH", `/api/clients/${id}`, data),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso!",
+        description: "Cliente atualizado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      resetForm();
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar cliente.",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteClientMutation = useMutation({
@@ -41,11 +109,52 @@ export default function ClientsPage() {
     },
   });
 
-  const filteredClients = clients.filter(client =>
-    client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.cnpj.includes(searchTerm)
-  );
+  const resetForm = () => {
+    setShowNewClientForm(false);
+    setEditingClient(null);
+    clientForm.reset();
+  };
+
+  const startNewClient = () => {
+    setShowNewClientForm(true);
+    setEditingClient(null);
+    clientForm.reset();
+  };
+
+  const startEditClient = (client: Client) => {
+    setEditingClient(client);
+    setShowNewClientForm(true);
+    clientForm.reset({
+      companyName: client.companyName,
+      cnpj: client.cnpj,
+      email: client.email,
+      phone: client.phone,
+      monthlyLimit: client.monthlyLimit,
+    });
+  };
+
+  const onSubmitClient = (data: ClientFormData) => {
+    if (editingClient) {
+      // Atualizar cliente existente
+      updateClientMutation.mutate({
+        id: editingClient.id,
+        data: data,
+      });
+    } else {
+      // Criar novo cliente
+      const clientData: InsertClient = {
+        companyName: data.companyName,
+        cnpj: data.cnpj,
+        email: data.email,
+        phone: data.phone,
+        password: "temp123", // Senha temporária - deverá ser alterada
+        contractStart: new Date(),
+        monthlyLimit: data.monthlyLimit,
+      };
+
+      createClientMutation.mutate(clientData);
+    }
+  };
 
   const handleDeleteClient = (id: number) => {
     if (confirm("Tem certeza que deseja remover este cliente?")) {
@@ -53,213 +162,268 @@ export default function ClientsPage() {
     }
   };
 
-  const handleOpenModal = (client?: Client) => {
-    setSelectedClient(client || null);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedClient(null);
-    setIsModalOpen(false);
-  };
+  const filteredClients = clients.filter(client =>
+    client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.cnpj.includes(searchTerm)
+  );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Gerenciar Clientes</h2>
-            <p className="text-slate-600">Administrar clientes corporativos e seus limites</p>
-          </div>
-          <Button disabled>
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Cliente
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-6 bg-slate-200 rounded mb-4"></div>
-                <div className="h-4 bg-slate-200 rounded mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-slate-600">Carregando clientes...</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Gerenciar Clientes</h2>
-          <p className="text-slate-600">Administrar clientes corporativos e seus limites</p>
+          <h1 className="text-2xl font-bold text-slate-900">Gerenciar Clientes</h1>
+          <p className="text-slate-600">Cadastre e gerencie clientes do sistema</p>
         </div>
-        <Button onClick={() => handleOpenModal()}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Cliente
-        </Button>
+        
+        {!showNewClientForm && (
+          <Button onClick={startNewClient} className="bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Cliente
+          </Button>
+        )}
       </div>
-      
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-              <option>Todos os Status</option>
-              <option>Ativo</option>
-              <option>Inativo</option>
-              <option>Suspenso</option>
-            </select>
-            <select className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-              <option>Plano</option>
-              <option>Básico</option>
-              <option>Profissional</option>
-              <option>Enterprise</option>
-            </select>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtrar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Clients Grid */}
-      {filteredClients.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Building className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Nenhum cliente encontrado</h3>
-            <p className="text-slate-500 mb-4">
-              {searchTerm ? "Tente ajustar os filtros de busca" : "Comece adicionando seu primeiro cliente"}
-            </p>
-            <Button onClick={() => handleOpenModal()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Cliente
-            </Button>
+
+      {/* Formulário de Novo/Editar Cliente */}
+      {showNewClientForm && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-primary">
+                {editingClient ? "Editar Cliente" : "Cadastrar Novo Cliente"}
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={resetForm}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Form {...clientForm}>
+              <form onSubmit={clientForm.handleSubmit(onSubmitClient)} className="space-y-6">
+                {/* Dados do Cliente */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={clientForm.control}
+                    name="companyName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome da Empresa</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Empresa XYZ Ltda" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={clientForm.control}
+                    name="cnpj"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CNPJ</FormLabel>
+                        <FormControl>
+                          <Input placeholder="00.000.000/0000-00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={clientForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="contato@empresa.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={clientForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone</FormLabel>
+                        <FormControl>
+                          <Input placeholder="(11) 99999-9999" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+
+                  
+                  <FormField
+                    control={clientForm.control}
+                    name="monthlyLimit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite Mensal de Entrevistas</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            placeholder="5"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    disabled={createClientMutation.isPending || updateClientMutation.isPending}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {createClientMutation.isPending || updateClientMutation.isPending 
+                      ? "Salvando..." 
+                      : editingClient 
+                        ? "Atualizar Cliente" 
+                        : "Cadastrar Cliente"
+                    }
+                  </Button>
+                  <Button type="button" variant="outline" onClick={resetForm}>
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredClients.map((client) => (
-            <Card key={client.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  {/* Lado esquerdo - Ícone e informações principais */}
-                  <div className="flex items-center space-x-4">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Building className="text-primary h-5 w-5" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-slate-900 truncate">{client.companyName}</h3>
-                      <p className="text-sm text-slate-600">{client.email}</p>
-                    </div>
-                  </div>
-
-                  {/* Centro - Informações dos limites e contrato */}
-                  <div className="hidden md:flex items-center space-x-8 text-sm">
-                    <div className="text-center">
-                      <p className="text-slate-500 text-xs">CNPJ</p>
-                      <p className="font-mono text-slate-900">{client.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}</p>
-                    </div>
-                    
-                    <div className="text-center">
-                      <p className="text-slate-500 text-xs">Limite Mensal</p>
-                      <div className="flex items-center justify-center space-x-1">
-                        <Users className="h-3 w-3 text-slate-400" />
-                        <span className="font-medium text-slate-900">{client.monthlyLimit}</span>
-                      </div>
-                    </div>
-
-                    {client.additionalLimit && client.additionalLimit > 0 && (
-                      <div className="text-center">
-                        <p className="text-slate-500 text-xs">Limite Extra</p>
-                        <div className="flex items-center justify-center space-x-1">
-                          <Plus className="h-3 w-3 text-blue-500" />
-                          <span className="font-medium text-blue-600">{client.additionalLimit}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="text-center">
-                      <p className="text-slate-500 text-xs">Contrato</p>
-                      <div className="flex items-center justify-center space-x-1">
-                        <Calendar className="h-3 w-3 text-slate-400" />
-                        <span className="text-slate-900 text-xs">
-                          {client.contractStart 
-                            ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR })
-                            : "Não definido"
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lado direito - Status e ações */}
-                  <div className="flex items-center space-x-3">
-                    <Badge 
-                      variant={client.status === "active" ? "default" : "secondary"}
-                      className={client.status === "active" ? "bg-green-100 text-green-800 border-green-200" : ""}
-                    >
-                      {client.status === "active" ? "Ativo" : "Inativo"}
-                    </Badge>
-
-                    <div className="flex space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleOpenModal(client)}
-                        title="Editar cliente"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleDeleteClient(client.id)}
-                        disabled={deleteClientMutation.isPending}
-                        title="Remover cliente"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Informações extras para mobile */}
-                <div className="md:hidden mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-slate-500">CNPJ: </span>
-                    <span className="font-mono text-slate-900">{client.cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Limite: </span>
-                    <span className="font-medium text-slate-900">{client.monthlyLimit}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       )}
 
-      {/* Modal de Cadastro/Edição */}
-      <ClientModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        client={selectedClient}
-      />
+      {/* Lista de Clientes Existentes */}
+      {!showNewClientForm && (
+        <>
+          {/* Busca */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="Buscar clientes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Badge variant="outline" className="text-slate-600">
+              {filteredClients.length} cliente(s)
+            </Badge>
+          </div>
+
+          {/* Lista de Clientes */}
+          <div className="grid gap-4">
+            {filteredClients.length === 0 ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center">
+                    <Building className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-slate-900 mb-2">
+                      {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
+                    </h3>
+                    <p className="text-slate-600 mb-6">
+                      {searchTerm 
+                        ? "Tente ajustar os termos de busca." 
+                        : "Comece criando seu primeiro cliente."
+                      }
+                    </p>
+                    {!searchTerm && (
+                      <Button onClick={startNewClient}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Criar Primeiro Cliente
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredClients.map((client: Client) => (
+                <Card key={client.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Building className="w-5 h-5 text-primary" />
+                          <h3 className="text-lg font-semibold text-slate-900">{client.companyName}</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <span className="text-sm font-medium text-slate-700">CNPJ:</span>
+                            <p className="text-slate-900">{client.cnpj}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-slate-700">Email:</span>
+                            <p className="text-slate-900">{client.email}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-slate-700">Telefone:</span>
+                            <p className="text-slate-900">{client.phone}</p>
+                          </div>
+
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>Limite mensal: {client.monthlyLimit} entrevistas</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            <span>Criado em {client.createdAt ? format(new Date(client.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "Data não disponível"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => startEditClient(client)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDeleteClient(client.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

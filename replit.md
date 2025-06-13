@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 13, 2025: Sistema de formulários inline implementado
+  - Removidos todos os popups do sistema conforme solicitado pelo usuário
+  - Sistema de cadastro de vagas convertido para formulário inline sem popups
+  - Sistema de cadastro de clientes convertido para formulário inline sem popups
+  - Seleção de cliente para usuários master implementada no cadastro de vagas
+  - Usuários cliente cadastram vagas apenas para si mesmos
+  - Todas as funcionalidades mantidas com interface mais integrada
+
 - June 13, 2025: Database migration completed - System migrated to Firebase Firestore
   - Successfully migrated from PostgreSQL to Firebase Firestore as primary database
   - FirebaseStorage class fully implemented with all IStorage interface methods
