@@ -213,33 +213,45 @@ export default function JobsPage() {
   const cancelJob = async () => {
     if (!currentJob?.id) return;
 
-    if (confirm("Tem certeza que deseja cancelar? A vaga e todas as perguntas serão removidas.")) {
-      try {
-        // Deletar todas as perguntas da vaga primeiro
-        for (const question of questions) {
-          await apiRequest("DELETE", `/api/questions/${question.id}`);
+    // Se for uma vaga nova (status not_finished), deletar do banco
+    if (currentJob.status === "not_finished") {
+      if (confirm("Tem certeza que deseja cancelar? A vaga e todas as perguntas serão removidas.")) {
+        try {
+          // Deletar todas as perguntas da vaga primeiro
+          for (const question of questions) {
+            await apiRequest("DELETE", `/api/questions/${question.id}`);
+          }
+          
+          // Deletar a vaga
+          deleteJobMutation.mutate(currentJob.id, {
+            onSuccess: () => {
+              setCurrentJob(null);
+              setQuestions([]);
+              jobForm.reset();
+              toast({
+                title: "Cancelado",
+                description: "Vaga e perguntas canceladas e removidas do banco de dados.",
+              });
+            },
+          });
+        } catch (error) {
+          console.error("Erro ao cancelar vaga:", error);
+          toast({
+            title: "Erro",
+            description: "Erro ao cancelar vaga. Tente novamente.",
+            variant: "destructive",
+          });
         }
-        
-        // Deletar a vaga
-        deleteJobMutation.mutate(currentJob.id, {
-          onSuccess: () => {
-            setCurrentJob(null);
-            setQuestions([]);
-            jobForm.reset();
-            toast({
-              title: "Cancelado",
-              description: "Vaga e perguntas canceladas e removidas do banco de dados.",
-            });
-          },
-        });
-      } catch (error) {
-        console.error("Erro ao cancelar vaga:", error);
-        toast({
-          title: "Erro",
-          description: "Erro ao cancelar vaga. Tente novamente.",
-          variant: "destructive",
-        });
       }
+    } else {
+      // Se for uma vaga ativa sendo editada, apenas voltar à tela inicial
+      setCurrentJob(null);
+      setQuestions([]);
+      jobForm.reset();
+      toast({
+        title: "Edição cancelada",
+        description: "Voltando à tela de gerenciamento de vagas.",
+      });
     }
   };
 
@@ -306,7 +318,8 @@ export default function JobsPage() {
         onSuccess: (newQuestion) => {
           setShowQuestionForm(false);
           questionForm.reset();
-          setQuestions(prev => [...prev, newQuestion]);
+          // Recarregar perguntas do banco para garantir sincronização
+          loadJobQuestions(currentJob.id);
           toast({
             title: "Sucesso", 
             description: "Pergunta adicionada com sucesso!",
@@ -659,7 +672,7 @@ export default function JobsPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {draftJobs.map((job: Job) => (
-                <Card key={job.id} className="border-orange-200 bg-orange-50">
+                <Card key={`draft-${job.id}`} className="border-orange-200 bg-orange-50">
                   <CardContent className="p-4">
                     <div className="space-y-2">
                       <h3 className="font-semibold text-orange-900">{job.title}</h3>
@@ -667,7 +680,23 @@ export default function JobsPage() {
                       <div className="flex gap-2 pt-2">
                         <Button 
                           size="sm" 
-                          onClick={() => setCurrentJob(job)}
+                          onClick={() => {
+                            setCurrentJob(job);
+                            // Carregar os dados da vaga no formulário
+                            jobForm.reset({
+                              title: job.title,
+                              description: job.description,
+                              clientId: job.clientId,
+                              requirements: job.requirements || "",
+                              benefits: job.benefits || "",
+                              location: job.location || "",
+                              workType: job.workType || "",
+                              salaryRange: job.salaryRange || "",
+                              experienceLevel: job.experienceLevel || "",
+                              department: job.department || "",
+                              contractType: job.contractType || "",
+                            });
+                          }}
                           className="bg-orange-600 hover:bg-orange-700 text-white"
                         >
                           Continuar
@@ -696,7 +725,7 @@ export default function JobsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeJobs.map((job: Job) => (
-                <Card key={job.id} className="border-green-200 bg-green-50">
+                <Card key={`active-${job.id}`} className="border-green-200 bg-green-50">
                   <CardContent className="p-4">
                     <div className="space-y-2">
                       <h3 className="font-semibold text-green-900">{job.title}</h3>
