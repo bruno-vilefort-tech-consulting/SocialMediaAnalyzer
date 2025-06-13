@@ -154,6 +154,7 @@ export default function JobsPage() {
 
     createJobMutation.mutate(jobData, {
       onSuccess: (newJob) => {
+        setCurrentJob(newJob); // Definir currentJob para permitir adicionar perguntas
         toast({
           title: "Vaga Iniciada",
           description: "Vaga criada automaticamente. Adicione as informações.",
@@ -211,7 +212,13 @@ export default function JobsPage() {
   };
 
   const cancelJob = async () => {
-    if (!currentJob?.id) return;
+    if (!currentJob?.id) {
+      // Se não há vaga atual, apenas limpar estados
+      setCurrentJob(null);
+      setQuestions([]);
+      jobForm.reset();
+      return;
+    }
 
     // Se for uma vaga nova (status not_finished), deletar do banco
     if (currentJob.status === "not_finished") {
@@ -230,7 +237,7 @@ export default function JobsPage() {
               jobForm.reset();
               toast({
                 title: "Cancelado",
-                description: "Vaga e perguntas canceladas e removidas do banco de dados.",
+                description: "Vaga cancelada e removida do banco de dados.",
               });
             },
           });
