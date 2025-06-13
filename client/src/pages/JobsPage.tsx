@@ -625,7 +625,10 @@ export default function JobsPage() {
                 disabled={updateJobMutation.isPending || questions.length === 0}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {updateJobMutation.isPending ? "Criando..." : "Criar Vaga"}
+                {updateJobMutation.isPending 
+                  ? (currentJob?.status === "active" ? "Salvando..." : "Criando...") 
+                  : (currentJob?.status === "active" ? "Salvar Alterações" : "Criar Vaga")
+                }
               </Button>
               <Button type="button" variant="outline" onClick={cancelJob}>
                 Cancelar
@@ -702,7 +705,23 @@ export default function JobsPage() {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => setCurrentJob(job)}
+                          onClick={() => {
+                            setCurrentJob(job);
+                            // Carregar os dados da vaga no formulário
+                            jobForm.reset({
+                              title: job.title,
+                              description: job.description,
+                              clientId: job.clientId,
+                              requirements: job.requirements || "",
+                              benefits: job.benefits || "",
+                              location: job.location || "",
+                              workType: job.workType || "",
+                              salaryRange: job.salaryRange || "",
+                              experienceLevel: job.experienceLevel || "",
+                              department: job.department || "",
+                              contractType: job.contractType || "",
+                            });
+                          }}
                           className="text-green-700 border-green-300 hover:bg-green-100"
                         >
                           <Edit3 className="w-4 h-4 mr-1" />
