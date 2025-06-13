@@ -1115,7 +1115,7 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Initialize storage and create master user if needed
-export const storage = new DatabaseStorage();
+export const storage = new FirebaseStorage();
 
 // Create master user on startup
 const initializeStorage = async () => {
