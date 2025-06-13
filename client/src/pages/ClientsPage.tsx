@@ -4,13 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Building, Edit, Trash2, Filter } from "lucide-react";
+import { Plus, Building, Edit, Trash2, Filter, Calendar, Users } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import ClientModal from "@/components/ClientModal";
 import type { Client } from "@shared/schema";
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -46,6 +51,16 @@ export default function ClientsPage() {
     if (confirm("Tem certeza que deseja remover este cliente?")) {
       deleteClientMutation.mutate(id);
     }
+  };
+
+  const handleOpenModal = (client?: Client) => {
+    setSelectedClient(client || null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedClient(null);
+    setIsModalOpen(false);
   };
 
   if (isLoading) {
@@ -84,7 +99,7 @@ export default function ClientsPage() {
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Gerenciar Clientes</h2>
           <p className="text-slate-600">Administrar clientes corporativos e seus limites</p>
         </div>
-        <Button>
+        <Button onClick={() => handleOpenModal()}>
           <Plus className="mr-2 h-4 w-4" />
           Novo Cliente
         </Button>
@@ -128,7 +143,7 @@ export default function ClientsPage() {
             <p className="text-slate-500 mb-4">
               {searchTerm ? "Tente ajustar os filtros de busca" : "Comece adicionando seu primeiro cliente"}
             </p>
-            <Button>
+            <Button onClick={() => handleOpenModal()}>
               <Plus className="mr-2 h-4 w-4" />
               Novo Cliente
             </Button>
@@ -144,7 +159,12 @@ export default function ClientsPage() {
                     <Building className="text-primary" />
                   </div>
                   <div className="flex space-x-2">
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleOpenModal(client)}
+                      title="Editar cliente"
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
@@ -152,6 +172,7 @@ export default function ClientsPage() {
                       size="sm"
                       onClick={() => handleDeleteClient(client.id)}
                       disabled={deleteClientMutation.isPending}
+                      title="Remover cliente"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -161,20 +182,48 @@ export default function ClientsPage() {
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">{client.companyName}</h3>
                 <p className="text-sm text-slate-600 mb-4">{client.email}</p>
                 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-slate-500">CNPJ:</span>
-                    <span className="text-slate-900">{client.cnpj}</span>
+                    <span className="text-slate-900 font-mono">{client.cnpj}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Telefone:</span>
+                    <span className="text-slate-900">{client.phone}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Limite Mensal:</span>
-                    <span className="text-slate-900">{client.monthlyLimit}</span>
+                    <div className="flex items-center space-x-1">
+                      <Users className="h-3 w-3 text-slate-400" />
+                      <span className="text-slate-900 font-medium">{client.monthlyLimit}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
+                  {client.additionalLimit && client.additionalLimit > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Limite Extra:</span>
+                      <div className="flex items-center space-x-1">
+                        <Plus className="h-3 w-3 text-blue-500" />
+                        <span className="text-blue-600 font-medium">{client.additionalLimit}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Contrato:</span>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-3 w-3 text-slate-400" />
+                      <span className="text-slate-900 text-xs">
+                        {client.contractStart 
+                          ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR })
+                          : "Não definido"
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                     <span className="text-slate-500">Status:</span>
                     <Badge 
                       variant={client.status === "active" ? "default" : "secondary"}
-                      className={client.status === "active" ? "bg-green-100 text-green-800" : ""}
+                      className={client.status === "active" ? "bg-green-100 text-green-800 border-green-200" : ""}
                     >
                       {client.status === "active" ? "Ativo" : "Inativo"}
                     </Badge>
@@ -185,6 +234,13 @@ export default function ClientsPage() {
           ))}
         </div>
       )}
+
+      {/* Modal de Cadastro/Edição */}
+      <ClientModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        client={selectedClient}
+      />
     </div>
   );
 }
