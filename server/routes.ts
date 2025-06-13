@@ -380,16 +380,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/questions", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
-      // Garantir que jobId seja um número válido e não muito grande
-      const requestData = {
-        ...req.body,
-        jobId: parseInt(req.body.jobId) < 2147483647 ? parseInt(req.body.jobId) : 1
-      };
+      console.log('Dados recebidos para pergunta:', req.body);
       
-      console.log('JobId para pergunta:', requestData.jobId);
-      
-      const questionData = insertQuestionSchema.parse(requestData);
+      const questionData = insertQuestionSchema.parse(req.body);
       const question = await storage.createQuestion(questionData);
+      
+      console.log('Pergunta criada:', question);
+      
       res.status(201).json(question);
     } catch (error) {
       console.error("Erro ao criar pergunta:", error);

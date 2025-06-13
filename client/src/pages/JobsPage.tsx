@@ -298,6 +298,18 @@ export default function JobsPage() {
       updateQuestionMutation.mutate({
         id: editingQuestion.id,
         data,
+      }, {
+        onSuccess: () => {
+          setShowQuestionForm(false);
+          setEditingQuestion(null);
+          questionForm.reset();
+          // Recarregar perguntas após edição
+          loadJobQuestions(currentJob.id);
+          toast({
+            title: "Sucesso",
+            description: "Pergunta atualizada com sucesso!",
+          });
+        }
       });
     } else {
       const questionData: InsertQuestion = {
@@ -305,13 +317,34 @@ export default function JobsPage() {
         jobId: currentJob.id,
         order: questions.length + 1,
       };
-      createQuestionMutation.mutate(questionData);
+      
+      createQuestionMutation.mutate(questionData, {
+        onSuccess: (newQuestion) => {
+          setShowQuestionForm(false);
+          questionForm.reset();
+          // Adicionar a nova pergunta à lista local imediatamente
+          setQuestions(prev => [...prev, newQuestion]);
+          toast({
+            title: "Sucesso", 
+            description: "Pergunta adicionada com sucesso!",
+          });
+        }
+      });
     }
   };
 
   const removeQuestion = (questionId: number) => {
     if (confirm("Tem certeza que deseja remover esta pergunta?")) {
-      deleteQuestionMutation.mutate(questionId);
+      deleteQuestionMutation.mutate(questionId, {
+        onSuccess: () => {
+          // Remover da lista local imediatamente
+          setQuestions(prev => prev.filter(q => q.id !== questionId));
+          toast({
+            title: "Sucesso",
+            description: "Pergunta removida com sucesso!",
+          });
+        }
+      });
     }
   };
 
@@ -600,17 +633,36 @@ export default function JobsPage() {
             {/* Seção de Perguntas */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Perguntas da Entrevista ({questions.length}/10)
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Perguntas da Entrevista 
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      questions.length === 0 
+                        ? 'bg-gray-100 text-gray-800' 
+                        : questions.length >= 10 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {questions.length}/10 perguntas
+                    </span>
+                    {questions.length > 0 && (
+                      <span className="text-xs text-green-600 font-medium">
+                        ✓ Pronto para criar vaga
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <Button 
                   onClick={addQuestion} 
                   variant="outline" 
                   size="sm"
                   disabled={questions.length >= 10}
+                  className={questions.length >= 10 ? 'opacity-50 cursor-not-allowed' : ''}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Pergunta
+                  {questions.length >= 10 ? 'Limite atingido' : 'Adicionar Pergunta'}
                 </Button>
               </div>
 
