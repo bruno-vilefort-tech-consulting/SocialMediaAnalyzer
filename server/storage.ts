@@ -262,7 +262,24 @@ export class FirebaseStorage implements IStorage {
 
   async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
     try {
-      await updateDoc(doc(firebaseDb, 'clients', id.toString()), clientUpdate);
+      // Processar datas para formato ISO antes de salvar
+      const processedUpdate = { ...clientUpdate };
+      
+      if (processedUpdate.contractStart && processedUpdate.contractStart instanceof Date) {
+        processedUpdate.contractStart = processedUpdate.contractStart.toISOString() as any;
+      }
+      
+      if (processedUpdate.contractEnd && processedUpdate.contractEnd instanceof Date) {
+        processedUpdate.contractEnd = processedUpdate.contractEnd.toISOString() as any;
+      }
+      
+      if (processedUpdate.additionalLimitExpiry && processedUpdate.additionalLimitExpiry instanceof Date) {
+        processedUpdate.additionalLimitExpiry = processedUpdate.additionalLimitExpiry.toISOString() as any;
+      }
+
+      console.log('Atualizando cliente com dados:', processedUpdate);
+      
+      await updateDoc(doc(firebaseDb, 'clients', id.toString()), processedUpdate);
       const updated = await this.getClientById(id);
       return updated as Client;
     } catch (error) {

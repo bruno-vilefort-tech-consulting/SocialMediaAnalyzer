@@ -191,6 +191,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/clients/:id", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // Processar datas se estiverem presentes
+      if (updates.contractStart) {
+        updates.contractStart = new Date(updates.contractStart);
+      }
+      if (updates.contractEnd) {
+        updates.contractEnd = new Date(updates.contractEnd);
+      }
+      
+      console.log('PATCH - Dados recebidos para atualização:', updates);
+      
+      if (updates.password) {
+        updates.password = await bcrypt.hash(updates.password, 10);
+      }
+      
+      const client = await storage.updateClient(id, updates);
+      res.json(client);
+    } catch (error) {
+      console.error('Erro ao fazer PATCH do cliente:', error);
+      res.status(400).json({ message: 'Failed to update client' });
+    }
+  });
+
   app.delete("/api/clients/:id", authenticate, authorize(['master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
