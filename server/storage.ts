@@ -235,6 +235,9 @@ export class FirebaseStorage implements IStorage {
           insertClient.contractStart.toISOString() : new Date().toISOString(),
         contractEnd: insertClient.contractEnd ? 
           insertClient.contractEnd.toISOString() : null,
+        responsibleName: insertClient.responsibleName || '',
+        responsiblePhone: insertClient.responsiblePhone || '',
+        responsibleEmail: insertClient.responsibleEmail || '',
         createdAt: new Date().toISOString(),
       };
 
