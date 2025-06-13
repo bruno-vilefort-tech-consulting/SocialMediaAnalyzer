@@ -120,7 +120,13 @@ export default function JobsPage() {
   const createQuestionMutation = useMutation({
     mutationFn: async (questionData: InsertQuestion) => {
       const response = await apiRequest("POST", "/api/questions", questionData);
-      return response;
+      return response.json();
+    },
+    onSuccess: () => {
+      if (currentJob?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/jobs", currentJob.id.toString(), "questions"] });
+        loadJobQuestions(currentJob.id);
+      }
     },
   });
 
@@ -153,7 +159,6 @@ export default function JobsPage() {
 
     createJobMutation.mutate(jobData, {
       onSuccess: (newJob) => {
-        console.log("Vaga criada com sucesso:", newJob);
         setCurrentJob(newJob); // Definir currentJob para permitir adicionar perguntas
         toast({
           title: "Vaga Iniciada",
@@ -263,10 +268,7 @@ export default function JobsPage() {
   };
 
   const addQuestion = () => {
-    console.log("addQuestion called, currentJob:", currentJob);
-    
     if (!currentJob?.id) {
-      console.log("currentJob não encontrado:", currentJob);
       toast({
         title: "Erro",
         description: "Inicie uma vaga primeiro.",
