@@ -330,12 +330,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/jobs/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.delete("/api/jobs/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
+      console.log('Tentando deletar vaga ID:', id, 'pelo usuário:', req.user?.email);
+      
+      // Converter para string para ser compatível com Firebase
       await storage.deleteJob(id);
       res.status(204).send();
     } catch (error) {
+      console.error('Erro ao deletar vaga:', error);
       res.status(400).json({ message: 'Failed to delete job' });
     }
   });

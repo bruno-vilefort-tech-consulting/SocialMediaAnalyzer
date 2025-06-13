@@ -45,7 +45,7 @@ export interface IStorage {
   getJobById(id: number): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: number, job: Partial<Job>): Promise<Job>;
-  deleteJob(id: number): Promise<void>;
+  deleteJob(id: string | number): Promise<void>;
   
   // Questions
   getQuestionsByJobId(jobId: number): Promise<Question[]>;
@@ -376,7 +376,7 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async deleteJob(id: number): Promise<void> {
+  async deleteJob(id: string | number): Promise<void> {
     try {
       await deleteDoc(doc(firebaseDb, 'jobs', id.toString()));
     } catch (error) {
