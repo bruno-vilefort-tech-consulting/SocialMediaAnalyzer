@@ -112,10 +112,10 @@ export class MemStorage implements IStorage {
     // Initialize with master user
     this.users.set(1, {
       id: 1,
-      email: "master@maximus.com",
-      password: "master123",
+      email: "daniel@grupomaximuns.com.br",
+      password: "$2b$10$i9G5TUmmymbntgEIK2L2EOm9V.X2JNx.ESvZ2syQb59D5v64XRQX6", // hashed version of "daniel580190"
       role: "master",
-      name: "Master Admin",
+      name: "Daniel Maximus",
       createdAt: new Date(),
     });
     this.userIdCounter = 2;
