@@ -32,32 +32,23 @@ export const clients = pgTable("clients", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Job positions
-export const jobs = pgTable("jobs", {
+// Vagas de emprego (presets para entrevistas)
+export const jobs = pgTable("vagas_preset", {
   id: text("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  requirements: text("requirements"), // Requisitos da vaga
-  benefits: text("benefits"), // Benefícios oferecidos
-  location: text("location"), // Localização da vaga
-  workType: text("work_type"), // Presencial, Remoto, Híbrido
-  salaryRange: text("salary_range"), // Faixa salarial
-  experienceLevel: text("experience_level"), // Junior, Pleno, Senior
-  department: text("department"), // Departamento/Área
-  contractType: text("contract_type"), // CLT, PJ, Estágio, etc.
-  status: text("status").notNull().default("not_finished"), // 'not_finished', 'active', 'inactive'
+  nomeVaga: text("nome_vaga").notNull(), // Nome da vaga
+  descricaoVaga: text("descricao_vaga").notNull(), // Descrição para uso interno
+  status: text("status").notNull().default("ativo"), // 'ativo', 'inativo'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Interview questions for each job
-export const questions = pgTable("questions", {
+// Perguntas da entrevista para cada vaga
+export const questions = pgTable("perguntas_entrevista", {
   id: serial("id").primaryKey(),
-  jobId: text("job_id").references(() => jobs.id).notNull(),
-  questionText: text("question_text").notNull(),
-  idealAnswer: text("ideal_answer").notNull(),
-  maxTime: integer("max_time").notNull().default(180), // seconds
-  order: integer("order").notNull(),
+  vagaId: text("vaga_id").references(() => jobs.id).notNull(),
+  perguntaCandidato: text("pergunta_candidato").notNull(), // Pergunta ao candidato (max 100 caracteres)
+  respostaPerfeita: text("resposta_perfeita").notNull(), // Resposta perfeita (max 1000 caracteres)
+  numeroPergunta: integer("numero_pergunta").notNull(), // Número da pergunta (1-10)
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -146,11 +137,10 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
 export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true });
 export const insertQuestionSchema = z.object({
-  jobId: z.union([z.string(), z.number()]).transform(val => String(val)),
-  questionText: z.string(),
-  idealAnswer: z.string(),
-  maxTime: z.number().default(180),
-  order: z.number(),
+  vagaId: z.union([z.string(), z.number()]).transform(val => String(val)),
+  perguntaCandidato: z.string().min(1, "Pergunta é obrigatória").max(100, "Máximo 100 caracteres"),
+  respostaPerfeita: z.string().min(1, "Resposta perfeita é obrigatória").max(1000, "Máximo 1000 caracteres"),
+  numeroPergunta: z.number().min(1).max(10),
 });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
