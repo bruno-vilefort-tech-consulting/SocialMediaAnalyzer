@@ -25,7 +25,10 @@ export const clients = pgTable("clients", {
   additionalLimitExpiry: timestamp("additional_limit_expiry"),
   contractStart: timestamp("contract_start").notNull(),
   contractEnd: timestamp("contract_end"),
-  status: text("status").notNull().default("active"), // 'active', 'inactive', 'suspended'
+  status: text("status").notNull().default("active"), // 'active', 'inactive'
+  responsibleName: text("responsible_name").notNull(),
+  responsiblePhone: text("responsible_phone").notNull(),
+  responsibleEmail: text("responsible_email").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

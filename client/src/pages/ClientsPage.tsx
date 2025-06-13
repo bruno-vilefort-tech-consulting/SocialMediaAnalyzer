@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Building, Edit, Trash2, Filter, Calendar, Users, X, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +25,17 @@ const clientFormSchema = z.object({
   email: z.string().email("Email inválido"),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 caracteres"),
   monthlyLimit: z.number().min(1, "Limite mensal deve ser pelo menos 1"),
+  status: z.enum(["active", "inactive"], {
+    required_error: "Status é obrigatório",
+  }),
+  contractStart: z.date({
+    required_error: "Data de início do contrato é obrigatória",
+  }),
+  contractEnd: z.date().optional(),
+  isIndefiniteContract: z.boolean().default(false),
+  responsibleName: z.string().min(1, "Nome do responsável é obrigatório"),
+  responsiblePhone: z.string().min(10, "Telefone do responsável deve ter pelo menos 10 caracteres"),
+  responsibleEmail: z.string().email("Email do responsável inválido"),
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;
@@ -43,6 +56,13 @@ export default function ClientsPage() {
       email: "",
       phone: "",
       monthlyLimit: 5,
+      status: "active",
+      contractStart: new Date(),
+      contractEnd: undefined,
+      isIndefiniteContract: false,
+      responsibleName: "",
+      responsiblePhone: "",
+      responsibleEmail: "",
     },
   });
 
@@ -130,6 +150,13 @@ export default function ClientsPage() {
       email: client.email,
       phone: client.phone,
       monthlyLimit: client.monthlyLimit,
+      status: client.status as "active" | "inactive",
+      contractStart: client.contractStart ? new Date(client.contractStart) : new Date(),
+      contractEnd: client.contractEnd ? new Date(client.contractEnd) : undefined,
+      isIndefiniteContract: !client.contractEnd,
+      responsibleName: client.responsibleName || "",
+      responsiblePhone: client.responsiblePhone || "",
+      responsibleEmail: client.responsibleEmail || "",
     });
   };
 
@@ -148,8 +175,13 @@ export default function ClientsPage() {
         email: data.email,
         phone: data.phone,
         password: "temp123", // Senha temporária - deverá ser alterada
-        contractStart: new Date(),
+        contractStart: data.contractStart,
+        contractEnd: data.isIndefiniteContract ? undefined : data.contractEnd,
         monthlyLimit: data.monthlyLimit,
+        status: data.status,
+        responsibleName: data.responsibleName,
+        responsiblePhone: data.responsiblePhone,
+        responsibleEmail: data.responsibleEmail,
       };
 
       createClientMutation.mutate(clientData);
@@ -271,6 +303,28 @@ export default function ClientsPage() {
                   
                   <FormField
                     control={clientForm.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status do Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="active">Ativo</SelectItem>
+                            <SelectItem value="inactive">Inativo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={clientForm.control}
                     name="monthlyLimit"
                     render={({ field }) => (
                       <FormItem>
@@ -288,6 +342,126 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                <Separator />
+
+                {/* Dados do Contrato */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Dados do Contrato</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={clientForm.control}
+                      name="contractStart"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data de Início do Contrato</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field}
+                              value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={clientForm.control}
+                      name="isIndefiniteContract"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Contrato por tempo indeterminado
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {!clientForm.watch("isIndefiniteContract") && (
+                    <FormField
+                      control={clientForm.control}
+                      name="contractEnd"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data de Término do Contrato</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field}
+                              value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Dados do Responsável */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Responsável</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField
+                      control={clientForm.control}
+                      name="responsibleName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Responsável</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Nome completo" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={clientForm.control}
+                      name="responsiblePhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Celular do Responsável</FormLabel>
+                          <FormControl>
+                            <Input placeholder="(11) 99999-9999" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={clientForm.control}
+                      name="responsibleEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email do Responsável</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="responsavel@empresa.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <Separator />
@@ -369,6 +543,12 @@ export default function ClientsPage() {
                         <div className="flex items-center gap-3 mb-2">
                           <Building className="w-5 h-5 text-primary" />
                           <h3 className="text-lg font-semibold text-slate-900">{client.companyName}</h3>
+                          <Badge 
+                            variant={client.status === 'active' ? 'default' : 'secondary'}
+                            className={client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                          >
+                            {client.status === 'active' ? 'Ativo' : 'Inativo'}
+                          </Badge>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
@@ -385,6 +565,33 @@ export default function ClientsPage() {
                             <p className="text-slate-900">{client.phone}</p>
                           </div>
                         </div>
+
+                        {/* Dados do Responsável */}
+                        {(client.responsibleName || client.responsiblePhone || client.responsibleEmail) && (
+                          <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                            <h4 className="text-sm font-medium text-slate-700 mb-2">Responsável</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                              {client.responsibleName && (
+                                <div>
+                                  <span className="text-slate-600">Nome: </span>
+                                  <span className="text-slate-900">{client.responsibleName}</span>
+                                </div>
+                              )}
+                              {client.responsiblePhone && (
+                                <div>
+                                  <span className="text-slate-600">Celular: </span>
+                                  <span className="text-slate-900">{client.responsiblePhone}</span>
+                                </div>
+                              )}
+                              {client.responsibleEmail && (
+                                <div>
+                                  <span className="text-slate-600">Email: </span>
+                                  <span className="text-slate-900">{client.responsibleEmail}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         
                         <div className="flex items-center gap-4 text-sm text-slate-500">
                           <div className="flex items-center gap-1">
@@ -393,7 +600,13 @@ export default function ClientsPage() {
                           </div>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            <span>Criado em {client.createdAt ? format(new Date(client.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "Data não disponível"}</span>
+                            <span>
+                              Contrato: {client.contractStart ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}
+                              {client.contractEnd 
+                                ? ` até ${format(new Date(client.contractEnd), "dd/MM/yyyy", { locale: ptBR })}` 
+                                : " (indeterminado)"
+                              }
+                            </span>
                           </div>
                         </div>
                       </div>
