@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Interface de entrevista natural completamente otimizada - ChatGPT Voice Mode
+  - **Interface totalmente limpa**: Removido texto das mensagens na tela para experiência idêntica ao ChatGPT
+  - **Saudação personalizada**: Sistema usa nome do candidato do banco de dados na boas-vindas
+  - **Fluxo automático**: Conversa continua automaticamente após 2 segundos de silêncio do candidato
+  - **Timing otimizado**: Sistema detecta quando candidato para de falar e prossegue naturalmente
+  - **Controle de conflitos**: Evita interrupção da IA quando candidato fala durante reprodução
+  - **Prompt personalizado**: "Olá [Nome]! Muito prazer, eu sou a Ana, entrevistadora do Grupo Maximus"
+  - **Sistema robusto**: Tratamento de erros e timeouts para experiência fluida
+  - **Interface minimalista**: Apenas indicadores visuais (microfone, alto-falante, ondas sonoras)
+
 - June 14, 2025: Sistema de entrevista natural em tempo real implementado
   - **Nova página NaturalInterviewPage**: Interface completa para entrevista conversacional com IA
   - **Animações visuais avançadas**: Ondas sonoras dinâmicas quando IA fala, indicadores visuais quando candidato é ouvido
