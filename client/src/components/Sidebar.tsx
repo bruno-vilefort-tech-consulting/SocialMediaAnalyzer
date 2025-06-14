@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const masterMenuItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
+    { path: "/candidates", label: "Candidatos", icon: Users },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/api-config", label: "Configurações API", icon: Settings },
     { path: "/reports", label: "Relatórios Globais", icon: PieChart },

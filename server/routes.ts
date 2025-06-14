@@ -512,8 +512,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate Lists routes
+  app.get("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
+      const lists = await storage.getCandidateListsByClientId(clientId);
+      res.json(lists);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch candidate lists' });
+    }
+  });
+
+  app.post("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+      const listData = { ...req.body, clientId };
+      const list = await storage.createCandidateList(listData);
+      res.status(201).json(list);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to create candidate list' });
+    }
+  });
+
+  app.delete("/api/candidate-lists/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCandidateList(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to delete candidate list' });
+    }
+  });
+
   // Candidates routes
-  app.get("/api/candidates", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.clientId!;
       const candidates = await storage.getCandidatesByClientId(clientId);

@@ -113,7 +113,7 @@ function Router() {
       </Route>
       
       <Route path="/candidates">
-        <PrivateRoute allowedRoles={['client']}>
+        <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
             <CandidatesPage />
           </Layout>
