@@ -349,9 +349,10 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async getJobById(id: number): Promise<Job | undefined> {
+  async getJobById(id: string | number): Promise<Job | undefined> {
     try {
-      const jobDoc = await getDoc(doc(firebaseDb, 'jobs', id.toString()));
+      const jobId = id.toString();
+      const jobDoc = await getDoc(doc(firebaseDb, 'jobs', jobId));
       if (jobDoc.exists()) {
         const data = jobDoc.data();
         return {
@@ -360,7 +361,8 @@ export class FirebaseStorage implements IStorage {
           nomeVaga: data.nomeVaga,
           descricaoVaga: data.descricaoVaga,
           status: data.status || 'ativo',
-          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+          perguntas: data.perguntas || [],
+          createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : new Date(),
         } as Job;
       }
       return undefined;
@@ -391,10 +393,30 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
+  async updateJob(id: string | number, jobUpdate: any): Promise<Job> {
     try {
-      await updateDoc(doc(firebaseDb, 'jobs', id.toString()), jobUpdate);
-      const updated = await this.getJobById(id);
+      const jobId = id.toString();
+      console.log('Atualizando job com ID:', jobId, 'Dados:', jobUpdate);
+      
+      // Verificar se o documento existe
+      const jobDoc = await getDoc(doc(firebaseDb, 'jobs', jobId));
+      if (!jobDoc.exists()) {
+        throw new Error(`Job com ID ${jobId} não encontrado`);
+      }
+      
+      // Combinar dados existentes com atualizações
+      const existingData = jobDoc.data();
+      const updatedData = {
+        ...existingData,
+        ...jobUpdate,
+        id: jobId, // Manter o ID
+        createdAt: existingData.createdAt || new Date(), // Manter data original
+      };
+      
+      // Substituir o documento inteiro
+      await setDoc(doc(firebaseDb, 'jobs', jobId), updatedData);
+      
+      const updated = await this.getJobById(jobId);
       return updated as Job;
     } catch (error) {
       console.error('Erro ao atualizar job:', error);

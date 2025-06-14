@@ -355,11 +355,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/jobs/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id; // Manter como string para Firebase
+      console.log('Atualizando vaga ID:', id, 'com dados:', req.body);
       const job = await storage.updateJob(id, req.body);
       res.json(job);
     } catch (error) {
-      res.status(400).json({ message: 'Failed to update job' });
+      console.error('Erro na rota de atualização:', error);
+      res.status(400).json({ message: 'Failed to update job', error: error.message });
     }
   });
 
