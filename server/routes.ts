@@ -1266,11 +1266,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/interview/:token", async (req, res) => {
     try {
       const token = req.params.token;
+      console.log('🎤 API: Buscando entrevista com token:', token);
       const interview = await storage.getInterviewByToken(token);
       
       if (!interview) {
+        console.log('❌ API: Entrevista não encontrada com token:', token);
         return res.status(404).json({ message: 'Interview not found' });
       }
+      
+      console.log('✅ API: Entrevista encontrada:', interview.id, 'status:', interview.status);
 
       // Check if interview is already completed or expired
       if (interview.status === 'completed') {

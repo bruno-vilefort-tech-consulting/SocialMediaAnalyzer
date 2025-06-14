@@ -846,12 +846,19 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewByToken(token: string): Promise<Interview | undefined> {
     try {
+      console.log('🔍 Buscando entrevista com token:', token);
       const q = query(collection(firebaseDb, 'interviews'), where('token', '==', token));
       const querySnapshot = await getDocs(q);
+      console.log('📊 Documentos encontrados:', querySnapshot.size);
+      
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0];
-        return { id: parseInt(docData.id), ...docData.data() } as Interview;
+        const interview = { id: parseInt(docData.id), ...docData.data() } as Interview;
+        console.log('✅ Entrevista encontrada:', interview.id, 'status:', interview.status);
+        return interview;
       }
+      
+      console.log('❌ Nenhuma entrevista encontrada com token:', token);
       return undefined;
     } catch (error) {
       console.error('Erro ao buscar interview por token:', error);
@@ -872,7 +879,9 @@ export class FirebaseStorage implements IStorage {
         category: insertInterview.category || null,
         createdAt: new Date(),
       };
+      console.log('💾 Salvando entrevista no Firebase:', { id, token: interviewData.token, selectionId: interviewData.selectionId });
       await setDoc(doc(firebaseDb, 'interviews', id.toString()), interviewData);
+      console.log('✅ Entrevista salva com sucesso no Firebase');
       return { id, ...interviewData } as Interview;
     } catch (error) {
       console.error('Erro ao criar interview:', error);
