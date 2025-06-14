@@ -1,305 +1,525 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ClipboardList, Edit, Trash2, Send, Calendar, Users, Eye } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
-import SelectionModal from "@/components/SelectionModal";
-import type { Selection } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
+
+interface Selection {
+  id: number;
+  nomeSelecao: string;
+  candidateListId: number;
+  jobId: string;
+  mensagemWhatsApp: string;
+  mensagemEmail?: string;
+  enviarWhatsApp: boolean;
+  enviarEmail: boolean;
+  agendamento?: Date;
+  status: 'rascunho' | 'agendado' | 'enviado' | 'concluido';
+  clientId: number;
+  createdAt: Date | null;
+}
+
+interface CandidateList {
+  id: number;
+  name: string;
+  description?: string;
+  clientId: number;
+}
+
+interface Job {
+  id: string;
+  nomeVaga: string;
+  clientId: number;
+  perguntas?: any[];
+}
+
+interface Client {
+  id: number;
+  companyName: string;
+}
 
 export default function SelectionsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
-  const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
+  // Estados do formulário
+  const [showForm, setShowForm] = useState(false);
+  const [editingSelection, setEditingSelection] = useState<Selection | null>(null);
+  const [nomeSelecao, setNomeSelecao] = useState("");
+  const [candidateListId, setCandidateListId] = useState<number | null>(null);
+  const [jobId, setJobId] = useState("");
+  const [mensagemWhatsApp, setMensagemWhatsApp] = useState("");
+  const [mensagemEmail, setMensagemEmail] = useState("");
+  const [enviarWhatsApp, setEnviarWhatsApp] = useState(true);
+  const [enviarEmail, setEnviarEmail] = useState(false);
+  const [agendamento, setAgendamento] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Buscar seleções
   const { data: selections = [], isLoading } = useQuery<Selection[]>({
     queryKey: ["/api/selections"],
   });
 
+  // Buscar listas de candidatos
+  const { data: candidateLists = [] } = useQuery<CandidateList[]>({
+    queryKey: ["/api/candidate-lists"],
+  });
+
+  // Buscar vagas
+  const { data: jobs = [] } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
+  });
+
+  // Buscar clientes (apenas para master)
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    enabled: user?.role === 'master',
+  });
+
+  // Texto padrão para WhatsApp
+  const defaultWhatsAppMessage = "Olá [nome do candidato] somos da [Nome do Cliente] e sou uma assistente virtual, você se cadastrou em nossa vaga de [Nome da Vaga], você foi selecionado(a) para próxima etapa que será uma entrevista virtual. Nessa entrevista nós enviaremos perguntas por áudio e você poderá responder também via áudio em nosso sistema, não será necessário gravar vídeo. Após responder todas as [número de perguntas] perguntas, nossa equipe vai analisar suas respostas e lhe responder o mais breve possível.";
+
+  // Texto padrão para E-mail
+  const defaultEmailMessage = "Olá [nome do candidato] Somos da [Nome do Cliente] e sou [Nome do Colaborador da Empresa], você se cadastrou em nossa vaga de [Nome da Vaga], você foi selecionado(a) para próxima etapa que será uma entrevista virtual. Nessa entrevista nós enviaremos perguntas por áudio e você poderá responder também via áudio em nosso sistema, não será necessário gravar vídeo. Após responder todas as [número de perguntas] perguntas, nossa equipe vai analisar suas respostas e lhe responder o mais breve possível.";
+
+  // Criar seleção
+  const createSelectionMutation = useMutation({
+    mutationFn: async (selectionData: any) => {
+      const response = await apiRequest('/api/selections', 'POST', selectionData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      resetForm();
+      toast({ title: "Seleção criada com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar seleção", variant: "destructive" });
+    }
+  });
+
+  // Atualizar seleção
+  const updateSelectionMutation = useMutation({
+    mutationFn: async (selectionData: any) => {
+      const response = await apiRequest(`/api/selections/${editingSelection!.id}`, 'PATCH', selectionData);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      resetForm();
+      toast({ title: "Seleção atualizada com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar seleção", variant: "destructive" });
+    }
+  });
+
+  // Deletar seleção
   const deleteSelectionMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/selections/${id}`),
+    mutationFn: async (selectionId: number) => {
+      await apiRequest(`/api/selections/${selectionId}`, 'DELETE');
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/selections"] });
-      toast({
-        title: "Seleção removida",
-        description: "Seleção foi removida com sucesso",
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({ title: "Seleção excluída com sucesso!" });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao remover seleção",
-        variant: "destructive",
-      });
-    },
+      toast({ title: "Erro ao excluir seleção", variant: "destructive" });
+    }
   });
 
-  const activateSelectionMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("PUT", `/api/selections/${id}`, { status: "active" }),
+  // Enviar entrevistas
+  const sendInterviewsMutation = useMutation({
+    mutationFn: async (selectionId: number) => {
+      const response = await apiRequest(`/api/selections/${selectionId}/send`, 'POST');
+      return await response.json();
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/selections"] });
-      toast({
-        title: "Seleção ativada",
-        description: "Convites serão enviados em breve",
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({ title: "Entrevistas enviadas com sucesso!" });
     },
     onError: () => {
-      toast({
-        title: "Erro",
-        description: "Falha ao ativar seleção",
-        variant: "destructive",
-      });
-    },
+      toast({ title: "Erro ao enviar entrevistas", variant: "destructive" });
+    }
   });
 
+  // Reset do formulário
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingSelection(null);
+    setNomeSelecao("");
+    setCandidateListId(null);
+    setJobId("");
+    setMensagemWhatsApp(defaultWhatsAppMessage);
+    setMensagemEmail(defaultEmailMessage);
+    setEnviarWhatsApp(true);
+    setEnviarEmail(false);
+    setAgendamento("");
+  };
+
+  // Inicializar textos padrão
+  useEffect(() => {
+    if (!mensagemWhatsApp) {
+      setMensagemWhatsApp(defaultWhatsAppMessage);
+    }
+    if (!mensagemEmail) {
+      setMensagemEmail(defaultEmailMessage);
+    }
+  }, []);
+
+  // Iniciar edição
+  const startEdit = (selection: Selection) => {
+    setEditingSelection(selection);
+    setNomeSelecao(selection.nomeSelecao);
+    setCandidateListId(selection.candidateListId);
+    setJobId(selection.jobId);
+    setMensagemWhatsApp(selection.mensagemWhatsApp);
+    setMensagemEmail(selection.mensagemEmail || "");
+    setEnviarWhatsApp(selection.enviarWhatsApp);
+    setEnviarEmail(selection.enviarEmail);
+    setAgendamento(selection.agendamento ? new Date(selection.agendamento).toISOString().slice(0, 16) : "");
+    setShowForm(true);
+  };
+
+  // Salvar seleção
+  const salvarSelecao = () => {
+    if (!nomeSelecao.trim()) {
+      toast({ title: "Nome da seleção é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    if (!candidateListId) {
+      toast({ title: "Selecione uma lista de candidatos", variant: "destructive" });
+      return;
+    }
+
+    if (!jobId) {
+      toast({ title: "Selecione uma vaga", variant: "destructive" });
+      return;
+    }
+
+    if (!enviarWhatsApp && !enviarEmail) {
+      toast({ title: "Selecione pelo menos um meio de envio", variant: "destructive" });
+      return;
+    }
+
+    const finalClientId = user?.role === 'master' ? jobs.find(j => j.id === jobId)?.clientId : user?.clientId;
+
+    const selectionData = {
+      nomeSelecao: nomeSelecao.trim(),
+      candidateListId,
+      jobId,
+      mensagemWhatsApp: mensagemWhatsApp.trim(),
+      mensagemEmail: enviarEmail ? mensagemEmail.trim() : undefined,
+      enviarWhatsApp,
+      enviarEmail,
+      agendamento: agendamento ? new Date(agendamento) : undefined,
+      status: 'rascunho' as const,
+      clientId: finalClientId,
+    };
+
+    if (editingSelection) {
+      updateSelectionMutation.mutate(selectionData);
+    } else {
+      createSelectionMutation.mutate(selectionData);
+    }
+  };
+
+  // Filtrar seleções
   const filteredSelections = selections.filter(selection =>
-    selection.name.toLowerCase().includes(searchTerm.toLowerCase())
+    selection.nomeSelecao.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleEditSelection = (selection: Selection) => {
-    setSelectedSelection(selection);
-    setIsSelectionModalOpen(true);
-  };
-
-  const handleDeleteSelection = (id: number) => {
-    if (confirm("Tem certeza que deseja remover esta seleção?")) {
-      deleteSelectionMutation.mutate(id);
-    }
-  };
-
-  const handleActivateSelection = (id: number) => {
-    if (confirm("Tem certeza que deseja ativar esta seleção? Os convites serão enviados automaticamente.")) {
-      activateSelectionMutation.mutate(id);
-    }
-  };
-
-  const handleViewResults = (selectionId: number) => {
-    setLocation(`/results?selection=${selectionId}`);
-  };
-
-  const handleModalClose = () => {
-    setIsSelectionModalOpen(false);
-    setSelectedSelection(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "completed":
-        return "bg-blue-100 text-blue-800";
-      case "draft":
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Ativa";
-      case "completed":
-        return "Concluída";
-      case "draft":
-      default:
-        return "Rascunho";
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Seleções</h2>
-            <p className="text-slate-600">Gerenciar processos seletivos e envio de convites</p>
-          </div>
-          <Button disabled>
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Seleção
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-6 bg-slate-200 rounded mb-4"></div>
-                <div className="h-4 bg-slate-200 rounded mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Cabeçalho */}
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Seleções</h2>
-          <p className="text-slate-600">Gerenciar processos seletivos e envio de convites</p>
+          <h1 className="text-3xl font-bold">Seleção de Candidatos</h1>
+          <p className="text-muted-foreground">Configure e agende entrevistas por voz via WhatsApp e E-mail</p>
         </div>
-        <Button onClick={() => setIsSelectionModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
+        <Button 
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Plus className="w-4 h-4 mr-2" />
           Nova Seleção
         </Button>
       </div>
-      
-      {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Buscar seleção..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <select className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-              <option>Todos os Status</option>
-              <option>Rascunho</option>
-              <option>Ativa</option>
-              <option>Concluída</option>
-            </select>
-            <select className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-              <option>Todas as Vagas</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Selections Grid */}
-      {filteredSelections.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Nenhuma seleção encontrada</h3>
-            <p className="text-slate-500 mb-4">
-              {searchTerm ? "Tente ajustar os filtros de busca" : "Comece criando sua primeira seleção"}
-            </p>
-            <Button onClick={() => setIsSelectionModalOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Seleção
-            </Button>
+
+      {/* Formulário de seleção */}
+      {showForm && (
+        <Card className="border-2 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              {editingSelection ? "Editar Seleção" : "Nova Seleção"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Nome da Seleção */}
+            <div className="space-y-2">
+              <Label htmlFor="nomeSelecao">Nome da Seleção de Pessoas *</Label>
+              <Input
+                id="nomeSelecao"
+                value={nomeSelecao}
+                onChange={(e) => setNomeSelecao(e.target.value)}
+                placeholder="Ex: Seleção Faxineiras Junho 2025"
+                maxLength={100}
+              />
+            </div>
+
+            {/* Candidatos e Vaga */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="candidateListId">Lista de Candidatos *</Label>
+                <Select value={candidateListId?.toString() || ""} onValueChange={(value) => setCandidateListId(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma lista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {candidateLists.map((list) => (
+                      <SelectItem key={list.id} value={list.id.toString()}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="jobId">Vaga *</Label>
+                <Select value={jobId} onValueChange={setJobId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma vaga" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        {job.nomeVaga} ({job.perguntas?.length || 0} perguntas)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Mensagens */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="mensagemWhatsApp">Mensagem Inicial WhatsApp (até 200 caracteres)</Label>
+                <Textarea
+                  id="mensagemWhatsApp"
+                  value={mensagemWhatsApp}
+                  onChange={(e) => setMensagemWhatsApp(e.target.value.slice(0, 200))}
+                  placeholder={defaultWhatsAppMessage}
+                  maxLength={200}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">{mensagemWhatsApp.length}/200 caracteres</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="mensagemEmail">Mensagem para E-mail (até 200 caracteres) - Opcional</Label>
+                <Textarea
+                  id="mensagemEmail"
+                  value={mensagemEmail}
+                  onChange={(e) => setMensagemEmail(e.target.value.slice(0, 200))}
+                  placeholder={defaultEmailMessage}
+                  maxLength={200}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">{mensagemEmail.length}/200 caracteres</p>
+              </div>
+            </div>
+
+            {/* Opções de envio */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Opções de Envio</h3>
+              <div className="flex space-x-6">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="enviarWhatsApp"
+                    checked={enviarWhatsApp}
+                    onCheckedChange={(checked) => setEnviarWhatsApp(checked === true)}
+                  />
+                  <Label htmlFor="enviarWhatsApp">Enviar por WhatsApp</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="enviarEmail"
+                    checked={enviarEmail}
+                    onCheckedChange={(checked) => setEnviarEmail(checked === true)}
+                  />
+                  <Label htmlFor="enviarEmail">Enviar por E-mail</Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Agendamento */}
+            <div className="space-y-2">
+              <Label htmlFor="agendamento">Agendamento (opcional)</Label>
+              <Input
+                id="agendamento"
+                type="datetime-local"
+                value={agendamento}
+                onChange={(e) => setAgendamento(e.target.value)}
+              />
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex gap-2 pt-4 border-t">
+              <Button 
+                onClick={salvarSelecao}
+                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {createSelectionMutation.isPending || updateSelectionMutation.isPending ? (
+                  "Salvando..."
+                ) : (
+                  editingSelection ? "Atualizar Seleção" : "Salvar Seleção"
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={resetForm}
+                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending}
+              >
+                Cancelar
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSelections.map((selection) => (
-            <Card key={selection.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <ClipboardList className="text-primary" />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleEditSelection(selection)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteSelection(selection.id)}
-                      disabled={deleteSelectionMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">{selection.name}</h3>
-                
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Canal:</span>
-                    <span className="text-slate-900 capitalize">{selection.sendVia}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Prazo:</span>
-                    <span className="text-slate-900">
-                      {new Date(selection.deadline).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                  {selection.scheduledFor && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Agendado:</span>
-                      <span className="text-slate-900">
-                        {new Date(selection.scheduledFor).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <Badge className={getStatusColor(selection.status)}>
-                    {getStatusLabel(selection.status)}
-                  </Badge>
-                  <div className="flex items-center text-sm text-slate-500">
-                    <Users className="mr-1 h-4 w-4" />
-                    0 candidatos
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  {selection.status === "draft" && (
-                    <Button 
-                      size="sm" 
-                      className="w-full"
-                      onClick={() => handleActivateSelection(selection.id)}
-                      disabled={activateSelectionMutation.isPending}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {activateSelectionMutation.isPending ? "Ativando..." : "Ativar Seleção"}
-                    </Button>
-                  )}
-                  
-                  {selection.status === "active" && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Envios Automáticos
-                    </Button>
-                  )}
-                  
-                  {(selection.status === "active" || selection.status === "completed") && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => handleViewResults(selection.id)}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Ver Resultados
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       )}
 
-      <SelectionModal 
-        isOpen={isSelectionModalOpen}
-        onClose={handleModalClose}
-        selection={selectedSelection}
-      />
+      {/* Lista de seleções */}
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Seleções Cadastradas</CardTitle>
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar seleções..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p>Carregando seleções...</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome da Seleção</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Lista de Candidatos</TableHead>
+                  <TableHead>Vaga</TableHead>
+                  <TableHead>Envio</TableHead>
+                  <TableHead>Data de Criação</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSelections.map((selection) => (
+                  <TableRow key={selection.id}>
+                    <TableCell className="font-medium">{selection.nomeSelecao}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          selection.status === 'concluido' ? 'default' :
+                          selection.status === 'enviado' ? 'secondary' :
+                          selection.status === 'agendado' ? 'outline' : 'destructive'
+                        }
+                      >
+                        {selection.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {candidateLists.find(list => list.id === selection.candidateListId)?.name || 'Lista não encontrada'}
+                    </TableCell>
+                    <TableCell>
+                      {jobs.find(job => job.id === selection.jobId)?.nomeVaga || 'Vaga não encontrada'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {selection.enviarWhatsApp && <Badge variant="outline">WhatsApp</Badge>}
+                        {selection.enviarEmail && <Badge variant="outline">E-mail</Badge>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {selection.createdAt 
+                        ? new Date(selection.createdAt).toLocaleDateString('pt-BR') 
+                        : new Date().toLocaleDateString('pt-BR')
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEdit(selection)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        
+                        {selection.status === 'rascunho' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sendInterviewsMutation.mutate(selection.id)}
+                            disabled={sendInterviewsMutation.isPending}
+                          >
+                            <Send className="w-4 h-4" />
+                          </Button>
+                        )}
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir a seleção "{selection.nomeSelecao}"? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteSelectionMutation.mutate(selection.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

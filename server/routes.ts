@@ -825,13 +825,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/selections/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.patch("/api/selections/:id", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
       const selection = await storage.updateSelection(id, req.body);
       res.json(selection);
     } catch (error) {
       res.status(400).json({ message: 'Failed to update selection' });
+    }
+  });
+
+  app.delete("/api/selections/:id", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteSelection(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to delete selection' });
+    }
+  });
+
+  app.post("/api/selections/:id/send", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const selection = await storage.getSelectionById(id);
+      
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+
+      // Update selection status to 'enviado'
+      await storage.updateSelection(id, { status: 'enviado' });
+      
+      // TODO: Implement WhatsApp/Email sending logic here
+      
+      res.json({ message: 'Interviews sent successfully' });
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to send interviews' });
     }
   });
 

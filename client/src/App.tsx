@@ -71,6 +71,14 @@ function Router() {
         </PrivateRoute>
       </Route>
 
+      <Route path="/selecoes">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <SelectionsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
       <Route path="/api-config">
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
