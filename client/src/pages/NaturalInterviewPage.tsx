@@ -133,6 +133,7 @@ export default function NaturalInterviewPage() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Query para buscar dados da entrevista
   const { data: interview, isLoading } = useQuery<Interview>({
@@ -163,9 +164,11 @@ export default function NaturalInterviewPage() {
         setCurrentTranscript(transcript);
         
         // Se a frase parece completa, processar
-        if (event.results[event.results.length - 1].isFinal) {
+        if (event.results[event.results.length - 1].isFinal && transcript.trim()) {
           handleCandidateResponse(transcript);
           setCurrentTranscript("");
+          // Parar temporariamente o reconhecimento
+          recognition.stop();
         }
       };
       
@@ -177,6 +180,14 @@ export default function NaturalInterviewPage() {
       recognition.onend = () => {
         console.log('🔇 Reconhecimento finalizado');
         setIsListening(false);
+        
+        // Se não há resposta do candidato, aguardar 2 segundos e continuar
+        if (!interviewCompleted && !isSpeaking) {
+          silenceTimeoutRef.current = setTimeout(() => {
+            console.log('⏰ Timeout de silêncio - continuando conversa');
+            generateAIResponse(''); // Continuar sem resposta
+          }, 2000);
+        }
       };
       
       recognitionRef.current = recognition;
@@ -404,8 +415,8 @@ export default function NaturalInterviewPage() {
     // Iniciar gravação automática da sessão completa
     await startSessionRecording();
     
-    // Mensagem de boas-vindas
-    const welcomeMessage = `Olá ${interview.candidate.nome}, tudo bem? Sou o assistente virtual que vai conduzir sua entrevista para a vaga de ${interview.job.nomeVaga}. Vou fazer algumas perguntas e você pode conversar comigo naturalmente. Está tudo bem para começarmos?`;
+    // Mensagem de boas-vindas usando prompt corrigido
+    const welcomeMessage = `Olá ${interview.candidate.nome}! Muito prazer, eu sou a Ana, entrevistadora do Grupo Maximus. Que bom ter você aqui conosco para conversarmos sobre a vaga de ${interview.job.nomeVaga}. Como você está hoje?`;
     
     await speakWithAI(welcomeMessage);
   };
