@@ -462,7 +462,34 @@ export class FirebaseStorage implements IStorage {
 
   async deleteJob(id: string | number): Promise<void> {
     try {
-      await deleteDoc(doc(firebaseDb, 'jobs', id.toString()));
+      const jobId = id.toString();
+      console.log('Tentando deletar job com ID:', jobId);
+      
+      // Primeiro, tentar encontrar o documento pelo ID exato
+      const jobDoc = await getDoc(doc(firebaseDb, 'jobs', jobId));
+      
+      if (jobDoc.exists()) {
+        await deleteDoc(doc(firebaseDb, 'jobs', jobId));
+        console.log('Job deletado com sucesso:', jobId);
+        return;
+      }
+      
+      // Se não encontrou, buscar por documentos que contenham o ID base
+      const allJobsSnapshot = await getDocs(collection(firebaseDb, 'jobs'));
+      const foundDoc = allJobsSnapshot.docs.find(doc => {
+        const docId = doc.id;
+        return docId.startsWith(jobId) || docId.includes(jobId);
+      });
+      
+      if (foundDoc) {
+        console.log('Encontrado documento alternativo para deletar:', foundDoc.id);
+        await deleteDoc(doc(firebaseDb, 'jobs', foundDoc.id));
+        console.log('Job deletado com sucesso:', foundDoc.id);
+        return;
+      }
+      
+      console.log('Job não encontrado para deletar:', jobId);
+      throw new Error('Job não encontrado');
     } catch (error) {
       console.error('Erro ao deletar job:', error);
       throw error;
