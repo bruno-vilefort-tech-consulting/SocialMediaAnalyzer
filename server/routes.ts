@@ -801,21 +801,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Selections routes
-  app.get("/api/selections", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.get("/api/selections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.clientId!;
-      const selections = await storage.getSelectionsByClientId(clientId);
+      const clientId = req.user!.role === 'master' ? undefined : req.user!.clientId!;
+      const selections = clientId ? await storage.getSelectionsByClientId(clientId) : await storage.getSelectionsByClientId(1); // For master, get all or specific client
       res.json(selections);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch selections' });
     }
   });
 
-  app.post("/api/selections", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/selections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const selectionData = insertSelectionSchema.parse({
         ...req.body,
-        clientId: req.user!.clientId!
+        clientId: req.user!.role === 'master' ? req.body.clientId : req.user!.clientId!
       });
       
       const selection = await storage.createSelection(selectionData);

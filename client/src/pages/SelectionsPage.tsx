@@ -66,6 +66,7 @@ export default function SelectionsPage() {
   const [enviarEmail, setEnviarEmail] = useState(false);
   const [agendamento, setAgendamento] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
 
   // Buscar seleções
   const { data: selections = [], isLoading } = useQuery<Selection[]>({
@@ -167,17 +168,18 @@ export default function SelectionsPage() {
     setEnviarWhatsApp(true);
     setEnviarEmail(false);
     setAgendamento("");
+    setTipoEnvio("agora");
   };
 
   // Inicializar textos padrão
   useEffect(() => {
-    if (!mensagemWhatsApp) {
+    if (!mensagemWhatsApp || mensagemWhatsApp.trim() === "") {
       setMensagemWhatsApp(defaultWhatsAppMessage);
     }
-    if (!mensagemEmail) {
+    if (!mensagemEmail || mensagemEmail.trim() === "") {
       setMensagemEmail(defaultEmailMessage);
     }
-  }, []);
+  }, [defaultWhatsAppMessage, defaultEmailMessage]);
 
   // Iniciar edição
   const startEdit = (selection: Selection) => {
@@ -185,11 +187,12 @@ export default function SelectionsPage() {
     setNomeSelecao(selection.nomeSelecao);
     setCandidateListId(selection.candidateListId);
     setJobId(selection.jobId);
-    setMensagemWhatsApp(selection.mensagemWhatsApp);
-    setMensagemEmail(selection.mensagemEmail || "");
+    setMensagemWhatsApp(selection.mensagemWhatsApp || defaultWhatsAppMessage);
+    setMensagemEmail(selection.mensagemEmail || defaultEmailMessage);
     setEnviarWhatsApp(selection.enviarWhatsApp);
     setEnviarEmail(selection.enviarEmail);
     setAgendamento(selection.agendamento ? new Date(selection.agendamento).toISOString().slice(0, 16) : "");
+    setTipoEnvio(selection.agendamento ? "agendar" : "agora");
     setShowForm(true);
   };
 
@@ -215,6 +218,12 @@ export default function SelectionsPage() {
       return;
     }
 
+    // Validação para agendamento
+    if (tipoEnvio === "agendar" && !agendamento) {
+      toast({ title: "Data e horário de agendamento são obrigatórios", variant: "destructive" });
+      return;
+    }
+
     const finalClientId = user?.role === 'master' ? jobs.find(j => j.id === jobId)?.clientId : user?.clientId;
 
     const selectionData = {
@@ -225,8 +234,8 @@ export default function SelectionsPage() {
       mensagemEmail: enviarEmail ? mensagemEmail.trim() : undefined,
       enviarWhatsApp,
       enviarEmail,
-      agendamento: agendamento ? new Date(agendamento) : undefined,
-      status: 'rascunho' as const,
+      agendamento: tipoEnvio === "agendar" && agendamento ? new Date(agendamento) : undefined,
+      status: tipoEnvio === "agora" ? 'enviado' as const : 'agendado' as const,
       clientId: finalClientId,
     };
 
@@ -368,15 +377,47 @@ export default function SelectionsPage() {
               </div>
             </div>
 
-            {/* Agendamento */}
-            <div className="space-y-2">
-              <Label htmlFor="agendamento">Agendamento (opcional)</Label>
-              <Input
-                id="agendamento"
-                type="datetime-local"
-                value={agendamento}
-                onChange={(e) => setAgendamento(e.target.value)}
-              />
+            {/* Tipo de Envio */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Tipo de Envio</h3>
+              <div className="flex space-x-6">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="enviarAgora"
+                    name="tipoEnvio"
+                    checked={tipoEnvio === "agora"}
+                    onChange={() => setTipoEnvio("agora")}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="enviarAgora">Enviar agora</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="agendar"
+                    name="tipoEnvio"
+                    checked={tipoEnvio === "agendar"}
+                    onChange={() => setTipoEnvio("agendar")}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="agendar">Agendar</Label>
+                </div>
+              </div>
+
+              {/* Campo de agendamento - só aparece se "Agendar" estiver selecionado */}
+              {tipoEnvio === "agendar" && (
+                <div className="space-y-2">
+                  <Label htmlFor="agendamento">Data e Horário do Agendamento</Label>
+                  <Input
+                    id="agendamento"
+                    type="datetime-local"
+                    value={agendamento}
+                    onChange={(e) => setAgendamento(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {/* Botões de ação */}
@@ -389,7 +430,9 @@ export default function SelectionsPage() {
                 {createSelectionMutation.isPending || updateSelectionMutation.isPending ? (
                   "Salvando..."
                 ) : (
-                  editingSelection ? "Atualizar Seleção" : "Salvar Seleção"
+                  tipoEnvio === "agora" 
+                    ? (editingSelection ? "Salvar e Enviar" : "Salvar e Enviar")
+                    : (editingSelection ? "Salvar e Agendar" : "Salvar e Agendar")
                 )}
               </Button>
               <Button 
