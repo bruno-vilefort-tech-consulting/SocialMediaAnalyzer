@@ -396,26 +396,61 @@ export class FirebaseStorage implements IStorage {
   async updateJob(id: string | number, jobUpdate: any): Promise<Job> {
     try {
       const jobId = id.toString();
-      console.log('Atualizando job com ID:', jobId, 'Dados:', jobUpdate);
+      console.log('Tentando atualizar job com ID:', jobId);
+      
+      // Listar todos os documentos para debug
+      const allDocs = await getDocs(collection(firebaseDb, 'jobs'));
+      console.log('Documentos existentes no Firebase:');
+      allDocs.forEach(doc => {
+        console.log('ID:', doc.id, 'Dados:', doc.data());
+      });
       
       // Verificar se o documento existe
       const jobDoc = await getDoc(doc(firebaseDb, 'jobs', jobId));
       if (!jobDoc.exists()) {
-        throw new Error(`Job com ID ${jobId} não encontrado`);
+        console.log(`Documento ${jobId} não encontrado. Tentando buscar por outros critérios...`);
+        
+        // Buscar documento que tenha o mesmo ID nos dados
+        const querySnapshot = await getDocs(collection(firebaseDb, 'jobs'));
+        let foundDoc = null;
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.id === jobId || data.id === parseInt(jobId)) {
+            foundDoc = doc;
+            console.log('Encontrado documento alternativo:', doc.id);
+          }
+        });
+        
+        if (!foundDoc) {
+          throw new Error(`Job com ID ${jobId} não encontrado em lugar algum`);
+        }
+        
+        // Usar o ID do documento encontrado
+        const realDocId = foundDoc.id;
+        const existingData = foundDoc.data();
+        const updatedData = {
+          ...existingData,
+          ...jobUpdate,
+          id: jobId,
+          createdAt: existingData.createdAt || new Date(),
+        };
+        
+        await setDoc(doc(firebaseDb, 'jobs', realDocId), updatedData);
+        const updated = await this.getJobById(realDocId);
+        return updated as Job;
       }
       
-      // Combinar dados existentes com atualizações
+      // Documento encontrado normalmente
       const existingData = jobDoc.data();
       const updatedData = {
         ...existingData,
         ...jobUpdate,
-        id: jobId, // Manter o ID
-        createdAt: existingData.createdAt || new Date(), // Manter data original
+        id: jobId,
+        createdAt: existingData.createdAt || new Date(),
       };
       
-      // Substituir o documento inteiro
       await setDoc(doc(firebaseDb, 'jobs', jobId), updatedData);
-      
       const updated = await this.getJobById(jobId);
       return updated as Job;
     } catch (error) {
