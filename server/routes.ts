@@ -1489,6 +1489,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para salvar sessão completa de áudio e transcrições
+  app.post("/api/interview/:token/save-session", upload.single('sessionAudio'), async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { conversationHistory, duration } = req.body;
+      const audioFile = req.file;
+
+      const interview = await storage.getInterviewByToken(token);
+      if (!interview) {
+        return res.status(404).json({ error: "Entrevista não encontrada" });
+      }
+
+      // Salvar log da sessão completa para análises futuras
+      await storage.createMessageLog({
+        interviewId: interview.id,
+        type: 'session_complete',
+        content: JSON.stringify({
+          audioFile: audioFile?.filename,
+          audioPath: audioFile?.path,
+          transcript: conversationHistory,
+          duration: parseInt(duration) || 0,
+          totalMessages: JSON.parse(conversationHistory || '[]').length,
+          savedAt: new Date().toISOString()
+        }),
+        timestamp: new Date()
+      });
+
+      console.log('💾 Sessão completa salva:', {
+        audioFile: audioFile?.filename,
+        transcriptLength: conversationHistory?.length || 0,
+        duration: parseInt(duration) || 0,
+        interviewId: interview.id
+      });
+
+      res.json({ success: true, message: "Sessão salva com sucesso" });
+    } catch (error) {
+      console.error('❌ Erro ao salvar sessão:', error);
+      res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   app.put("/api/interview/:token/complete", async (req, res) => {
     try {
       const token = req.params.token;
