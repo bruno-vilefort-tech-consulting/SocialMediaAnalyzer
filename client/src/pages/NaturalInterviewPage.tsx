@@ -113,6 +113,7 @@ export default function NaturalInterviewPage() {
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [conversationHistory, setConversationHistory] = useState<Array<{
     type: 'ai' | 'candidate';

@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema "Preparando..." resolvido
+  - **Processamento em tempo real corrigido**: Sistema não trava mais em "Preparando..." ao processar respostas
+  - **Reconhecimento contínuo implementado**: Voz processada automaticamente e reinicia após cada resposta
+  - **Estados visuais melhorados**: Interface mostra status correto (escutando/processando/aguardando) 
+  - **Controle robusto de erro**: Estado `isProcessing` e tratamento de falhas implementados
+  - **Auto-reinício do reconhecimento**: Sistema reinicia automaticamente após IA responder
+  - **Fluxo ChatGPT-like perfeito**: Funciona como ChatGPT voice mode sem travamentos ou loops
+
 - June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema do loop resolvido
   - **Memória da conversa corrigida**: Frontend mantém histórico adequadamente e passa para IA em tempo real
   - **Controle de estado implementado**: `isInterviewStarted` garante progressão adequada sem loops
