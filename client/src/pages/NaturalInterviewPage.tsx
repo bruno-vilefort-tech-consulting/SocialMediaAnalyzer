@@ -234,7 +234,9 @@ export default function NaturalInterviewPage() {
           URL.revokeObjectURL(audioUrl);
           // Iniciar escuta após falar
           if (!interviewCompleted) {
-            startListening();
+            setTimeout(() => {
+              startListening();
+            }, 500); // Pequena pausa antes de começar a escutar
           }
         };
         
@@ -264,6 +266,12 @@ export default function NaturalInterviewPage() {
   // Processar resposta do candidato
   const handleCandidateResponse = async (transcript: string) => {
     if (!transcript.trim() || !interview) return;
+    
+    // Cancelar timeout de silêncio se existir
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
+    }
     
     console.log('💬 Resposta do candidato:', transcript);
     
@@ -424,13 +432,22 @@ export default function NaturalInterviewPage() {
   // Controlar escuta
   const startListening = () => {
     if (recognitionRef.current && !isListening && !isSpeaking) {
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.log('Reconhecimento já ativo, ignorando...');
+      }
     }
   };
 
   const stopListening = () => {
     if (recognitionRef.current && isListening) {
       recognitionRef.current.stop();
+    }
+    // Limpar timeout de silêncio se parou manualmente
+    if (silenceTimeoutRef.current) {
+      clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = null;
     }
   };
 
@@ -562,30 +579,7 @@ export default function NaturalInterviewPage() {
                 </div>
               )}
 
-              {/* Histórico da Conversa */}
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {conversationHistory.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`max-w-2xl mx-auto ${
-                      message.type === 'ai' ? 'text-left' : 'text-right'
-                    }`}
-                  >
-                    <div
-                      className={`inline-block p-4 rounded-2xl ${
-                        message.type === 'ai'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      <p>{message.message}</p>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 px-4">
-                      {message.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* Interface totalmente limpa - sem histórico visível */}
 
               {/* Tela de Finalização */}
               {interviewCompleted && (
