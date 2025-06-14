@@ -275,12 +275,17 @@ export default function NaturalInterviewPage() {
     
     console.log('💬 Resposta do candidato:', transcript);
     
-    // Adicionar resposta à conversa
-    setConversationHistory(prev => [...prev, {
-      type: 'candidate',
+    // Marcar entrevista como iniciada
+    setIsInterviewStarted(true);
+    
+    // Atualizar histórico da conversa
+    const updatedHistory = [...conversationHistory, {
+      type: 'candidate' as const,
       message: transcript,
       timestamp: new Date()
-    }]);
+    }];
+    
+    setConversationHistory(updatedHistory);
     
     // Salvar no banco de dados
     try {
@@ -299,13 +304,16 @@ export default function NaturalInterviewPage() {
       console.error('❌ Erro ao salvar resposta:', error);
     }
     
-    // Gerar próxima resposta da IA
-    await generateAIResponse(transcript);
+    // Gerar próxima resposta da IA com histórico atualizado
+    await generateAIResponse(transcript, updatedHistory);
   };
 
   // Gerar resposta da IA
-  const generateAIResponse = async (candidateResponse: string) => {
+  const generateAIResponse = async (candidateResponse: string, updatedHistory?: any[]) => {
     try {
+      // Usar histórico atualizado se fornecido, senão usar o estado atual
+      const historyToUse = updatedHistory || conversationHistory;
+      
       const response = await fetch('/api/natural-conversation', {
         method: 'POST',
         headers: {
@@ -315,8 +323,8 @@ export default function NaturalInterviewPage() {
           interviewToken: token,
           candidateResponse,
           currentQuestionIndex,
-          conversationHistory: conversationHistory.slice(-6), // Últimas 6 mensagens para contexto
-          hasStarted: conversationHistory.length > 0, // Indica se entrevista já começou
+          conversationHistory: historyToUse.slice(-6), // Últimas 6 mensagens para contexto
+          hasStarted: isInterviewStarted || historyToUse.length > 0, // Verifica estado ou histórico
         }),
       });
 
