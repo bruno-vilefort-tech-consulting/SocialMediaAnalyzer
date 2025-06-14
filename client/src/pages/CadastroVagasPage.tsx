@@ -180,9 +180,8 @@ export default function CadastroVagasPage() {
 
   const excluirPerguntaMutation = useMutation({
     mutationFn: async (perguntaId: number) => {
-      return await apiRequest(`/api/questions/${perguntaId}`, {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", `/api/questions/${perguntaId}`);
+      return await response.json();
     },
     onSuccess: (_, perguntaId) => {
       setPerguntas(perguntas.filter(p => p.id !== perguntaId));
