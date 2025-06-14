@@ -936,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/selections/:id", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.delete("/api/selections/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteSelection(id);

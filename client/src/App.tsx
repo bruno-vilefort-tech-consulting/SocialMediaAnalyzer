@@ -16,6 +16,7 @@ import CandidatesPage from "@/pages/CandidatesPage";
 import SelectionsPage from "@/pages/SelectionsPage";
 import ResultsPage from "@/pages/ResultsPage";
 import InterviewPage from "@/pages/InterviewPage";
+import InterviewDemoPage from "@/pages/InterviewDemoPage";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
@@ -45,6 +46,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/interview/:token?" component={InterviewPage} />
+      <Route path="/demo-entrevista" component={InterviewDemoPage} />
 
       {/* Master Routes */}
       <Route path="/dashboard">

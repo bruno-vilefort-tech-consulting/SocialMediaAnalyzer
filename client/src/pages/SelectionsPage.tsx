@@ -495,25 +495,52 @@ export default function SelectionsPage() {
                     <TableCell className="font-medium">{selection.name}</TableCell>
                     <TableCell>
                       <Badge 
-                        variant={
-                          selection.status === 'concluido' ? 'default' :
-                          selection.status === 'enviado' ? 'secondary' :
-                          selection.status === 'agendado' ? 'outline' : 'destructive'
+                        className={
+                          selection.status === 'active' ? 'bg-blue-500 hover:bg-blue-600 text-white' :
+                          selection.status === 'enviado' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                          selection.status === 'completed' ? 'bg-gray-500 hover:bg-gray-600 text-white' :
+                          'bg-yellow-500 hover:bg-yellow-600 text-white'
                         }
                       >
-                        {selection.status}
+                        {selection.status === 'draft' ? 'Rascunho' :
+                         selection.status === 'active' ? 'Ativo' :
+                         selection.status === 'enviado' ? 'Enviado' :
+                         selection.status === 'completed' ? 'Concluído' : selection.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {candidateLists.find(list => list.id === selection.candidateListId)?.name || 'Lista não encontrada'}
+                      {candidateLists.find(list => list.id === selection.candidateListId)?.name || 'Todos os candidatos'}
                     </TableCell>
                     <TableCell>
                       {jobs.find(job => job.id === selection.jobId)?.nomeVaga || 'Vaga não encontrada'}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        {selection.enviarWhatsApp && <Badge variant="outline">WhatsApp</Badge>}
-                        {selection.enviarEmail && <Badge variant="outline">E-mail</Badge>}
+                      <div className="space-y-2">
+                        <div className="flex gap-1 mb-1">
+                          {selection.sendVia === 'whatsapp' && <Badge variant="outline">WhatsApp</Badge>}
+                          {selection.sendVia === 'email' && <Badge variant="outline">E-mail</Badge>}
+                          {selection.sendVia === 'both' && (
+                            <>
+                              <Badge variant="outline">WhatsApp</Badge>
+                              <Badge variant="outline">E-mail</Badge>
+                            </>
+                          )}
+                        </div>
+                        <div className="w-full">
+                          <div className="flex justify-between text-xs text-gray-600 mb-1">
+                            <span>Progresso</span>
+                            <span>{selection.status === 'enviado' ? '100%' : selection.status === 'active' ? '0%' : '0%'}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                              style={{ 
+                                width: selection.status === 'enviado' ? '100%' : 
+                                       selection.status === 'active' ? '0%' : '0%' 
+                              }}
+                            ></div>
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
