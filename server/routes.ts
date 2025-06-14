@@ -659,22 +659,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate and transform data
       const candidatesData = jsonData.map((row: any, index: number) => {
-        const name = row['Nome'] || row['nome'] || row['Name'] || row['name'];
-        const email = row['Email'] || row['email'];
-        const phone = row['Celular'] || row['celular'] || row['Telefone'] || row['telefone'] || row['Phone'] || row['phone'];
+        const name = row['Nome'] || row['nome'] || row['Name'] || row['name'] || '';
+        const email = row['Email'] || row['email'] || '';
+        const phone = row['Celular'] || row['celular'] || row['Telefone'] || row['telefone'] || row['Phone'] || row['phone'] || '';
 
-        if (!name || !email || !phone) {
-          throw new Error(`Linha ${index + 2}: Nome, Email e Celular são obrigatórios`);
+        // Verificar se os campos estão preenchidos e não são apenas espaços vazios
+        if (!name || !name.toString().trim()) {
+          throw new Error(`Linha ${index + 2}: Nome é obrigatório`);
+        }
+        
+        if (!email || !email.toString().trim()) {
+          throw new Error(`Linha ${index + 2}: Email é obrigatório`);
+        }
+        
+        if (!phone || !phone.toString().trim()) {
+          throw new Error(`Linha ${index + 2}: Celular é obrigatório`);
         }
 
         // Validate email format
+        const emailStr = String(email).trim();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          throw new Error(`Linha ${index + 2}: Email inválido - ${email}`);
+        if (!emailRegex.test(emailStr)) {
+          throw new Error(`Linha ${index + 2}: Email inválido - ${emailStr}`);
         }
 
         // Validate Brazilian phone format
-        const phoneDigits = phone.replace(/\D/g, '');
+        if (!phone) {
+          throw new Error(`Linha ${index + 2}: Celular é obrigatório`);
+        }
+        
+        const phoneStr = String(phone); // Converter para string
+        const phoneDigits = phoneStr.replace(/\D/g, '');
         if (phoneDigits.length < 10 || phoneDigits.length > 11) {
           throw new Error(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
         }
@@ -682,8 +697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
 
         return {
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
+          name: String(name).trim(),
+          email: emailStr.toLowerCase(),
           phone: phoneDigits,
           clientId,
           listId: parseInt(listId)
