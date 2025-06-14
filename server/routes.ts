@@ -1836,11 +1836,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "OpenAI API not configured" });
       }
 
-      // Buscar perguntas da vaga
-      const questions = await storage.getQuestionsByJobId(interview.jobId);
+      // Buscar entrevista completa com dados relacionados
+      const selection = await storage.getSelectionById(interview.selectionId);
+      let job = null;
+      let questions = [];
+      
+      if (selection) {
+        // Buscar job com sistema robusto
+        job = await storage.getJobById(selection.jobId);
+        
+        if (!job) {
+          // Buscar por ID parcial se não encontrou exato
+          const allJobs = await storage.getJobsByClientId(selection.clientId);
+          job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
+        }
+        
+        if (job) {
+          // Primeiro tenta buscar perguntas do storage
+          questions = await storage.getQuestionsByJobId(job.id);
+          
+          // Se não encontrou no storage, usa as perguntas que estão no job
+          if (questions.length === 0 && job.perguntas && job.perguntas.length > 0) {
+            questions = job.perguntas.map((p: any, index: number) => ({
+              id: index + 1,
+              perguntaCandidato: p.pergunta,
+              numeroPergunta: p.numero,
+              vagaId: job.id,
+              respostaPerfeita: p.respostaPerfeita
+            }));
+          }
+        }
+      }
+      
+      // Buscar candidato
+      const candidate = await storage.getCandidateById(interview.candidateId);
+      
+      console.log('📋 Conversa natural - Dados:', {
+        job: job?.nomeVaga,
+        candidate: candidate?.nome,
+        questionsCount: questions.length,
+        currentQuestionIndex
+      });
       
       // Construir contexto da conversa
-      const systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${interview.job?.nomeVaga || 'emprego'}.
+      const systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
 - Seja natural, empático e profissional
@@ -1849,7 +1888,7 @@ INSTRUÇÕES:
 - Faça comentários positivos e encorajadores
 - Conduza para a próxima pergunta naturalmente
 
-CANDIDATO: ${interview.candidate?.nome || 'Candidato'}
+CANDIDATO: ${candidate?.nome || 'Candidato'}
 
 PERGUNTAS DA ENTREVISTA:
 ${questions.map((q, i) => `${i + 1}. ${q.perguntaCandidato}`).join('\n')}
