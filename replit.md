@@ -115,15 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 14, 2025: Sistema de entrevistas e interface aprimorados
-  - URLs de entrevista corrigidas para usar REPLIT_DEV_DOMAIN em vez de domínio incorreto
-  - Função de duplicar seleção implementada com botão copy na tabela
-  - Exibição de data/hora melhorada: data brasileira + horário (HH:MM) em linha separada
-  - Sistema de envio automático de emails totalmente funcional
-  - Busca robusta de jobs implementada para resolver discrepância de IDs entre Firebase e frontend
-  - Sistema agora busca candidatos da lista específica selecionada em vez de todos os candidatos do cliente
-  - Schema atualizado com candidateListId para vincular seleções a listas específicas de candidatos
-  - Debug extensivo implementado em todo o pipeline de envio de emails
+- June 14, 2025: Sistema de entrevistas totalmente funcional - Problema dos links resolvido
+  - **Links de entrevista 100% funcionais**: Corrigido problema crítico na query do frontend
+  - **Frontend query corrigida**: Mudança de queryKey de array para string única `/api/interview/${token}`
+  - **Busca robusta de jobs implementada**: Sistema resolve automaticamente discrepância de IDs Firebase vs frontend
+  - **API de entrevistas otimizada**: Logs detalhados e busca inteligente por ID parcial funcionando
+  - **Sistema de emails completamente operacional**: URLs corretas sendo enviadas via Resend
+  - **Interface de entrevista carregando dados completos**: Job, candidato, seleção e perguntas
+  - **Função duplicar seleção implementada**: Botão copy na tabela funcionando
+  - **Exibição de data/hora melhorada**: Formato brasileiro com horário em linha separada
+  - **Schema atualizado**: candidateListId vincula seleções a listas específicas de candidatos
 
 - June 13, 2025: Sistema de formulários inline implementado
   - Removidos todos os popups do sistema conforme solicitado pelo usuário

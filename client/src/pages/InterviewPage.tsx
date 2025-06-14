@@ -74,13 +74,7 @@ export default function InterviewPage() {
     enabled: !!token,
   });
 
-  // Debug logs
-  useEffect(() => {
-    console.log('🎤 Frontend - Token:', token);
-    console.log('🎤 Frontend - InterviewData:', interviewData);
-    console.log('🎤 Frontend - Error:', error);
-    console.log('🎤 Frontend - IsLoading:', isLoading);
-  }, [token, interviewData, error, isLoading]);
+
 
   // Verificar se entrevista já foi feita
   useEffect(() => {
