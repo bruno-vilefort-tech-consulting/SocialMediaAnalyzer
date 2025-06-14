@@ -45,7 +45,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/interview/:token?" component={InterviewPage} />
-      
+
       {/* Master Routes */}
       <Route path="/dashboard">
         <PrivateRoute allowedRoles={['master']}>
@@ -54,7 +54,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/clients">
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
@@ -62,7 +62,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/vagas">
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
@@ -70,7 +70,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/cadastro-vagas">
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
@@ -78,7 +78,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/api-config">
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
@@ -86,7 +86,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/reports">
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
@@ -103,7 +103,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/jobs">
         <PrivateRoute allowedRoles={['client']}>
           <Layout>
@@ -111,7 +111,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/candidates">
         <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
@@ -119,7 +119,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/selections">
         <PrivateRoute allowedRoles={['client']}>
           <Layout>
@@ -127,7 +127,7 @@ function Router() {
           </Layout>
         </PrivateRoute>
       </Route>
-      
+
       <Route path="/results">
         <PrivateRoute allowedRoles={['client']}>
           <Layout>
@@ -142,7 +142,7 @@ function Router() {
           <RedirectToDashboard />
         </PrivateRoute>
       </Route>
-      
+
       {/* Fallback */}
       <Route component={NotFound} />
     </Switch>
@@ -151,13 +151,13 @@ function Router() {
 
 function RedirectToDashboard() {
   const { user } = useAuth();
-  
+
   if (user?.role === 'master') {
     return <Redirect to="/dashboard" />;
   } else if (user?.role === 'client') {
     return <Redirect to="/client-dashboard" />;
   }
-  
+
   return <Redirect to="/login" />;
 }
 

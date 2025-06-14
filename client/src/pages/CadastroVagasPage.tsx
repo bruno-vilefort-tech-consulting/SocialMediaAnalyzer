@@ -1,129 +1,68 @@
-
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Edit, Trash2, Search, Briefcase } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Save, Edit, Trash2 } from "lucide-react";
 
-// Schemas de validação
-const vagaFormSchema = z.object({
-  nomeVaga: z.string().min(1, "Nome da vaga é obrigatório"),
-  descricaoVaga: z.string().min(1, "Descrição da vaga é obrigatória"),
-  clientId: z.number().optional(),
-});
-
-const perguntaFormSchema = z.object({
-  perguntaCandidato: z.string().min(1, "Pergunta é obrigatória").max(100, "Pergunta deve ter no máximo 100 caracteres"),
-  respostaPerfeita: z.string().min(1, "Resposta perfeita é obrigatória").max(1000, "Resposta deve ter no máximo 1000 caracteres"),
-});
-
-type VagaFormData = z.infer<typeof vagaFormSchema>;
-type PerguntaFormData = z.infer<typeof perguntaFormSchema>;
-
-interface Vaga {
+interface Job {
   id: string;
   nomeVaga: string;
   descricaoVaga: string;
-  clientId: number;
   status: string;
-  createdAt: Date | null;
-}
-
-interface Pergunta {
-  id: number;
-  vagaId: string;
-  perguntaCandidato: string;
-  respostaPerfeita: string;
-  numeroPergunta: number;
-  createdAt: Date | null;
+  clientId: number;
+  createdAt: string;
 }
 
 export default function CadastroVagasPage() {
-  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [nomeVaga, setNomeVaga] = useState("");
+  const [descricaoVaga, setDescricaoVaga] = useState("");
+  const [status, setStatus] = useState("ativo");
+  const [clientId, setClientId] = useState<number | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  // Estados
-  const [vagaAtual, setVagaAtual] = useState<Vaga | null>(null);
-  const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
-  const [mostrarFormularioPergunta, setMostrarFormularioPergunta] = useState(false);
-  const [perguntaEditando, setPerguntaEditando] = useState<Pergunta | null>(null);
-
-  // Formulários
-  const vagaForm = useForm<VagaFormData>({
-    resolver: zodResolver(vagaFormSchema),
-    defaultValues: {
-      nomeVaga: "",
-      descricaoVaga: "",
-      clientId: user?.role === 'client' ? user.clientId : undefined,
-    },
+  // Buscar vagas
+  const { data: jobs = [], isLoading } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
   });
 
-  const perguntaForm = useForm<PerguntaFormData>({
-    resolver: zodResolver(perguntaFormSchema),
-    defaultValues: {
-      perguntaCandidato: "",
-      respostaPerfeita: "",
-    },
-  });
-
-  // Buscar clientes para usuários master
-  const { data: clients = [] } = useQuery<any[]>({
+  // Buscar clientes (apenas para master)
+  const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
     enabled: user?.role === 'master',
   });
 
-  // Carregar perguntas quando vaga atual mudar
-  useEffect(() => {
-    if (vagaAtual?.id) {
-      carregarPerguntas(vagaAtual.id);
-    }
-  }, [vagaAtual]);
-
-  // Função para carregar perguntas da vaga
-  const carregarPerguntas = async (vagaId: string) => {
-    try {
-      const response = await apiRequest("GET", `/api/questions/${vagaId}`);
-      const perguntasData = await response.json();
-      setPerguntas(Array.isArray(perguntasData) ? perguntasData : []);
-    } catch (error) {
-      console.error("Erro ao carregar perguntas:", error);
-      setPerguntas([]);
-    }
-  };
-
-  // Mutations para vagas
-  const criarVagaMutation = useMutation({
-    mutationFn: async (data: VagaFormData) => {
-      const clientId = user?.role === 'master' ? data.clientId : user?.clientId;
-      
-      const vagaData = {
-        nomeVaga: data.nomeVaga,
-        descricaoVaga: data.descricaoVaga,
-        clientId: clientId,
-        status: 'not_finished' // Status inicial para vaga não finalizada
-      };
-
-      const response = await apiRequest("POST", "/api/jobs", vagaData);
-      return await response.json();
+  // Mutation para criar vaga
+  const createJobMutation = useMutation({
+    mutationFn: async (jobData: any) => {
+      return apiRequest("/api/jobs", {
+        method: "POST",
+        body: JSON.stringify(jobData),
+      });
     },
-    onSuccess: (novaVaga: Vaga) => {
-      setVagaAtual(novaVaga);
-      setPerguntas([]);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       toast({
         title: "Sucesso",
-        description: "Vaga criada! Agora adicione as perguntas da entrevista.",
+        description: "Vaga criada com sucesso!",
       });
+      resetForm();
     },
     onError: (error: any) => {
       toast({
@@ -134,469 +73,368 @@ export default function CadastroVagasPage() {
     },
   });
 
-  // Mutations para perguntas
-  const criarPerguntaMutation = useMutation({
-    mutationFn: async (data: PerguntaFormData) => {
-      if (!vagaAtual) throw new Error("Nenhuma vaga selecionada");
-
-      console.log("Salvando pergunta:", data);
-      console.log("Vaga atual:", vagaAtual);
-
-      const perguntaData = {
-        vagaId: vagaAtual.id,
-        perguntaCandidato: data.perguntaCandidato,
-        respostaPerfeita: data.respostaPerfeita,
-        numeroPergunta: perguntas.length + 1,
-      };
-
-      console.log("Dados da pergunta para API:", perguntaData);
-
-      const response = await apiRequest("POST", "/api/questions", perguntaData);
-      return await response.json();
-    },
-    onSuccess: (novaPergunta: Pergunta) => {
-      // Recarregar perguntas para garantir sincronização com o banco
-      if (vagaAtual?.id) {
-        carregarPerguntas(vagaAtual.id);
-      }
-      setMostrarFormularioPergunta(false);
-      perguntaForm.reset();
-      toast({
-        title: "Sucesso",
-        description: "Pergunta salva no banco de dados!",
+  // Mutation para atualizar vaga
+  const updateJobMutation = useMutation({
+    mutationFn: async ({ id, ...jobData }: any) => {
+      return apiRequest(`/api/jobs/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(jobData),
       });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao salvar pergunta",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const atualizarPerguntaMutation = useMutation({
-    mutationFn: async (data: PerguntaFormData) => {
-      if (!perguntaEditando) throw new Error("Nenhuma pergunta sendo editada");
-
-      const perguntaData = {
-        perguntaCandidato: data.perguntaCandidato,
-        respostaPerfeita: data.respostaPerfeita,
-      };
-
-      const response = await apiRequest("PATCH", `/api/questions/${perguntaEditando.id}`, perguntaData);
-      return await response.json();
     },
     onSuccess: () => {
-      // Recarregar perguntas
-      if (vagaAtual?.id) {
-        carregarPerguntas(vagaAtual.id);
-      }
-      setMostrarFormularioPergunta(false);
-      setPerguntaEditando(null);
-      perguntaForm.reset();
-      toast({
-        title: "Sucesso",
-        description: "Pergunta atualizada no banco de dados!",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao atualizar pergunta",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const excluirPerguntaMutation = useMutation({
-    mutationFn: async (perguntaId: number) => {
-      await apiRequest("DELETE", `/api/questions/${perguntaId}`);
-    },
-    onSuccess: () => {
-      // Recarregar perguntas
-      if (vagaAtual?.id) {
-        carregarPerguntas(vagaAtual.id);
-      }
-      toast({
-        title: "Sucesso",
-        description: "Pergunta excluída do banco de dados!",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: error.message || "Erro ao excluir pergunta",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const finalizarVagaMutation = useMutation({
-    mutationFn: async () => {
-      if (!vagaAtual) throw new Error("Nenhuma vaga para finalizar");
-
-      const response = await apiRequest("PATCH", `/api/jobs/${vagaAtual.id}`, {
-        status: 'ativo'
-      });
-      return await response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Sucesso",
-        description: `Vaga "${vagaAtual?.nomeVaga}" finalizada com ${perguntas.length} pergunta(s)!`,
-      });
-      // Reset form
-      setVagaAtual(null);
-      setPerguntas([]);
-      vagaForm.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      toast({
+        title: "Sucesso",
+        description: "Vaga atualizada com sucesso!",
+      });
+      resetForm();
     },
     onError: (error: any) => {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao finalizar vaga",
+        description: error.message || "Erro ao atualizar vaga",
         variant: "destructive",
       });
     },
   });
 
-  // Handlers
-  const cadastrarVaga = (data: VagaFormData) => {
-    criarVagaMutation.mutate(data);
-  };
-
-  const adicionarPergunta = () => {
-    if (!vagaAtual) {
+  // Mutation para deletar vaga
+  const deleteJobMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/jobs/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      toast({
+        title: "Sucesso",
+        description: "Vaga deletada com sucesso!",
+      });
+    },
+    onError: (error: any) => {
       toast({
         title: "Erro",
-        description: "Primeiro crie uma vaga para adicionar perguntas.",
+        description: error.message || "Erro ao deletar vaga",
         variant: "destructive",
       });
-      return;
-    }
+    },
+  });
 
-    if (perguntas.length >= 10) {
-      toast({
-        title: "Limite atingido",
-        description: "Máximo de 10 perguntas por vaga.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setMostrarFormularioPergunta(true);
-    setPerguntaEditando(null);
-    perguntaForm.reset();
+  const resetForm = () => {
+    setNomeVaga("");
+    setDescricaoVaga("");
+    setStatus("ativo");
+    setClientId(null);
+    setEditingJob(null);
+    setIsDialogOpen(false);
   };
 
-  const editarPergunta = (pergunta: Pergunta) => {
-    setPerguntaEditando(pergunta);
-    setMostrarFormularioPergunta(true);
-    perguntaForm.reset({
-      perguntaCandidato: pergunta.perguntaCandidato,
-      respostaPerfeita: pergunta.respostaPerfeita,
-    });
-  };
-
-  const salvarPergunta = (data: PerguntaFormData) => {
-    if (!vagaAtual) {
+  const handleSubmit = () => {
+    if (!nomeVaga.trim()) {
       toast({
         title: "Erro",
-        description: "Nenhuma vaga selecionada para adicionar pergunta.",
+        description: "Nome da vaga é obrigatório",
         variant: "destructive",
       });
       return;
     }
 
-    if (perguntaEditando) {
-      atualizarPerguntaMutation.mutate(data);
+    const jobData = {
+      nomeVaga: nomeVaga.trim(),
+      descricaoVaga: descricaoVaga.trim(),
+      status,
+      ...(user?.role === 'master' && clientId && { clientId }),
+    };
+
+    if (editingJob) {
+      updateJobMutation.mutate({ id: editingJob.id, ...jobData });
     } else {
-      criarPerguntaMutation.mutate(data);
+      createJobMutation.mutate(jobData);
     }
   };
 
-  const cancelarPergunta = () => {
-    setMostrarFormularioPergunta(false);
-    setPerguntaEditando(null);
-    perguntaForm.reset();
+  const handleEdit = (job: Job) => {
+    setEditingJob(job);
+    setNomeVaga(job.nomeVaga);
+    setDescricaoVaga(job.descricaoVaga);
+    setStatus(job.status);
+    setClientId(job.clientId);
+    setIsDialogOpen(true);
   };
 
-  const excluirPergunta = (perguntaId: number) => {
-    if (confirm("Tem certeza que deseja excluir esta pergunta?")) {
-      excluirPerguntaMutation.mutate(perguntaId);
+  const handleDelete = (id: string) => {
+    deleteJobMutation.mutate(id);
+  };
+
+  const filteredJobs = jobs.filter(job =>
+    job.nomeVaga.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.descricaoVaga.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'ativo':
+        return 'default';
+      case 'inativo':
+        return 'secondary';
+      case 'pausado':
+        return 'outline';
+      default:
+        return 'default';
     }
   };
 
-  const finalizarVaga = () => {
-    if (perguntas.length === 0) {
-      toast({
-        title: "Erro",
-        description: "Adicione pelo menos uma pergunta antes de finalizar a vaga.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    finalizarVagaMutation.mutate();
+  const getClientName = (clientId: number) => {
+    const client = clients.find((c: any) => c.id === clientId);
+    return client ? client.companyName : 'Cliente não encontrado';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Cadastro de Vagas</h1>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Briefcase className="h-8 w-8 text-primary" />
+            Cadastrar Vagas
+          </h1>
+          <p className="text-muted-foreground">Gerencie as vagas disponíveis</p>
+        </div>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Vaga
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingJob ? "Editar Vaga" : "Nova Vaga"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="nomeVaga">Nome da Vaga *</Label>
+                <Input
+                  id="nomeVaga"
+                  value={nomeVaga}
+                  onChange={(e) => setNomeVaga(e.target.value)}
+                  placeholder="Ex: Desenvolvedor Full Stack"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="descricaoVaga">Descrição da Vaga</Label>
+                <Textarea
+                  id="descricaoVaga"
+                  value={descricaoVaga}
+                  onChange={(e) => setDescricaoVaga(e.target.value)}
+                  placeholder="Descreva os requisitos e responsabilidades da vaga..."
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                    <SelectItem value="pausado">Pausado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {user?.role === 'master' && (
+                <div>
+                  <Label htmlFor="clientId">Cliente</Label>
+                  <Select value={clientId?.toString() || ""} onValueChange={(value) => setClientId(parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client: any) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={resetForm}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={createJobMutation.isPending || updateJobMutation.isPending}
+              >
+                {editingJob ? "Atualizar" : "Criar"} Vaga
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Formulário de Vaga */}
-      {!vagaAtual && (
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Nova Vaga</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Vagas</CardTitle>
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Form {...vagaForm}>
-              <form onSubmit={vagaForm.handleSubmit(cadastrarVaga)} className="space-y-4">
-                <FormField
-                  control={vagaForm.control}
-                  name="nomeVaga"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Vaga</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Digite o nome da vaga" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={vagaForm.control}
-                  name="descricaoVaga"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição da Vaga</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          placeholder="Descreva a vaga para uso interno"
-                          rows={4}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {user?.role === 'master' && (
-                  <FormField
-                    control={vagaForm.control}
-                    name="clientId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cliente</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um cliente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clients && clients.map((client: any) => (
-                              <SelectItem key={client.id} value={client.id.toString()}>
-                                {client.companyName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                <Button 
-                  type="submit" 
-                  disabled={criarVagaMutation.isPending}
-                  className="w-full"
-                >
-                  {criarVagaMutation.isPending ? "Criando..." : "Criar Vaga"}
-                </Button>
-              </form>
-            </Form>
+            <div className="text-2xl font-bold">{jobs.length}</div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Seção de Perguntas */}
-      {vagaAtual && (
         <Card>
-          <CardHeader>
-            <CardTitle>
-              Perguntas da Entrevista - {vagaAtual.nomeVaga}
-            </CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vagas Ativas</CardTitle>
+            <Briefcase className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={adicionarPergunta}
-              disabled={perguntas.length >= 10}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Pergunta ({perguntas.length}/10)
-            </Button>
-
-            {perguntas.length >= 10 && (
-              <p className="text-sm text-muted-foreground text-center">
-                Máximo de 10 perguntas atingido. Não é possível adicionar mais perguntas.
-              </p>
-            )}
-
-            {/* Formulário de Pergunta */}
-            {mostrarFormularioPergunta && (
-              <Card className="border-2 border-blue-200">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {perguntaEditando ? `Editar Pergunta ${perguntaEditando.numeroPergunta}` : `Nova Pergunta ${perguntas.length + 1}`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Form {...perguntaForm}>
-                    <form onSubmit={perguntaForm.handleSubmit(salvarPergunta)} className="space-y-4" noValidate>
-                      <FormField
-                        control={perguntaForm.control}
-                        name="perguntaCandidato"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pergunta para o Candidato (máx. 100 caracteres)</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                {...field} 
-                                placeholder="Digite a pergunta que será feita ao candidato"
-                                maxLength={100}
-                                rows={2}
-                              />
-                            </FormControl>
-                            <div className="text-sm text-muted-foreground">
-                              {field.value?.length || 0}/100 caracteres
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={perguntaForm.control}
-                        name="respostaPerfeita"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Resposta Perfeita (máx. 1000 caracteres)</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                {...field} 
-                                placeholder="Digite a resposta ideal para esta pergunta"
-                                maxLength={1000}
-                                rows={4}
-                              />
-                            </FormControl>
-                            <div className="text-sm text-muted-foreground">
-                              {field.value?.length || 0}/1000 caracteres
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="flex gap-2">
-                        <Button 
-                          type="submit" 
-                          disabled={criarPerguntaMutation.isPending || atualizarPerguntaMutation.isPending}
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          {criarPerguntaMutation.isPending || atualizarPerguntaMutation.isPending 
-                            ? "Salvando..." 
-                            : perguntaEditando ? "Atualizar Pergunta" : "Salvar Pergunta"
-                          }
-                        </Button>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={cancelarPergunta}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Preview das Perguntas Salvas */}
-            {perguntas.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="font-semibold">Perguntas Cadastradas ({perguntas.length}/10)</h3>
-                {perguntas.map((pergunta) => (
-                  <Card key={pergunta.id} className="p-4 bg-green-50 border-green-200">
-                    <CardContent className="p-0">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm text-green-700 mb-1">
-                            Pergunta {pergunta.numeroPergunta} ✓ Salva no banco
-                          </div>
-                          <div className="font-medium mb-2">
-                            <strong>Pergunta:</strong> {pergunta.perguntaCandidato}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <strong>Resposta esperada:</strong> {pergunta.respostaPerfeita}
-                          </div>
-                        </div>
-                        <div className="flex gap-1 ml-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => editarPergunta(pergunta)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => excluirPergunta(pergunta.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {/* Botão para finalizar cadastro da vaga - só aparece se tem perguntas */}
-            {perguntas.length > 0 && (
-              <div className="mt-6">
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  size="lg"
-                  onClick={finalizarVaga}
-                  disabled={finalizarVagaMutation.isPending}
-                >
-                  {finalizarVagaMutation.isPending 
-                    ? "Finalizando..." 
-                    : `Finalizar Cadastro da Vaga (${perguntas.length} pergunta${perguntas.length > 1 ? 's' : ''} salva${perguntas.length > 1 ? 's' : ''})`
-                  }
-                </Button>
-                <p className="text-sm text-muted-foreground text-center mt-2">
-                  Todas as perguntas já estão salvas no banco de dados. 
-                  Clique para ativar a vaga e disponibilizá-la para seleções.
-                </p>
-              </div>
-            )}
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {jobs.filter(job => job.status === 'ativo').length}
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vagas Inativas</CardTitle>
+            <Briefcase className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {jobs.filter(job => job.status === 'inativo').length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Busca */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Search className="h-4 w-4" />
+            <Input
+              placeholder="Buscar vagas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Tabela de Vagas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Lista de Vagas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredJobs.length === 0 ? (
+            <div className="text-center py-8">
+              <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {searchTerm ? "Nenhuma vaga encontrada com esse termo de busca" : "Nenhuma vaga cadastrada"}
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome da Vaga</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Status</TableHead>
+                    {user?.role === 'master' && <TableHead>Cliente</TableHead>}
+                    <TableHead>Data de Criação</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
+                    <TableRow key={job.id}>
+                      <TableCell className="font-medium">{job.nomeVaga}</TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {job.descricaoVaga || "Sem descrição"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(job.status)}>
+                          {job.status}
+                        </Badge>
+                      </TableCell>
+                      {user?.role === 'master' && (
+                        <TableCell>{getClientName(job.clientId)}</TableCell>
+                      )}
+                      <TableCell>
+                        {new Date(job.createdAt).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(job)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja deletar a vaga "{job.nomeVaga}"? 
+                                  Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(job.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Deletar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
