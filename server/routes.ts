@@ -890,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const client = await storage.getClientById(selection.clientId);
           const questions = await storage.getQuestionsByJobId(job.id);
-          const baseUrl = process.env.REPL_URL || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+          const baseUrl = process.env.REPL_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
           const { emailService } = await import('./emailService');
           let emailsSent = 0;
           
