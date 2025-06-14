@@ -227,15 +227,15 @@ export default function SelectionsPage() {
     const finalClientId = user?.role === 'master' ? jobs.find(j => j.id === jobId)?.clientId : user?.clientId;
 
     const selectionData = {
-      nomeSelecao: nomeSelecao.trim(),
-      candidateListId,
-      jobId,
-      mensagemWhatsApp: mensagemWhatsApp.trim(),
-      mensagemEmail: enviarEmail ? mensagemEmail.trim() : undefined,
-      enviarWhatsApp,
-      enviarEmail,
-      agendamento: tipoEnvio === "agendar" && agendamento ? new Date(agendamento) : undefined,
-      status: tipoEnvio === "agora" ? 'enviado' as const : 'agendado' as const,
+      name: nomeSelecao.trim(),
+      jobId: parseInt(jobId),
+      whatsappTemplate: mensagemWhatsApp.trim(),
+      emailTemplate: enviarEmail ? mensagemEmail.trim() : "Convite para entrevista",
+      emailSubject: "Convite para Entrevista - {vaga}",
+      sendVia: enviarWhatsApp && enviarEmail ? 'both' : enviarWhatsApp ? 'whatsapp' : 'email',
+      scheduledFor: tipoEnvio === "agendar" && agendamento ? new Date(agendamento) : null,
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      status: tipoEnvio === "agora" ? 'active' : 'draft',
       clientId: finalClientId,
     };
 
@@ -328,29 +328,39 @@ export default function SelectionsPage() {
             {/* Mensagens */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mensagemWhatsApp">Mensagem Inicial WhatsApp (até 200 caracteres)</Label>
+                <Label htmlFor="mensagemWhatsApp">Mensagem Inicial WhatsApp (até 500 caracteres)</Label>
                 <Textarea
                   id="mensagemWhatsApp"
                   value={mensagemWhatsApp}
-                  onChange={(e) => setMensagemWhatsApp(e.target.value.slice(0, 200))}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    if (newValue.length <= 500) {
+                      setMensagemWhatsApp(newValue);
+                    }
+                  }}
                   placeholder={defaultWhatsAppMessage}
-                  maxLength={200}
-                  rows={4}
+                  maxLength={500}
+                  rows={6}
                 />
-                <p className="text-xs text-muted-foreground">{mensagemWhatsApp.length}/200 caracteres</p>
+                <p className="text-xs text-muted-foreground">{mensagemWhatsApp.length}/500 caracteres</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="mensagemEmail">Mensagem para E-mail (até 200 caracteres) - Opcional</Label>
+                <Label htmlFor="mensagemEmail">Mensagem para E-mail (até 500 caracteres) - Opcional</Label>
                 <Textarea
                   id="mensagemEmail"
                   value={mensagemEmail}
-                  onChange={(e) => setMensagemEmail(e.target.value.slice(0, 200))}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    if (newValue.length <= 500) {
+                      setMensagemEmail(newValue);
+                    }
+                  }}
                   placeholder={defaultEmailMessage}
-                  maxLength={200}
-                  rows={4}
+                  maxLength={500}
+                  rows={6}
                 />
-                <p className="text-xs text-muted-foreground">{mensagemEmail.length}/200 caracteres</p>
+                <p className="text-xs text-muted-foreground">{mensagemEmail.length}/500 caracteres</p>
               </div>
             </div>
 

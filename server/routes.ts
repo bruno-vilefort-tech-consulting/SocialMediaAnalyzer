@@ -854,9 +854,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Selection not found' });
       }
 
-      // Get job and candidates data
+      // Get job and candidates data - using correct field names
       const job = await storage.getJobById(selection.jobId);
-      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
+      // For now, get all candidates for this client since we don't have candidateListId
+      const candidates = await storage.getCandidatesByClientId(selection.clientId);
       
       if (!job || candidates.length === 0) {
         return res.status(400).json({ message: 'Job or candidates not found' });
