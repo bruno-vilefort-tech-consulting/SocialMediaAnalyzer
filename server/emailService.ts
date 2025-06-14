@@ -13,9 +13,18 @@ export interface EmailData {
 export class EmailService {
   async sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
+      console.log('🔧 Verificando RESEND_API_KEY...');
       if (!process.env.RESEND_API_KEY) {
+        console.log('❌ RESEND_API_KEY não configurada');
         throw new Error('RESEND_API_KEY não configurada');
       }
+      console.log('✅ RESEND_API_KEY encontrada');
+
+      console.log('📧 Preparando envio de email:', {
+        to: emailData.to,
+        subject: emailData.subject,
+        htmlLength: emailData.html.length
+      });
 
       const result = await resend.emails.send({
         from: 'Sistema de Entrevistas <noreply@resend.dev>', // Usar domínio padrão do Resend para testes
@@ -24,6 +33,7 @@ export class EmailService {
         html: emailData.html,
       });
 
+      console.log('📧 Resposta do Resend:', result);
       console.log(`✅ Email enviado com sucesso para ${emailData.to}:`, result.data?.id);
       
       return {
@@ -32,7 +42,12 @@ export class EmailService {
       };
 
     } catch (error: any) {
-      console.error('❌ Erro ao enviar email:', error);
+      console.error('❌ Erro completo ao enviar email:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        response: error.response?.data || 'Sem resposta'
+      });
       
       return {
         success: false,

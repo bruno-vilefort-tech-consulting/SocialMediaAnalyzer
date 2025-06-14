@@ -948,19 +948,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/selections/:id/send", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
+      console.log('🚀 INICIANDO ENVIO DE EMAILS - Selection ID:', req.params.id);
+      
       const id = parseInt(req.params.id);
       const selection = await storage.getSelectionById(id);
       
+      console.log('📋 Selection encontrada:', selection);
+      
       if (!selection) {
+        console.log('❌ Selection não encontrada');
         return res.status(404).json({ message: 'Selection not found' });
       }
 
       // Get job and candidates data - using correct field names
       const job = await storage.getJobById(selection.jobId);
+      console.log('📝 Job encontrado:', job);
+      
       // For now, get all candidates for this client since we don't have candidateListId
       const candidates = await storage.getCandidatesByClientId(selection.clientId);
+      console.log('👥 Candidatos encontrados:', candidates.length, 'candidatos');
       
       if (!job || candidates.length === 0) {
+        console.log('❌ Job ou candidatos não encontrados. Job:', !!job, 'Candidatos:', candidates.length);
         return res.status(400).json({ message: 'Job or candidates not found' });
       }
 
@@ -1027,9 +1036,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Send real emails using Resend with custom templates
         if (shouldSendEmail && candidate.email) {
+          console.log('📧 Tentando enviar email para:', candidate.email);
+          console.log('📧 Subject:', emailSubject);
+          console.log('📧 Message preview:', emailMessage.substring(0, 100) + '...');
+          console.log('📧 Interview link:', interviewLink);
+          
           const { emailService } = await import('./emailService');
           
           try {
+            console.log('📧 Chamando emailService.sendEmail...');
             const emailResult = await emailService.sendEmail({
               to: candidate.email,
               subject: emailSubject,
@@ -1057,6 +1072,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               candidateName: candidate.name,
               jobTitle: job.nomeVaga
             });
+            
+            console.log('📧 Resultado do emailService:', emailResult);
 
             await storage.createMessageLog({
               interviewId: interview.id,
