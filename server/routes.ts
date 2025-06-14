@@ -1315,7 +1315,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const candidate = await storage.getCandidateById(interview.candidateId);
-      const questions = job ? await storage.getQuestionsByJobId(job.id) : [];
+      
+      // Debug: verificar se job tem perguntas internas
+      console.log('🎯 Job encontrado:', job?.id, 'tem perguntas internas:', job?.perguntas?.length || 0);
+      if (job?.perguntas) {
+        console.log('📋 Perguntas no job:', JSON.stringify(job.perguntas, null, 2));
+      }
+      
+      let questions = [];
+      if (job) {
+        // Primeiro tenta buscar perguntas do storage
+        questions = await storage.getQuestionsByJobId(job.id);
+        console.log('📝 Perguntas do storage:', questions.length);
+        
+        // Se não encontrou no storage, usa as perguntas que estão no job
+        if (questions.length === 0 && job.perguntas && job.perguntas.length > 0) {
+          console.log('🔄 Usando perguntas do job interno, mapeando', job.perguntas.length, 'perguntas');
+          questions = job.perguntas.map((p: any, index: number) => {
+            const mappedQuestion = {
+              id: index + 1,
+              perguntaCandidato: p.pergunta,
+              numeroPergunta: p.numero,
+              vagaId: job.id,
+              respostaPerfeita: p.respostaPerfeita
+            };
+            console.log('🔄 Pergunta mapeada:', mappedQuestion);
+            return mappedQuestion;
+          });
+          console.log('✅ Total de perguntas mapeadas:', questions.length);
+        }
+      }
+      
+      console.log('📊 Questions array final:', questions.length, 'perguntas');
 
       const interviewData = {
         interview,
