@@ -339,6 +339,7 @@ export class FirebaseStorage implements IStorage {
           nomeVaga: data.nomeVaga,
           descricaoVaga: data.descricaoVaga,
           status: data.status || 'ativo',
+          perguntas: data.perguntas || [],
           createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
         };
       }) as Job[];
@@ -369,16 +370,19 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async createJob(insertJob: InsertJob): Promise<Job> {
+  async createJob(insertJob: any): Promise<Job> {
     try {
       const id = this.generateId();
       const jobData = {
         clientId: insertJob.clientId,
         nomeVaga: insertJob.nomeVaga,
-        descricaoVaga: insertJob.descricaoVaga,
+        descricaoVaga: insertJob.descricaoVaga || '',
         status: insertJob.status || 'ativo',
+        perguntas: insertJob.perguntas || [],
         createdAt: new Date(),
       };
+      
+      console.log('Salvando vaga no Firebase:', jobData);
       await setDoc(doc(firebaseDb, 'jobs', id), jobData);
       return { id, ...jobData } as Job;
     } catch (error) {
