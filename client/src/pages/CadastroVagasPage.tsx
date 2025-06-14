@@ -61,6 +61,13 @@ export default function CadastroVagasPage() {
     queryKey: ["/api/jobs"],
   });
 
+  // Debug: logs para verificar carregamento das vagas
+  useEffect(() => {
+    console.log('Jobs carregadas:', jobs);
+    console.log('Total de jobs:', jobs.length);
+    console.log('isLoading:', isLoading);
+  }, [jobs, isLoading]);
+
 
 
   // Buscar clientes (apenas para master)
