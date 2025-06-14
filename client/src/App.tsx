@@ -16,6 +16,7 @@ import CandidatesPage from "@/pages/CandidatesPage";
 import SelectionsPage from "@/pages/SelectionsPage";
 import ResultsPage from "@/pages/ResultsPage";
 import InterviewPage from "@/pages/InterviewPage";
+import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
 import NotFound from "@/pages/not-found";
 
@@ -46,6 +47,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={LoginPage} />
       <Route path="/interview/:token?" component={InterviewPage} />
+      <Route path="/natural-interview/:token" component={NaturalInterviewPage} />
       <Route path="/demo-entrevista" component={InterviewDemoPage} />
 
       {/* Master Routes */}

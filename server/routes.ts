@@ -1719,6 +1719,242 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Natural TTS endpoint for interview
+  app.post("/api/natural-tts", async (req, res) => {
+    try {
+      const { text, interviewToken } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ message: "Text is required" });
+      }
+
+      console.log('🎵 Natural TTS para entrevista:', interviewToken);
+      
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
+        return res.status(400).json({ 
+          message: "OpenAI API not configured",
+          status: "error" 
+        });
+      }
+
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: text,
+          voice: config.voiceSettings?.voice || "nova",
+          response_format: "mp3"
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ Natural TTS gerado com sucesso');
+        const audioBuffer = await response.arrayBuffer();
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': audioBuffer.byteLength.toString(),
+        });
+        res.send(Buffer.from(audioBuffer));
+      } else {
+        const errorData = await response.json();
+        console.log('❌ Erro Natural TTS:', errorData);
+        res.status(400).json({ 
+          message: errorData.error?.message || "Failed to generate speech",
+          status: "error" 
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro gerando Natural TTS:", error);
+      res.status(500).json({ 
+        message: "Failed to generate speech",
+        status: "error" 
+      });
+    }
+  });
+
+  // Natural conversation endpoint
+  app.post("/api/natural-conversation", async (req, res) => {
+    try {
+      const { interviewToken, candidateResponse, currentQuestionIndex, conversationHistory } = req.body;
+      
+      console.log('🤖 Processando conversa natural:', { interviewToken, currentQuestionIndex });
+      
+      // Buscar entrevista
+      const interview = await storage.getInterviewByToken(interviewToken);
+      if (!interview) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
+        return res.status(400).json({ message: "OpenAI API not configured" });
+      }
+
+      // Buscar perguntas da vaga
+      const questions = await storage.getQuestionsByJobId(interview.jobId);
+      
+      // Construir contexto da conversa
+      const systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${interview.job?.nomeVaga || 'emprego'}.
+
+INSTRUÇÕES:
+- Seja natural, empático e profissional
+- Mantenha tom conversacional brasileiro
+- Confirme que entendeu as respostas
+- Faça comentários positivos e encorajadores
+- Conduza para a próxima pergunta naturalmente
+
+CANDIDATO: ${interview.candidate?.nome || 'Candidato'}
+
+PERGUNTAS DA ENTREVISTA:
+${questions.map((q, i) => `${i + 1}. ${q.perguntaCandidato}`).join('\n')}
+
+PERGUNTA ATUAL: ${currentQuestionIndex + 1}
+
+Se ainda há perguntas, faça a próxima. Se todas foram respondidas, finalize cordialmente.`;
+
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...conversationHistory.map((msg: any) => ({
+          role: msg.type === 'ai' ? 'assistant' : 'user',
+          content: msg.message
+        })),
+        { role: "user", content: candidateResponse }
+      ];
+
+      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: config.gptModel || "gpt-3.5-turbo",
+          messages,
+          max_tokens: 300,
+          temperature: 0.7,
+        }),
+      });
+
+      const aiData = await openaiResponse.json();
+      const aiResponse = aiData.choices[0]?.message?.content;
+
+      if (!aiResponse) {
+        throw new Error('No AI response generated');
+      }
+
+      console.log('✅ Resposta da IA gerada:', aiResponse.substring(0, 100) + '...');
+
+      // Determinar se deve avançar para próxima pergunta
+      let nextQuestionIndex = currentQuestionIndex;
+      let interviewCompleted = false;
+
+      // Se a IA mencionou fazer uma próxima pergunta, avançar
+      if (aiResponse.toLowerCase().includes('próxima') || 
+          aiResponse.toLowerCase().includes('agora') ||
+          currentQuestionIndex < questions.length - 1) {
+        nextQuestionIndex = Math.min(currentQuestionIndex + 1, questions.length - 1);
+      }
+
+      // Se chegou na última pergunta, marcar como completa
+      if (nextQuestionIndex >= questions.length - 1 && 
+          (aiResponse.toLowerCase().includes('finaliz') || 
+           aiResponse.toLowerCase().includes('obrigad') ||
+           aiResponse.toLowerCase().includes('prazer'))) {
+        interviewCompleted = true;
+      }
+
+      res.json({
+        aiResponse,
+        nextQuestionIndex,
+        interviewCompleted,
+        currentQuestion: questions[nextQuestionIndex]?.perguntaCandidato
+      });
+
+    } catch (error) {
+      console.error("❌ Erro na conversa natural:", error);
+      res.status(500).json({ 
+        message: "Failed to process conversation",
+        status: "error" 
+      });
+    }
+  });
+
+  // Save natural response
+  app.post("/api/interview/:token/natural-response", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { questionIndex, response, timestamp } = req.body;
+      
+      console.log('💾 Salvando resposta natural:', { token, questionIndex });
+      
+      const interview = await storage.getInterviewByToken(token);
+      if (!interview) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+
+      // Salvar resposta no formato natural
+      const savedResponse = await storage.createResponse({
+        interviewId: interview.id,
+        questionId: questionIndex + 1, // Simular ID baseado no índice
+        audioPath: '', // Não há arquivo de áudio na conversa natural
+        transcription: response,
+        score: 0, // Será calculado depois
+        feedback: '',
+        createdAt: new Date(timestamp),
+      });
+
+      console.log('✅ Resposta natural salva:', savedResponse.id);
+      
+      res.status(201).json({ id: savedResponse.id, message: "Response saved" });
+      
+    } catch (error) {
+      console.error("❌ Erro salvando resposta natural:", error);
+      res.status(500).json({ message: "Failed to save response" });
+    }
+  });
+
+  // Complete natural interview
+  app.post("/api/interview/:token/complete", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { conversationHistory, completedAt } = req.body;
+      
+      console.log('🏁 Finalizando entrevista natural:', token);
+      
+      const interview = await storage.getInterviewByToken(token);
+      if (!interview) {
+        return res.status(404).json({ message: "Interview not found" });
+      }
+
+      // Atualizar status da entrevista
+      await storage.updateInterview(interview.id, {
+        status: 'completed',
+        updatedAt: new Date(completedAt)
+      });
+
+      // Salvar log da conversa completa
+      await storage.createMessageLog({
+        interviewId: interview.id,
+        messageType: 'conversation_history',
+        content: JSON.stringify(conversationHistory),
+        timestamp: new Date(completedAt)
+      });
+
+      console.log('✅ Entrevista natural finalizada');
+      
+      res.json({ message: "Interview completed successfully" });
+      
+    } catch (error) {
+      console.error("❌ Erro finalizando entrevista:", error);
+      res.status(500).json({ message: "Failed to complete interview" });
+    }
+  });
+
   // Get interview results for a selection
   app.get("/api/selections/:id/results", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

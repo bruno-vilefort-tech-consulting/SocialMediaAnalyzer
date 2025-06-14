@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Sistema de entrevista natural em tempo real implementado
+  - **Nova página NaturalInterviewPage**: Interface completa para entrevista conversacional com IA
+  - **Animações visuais avançadas**: Ondas sonoras dinâmicas quando IA fala, indicadores visuais quando candidato é ouvido
+  - **Reconhecimento de voz em tempo real**: Integração com Web Speech API para captura contínua
+  - **Conversa natural com GPT**: Sistema de prompts organizados para conduzir entrevista humana
+  - **Endpoints dedicados**: /api/natural-tts, /api/natural-conversation, /api/interview/complete
+  - **Arquivo de prompts estruturado**: server/prompts.ts com categorias para diferentes situações
+  - **Visualizador de amplitude**: Barras animadas que reagem à voz do candidato em tempo real
+  - **Fluxo natural**: Boas-vindas → perguntas conversacionais → confirmações → finalização calorosa
+  - **Rota /natural-interview/:token**: Acesso direto à nova interface de entrevista natural
+
 - June 14, 2025: Sistema de configurações da API completamente reformulado com interfaces específicas por usuário
   - **Interface diferenciada por usuário**: Master vê configurações completas, Cliente apenas configuração de voz
   - **Voz padrão Nova definida**: Feminina natural e clara como padrão para português brasileiro

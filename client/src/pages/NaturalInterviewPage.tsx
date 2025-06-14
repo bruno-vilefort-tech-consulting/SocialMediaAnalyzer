@@ -7,6 +7,82 @@ import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Volume2, VolumeX, MessageCircle, CheckCircle, Loader2, Play, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Componente de ondas sonoras para quando a IA está falando
+const SpeakingWaves = () => {
+  const [amplitudes, setAmplitudes] = useState([0, 0, 0, 0, 0, 0, 0]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAmplitudes(prev => prev.map(() => Math.random()));
+    }, 150);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-center space-x-1 p-4">
+      {amplitudes.map((amplitude, i) => (
+        <div
+          key={i}
+          className="bg-blue-500 rounded-full transition-all duration-150 ease-out"
+          style={{
+            width: '3px',
+            height: `${8 + amplitude * 30}px`,
+            opacity: 0.7 + amplitude * 0.3
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Componente de indicador de escuta para quando o candidato está falando
+const ListeningIndicator = () => {
+  return (
+    <div className="flex items-center justify-center space-x-2 p-4">
+      <div className="relative">
+        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center animate-pulse">
+          <Mic className="h-6 w-6 text-white" />
+        </div>
+        <div className="absolute inset-0 w-12 h-12 bg-green-400 rounded-full animate-ping opacity-25" />
+        <div className="absolute inset-0 w-12 h-12 bg-green-300 rounded-full animate-ping opacity-20" style={{ animationDelay: '0.2s' }} />
+      </div>
+    </div>
+  );
+};
+
+// Componente de visualização de amplitude de voz
+const VoiceVisualizer = ({ isActive }: { isActive: boolean }) => {
+  const [amplitude, setAmplitude] = useState(0);
+  
+  useEffect(() => {
+    if (isActive) {
+      const interval = setInterval(() => {
+        setAmplitude(Math.random() * 100);
+      }, 100);
+      return () => clearInterval(interval);
+    } else {
+      setAmplitude(0);
+    }
+  }, [isActive]);
+
+  return (
+    <div className="flex items-center justify-center space-x-1 h-16">
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-full transition-all duration-100 ${
+            isActive ? 'bg-green-500' : 'bg-gray-300'
+          }`}
+          style={{
+            height: isActive ? `${5 + (amplitude * Math.sin(i * 0.5)) / 10}px` : '5px'
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 interface Interview {
   id: number;
   token: string;
@@ -463,11 +539,22 @@ export default function NaturalInterviewPage() {
                   ))}
                   
                   {isSpeaking && (
-                    <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-500 animate-pulse">
-                      <div className="flex items-center space-x-2">
+                    <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-500">
+                      <div className="flex items-center space-x-2 mb-2">
                         <Volume2 className="h-4 w-4 text-blue-600" />
                         <span className="text-sm text-blue-800">Assistente está falando...</span>
                       </div>
+                      <SpeakingWaves />
+                    </div>
+                  )}
+                  
+                  {isListening && !isSpeaking && (
+                    <div className="p-3 rounded-lg bg-green-50 border-l-4 border-green-500">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Mic className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-green-800">Te escutando...</span>
+                      </div>
+                      <VoiceVisualizer isActive={isListening} />
                     </div>
                   )}
                 </div>
