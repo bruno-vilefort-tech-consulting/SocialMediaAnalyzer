@@ -17,15 +17,15 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface Selection {
   id: number;
-  nomeSelecao: string;
-  candidateListId: number;
+  name: string;
+  candidateListId?: number;
   jobId: string;
-  mensagemWhatsApp: string;
-  mensagemEmail?: string;
-  enviarWhatsApp: boolean;
-  enviarEmail: boolean;
-  agendamento?: Date;
-  status: 'rascunho' | 'agendado' | 'enviado' | 'concluido';
+  whatsappTemplate: string;
+  emailTemplate?: string;
+  sendVia: 'whatsapp' | 'email' | 'both';
+  scheduledFor?: Date;
+  deadline?: Date;
+  status: 'draft' | 'active' | 'enviado' | 'completed';
   clientId: number;
   createdAt: Date | null;
 }
@@ -248,7 +248,7 @@ export default function SelectionsPage() {
 
   // Filtrar seleções
   const filteredSelections = selections.filter(selection =>
-    selection.nomeSelecao.toLowerCase().includes(searchTerm.toLowerCase())
+    (selection.name || selection.nomeSelecao || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -492,7 +492,7 @@ export default function SelectionsPage() {
               <TableBody>
                 {filteredSelections.map((selection) => (
                   <TableRow key={selection.id}>
-                    <TableCell className="font-medium">{selection.nomeSelecao}</TableCell>
+                    <TableCell className="font-medium">{selection.name}</TableCell>
                     <TableCell>
                       <Badge 
                         variant={
@@ -553,7 +553,7 @@ export default function SelectionsPage() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja excluir a seleção "{selection.nomeSelecao}"? Esta ação não pode ser desfeita.
+                                Tem certeza que deseja excluir a seleção "{selection.name}"? Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
