@@ -296,6 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('ClientId para vaga:', clientId);
+      console.log('Dados recebidos do frontend:', req.body);
       
       const jobData = insertJobSchema.parse({
         ...req.body,

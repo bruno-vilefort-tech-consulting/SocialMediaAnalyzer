@@ -94,10 +94,8 @@ export default function CadastroVagasPage() {
         status: 'ativo'
       };
 
-      return await apiRequest("/api/jobs", {
-        method: "POST",
-        body: JSON.stringify(vagaData),
-      });
+      const response = await apiRequest("POST", "/api/jobs", vagaData);
+      return await response.json();
     },
     onSuccess: (novaVaga: Vaga) => {
       setVagaAtual(novaVaga);
@@ -128,10 +126,8 @@ export default function CadastroVagasPage() {
         numeroPergunta: perguntas.length + 1,
       };
 
-      return await apiRequest("/api/questions", {
-        method: "POST",
-        body: JSON.stringify(perguntaData),
-      });
+      const response = await apiRequest("POST", "/api/questions", perguntaData);
+      return await response.json();
     },
     onSuccess: (novaPergunta: Pergunta) => {
       setPerguntas([...perguntas, novaPergunta]);
@@ -160,10 +156,8 @@ export default function CadastroVagasPage() {
         respostaPerfeita: data.respostaPerfeita,
       };
 
-      return await apiRequest(`/api/questions/${perguntaEditando.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(perguntaData),
-      });
+      const response = await apiRequest("PATCH", `/api/questions/${perguntaEditando.id}`, perguntaData);
+      return await response.json();
     },
     onSuccess: (perguntaAtualizada: Pergunta) => {
       setPerguntas(perguntas.map(p => p.id === perguntaAtualizada.id ? perguntaAtualizada : p));
