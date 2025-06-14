@@ -352,9 +352,13 @@ export class FirebaseStorage implements IStorage {
   async getJobById(id: string | number): Promise<Job | undefined> {
     try {
       const jobId = id.toString();
+      console.log('🔍 Buscando job no Firebase com ID:', jobId);
       const jobDoc = await getDoc(doc(firebaseDb, 'jobs', jobId));
+      console.log('📄 Job doc exists:', jobDoc.exists());
+      
       if (jobDoc.exists()) {
         const data = jobDoc.data();
+        console.log('📊 Job data encontrada:', data);
         return {
           id: jobDoc.id,
           clientId: data.clientId,
@@ -364,6 +368,14 @@ export class FirebaseStorage implements IStorage {
           perguntas: data.perguntas || [],
           createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : new Date(),
         } as Job;
+      } else {
+        console.log('❌ Job não encontrado no Firebase com ID:', jobId);
+        // Vamos listar todos os jobs para debug
+        const allJobsSnapshot = await getDocs(collection(firebaseDb, 'jobs'));
+        console.log('📋 Jobs existentes no Firebase:');
+        allJobsSnapshot.docs.forEach(doc => {
+          console.log('  - ID:', doc.id, 'Data:', doc.data().nomeVaga);
+        });
       }
       return undefined;
     } catch (error) {
