@@ -159,17 +159,28 @@ export default function NaturalInterviewPage() {
       
       recognition.onresult = (event) => {
         let transcript = '';
+        let isFinal = false;
+        
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
+          const result = event.results[i];
+          transcript += result[0].transcript;
+          if (result.isFinal) {
+            isFinal = true;
+          }
         }
+        
         setCurrentTranscript(transcript);
         
-        // Se a frase parece completa, processar
-        if (event.results[event.results.length - 1].isFinal && transcript.trim()) {
-          handleCandidateResponse(transcript);
+        // Processar quando a frase estiver completa e tiver conteúdo
+        if (isFinal && transcript.trim().length > 2) {
+          console.log('🗣️ Resposta captada:', transcript.trim());
+          handleCandidateResponse(transcript.trim());
           setCurrentTranscript("");
-          // Parar temporariamente o reconhecimento
-          recognition.stop();
+          // Limpar timeout existente
+          if (silenceTimeoutRef.current) {
+            clearTimeout(silenceTimeoutRef.current);
+            silenceTimeoutRef.current = null;
+          }
         }
       };
       
@@ -182,12 +193,14 @@ export default function NaturalInterviewPage() {
         console.log('🔇 Reconhecimento finalizado');
         setIsListening(false);
         
-        // Se não há resposta do candidato, aguardar 3 segundos e continuar
+        // CORREÇÃO: Reiniciar automaticamente se ainda estiver ativo
         if (!interviewCompleted && !isSpeaking && isInterviewStarted) {
-          silenceTimeoutRef.current = setTimeout(() => {
-            console.log('⏰ Timeout de silêncio - continuando conversa');
-            generateAIResponse(''); // Continuar sem resposta
-          }, 3000); // 3 segundos para dar tempo do candidato responder
+          setTimeout(() => {
+            if (!interviewCompleted && !isSpeaking) {
+              console.log('🔄 Reiniciando reconhecimento automaticamente...');
+              startListening();
+            }
+          }, 1000); // 1 segundo para reiniciar
         }
       };
       
@@ -274,15 +287,25 @@ export default function NaturalInterviewPage() {
 
   // Processar resposta do candidato
   const handleCandidateResponse = async (transcript: string) => {
-    if (!transcript.trim() || !interview) return;
+    if (!transcript.trim() || !interview || isProcessing) return;
+    
+    console.log('💬 Processando resposta:', transcript);
+    setIsProcessing(true);
+    
+    // Parar reconhecimento durante processamento
+    if (recognitionRef.current && isListening) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.log('Reconhecimento já parado');
+      }
+    }
     
     // Cancelar timeout de silêncio se existir
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
     }
-    
-    console.log('💬 Resposta do candidato:', transcript);
     
     // Marcar entrevista como iniciada
     setIsInterviewStarted(true);
@@ -313,8 +336,20 @@ export default function NaturalInterviewPage() {
       console.error('❌ Erro ao salvar resposta:', error);
     }
     
-    // Gerar próxima resposta da IA com histórico atualizado
-    await generateAIResponse(transcript, updatedHistory);
+    try {
+      // Gerar próxima resposta da IA com histórico atualizado
+      await generateAIResponse(transcript, updatedHistory);
+    } catch (error) {
+      console.error('❌ Erro ao gerar resposta IA:', error);
+      // Reiniciar reconhecimento em caso de erro
+      setTimeout(() => {
+        if (!interviewCompleted && !isSpeaking) {
+          startListening();
+        }
+      }, 2000);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Gerar resposta da IA
@@ -607,10 +642,13 @@ export default function NaturalInterviewPage() {
                 
                 {!isSpeaking && !isListening && !interviewCompleted && (
                   <div className="space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                      <MessageCircle className="h-8 w-8 text-gray-500" />
+                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                      <MessageCircle className="h-8 w-8 text-blue-600" />
                     </div>
-                    <p className="text-gray-500">Preparando...</p>
+                    <p className="text-blue-600">
+                      {isProcessing ? "Processando resposta..." : 
+                       isInterviewStarted ? "Aguardando..." : "Iniciando entrevista..."}
+                    </p>
                   </div>
                 )}
               </div>
