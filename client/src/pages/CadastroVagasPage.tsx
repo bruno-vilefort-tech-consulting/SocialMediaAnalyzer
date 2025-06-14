@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ import { Plus, Save, Edit, Trash2 } from "lucide-react";
 const vagaFormSchema = z.object({
   nomeVaga: z.string().min(1, "Nome da vaga é obrigatório"),
   descricaoVaga: z.string().min(1, "Descrição da vaga é obrigatória"),
+  clientId: z.number().optional(),
 });
 
 const perguntaFormSchema = z.object({
@@ -61,6 +63,7 @@ export default function CadastroVagasPage() {
     defaultValues: {
       nomeVaga: "",
       descricaoVaga: "",
+      clientId: user?.role === 'master' ? undefined : user?.clientId,
     },
   });
 
@@ -72,12 +75,19 @@ export default function CadastroVagasPage() {
     },
   });
 
+  // Buscar clientes para usuários master
+  const { data: clients = [] } = useQuery({
+    queryKey: ["/api/clients"],
+    enabled: user?.role === 'master',
+  });
+
   // Mutations para vagas
   const criarVagaMutation = useMutation({
     mutationFn: async (data: VagaFormData) => {
       const vagaData = {
-        ...data,
-        clientId: user?.role === 'master' ? 1 : user?.clientId || 1,
+        nomeVaga: data.nomeVaga,
+        descricaoVaga: data.descricaoVaga,
+        clientId: user?.role === 'master' ? data.clientId : user?.clientId || 1,
         status: "ativo",
       };
       const response = await apiRequest("POST", "/api/jobs", vagaData);
@@ -266,6 +276,33 @@ export default function CadastroVagasPage() {
                   </FormItem>
                 )}
               />
+
+              {user?.role === 'master' && (
+                <FormField
+                  control={vagaForm.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cliente</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um cliente" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clients.map((client: any) => (
+                            <SelectItem key={client.id} value={client.id.toString()}>
+                              {client.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <Button 
                 type="submit" 
