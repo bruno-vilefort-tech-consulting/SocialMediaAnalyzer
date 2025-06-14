@@ -725,12 +725,21 @@ export class FirebaseStorage implements IStorage {
   // Selections
   async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
     try {
+      console.log(`Buscando selections para clientId: ${clientId}`);
       const q = query(collection(firebaseDb, 'selections'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Selection[];
+      const selections = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: parseInt(doc.id),
+          ...data,
+          createdAt: data.createdAt ? new Date(data.createdAt.seconds * 1000) : new Date(),
+          deadline: data.deadline ? new Date(data.deadline.seconds * 1000) : null,
+          scheduledFor: data.scheduledFor ? new Date(data.scheduledFor.seconds * 1000) : null
+        };
+      }) as Selection[];
+      console.log(`Encontradas ${selections.length} selections para cliente ${clientId}`);
+      return selections;
     } catch (error) {
       console.error('Erro ao buscar selections por cliente:', error);
       return [];

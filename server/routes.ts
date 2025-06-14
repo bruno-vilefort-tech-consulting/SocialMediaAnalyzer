@@ -803,10 +803,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Selections routes
   app.get("/api/selections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.role === 'master' ? undefined : req.user!.clientId!;
-      const selections = clientId ? await storage.getSelectionsByClientId(clientId) : await storage.getSelectionsByClientId(1); // For master, get all or specific client
+      let selections = [];
+      
+      if (req.user!.role === 'master') {
+        // Master pode ver todas as seleções ou filtrar por client
+        const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : null;
+        if (clientId) {
+          selections = await storage.getSelectionsByClientId(clientId);
+        } else {
+          // Para master sem filtro, buscar todas as seleções de todos os clientes
+          const clients = await storage.getClients();
+          for (const client of clients) {
+            const clientSelections = await storage.getSelectionsByClientId(client.id);
+            selections.push(...clientSelections);
+          }
+        }
+      } else {
+        // Cliente só vê suas próprias seleções
+        selections = await storage.getSelectionsByClientId(req.user!.clientId!);
+      }
+      
+      console.log(`Retornando ${selections.length} seleções para usuário ${req.user!.email}`);
       res.json(selections);
     } catch (error) {
+      console.error('Erro ao buscar selections:', error);
       res.status(500).json({ message: 'Failed to fetch selections' });
     }
   });
@@ -823,6 +843,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Processed selection data:', selectionData);
       
       const selection = await storage.createSelection(selectionData);
+      
+      // Enviar emails automaticamente se a seleção for criada como "active"
+      if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'email' || selection.sendVia === 'both')) {
+        console.log('Enviando emails automaticamente para seleção criada...');
+        
+        try {
+          // Buscar dados necessários
+          const job = await storage.getJobById(selection.jobId);
+          const candidates = await storage.getCandidatesByClientId(selection.clientId);
+          
+          if (job && candidates.length > 0) {
+            const baseUrl = process.env.REPL_URL || 'http://localhost:5000';
+            const { emailService } = await import('./emailService');
+            let emailsSent = 0;
+            
+            for (const candidate of candidates) {
+              if (!candidate.email) continue;
+              
+              // Gerar token único para cada candidato
+              const token = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+              
+              const interview = await storage.createInterview({
+                selectionId: selection.id,
+                candidateId: candidate.id,
+                token,
+                status: 'pending'
+              });
+              
+              // Criar link da entrevista
+              const interviewLink = `${baseUrl}/interview/${token}`;
+              
+              // Preparar e enviar email
+              let emailMessage = selection.emailTemplate || '';
+              emailMessage = emailMessage
+                .replace(/\{nome\}/g, candidate.name)
+                .replace(/\{vaga\}/g, job.nomeVaga)
+                .replace(/\{link\}/g, interviewLink);
+              
+              const emailResult = await emailService.sendInterviewInvite({
+                candidateEmail: candidate.email,
+                candidateName: candidate.name,
+                jobTitle: job.nomeVaga,
+                interviewLink,
+                customMessage: emailMessage
+              });
+              
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'email',
+                channel: 'email',
+                status: emailResult.success ? 'sent' : 'failed'
+              });
+              
+              if (emailResult.success) {
+                emailsSent++;
+                console.log(`✅ Email enviado para ${candidate.email} - Message ID: ${emailResult.messageId}`);
+              } else {
+                console.error(`❌ Falha ao enviar email para ${candidate.email}: ${emailResult.error}`);
+              }
+            }
+            
+            // Atualizar status da seleção para 'enviado'
+            if (emailsSent > 0) {
+              await storage.updateSelection(selection.id, { status: 'enviado' });
+              console.log(`✅ Seleção criada e ${emailsSent} emails enviados automaticamente`);
+            }
+          }
+        } catch (emailError) {
+          console.error('Erro ao enviar emails automáticos:', emailError);
+          // Não falhar a criação da seleção se o email falhar
+        }
+      }
+      
       res.status(201).json(selection);
     } catch (error) {
       console.error('Error creating selection:', error);
