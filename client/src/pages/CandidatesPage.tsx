@@ -231,7 +231,11 @@ export default function CandidatesPage() {
 
     try {
       // Para FormData, usar fetch diretamente com token de autorização
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+      
       const response = await fetch('/api/candidates/bulk', {
         method: 'POST',
         headers: {
