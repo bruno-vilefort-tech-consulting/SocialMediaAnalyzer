@@ -1878,33 +1878,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentQuestionIndex
       });
       
+      // Determinar se deve avançar para próxima pergunta
+      let nextQuestionIndex = currentQuestionIndex;
+      let interviewCompleted = false;
+      let shouldAskNextQuestion = false;
+
+      // Se o candidato respondeu uma pergunta, avançar automaticamente
+      if (candidateResponse && candidateResponse.trim().length > 5) {
+        console.log(`📈 Candidato respondeu pergunta ${currentQuestionIndex + 1}/${questions.length}: "${candidateResponse}"`);
+        
+        // Avançar para próxima pergunta
+        nextQuestionIndex = currentQuestionIndex + 1;
+        shouldAskNextQuestion = true;
+        
+        // Se passou do total de perguntas, finalizar entrevista
+        if (nextQuestionIndex >= questions.length) {
+          interviewCompleted = true;
+          shouldAskNextQuestion = false;
+          console.log('🏁 Entrevista completa - todas as perguntas respondidas');
+        } else {
+          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
+        }
+      }
+
       // Construir contexto da conversa
-      const systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+      let systemPrompt;
+      
+      if (interviewCompleted) {
+        systemPrompt = `Você é um assistente de RH finalizando uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+
+INSTRUÇÕES IMPORTANTES:
+- O candidato ${candidate?.nome || 'Candidato'} acabou de responder: "${candidateResponse}"
+- Faça APENAS um comentário positivo sobre a resposta (ex: "Perfeito!", "Excelente!")
+- Agradeça pela participação: "Obrigada por participar da nossa entrevista!"
+- Informe: "Em breve nosso RH entrará em contato com o resultado."
+- Deseje boa sorte: "Tenha um ótimo dia!"
+- PARE AQUI - NÃO faça perguntas, NÃO prolongue a conversa
+
+FORMATO: [Comentário positivo] + [Agradecimento] + [Informação sobre retorno] + [Despedida final]`;
+      } else if (shouldAskNextQuestion) {
+        const nextQuestion = questions[nextQuestionIndex];
+        systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+
+INSTRUÇÕES:
+- O candidato ${candidate?.nome || 'Candidato'} acabou de responder: "${candidateResponse}"
+- Faça um comentário positivo confirmando que entendeu (ex: "Perfeito!", "Entendi!", "Que bom!")
+- Imediatamente após, faça a próxima pergunta: "${nextQuestion.perguntaCandidato}"
+- Seja natural e conversacional
+
+PRÓXIMA PERGUNTA: ${nextQuestion.perguntaCandidato}
+
+Confirme a resposta anterior e faça a próxima pergunta.`;
+      } else {
+        // Primeira pergunta ou pergunta inicial
+        const currentQuestion = questions[currentQuestionIndex];
+        systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
 - Seja natural, empático e profissional
-- Mantenha tom conversacional brasileiro
-- Confirme que entendeu as respostas
-- Faça comentários positivos e encorajadores
-- Conduza para a próxima pergunta naturalmente
+- Cumprimente o candidato ${candidate?.nome || 'Candidato'}
+- Faça a primeira pergunta: "${currentQuestion.perguntaCandidato}"
 
-CANDIDATO: ${candidate?.nome || 'Candidato'}
+PRIMEIRA PERGUNTA: ${currentQuestion.perguntaCandidato}
 
-PERGUNTAS DA ENTREVISTA:
-${questions.map((q, i) => `${i + 1}. ${q.perguntaCandidato}`).join('\n')}
+Cumprimente e faça a primeira pergunta.`;
+      }
 
-PERGUNTA ATUAL: ${currentQuestionIndex + 1}
-
-Se ainda há perguntas, faça a próxima. Se todas foram respondidas, finalize cordialmente.`;
-
+      // Construir mensagens para OpenAI
       const messages = [
-        { role: "system", content: systemPrompt },
-        ...conversationHistory.map((msg: any) => ({
-          role: msg.type === 'ai' ? 'assistant' : 'user',
-          content: msg.message
-        })),
-        { role: "user", content: candidateResponse }
+        { role: "system", content: systemPrompt }
       ];
+
+      // Adicionar histórico se houver
+      if (conversationHistory && conversationHistory.length > 0) {
+        conversationHistory.forEach((msg: any) => {
+          messages.push({
+            role: msg.type === 'ai' ? 'assistant' : 'user',
+            content: msg.message
+          });
+        });
+      }
+
+      // Adicionar resposta do candidato se houver
+      if (candidateResponse && candidateResponse.trim().length > 0) {
+        messages.push({ role: "user", content: candidateResponse });
+      }
 
       const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -1928,26 +1986,6 @@ Se ainda há perguntas, faça a próxima. Se todas foram respondidas, finalize c
       }
 
       console.log('✅ Resposta da IA gerada:', aiResponse.substring(0, 100) + '...');
-
-      // Determinar se deve avançar para próxima pergunta
-      let nextQuestionIndex = currentQuestionIndex;
-      let interviewCompleted = false;
-
-      // Se o candidato respondeu uma pergunta, avançar automaticamente
-      if (candidateResponse && candidateResponse.trim().length > 0) {
-        console.log(`📈 Candidato respondeu pergunta ${currentQuestionIndex + 1}/${questions.length}`);
-        
-        // Avançar para próxima pergunta
-        nextQuestionIndex = currentQuestionIndex + 1;
-        
-        // Se passou do total de perguntas, finalizar entrevista
-        if (nextQuestionIndex >= questions.length) {
-          interviewCompleted = true;
-          console.log('🏁 Entrevista completa - todas as perguntas respondidas');
-        } else {
-          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
-        }
-      }
 
       res.json({
         aiResponse,
