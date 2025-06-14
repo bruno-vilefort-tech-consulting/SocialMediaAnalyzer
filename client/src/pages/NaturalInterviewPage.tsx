@@ -185,7 +185,10 @@ export default function NaturalInterviewPage() {
         if (!interviewCompleted && !isSpeaking) {
           silenceTimeoutRef.current = setTimeout(() => {
             console.log('⏰ Timeout de silêncio - continuando conversa');
-            generateAIResponse(''); // Continuar sem resposta
+            // CORREÇÃO: Só gerar resposta se entrevista já iniciou
+            if (isInterviewStarted || conversationHistory.length > 0) {
+              generateAIResponse(''); // Continuar sem resposta
+            }
           }, 2000);
         }
       };
@@ -314,6 +317,14 @@ export default function NaturalInterviewPage() {
       // Usar histórico atualizado se fornecido, senão usar o estado atual
       const historyToUse = updatedHistory || conversationHistory;
       
+      // Debug: mostrar estado atual
+      console.log('🔍 Debug generateAIResponse:', {
+        isInterviewStarted,
+        historyLength: historyToUse.length,
+        candidateResponse: candidateResponse.substring(0, 50),
+        currentQuestionIndex
+      });
+      
       const response = await fetch('/api/natural-conversation', {
         method: 'POST',
         headers: {
@@ -331,6 +342,12 @@ export default function NaturalInterviewPage() {
       const data = await response.json();
       
       if (data.aiResponse) {
+        // CORREÇÃO CRÍTICA: Marcar entrevista como iniciada após primeira resposta da IA
+        if (!isInterviewStarted) {
+          console.log('✅ Marcando entrevista como iniciada após primeira resposta IA');
+          setIsInterviewStarted(true);
+        }
+        
         await speakWithAI(data.aiResponse);
         
         // Atualizar índice da pergunta se necessário
