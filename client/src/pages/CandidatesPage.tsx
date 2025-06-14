@@ -230,28 +230,38 @@ export default function CandidatesPage() {
     formData.append('listId', selectedListId.toString());
 
     try {
-      // Usar apiRequest com FormData para manter autenticação
-      const response = await apiRequest('/api/candidates/bulk', 'POST', formData, {
-        'Content-Type': undefined // Deixar o browser definir o boundary para multipart
+      // Para FormData, usar fetch diretamente com token de autorização
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/candidates/bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+        credentials: 'include'
       });
 
-      const result = await response.json();
-      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-      toast({ 
-        title: "Sucesso!",
-        description: result.message || "Candidatos importados com sucesso!"
-      });
+      if (response.ok) {
+        const result = await response.json();
+        queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+        toast({ 
+          title: "Sucesso!",
+          description: result.message || "Candidatos importados com sucesso!"
+        });
+      } else {
+        const error = await response.json();
+        toast({ 
+          title: "Erro na importação", 
+          description: error.message || "Falha na importação",
+          variant: "destructive" 
+        });
+      }
     } catch (error: any) {
       console.error('Erro no upload:', error);
       
-      let errorMessage = "Falha na importação";
-      if (error.message) {
-        errorMessage = error.message;
-      }
-      
       toast({ 
         title: "Erro na importação", 
-        description: errorMessage,
+        description: "Falha no upload do arquivo",
         variant: "destructive" 
       });
     }
