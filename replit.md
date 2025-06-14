@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Sistema de configurações da API completamente reformulado com interfaces específicas por usuário
+  - **Interface diferenciada por usuário**: Master vê configurações completas, Cliente apenas configuração de voz
+  - **Voz padrão Nova definida**: Feminina natural e clara como padrão para português brasileiro
+  - **Botão salvar chave API**: Master pode salvar chave OpenAI com botão dedicado ao lado do campo
+  - **Vozes otimizadas para brasileiro**: Apenas Nova, Shimmer, Alloy e Onyx - removidas vozes inadequadas
+  - **Preview de voz para clientes**: Clientes podem testar vozes usando chave configurada pelo master
+  - **Seleção de modelo GPT**: Master escolhe entre GPT-3.5 Turbo, GPT-4, GPT-4 Turbo, GPT-4o
+  - **Endpoint TTS atualizado**: Suporte para master (própria chave) e cliente (chave do sistema)
+  - **Configurações específicas salvas**: Cliente salva apenas voz, Master salva todas configurações
+
 - June 14, 2025: Sistema de voz otimizado e validação OpenAI corrigida
   - **Sistema de login master corrigido**: Problema na ordem de parâmetros apiRequest resolvido
   - **Validação OpenAI melhorada**: Mensagens específicas para quota excedida, chave inválida, formato incorreto

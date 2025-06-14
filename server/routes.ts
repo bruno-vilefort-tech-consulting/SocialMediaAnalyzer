@@ -1654,21 +1654,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // TTS Preview endpoint
-  app.post("/api/tts-preview", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+  // TTS Preview endpoint - permite master e client
+  app.post("/api/tts-preview", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const { apiKey, voice, text } = req.body;
       
-      console.log('🎵 Gerando preview TTS:', voice);
+      console.log('🎵 Gerando preview TTS:', voice, 'para usuário:', req.user?.role);
       
-      if (!apiKey || !voice || !text) {
-        return res.status(400).json({ message: "API key, voice, and text are required" });
+      if (!voice || !text) {
+        return res.status(400).json({ message: "Voice and text are required" });
+      }
+
+      // Para clientes, usar a chave da API configurada no sistema
+      let openaiApiKey = apiKey;
+      if (req.user?.role === 'client') {
+        const config = await storage.getApiConfig();
+        if (!config?.openaiApiKey) {
+          return res.status(400).json({ 
+            message: "OpenAI API not configured. Contact system administrator.",
+            status: "error" 
+          });
+        }
+        openaiApiKey = config.openaiApiKey;
+      } else if (!apiKey) {
+        return res.status(400).json({ message: "API key is required for master users" });
       }
 
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${openaiApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

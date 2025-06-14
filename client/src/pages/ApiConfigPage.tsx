@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Database, MessageCircle, Settings, Volume2, Mic, Brain, CheckCircle, AlertCircle, Play, Loader2 } from "lucide-react";
+import { Bot, Database, MessageCircle, Settings, Brain, CheckCircle, AlertCircle, Play, Loader2, Save, Volume2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ApiConfig {
   id?: number;
@@ -26,6 +27,7 @@ interface ApiConfig {
 export default function ApiConfigPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: config, isLoading } = useQuery<ApiConfig>({
     queryKey: ["/api/config"],
@@ -33,7 +35,7 @@ export default function ApiConfigPage() {
 
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-3.5-turbo");
-  const [openaiVoice, setOpenaiVoice] = useState("nova");
+  const [openaiVoice, setOpenaiVoice] = useState("nova"); // Padrão Nova
   const [whatsappToken, setWhatsappToken] = useState("");
   const [whatsappPhoneId, setWhatsappPhoneId] = useState("");
   const [globalMonthlyLimit, setGlobalMonthlyLimit] = useState(1000);
@@ -82,7 +84,7 @@ export default function ApiConfigPage() {
     { value: "onyx", label: "Onyx - Masculina grave e autoridade" }
   ];
 
-  // Model options for OpenAI
+  // Model options for OpenAI (apenas para master)
   const modelOptions = [
     { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Econômico)" },
     { value: "gpt-4", label: "GPT-4 (Avançado)" },
@@ -92,7 +94,7 @@ export default function ApiConfigPage() {
 
   // Test voice preview
   const playVoicePreview = async (voice: string) => {
-    if (!openaiApiKey) {
+    if (user?.role === 'master' && !openaiApiKey) {
       toast({
         title: "Erro",
         description: "Configure a chave da API OpenAI primeiro",
@@ -111,7 +113,7 @@ export default function ApiConfigPage() {
           'Authorization': `Bearer ${localStorage.getItem("auth_token")}`
         },
         body: JSON.stringify({ 
-          apiKey: openaiApiKey,
+          apiKey: user?.role === 'master' ? openaiApiKey : undefined,
           voice: voice,
           text: "Olá! Esta é uma demonstração da voz que será usada nas entrevistas. Como você avalia a qualidade desta voz?"
         }),
@@ -157,7 +159,7 @@ export default function ApiConfigPage() {
     }
   };
 
-  // Test OpenAI API
+  // Test OpenAI API (apenas master)
   const testOpenAI = async () => {
     if (!openaiApiKey) {
       toast({
@@ -191,7 +193,6 @@ export default function ApiConfigPage() {
       } else {
         setTestStatus(prev => ({ ...prev, openai: 'error' }));
         
-        // Handle specific error messages
         let errorMessage = "Falha no teste da API";
         if (result.message) {
           if (result.message.includes("invalid_api_key") || result.message.includes("Incorrect API key")) {
@@ -221,7 +222,8 @@ export default function ApiConfigPage() {
     }
   };
 
-  const handleSaveConfig = () => {
+  // Save API Key (apenas master)
+  const saveApiKey = () => {
     const configData = {
       openaiApiKey,
       openaiModel,
@@ -231,6 +233,15 @@ export default function ApiConfigPage() {
       globalMonthlyLimit,
       maxInterviewTime,
       maxFileSize,
+    };
+
+    saveConfigMutation.mutate(configData);
+  };
+
+  // Save Voice Config (cliente)
+  const saveVoiceConfig = () => {
+    const configData = {
+      openaiVoice,
     };
 
     saveConfigMutation.mutate(configData);
@@ -257,6 +268,72 @@ export default function ApiConfigPage() {
     );
   }
 
+  // Interface para CLIENTE - apenas configuração de voz
+  if (user?.role === 'client') {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center space-x-2">
+          <Volume2 className="h-6 w-6" />
+          <h1 className="text-3xl font-bold">Configurações de Voz</h1>
+        </div>
+
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Volume2 className="h-5 w-5" />
+              <CardTitle>Configurar Voz das Entrevistas</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-voice">Escolha a Voz TTS</Label>
+              <div className="flex space-x-2">
+                <Select value={openaiVoice} onValueChange={setOpenaiVoice}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voiceOptions.map((voice) => (
+                      <SelectItem key={voice.value} value={voice.value}>
+                        {voice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => playVoicePreview(openaiVoice)}
+                  disabled={isPlayingVoice}
+                >
+                  {isPlayingVoice ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Clique no botão play para ouvir um preview da voz selecionada
+              </p>
+            </div>
+
+            <Button 
+              onClick={saveVoiceConfig}
+              disabled={saveConfigMutation.isPending}
+              className="w-full"
+            >
+              {saveConfigMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Save className="mr-2 h-4 w-4" />
+              Salvar Configuração de Voz
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Interface para MASTER - configuração completa
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center space-x-2">
@@ -276,13 +353,28 @@ export default function ApiConfigPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="openai-key">Chave da API OpenAI</Label>
-              <Input
-                id="openai-key"
-                type="password"
-                placeholder="sk-proj-..."
-                value={openaiApiKey}
-                onChange={(e) => setOpenaiApiKey(e.target.value)}
-              />
+              <div className="flex space-x-2">
+                <Input
+                  id="openai-key"
+                  type="password"
+                  placeholder="sk-proj-..."
+                  value={openaiApiKey}
+                  onChange={(e) => setOpenaiApiKey(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveApiKey}
+                  disabled={!openaiApiKey || saveConfigMutation.isPending}
+                >
+                  {saveConfigMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -445,12 +537,13 @@ export default function ApiConfigPage() {
 
       <div className="flex justify-end">
         <Button 
-          onClick={handleSaveConfig}
+          onClick={saveApiKey}
           disabled={saveConfigMutation.isPending}
           size="lg"
         >
           {saveConfigMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar Configurações
+          <Save className="mr-2 h-4 w-4" />
+          Salvar Todas as Configurações
         </Button>
       </div>
     </div>
