@@ -1905,17 +1905,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let systemPrompt;
       
       if (interviewCompleted) {
-        systemPrompt = `Você é um assistente de RH finalizando uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+        systemPrompt = `Responda EXATAMENTE no formato solicitado para finalizar a entrevista de ${job?.nomeVaga || 'emprego'}:
 
-INSTRUÇÕES IMPORTANTES:
-- O candidato ${candidate?.nome || 'Candidato'} acabou de responder: "${candidateResponse}"
-- Faça APENAS um comentário positivo sobre a resposta (ex: "Perfeito!", "Excelente!")
-- Agradeça pela participação: "Obrigada por participar da nossa entrevista!"
-- Informe: "Em breve nosso RH entrará em contato com o resultado."
-- Deseje boa sorte: "Tenha um ótimo dia!"
-- PARE AQUI - NÃO faça perguntas, NÃO prolongue a conversa
+"Perfeito! Obrigada por participar da nossa entrevista para a vaga de ${job?.nomeVaga || 'emprego'}. Em breve nosso RH entrará em contato com o resultado. Tenha um ótimo dia!"
 
-FORMATO: [Comentário positivo] + [Agradecimento] + [Informação sobre retorno] + [Despedida final]`;
+REGRAS ABSOLUTAS:
+- Use EXATAMENTE essa frase
+- NÃO faça perguntas adicionais
+- NÃO prolongue a conversa
+- A entrevista termina aqui`;
       } else if (shouldAskNextQuestion) {
         const nextQuestion = questions[nextQuestionIndex];
         systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
