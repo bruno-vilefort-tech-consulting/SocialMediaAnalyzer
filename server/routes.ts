@@ -853,9 +853,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🚀 INICIANDO ENVIO AUTOMÁTICO DE EMAILS - Selection ID:', selection.id);
         
         try {
-          // Buscar dados necessários
+          // Buscar dados necessários - implementar busca robusta
           console.log('🔍 Buscando job com ID:', selection.jobId, 'tipo:', typeof selection.jobId);
-          const job = await storage.getJobById(selection.jobId);
+          let job = await storage.getJobById(selection.jobId);
+          
+          // Se não encontrou com ID exato, tentar buscar por ID parcial
+          if (!job) {
+            console.log('🔍 Job não encontrado com ID exato, buscando por ID parcial...');
+            const allJobs = await storage.getJobsByClientId(selection.clientId);
+            job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
+            console.log('🔍 Job encontrado por busca parcial:', job);
+          }
+          
           console.log('📝 Job encontrado para envio automático:', job);
           
           const candidates = await storage.getCandidatesByClientId(selection.clientId);
