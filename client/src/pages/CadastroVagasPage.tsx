@@ -129,10 +129,24 @@ export default function CadastroVagasPage() {
 
   // Iniciar edição
   const startEdit = (job: Job) => {
+    console.log('Editando job:', job);
+    console.log('Clientes disponíveis:', clients);
+    
     setEditingJob(job);
     setNomeVaga(job.nomeVaga);
     setDescricaoVaga(job.descricaoVaga);
-    setClientId(job.clientId);
+    
+    // Encontrar o cliente correto baseado no clientId do job
+    const clienteEncontrado = clients.find(client => client.id === job.clientId);
+    console.log('Cliente encontrado:', clienteEncontrado);
+    
+    if (clienteEncontrado) {
+      setClientId(clienteEncontrado.id);
+    } else {
+      console.warn('Cliente não encontrado para ID:', job.clientId);
+      setClientId(null);
+    }
+    
     setPerguntas(job.perguntas || []);
     setShowForm(true);
   };
