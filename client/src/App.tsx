@@ -11,6 +11,7 @@ import ClientsPage from "@/pages/ClientsPage";
 import ApiConfigPage from "@/pages/ApiConfigPage";
 import ClientDashboard from "@/pages/ClientDashboard";
 import JobsPage from "@/pages/JobsPage";
+import CadastroVagasPage from "@/pages/CadastroVagasPage";
 import CandidatesPage from "@/pages/CandidatesPage";
 import SelectionsPage from "@/pages/SelectionsPage";
 import ResultsPage from "@/pages/ResultsPage";
@@ -66,6 +67,14 @@ function Router() {
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
             <JobsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+      
+      <Route path="/cadastro-vagas">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <CadastroVagasPage />
           </Layout>
         </PrivateRoute>
       </Route>

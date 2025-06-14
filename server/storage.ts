@@ -343,7 +343,15 @@ export class FirebaseStorage implements IStorage {
     try {
       const jobDoc = await getDoc(doc(firebaseDb, 'jobs', id.toString()));
       if (jobDoc.exists()) {
-        return { id: parseInt(jobDoc.id), ...jobDoc.data() } as Job;
+        const data = jobDoc.data();
+        return {
+          id: jobDoc.id,
+          clientId: data.clientId,
+          nomeVaga: data.nomeVaga,
+          descricaoVaga: data.descricaoVaga,
+          status: data.status || 'ativo',
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        } as Job;
       }
       return undefined;
     } catch (error) {
@@ -354,13 +362,15 @@ export class FirebaseStorage implements IStorage {
 
   async createJob(insertJob: InsertJob): Promise<Job> {
     try {
-      const id = parseInt(this.generateId());
+      const id = this.generateId();
       const jobData = {
-        ...insertJob,
-        status: insertJob.status || 'active',
+        clientId: insertJob.clientId,
+        nomeVaga: insertJob.nomeVaga,
+        descricaoVaga: insertJob.descricaoVaga,
+        status: insertJob.status || 'ativo',
         createdAt: new Date(),
       };
-      await setDoc(doc(firebaseDb, 'jobs', id.toString()), jobData);
+      await setDoc(doc(firebaseDb, 'jobs', id), jobData);
       return { id, ...jobData } as Job;
     } catch (error) {
       console.error('Erro ao criar job:', error);
