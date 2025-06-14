@@ -340,7 +340,7 @@ export class FirebaseStorage implements IStorage {
           descricaoVaga: data.descricaoVaga,
           status: data.status || 'ativo',
           perguntas: data.perguntas || [],
-          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+          createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : new Date(),
         };
       }) as Job[];
     } catch (error) {
