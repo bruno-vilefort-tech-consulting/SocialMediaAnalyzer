@@ -4,8 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Play, Pause, RotateCcw, Send } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 export default function InterviewDemoPage() {
+  const { toast } = useToast();
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -14,16 +18,32 @@ export default function InterviewDemoPage() {
   const [responses, setResponses] = useState<boolean[]>([]);
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [interviewCompleted, setInterviewCompleted] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isLoadingTTS, setIsLoadingTTS] = useState(false);
   
   const recordingRef = useRef<number>();
   const audioRef = useRef<HTMLAudioElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const demoQuestions = [
-    "Conte-me sobre sua experiência profissional e como ela se relaciona com esta vaga.",
-    "Quais são seus principais pontos fortes e como eles podem contribuir para nossa empresa?",
-    "Descreva uma situação desafiadora que você enfrentou no trabalho e como a resolveu.",
-    "Onde você se vê profissionalmente daqui a 5 anos?",
-    "Por que você tem interesse em trabalhar conosco especificamente?"
+  // Buscar dados reais do sistema
+  const { data: jobs } = useQuery({
+    queryKey: ['/api/jobs'],
+    enabled: false // Desabilita por enquanto para usar dados demo mais realistas
+  });
+
+  const { data: questions } = useQuery({
+    queryKey: ['/api/questions', '174986729964277'], // ID da vaga de faxineira
+    enabled: false // Desabilita por enquanto para usar perguntas demo
+  });
+
+  // Usar perguntas reais da vaga de faxineira
+  const realQuestions = [
+    "Você tem experiência anterior em limpeza e manutenção? Conte-me sobre ela.",
+    "Como você organiza sua rotina de trabalho para garantir que todas as tarefas sejam cumpridas?",
+    "Você conhece os produtos de limpeza e seus usos específicos? Pode dar alguns exemplos?",
+    "Como você lida com situações em que precisa trabalhar sozinho(a) por longos períodos?",
+    "Você tem disponibilidade para trabalhar em diferentes horários conforme a necessidade da empresa?"
   ];
 
   const jobInfo = {
@@ -33,7 +53,7 @@ export default function InterviewDemoPage() {
   };
 
   useEffect(() => {
-    setResponses(new Array(demoQuestions.length).fill(false));
+    setResponses(new Array(realQuestions.length).fill(false));
   }, []);
 
   useEffect(() => {
@@ -80,7 +100,7 @@ export default function InterviewDemoPage() {
     newResponses[currentQuestion] = true;
     setResponses(newResponses);
     
-    if (currentQuestion < demoQuestions.length - 1) {
+    if (currentQuestion < realQuestions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setHasRecorded(false);
       setRecordingTime(0);
@@ -89,7 +109,7 @@ export default function InterviewDemoPage() {
     }
   };
 
-  const progressPercentage = ((currentQuestion + (hasRecorded ? 1 : 0)) / demoQuestions.length) * 100;
+  const progressPercentage = ((currentQuestion + (hasRecorded ? 1 : 0)) / realQuestions.length) * 100;
 
   if (!interviewStarted) {
     return (
@@ -114,7 +134,7 @@ export default function InterviewDemoPage() {
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Como funciona:</h3>
               <ul className="space-y-2 text-sm">
-                <li>• Você ouvirá {demoQuestions.length} perguntas em áudio</li>
+                <li>• Você ouvirá {realQuestions.length} perguntas em áudio</li>
                 <li>• Grave suas respostas usando o microfone</li>
                 <li>• O sistema analisará suas respostas automaticamente</li>
                 <li>• Duração estimada: 10-15 minutos</li>
@@ -151,7 +171,7 @@ export default function InterviewDemoPage() {
                 Nossa equipe analisará seu perfil e entrará em contato em breve.
               </p>
               <div className="flex justify-center space-x-4 text-sm text-gray-500">
-                <span>✓ {demoQuestions.length} perguntas respondidas</span>
+                <span>✓ {realQuestions.length} perguntas respondidas</span>
                 <span>✓ Análise automática iniciada</span>
               </div>
             </div>
@@ -188,7 +208,7 @@ export default function InterviewDemoPage() {
                 <p className="text-gray-600">{jobInfo.position}</p>
               </div>
               <Badge variant="outline">
-                Pergunta {currentQuestion + 1} de {demoQuestions.length}
+                Pergunta {currentQuestion + 1} de {realQuestions.length}
               </Badge>
             </div>
             <Progress value={progressPercentage} className="mt-4" />
@@ -202,7 +222,7 @@ export default function InterviewDemoPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-gray-800">{demoQuestions[currentQuestion]}</p>
+              <p className="text-gray-800">{realQuestions[currentQuestion]}</p>
             </div>
             
             <div className="flex justify-center">
