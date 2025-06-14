@@ -2043,7 +2043,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.gptModel || "gpt-3.5-turbo",
+          model: config.gptModel || "gpt-4o", // GPT-4o é muito melhor para seguir instruções contextuais
           messages,
           max_tokens: 300,
           temperature: 0.7,

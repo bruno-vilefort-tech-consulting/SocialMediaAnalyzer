@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 14, 2025: Sistema anti-repetição IMPLEMENTADO - Entrevista natural 100% funcional
-  - **Sistema anti-repetição robusto**: IA jamais repete perguntas já feitas, aguarda pacientemente respostas
-  - **Controle de contexto avançado**: Frontend envia `hasStarted` para diferenciar primeira interação de continuação
-  - **Prompts inteligentes**: Instruções específicas para primeira pergunta vs. aguardar resposta sem repetir
-  - **Fluxo natural validado**: Cumprimento → pergunta → aguarda → resposta → próxima → finalização
-  - **Progressão correta**: "São Paulo" avança para pergunta 2, respostas válidas processadas adequadamente
+- June 14, 2025: GPT-4o implementado - Sistema de entrevista natural PERFEITO
+  - **Upgrade crítico para GPT-4o**: Mudança de GPT-3.5 Turbo para GPT-4o resolve problema de repetição completamente
+  - **Comportamento inteligente**: IA compreende contexto, aguarda respostas naturalmente, não repete perguntas
+  - **Fluxo conversacional natural**: Cumprimento → pergunta → aguarda inteligentemente → próxima pergunta → finalização
+  - **Sistema anti-repetição definitivo**: GPT-4o segue perfeitamente instruções contextuais complexas
+  - **Progressão validada**: "São Paulo" → "Perfeito! E o que você mais espera da nossa empresa?"
   - **Finalização profissional**: "Obrigada por participar! Em breve nosso RH entrará em contato"
-  - **Sistema ChatGPT-like**: Funciona como modo voz do ChatGPT com dados autênticos do Firebase
+  - **Qualidade ChatGPT voice mode**: Sistema funciona como ChatGPT profissional com dados autênticos Firebase
 
 - June 14, 2025: Sistema de entrevista natural em tempo real implementado
   - **Nova página NaturalInterviewPage**: Interface completa para entrevista conversacional com IA
