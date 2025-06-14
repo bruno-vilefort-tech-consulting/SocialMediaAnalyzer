@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Sistema de envio automático de emails totalmente funcional
+  - Busca robusta de jobs implementada para resolver discrepância de IDs entre Firebase e frontend
+  - Sistema agora busca candidatos da lista específica selecionada em vez de todos os candidatos do cliente
+  - Envio automático de emails funcionando perfeitamente após criação de seleções ativas
+  - Schema atualizado com candidateListId para vincular seleções a listas específicas de candidatos
+  - URLs de entrevista corrigidas para usar domínio correto do Replit
+  - Debug extensivo implementado em todo o pipeline de envio de emails
+  - 2 emails de teste enviados com sucesso via Resend para candidatos da lista selecionada
+
 - June 13, 2025: Sistema de formulários inline implementado
   - Removidos todos os popups do sistema conforme solicitado pelo usuário
   - Sistema de cadastro de vagas convertido para formulário inline sem popups
