@@ -1871,7 +1871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar candidato
       console.log(`🔍 Buscando candidato com ID: ${interview.candidateId}`);
       const candidate = await storage.getCandidateById(interview.candidateId);
-      console.log('👤 Candidato encontrado:', candidate ? { id: candidate.id, nome: candidate.nome } : 'Não encontrado');
+      console.log('👤 Candidato encontrado:', candidate ? { id: candidate.id, name: candidate.name } : 'Não encontrado');
       
       console.log('📋 Conversa natural - Dados:', {
         job: job?.nomeVaga,
@@ -1951,7 +1951,7 @@ REGRAS ABSOLUTAS:
         systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
-- O candidato ${candidate?.nome || 'Candidato'} acabou de responder: "${candidateResponse}"
+- O candidato ${candidate?.name || 'Candidato'} acabou de responder: "${candidateResponse}"
 - Faça um comentário positivo confirmando que entendeu (ex: "Perfeito!", "Entendi!", "Que bom!")
 - Imediatamente após, faça a próxima pergunta: "${nextQuestion.perguntaCandidato}"
 - Seja natural e conversacional
@@ -1965,7 +1965,7 @@ Confirme a resposta anterior e faça a próxima pergunta.`;
         systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 SITUAÇÃO:
-- O candidato ${candidate?.nome || 'Candidato'} fez uma resposta social: "${candidateResponse}"
+- O candidato ${candidate?.name || 'Candidato'} fez uma resposta social: "${candidateResponse}"
 - Você deve responder educadamente e retornar ao roteiro da entrevista
 - A pergunta atual que precisa ser respondida é: "${currentQuestion.perguntaCandidato}"
 
@@ -1984,7 +1984,7 @@ Responda à cortesia e faça a pergunta atual.`;
 
 INSTRUÇÕES:
 - Seja natural, empática e profissional
-- Cumprimente o candidato ${candidate?.nome || 'Candidato'} pelo nome
+- Cumprimente o candidato ${candidate?.name || 'Candidato'} pelo nome
 - Faça a primeira pergunta: "${currentQuestion.perguntaCandidato}"
 
 PRIMEIRA PERGUNTA: ${currentQuestion.perguntaCandidato}
