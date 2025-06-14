@@ -850,6 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         try {
           // Buscar dados necessários
+          console.log('🔍 Buscando job com ID:', selection.jobId, 'tipo:', typeof selection.jobId);
           const job = await storage.getJobById(selection.jobId);
           console.log('📝 Job encontrado para envio automático:', job);
           
