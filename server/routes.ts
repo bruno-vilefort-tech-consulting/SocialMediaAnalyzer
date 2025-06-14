@@ -981,36 +981,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create interview link
         const interviewLink = `${baseUrl}/interview/${token}`;
 
-        // Prepare messages with candidate name and interview link using new field names
-        let whatsappMessage = selection.whatsappTemplate;
+        // Get client info for template placeholders
+        const client = await storage.getClientById(selection.clientId);
+        const questions = await storage.getQuestionsByJobId(job.id);
+        
+        // Prepare messages with candidate name and interview link using correct placeholders
+        let whatsappMessage = selection.whatsappTemplate || '';
         let emailMessage = selection.emailTemplate || '';
+        let emailSubject = selection.emailSubject || 'Convite para Entrevista';
 
-        // Replace placeholders in messages
+        // Replace all placeholders in WhatsApp message
         whatsappMessage = whatsappMessage
+          .replace(/\[nome do candidato\]/g, candidate.name)
+          .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
+          .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+          .replace(/\[número de perguntas\]/g, questions.length.toString())
           .replace(/\{nome\}/g, candidate.name)
           .replace(/\{vaga\}/g, job.nomeVaga)
           .replace(/\{link\}/g, interviewLink);
 
+        // Replace all placeholders in email message and add interview link
         emailMessage = emailMessage
+          .replace(/\[nome do candidato\]/g, candidate.name)
+          .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
+          .replace(/\[Nome do Colaborador da Empresa\]/g, 'Equipe de RH')
+          .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+          .replace(/\[número de perguntas\]/g, questions.length.toString())
           .replace(/\{nome\}/g, candidate.name)
           .replace(/\{vaga\}/g, job.nomeVaga)
           .replace(/\{link\}/g, interviewLink);
+
+        // Add interview link to email if not already present
+        if (!emailMessage.includes(interviewLink)) {
+          emailMessage += `\n\nPara iniciar sua entrevista, clique no link abaixo:\n${interviewLink}`;
+        }
+
+        // Replace placeholders in email subject
+        emailSubject = emailSubject
+          .replace(/\{vaga\}/g, job.nomeVaga)
+          .replace(/\[Nome da Vaga\]/g, job.nomeVaga);
 
         // Check sendVia field to determine what to send
         const shouldSendWhatsApp = selection.sendVia === 'whatsapp' || selection.sendVia === 'both';
         const shouldSendEmail = selection.sendVia === 'email' || selection.sendVia === 'both';
 
-        // Send real emails using Resend
+        // Send real emails using Resend with custom templates
         if (shouldSendEmail && candidate.email) {
           const { emailService } = await import('./emailService');
           
           try {
-            const emailResult = await emailService.sendInterviewInvite({
-              candidateEmail: candidate.email,
+            const emailResult = await emailService.sendEmail({
+              to: candidate.email,
+              subject: emailSubject,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #2563eb;">${emailSubject}</h2>
+                  <div style="line-height: 1.6; white-space: pre-line;">
+                    ${emailMessage}
+                  </div>
+                  <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
+                    <h3 style="color: #1f2937; margin-top: 0;">Link da Entrevista:</h3>
+                    <a href="${interviewLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                      INICIAR ENTREVISTA
+                    </a>
+                    <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
+                      Ou copie e cole este link no seu navegador:<br>
+                      <span style="word-break: break-all;">${interviewLink}</span>
+                    </p>
+                  </div>
+                  <div style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                    Este email foi enviado automaticamente pelo Sistema de Entrevistas AI.
+                  </div>
+                </div>
+              `,
               candidateName: candidate.name,
-              jobTitle: job.nomeVaga,
-              interviewLink,
-              customMessage: emailMessage
+              jobTitle: job.nomeVaga
             });
 
             await storage.createMessageLog({
