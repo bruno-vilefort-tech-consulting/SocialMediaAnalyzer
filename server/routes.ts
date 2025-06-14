@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
-         insertCandidateSchema, insertSelectionSchema, insertInterviewSchema, 
+         insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
          insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -32,7 +32,23 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    const user = await storage.getUserById(decoded.id);
+    
+    // Try to find user in users table first
+    let user = await storage.getUserById(decoded.id);
+    
+    // If not found in users table, try clients table
+    if (!user) {
+      const client = await storage.getClientById(decoded.id);
+      if (client) {
+        user = {
+          id: client.id,
+          email: client.email,
+          role: 'client',
+          createdAt: client.createdAt
+        };
+      }
+    }
+    
     if (!user) {
       return res.status(401).json({ message: 'Invalid token' });
     }
@@ -41,10 +57,11 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
       id: user.id, 
       email: user.email, 
       role: user.role,
-      clientId: user.role === 'client' ? decoded.clientId : undefined
+      clientId: user.role === 'client' ? user.id : undefined
     };
     next();
   } catch (error) {
+    console.error('Auth error:', error);
     res.status(401).json({ message: 'Invalid token' });
   }
 };
@@ -525,22 +542,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
+      console.log('Dados recebidos para lista de candidatos:', req.body);
+      console.log('Usuário:', req.user);
+      
       const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
-      const listData = { ...req.body, clientId };
+      const listData = insertCandidateListSchema.parse({ 
+        ...req.body, 
+        clientId 
+      });
+      
+      console.log('Dados validados para lista:', listData);
+      
       const list = await storage.createCandidateList(listData);
+      
+      console.log('Lista criada:', list);
+      
       res.status(201).json(list);
     } catch (error) {
-      res.status(400).json({ message: 'Failed to create candidate list' });
+      console.error('Erro ao criar lista de candidatos:', error);
+      res.status(400).json({ message: 'Failed to create candidate list', error: error instanceof Error ? error.message : String(error) });
     }
   });
 
   app.delete("/api/candidate-lists/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
+      console.log('Tentando deletar lista ID:', req.params.id, 'pelo usuário:', req.user?.email);
+      
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid list ID' });
+      }
+      
       await storage.deleteCandidateList(id);
+      
+      console.log('Lista deletada com sucesso:', id);
+      
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: 'Failed to delete candidate list' });
+      console.error('Erro ao deletar lista de candidatos:', error);
+      res.status(400).json({ message: 'Failed to delete candidate list', error: error instanceof Error ? error.message : String(error) });
     }
   });
 
