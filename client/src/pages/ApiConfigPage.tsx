@@ -74,14 +74,12 @@ export default function ApiConfigPage() {
     },
   });
 
-  // Voice options for OpenAI TTS
+  // Voice options for OpenAI TTS - Vozes adequadas para português brasileiro
   const voiceOptions = [
-    { value: "alloy", label: "Alloy - Neutro e equilibrado" },
-    { value: "echo", label: "Echo - Masculino jovem" },
-    { value: "fable", label: "Fable - Feminino britânico" },
-    { value: "onyx", label: "Onyx - Masculino profundo" },
-    { value: "nova", label: "Nova - Feminino jovem" },
-    { value: "shimmer", label: "Shimmer - Feminino suave" }
+    { value: "nova", label: "Nova - Feminina natural e clara" },
+    { value: "shimmer", label: "Shimmer - Feminina suave e profissional" },
+    { value: "alloy", label: "Alloy - Neutro versátil" },
+    { value: "onyx", label: "Onyx - Masculina grave e autoridade" }
   ];
 
   // Model options for OpenAI
