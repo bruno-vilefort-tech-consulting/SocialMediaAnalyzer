@@ -572,26 +572,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/candidates/bulk", authenticate, authorize(['client']), upload.single('file'), async (req: AuthRequest, res) => {
+  app.post("/api/candidates/bulk", authenticate, authorize(['client', 'master']), upload.single('file'), async (req: AuthRequest, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' });
       }
 
-      // In a real implementation, you would parse CSV/XLSX file here
-      // For demo purposes, we'll simulate parsing
-      const candidatesData = [
-        { name: "João Silva", email: "joao@email.com", whatsapp: "+5511999999999" },
-        { name: "Maria Santos", email: "maria@email.com", whatsapp: "+5511888888888" }
-      ].map(data => ({
-        ...data,
-        clientId: req.user!.clientId!
-      }));
+      const { listId } = req.body;
+      if (!listId) {
+        return res.status(400).json({ message: 'Lista de candidatos obrigatória' });
+      }
+
+      // Parse Excel/CSV file
+      const workbook = require('xlsx').read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = require('xlsx').utils.sheet_to_json(worksheet);
+
+      if (jsonData.length === 0) {
+        return res.status(400).json({ message: 'Arquivo vazio ou formato inválido' });
+      }
+
+      // Validate and transform data
+      const candidatesData = jsonData.map((row: any, index: number) => {
+        const name = row['Nome'] || row['nome'] || row['Name'] || row['name'];
+        const email = row['Email'] || row['email'];
+        const phone = row['Celular'] || row['celular'] || row['Telefone'] || row['telefone'] || row['Phone'] || row['phone'];
+
+        if (!name || !email || !phone) {
+          throw new Error(`Linha ${index + 2}: Nome, Email e Celular são obrigatórios`);
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          throw new Error(`Linha ${index + 2}: Email inválido - ${email}`);
+        }
+
+        // Validate Brazilian phone format
+        const phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+          throw new Error(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
+        }
+
+        const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+
+        return {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phoneDigits,
+          clientId,
+          listId: parseInt(listId)
+        };
+      });
 
       const candidates = await storage.createCandidates(candidatesData);
-      res.status(201).json(candidates);
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to import candidates' });
+      res.status(201).json({
+        message: `${candidates.length} candidatos importados com sucesso`,
+        candidates
+      });
+    } catch (error: any) {
+      console.error('Erro na importação:', error);
+      res.status(400).json({ message: error.message || 'Falha na importação de candidatos' });
     }
   });
 
