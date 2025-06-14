@@ -93,7 +93,7 @@ export default function CandidatesPage() {
         clientId: user?.role === 'master' ? 1 : user?.clientId!
       };
       const response = await apiRequest('/api/candidate-lists', 'POST', listData);
-      return response;
+      return await response.json();
     },
     onSuccess: (newList: CandidateList) => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
@@ -134,7 +134,8 @@ export default function CandidatesPage() {
         clientId: user?.role === 'master' ? 1 : user?.clientId!,
         listId: selectedListId!
       };
-      return await apiRequest('/api/candidates', 'POST', candidateData);
+      const response = await apiRequest('/api/candidates', 'POST', candidateData);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
@@ -149,7 +150,8 @@ export default function CandidatesPage() {
 
   const updateCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      return await apiRequest(`/api/candidates/${editingCandidate!.id}`, 'PATCH', data);
+      const response = await apiRequest(`/api/candidates/${editingCandidate!.id}`, 'PATCH', data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
