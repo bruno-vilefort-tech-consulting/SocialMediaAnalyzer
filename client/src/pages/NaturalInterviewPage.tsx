@@ -316,6 +316,7 @@ export default function NaturalInterviewPage() {
           candidateResponse,
           currentQuestionIndex,
           conversationHistory: conversationHistory.slice(-6), // Últimas 6 mensagens para contexto
+          hasStarted: conversationHistory.length > 0, // Indica se entrevista já começou
         }),
       });
 

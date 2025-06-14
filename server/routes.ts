@@ -1821,9 +1821,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Natural conversation endpoint
   app.post("/api/natural-conversation", async (req, res) => {
     try {
-      const { interviewToken, candidateResponse, currentQuestionIndex, conversationHistory } = req.body;
+      const { interviewToken, candidateResponse, currentQuestionIndex, conversationHistory, hasStarted } = req.body;
       
-      console.log('🤖 Processando conversa natural:', { interviewToken, currentQuestionIndex });
+      console.log('🤖 Processando conversa natural:', { 
+        interviewToken, 
+        currentQuestionIndex,
+        hasStarted,
+        responseLength: candidateResponse ? candidateResponse.length : 0
+      });
       
       // Buscar entrevista
       const interview = await storage.getInterviewByToken(interviewToken);
@@ -1975,9 +1980,13 @@ PERGUNTA ATUAL: ${currentQuestion.perguntaCandidato}
 
 Responda à cortesia e faça a pergunta atual.`;
       } else {
-        // Primeira pergunta ou pergunta inicial
+        // Primeira pergunta ou pergunta inicial - verificar contexto
         const currentQuestion = questions[currentQuestionIndex];
-        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+        const isFirstCall = !hasStarted && (!candidateResponse || candidateResponse.trim().length === 0);
+        
+        if (isFirstCall) {
+          // Verdadeiramente primeira interação - pode cumprimentar e fazer primeira pergunta
+          systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
 - Seja natural, empática e profissional
@@ -1987,6 +1996,24 @@ INSTRUÇÕES:
 PRIMEIRA PERGUNTA: ${currentQuestion.perguntaCandidato}
 
 Cumprimente pelo nome e faça a primeira pergunta.`;
+        } else {
+          // Entrevista já iniciada - aguardar resposta sem repetir
+          systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+
+SITUAÇÃO ATUAL:
+- A entrevista já foi iniciada com ${candidate?.name || 'Candidato'}
+- Uma pergunta já foi feita e está aguardando resposta
+- O candidato disse: "${candidateResponse || 'não respondeu ainda'}"
+
+REGRAS OBRIGATÓRIAS:
+- JAMAIS repita perguntas já feitas
+- Se o candidato não respondeu ainda, aguarde silenciosamente
+- Se a resposta foi vaga, peça esclarecimento educadamente
+- Seja paciente e natural na conversa
+- Só repita uma pergunta se o candidato disser "não entendi" ou "pode repetir?"
+
+Responda de forma natural aguardando a resposta do candidato.`;
+        }
       }
 
       // Construir mensagens para OpenAI
