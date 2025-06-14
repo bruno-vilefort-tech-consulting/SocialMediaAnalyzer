@@ -331,8 +331,9 @@ export class FirebaseStorage implements IStorage {
     try {
       const q = query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
+      const jobs = querySnapshot.docs.map(doc => {
         const data = doc.data();
+        console.log('🔍 Job no Firebase - Doc ID:', doc.id, 'Nome:', data.nomeVaga);
         return {
           id: doc.id,
           clientId: data.clientId,
@@ -343,6 +344,13 @@ export class FirebaseStorage implements IStorage {
           createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : new Date(),
         };
       }) as Job[];
+      
+      console.log('📋 Jobs após processamento no storage:');
+      jobs.forEach(job => {
+        console.log(`  - Storage ID: ${job.id} | Nome: ${job.nomeVaga}`);
+      });
+      
+      return jobs;
     } catch (error) {
       console.error('Erro ao buscar jobs por cliente:', error);
       return [];
