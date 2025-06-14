@@ -150,6 +150,7 @@ export default function NaturalInterviewPage() {
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'pt-BR';
+      recognition.maxAlternatives = 1;
       
       recognition.onstart = () => {
         console.log('🎤 Reconhecimento de voz iniciado');
@@ -181,15 +182,12 @@ export default function NaturalInterviewPage() {
         console.log('🔇 Reconhecimento finalizado');
         setIsListening(false);
         
-        // Se não há resposta do candidato, aguardar 2 segundos e continuar
-        if (!interviewCompleted && !isSpeaking) {
+        // Se não há resposta do candidato, aguardar 3 segundos e continuar
+        if (!interviewCompleted && !isSpeaking && isInterviewStarted) {
           silenceTimeoutRef.current = setTimeout(() => {
             console.log('⏰ Timeout de silêncio - continuando conversa');
-            // CORREÇÃO: Só gerar resposta se entrevista já iniciou
-            if (isInterviewStarted || conversationHistory.length > 0) {
-              generateAIResponse(''); // Continuar sem resposta
-            }
-          }, 2000);
+            generateAIResponse(''); // Continuar sem resposta
+          }, 3000); // 3 segundos para dar tempo do candidato responder
         }
       };
       
@@ -208,6 +206,14 @@ export default function NaturalInterviewPage() {
       }
     };
   }, []);
+
+  // AUTO-INICIAR entrevista quando dados carregarem
+  useEffect(() => {
+    if (interview && !isInterviewStarted && !interviewCompleted && !isSpeaking) {
+      console.log('🚀 Auto-iniciando entrevista...');
+      startInterview();
+    }
+  }, [interview, isInterviewStarted, interviewCompleted, isSpeaking]);
 
   // Função para falar usando IA do OpenAI
   const speakWithAI = async (text: string) => {
@@ -457,10 +463,13 @@ export default function NaturalInterviewPage() {
     // Iniciar gravação automática da sessão completa
     await startSessionRecording();
     
-    // Mensagem de boas-vindas usando prompt corrigido
-    const welcomeMessage = `Olá ${interview.candidate.nome}! Muito prazer, eu sou a Ana, entrevistadora do Grupo Maximus. Que bom ter você aqui conosco para conversarmos sobre a vaga de ${interview.job.nomeVaga}. Como você está hoje?`;
+    // CORREÇÃO: Iniciar reconhecimento de voz IMEDIATAMENTE
+    setTimeout(() => {
+      startListening();
+    }, 500);
     
-    await speakWithAI(welcomeMessage);
+    // Gerar primeira resposta da IA automaticamente (sem input do usuário)
+    await generateAIResponse('');
   };
 
   // Controlar escuta
