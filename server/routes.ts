@@ -298,10 +298,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('ClientId para vaga:', clientId);
       console.log('Dados recebidos do frontend:', req.body);
       
-      const jobData = insertJobSchema.parse({
-        ...req.body,
-        clientId: clientId
-      });
+      // Mapear campos antigos para novos se necessário
+      const bodyData = {
+        nomeVaga: req.body.nomeVaga || req.body.title,
+        descricaoVaga: req.body.descricaoVaga || req.body.description,
+        clientId: clientId,
+        status: req.body.status || 'ativo'
+      };
+      
+      const jobData = insertJobSchema.parse(bodyData);
       
       const job = await storage.createJob(jobData);
       res.status(201).json(job);
