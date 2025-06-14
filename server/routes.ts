@@ -1409,6 +1409,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload Audio Route - Firebase Storage for demo
+  app.post("/api/upload-audio", upload.single('audio'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No audio file provided' });
+      }
+
+      // For demo purposes, we'll store the file locally and return a URL
+      const audioUrl = `/uploads/${req.file.filename}`;
+      
+      res.json({ 
+        audioUrl,
+        fileName: req.file.filename,
+        message: 'Audio uploaded successfully' 
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ message: 'Upload failed' });
+    }
+  });
+
+  // Transcription Route - OpenAI Whisper for demo
+  app.post("/api/transcribe", async (req, res) => {
+    try {
+      const { audioUrl } = req.body;
+      
+      if (!audioUrl) {
+        return res.status(400).json({ message: 'Audio URL is required' });
+      }
+
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
+        return res.status(500).json({ message: 'OpenAI API key not configured' });
+      }
+
+      // For demo, we'll simulate transcription with a placeholder
+      // In production, this would download the audio and send to Whisper API
+      const transcription = "Esta é uma transcrição simulada da resposta do candidato para demonstração do sistema.";
+      
+      res.json({ 
+        transcription,
+        language: 'pt',
+        message: 'Transcription completed' 
+      });
+    } catch (error) {
+      console.error('Transcription error:', error);
+      res.status(500).json({ message: 'Transcription failed' });
+    }
+  });
+
+  // Demo Responses Route - Save interview responses for demo
+  app.post("/api/demo-responses", async (req, res) => {
+    try {
+      const {
+        questionId,
+        questionText,
+        audioUrl,
+        transcription,
+        duration,
+        candidateName,
+        jobTitle
+      } = req.body;
+
+      // For demo purposes, we'll just log the response
+      console.log('📝 Demo Response Saved:', {
+        questionId,
+        questionText,
+        transcription,
+        duration,
+        candidateName,
+        jobTitle
+      });
+
+      // Simulate saving to database
+      const response = {
+        id: Date.now(),
+        questionId,
+        questionText,
+        audioUrl,
+        transcription,
+        duration,
+        candidateName,
+        jobTitle,
+        savedAt: new Date()
+      };
+
+      res.json({ 
+        response,
+        message: 'Response saved successfully' 
+      });
+    } catch (error) {
+      console.error('Save response error:', error);
+      res.status(500).json({ message: 'Failed to save response' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

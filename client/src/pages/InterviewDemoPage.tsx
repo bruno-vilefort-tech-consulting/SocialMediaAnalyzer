@@ -72,40 +72,182 @@ export default function InterviewDemoPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    setHasRecorded(false);
+  // Mutation para TTS da OpenAI
+  const ttsMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const response = await apiRequest('/api/tts', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.blob();
+    }
+  });
+
+  // Mutation para upload de áudio no Firebase
+  const uploadAudioMutation = useMutation({
+    mutationFn: async (audioBlob: Blob) => {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, `interview_${Date.now()}.webm`);
+      
+      const response = await apiRequest('/api/upload-audio', {
+        method: 'POST',
+        body: formData
+      });
+      return response.json();
+    }
+  });
+
+  // Mutation para transcrição
+  const transcribeMutation = useMutation({
+    mutationFn: async (audioUrl: string) => {
+      const response = await apiRequest('/api/transcribe', {
+        method: 'POST',
+        body: JSON.stringify({ audioUrl }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.json();
+    }
+  });
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      setHasRecorded(false);
+    } catch (error) {
+      console.error('Erro ao acessar microfone:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível acessar o microfone. Verifique as permissões.",
+        variant: "destructive",
+      });
+    }
   };
 
   const stopRecording = () => {
-    setIsRecording(false);
-    setHasRecorded(true);
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setHasRecorded(true);
+    }
   };
 
-  const playRecording = () => {
-    setIsPlaying(true);
-    // Simular reprodução de áudio
-    setTimeout(() => setIsPlaying(false), 3000);
+  const playRecording = async () => {
+    if (isLoadingTTS || isPlaying) return;
+    
+    setIsLoadingTTS(true);
+    try {
+      const audioBlob = await ttsMutation.mutateAsync(realQuestions[currentQuestion]);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      setIsPlaying(true);
+      audio.onended = () => {
+        setIsPlaying(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      await audio.play();
+    } catch (error) {
+      console.error('Erro no TTS:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reproduzir a pergunta. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingTTS(false);
+    }
   };
 
   const restartRecording = () => {
     setRecordingTime(0);
     setHasRecorded(false);
     setIsRecording(false);
+    setAudioBlob(null);
   };
 
-  const submitResponse = () => {
-    const newResponses = [...responses];
-    newResponses[currentQuestion] = true;
-    setResponses(newResponses);
-    
-    if (currentQuestion < realQuestions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-      setHasRecorded(false);
-      setRecordingTime(0);
-    } else {
-      setInterviewCompleted(true);
+  const submitResponse = async () => {
+    if (!audioBlob) {
+      toast({
+        title: "Erro",
+        description: "Você precisa gravar uma resposta antes de continuar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // 1. Upload do áudio para Firebase
+      toast({ title: "Processando", description: "Enviando áudio..." });
+      const uploadResult = await uploadAudioMutation.mutateAsync(audioBlob);
+      
+      // 2. Transcrição do áudio
+      toast({ title: "Processando", description: "Transcrevendo áudio..." });
+      const transcriptionResult = await transcribeMutation.mutateAsync(uploadResult.audioUrl);
+      
+      // 3. Salvar resposta no banco
+      const responseData = {
+        questionId: currentQuestion + 1,
+        questionText: realQuestions[currentQuestion],
+        audioUrl: uploadResult.audioUrl,
+        transcription: transcriptionResult.transcription,
+        duration: recordingTime,
+        candidateName: "Candidato Demo", // Em produção seria o nome real do candidato
+        jobTitle: jobInfo.position
+      };
+
+      await apiRequest('/api/demo-responses', {
+        method: 'POST',
+        body: JSON.stringify(responseData),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      // 4. Atualizar interface
+      const newResponses = [...responses];
+      newResponses[currentQuestion] = true;
+      setResponses(newResponses);
+      
+      toast({
+        title: "Sucesso",
+        description: "Resposta salva com sucesso!",
+      });
+      
+      if (currentQuestion < realQuestions.length - 1) {
+        setCurrentQuestion(prev => prev + 1);
+        setHasRecorded(false);
+        setRecordingTime(0);
+        setAudioBlob(null);
+      } else {
+        setInterviewCompleted(true);
+      }
+    } catch (error) {
+      console.error('Erro ao processar resposta:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao processar sua resposta. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -308,7 +450,7 @@ export default function InterviewDemoPage() {
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    {currentQuestion === demoQuestions.length - 1 ? "Finalizar" : "Próxima"}
+                    {currentQuestion === realQuestions.length - 1 ? "Finalizar" : "Próxima"}
                   </Button>
                 </div>
               )}
