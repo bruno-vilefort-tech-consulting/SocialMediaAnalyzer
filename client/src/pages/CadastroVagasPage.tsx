@@ -139,12 +139,17 @@ export default function CadastroVagasPage() {
     mutationFn: async (data: PerguntaFormData) => {
       if (!vagaAtual) throw new Error("Nenhuma vaga selecionada");
 
+      console.log("Salvando pergunta:", data);
+      console.log("Vaga atual:", vagaAtual);
+
       const perguntaData = {
         vagaId: vagaAtual.id,
         perguntaCandidato: data.perguntaCandidato,
         respostaPerfeita: data.respostaPerfeita,
         numeroPergunta: perguntas.length + 1,
       };
+
+      console.log("Dados da pergunta para API:", perguntaData);
 
       const response = await apiRequest("POST", "/api/questions", perguntaData);
       return await response.json();
@@ -295,6 +300,15 @@ export default function CadastroVagasPage() {
   };
 
   const salvarPergunta = (data: PerguntaFormData) => {
+    if (!vagaAtual) {
+      toast({
+        title: "Erro",
+        description: "Nenhuma vaga selecionada para adicionar pergunta.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (perguntaEditando) {
       atualizarPerguntaMutation.mutate(data);
     } else {
@@ -448,7 +462,7 @@ export default function CadastroVagasPage() {
                 </CardHeader>
                 <CardContent>
                   <Form {...perguntaForm}>
-                    <form onSubmit={perguntaForm.handleSubmit(salvarPergunta)} className="space-y-4">
+                    <form onSubmit={perguntaForm.handleSubmit(salvarPergunta)} className="space-y-4" noValidate>
                       <FormField
                         control={perguntaForm.control}
                         name="perguntaCandidato"
