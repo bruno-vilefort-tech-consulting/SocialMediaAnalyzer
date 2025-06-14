@@ -1289,7 +1289,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get selection and job details
       const selection = await storage.getSelectionById(interview.selectionId);
-      const job = selection ? await storage.getJobById(selection.jobId) : null;
+      let job = null;
+      
+      if (selection) {
+        // Implementar busca robusta de job como nas outras rotas
+        console.log('🔍 Buscando job no Firebase com ID:', selection.jobId);
+        job = await storage.getJobById(selection.jobId);
+        
+        if (!job) {
+          console.log('❌ Job não encontrado no Firebase com ID:', selection.jobId);
+          // Buscar por ID parcial se não encontrou exato
+          const allJobs = await storage.getJobsByClientId(selection.clientId);
+          console.log('📋 Jobs existentes no Firebase:');
+          allJobs.forEach(j => console.log('  - ID:', j.id, 'Data:', j.nomeVaga));
+          
+          job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
+          if (job) {
+            console.log('✅ Job encontrado por busca parcial:', job.id, job.nomeVaga);
+          } else {
+            console.log('❌ Job não encontrado nem por busca parcial');
+          }
+        } else {
+          console.log('✅ Job encontrado diretamente:', job.id);
+        }
+      }
+      
       const candidate = await storage.getCandidateById(interview.candidateId);
       const questions = job ? await storage.getQuestionsByJobId(job.id) : [];
 
