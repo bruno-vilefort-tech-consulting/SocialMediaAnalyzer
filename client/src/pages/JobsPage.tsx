@@ -718,10 +718,25 @@ export default function JobsPage() {
                           variant="outline"
                           onClick={() => {
                             if (confirm(`Tem certeza que deseja excluir a vaga em rascunho "${job.title}"?`)) {
-                              deleteJobMutation.mutate(job.id);
+                              deleteJobMutation.mutate(job.id.toString(), {
+                                onSuccess: () => {
+                                  toast({
+                                    title: "Sucesso",
+                                    description: "Vaga em rascunho excluída com sucesso!",
+                                  });
+                                },
+                                onError: () => {
+                                  toast({
+                                    title: "Erro",
+                                    description: "Erro ao excluir vaga. Tente novamente.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              });
                             }
                           }}
                           className="text-red-700 border-red-300 hover:bg-red-100"
+                          disabled={deleteJobMutation.isPending}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -785,13 +800,28 @@ export default function JobsPage() {
                           variant="outline"
                           onClick={() => {
                             if (confirm(`Tem certeza que deseja excluir a vaga "${job.title}"?`)) {
-                              deleteJobMutation.mutate(job.id);
+                              deleteJobMutation.mutate(job.id.toString(), {
+                                onSuccess: () => {
+                                  toast({
+                                    title: "Sucesso",
+                                    description: "Vaga excluída com sucesso!",
+                                  });
+                                },
+                                onError: () => {
+                                  toast({
+                                    title: "Erro",
+                                    description: "Erro ao excluir vaga. Tente novamente.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              });
                             }
                           }}
                           className="text-red-700 border-red-300 hover:bg-red-100"
+                          disabled={deleteJobMutation.isPending}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Excluir
+                          {deleteJobMutation.isPending ? "Excluindo..." : "Excluir"}
                         </Button>
                       </div>
                     </div>
