@@ -248,10 +248,21 @@ export default function CandidatesPage() {
       if (response.ok) {
         const result = await response.json();
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-        toast({ 
-          title: "Sucesso!",
-          description: result.message || "Candidatos importados com sucesso!"
-        });
+        
+        // Mostrar mensagem com detalhes sobre duplicatas se existirem
+        if (result.duplicates > 0) {
+          const duplicateNames = result.duplicatesList?.map((dup: any) => dup.name).join(', ') || '';
+          toast({ 
+            title: "Importação parcial",
+            description: `${result.imported} candidatos importados. ${result.duplicates} não foram importados por já existirem: ${duplicateNames}`,
+            variant: "default"
+          });
+        } else {
+          toast({ 
+            title: "Sucesso!",
+            description: result.message || "Candidatos importados com sucesso!"
+          });
+        }
       } else {
         const error = await response.json();
         toast({ 
@@ -463,14 +474,35 @@ export default function CandidatesPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteCandidateMutation.mutate(candidate.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja remover o candidato "{candidate.name}"? 
+                                Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteCandidateMutation.mutate(candidate.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remover Candidato
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}

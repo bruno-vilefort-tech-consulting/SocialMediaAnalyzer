@@ -32,7 +32,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   // Clients
   getClients(): Promise<Client[]>;
   getClientById(id: number): Promise<Client | undefined>;
@@ -40,27 +40,27 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
-  
+
   // Jobs
   getJobsByClientId(clientId: number): Promise<Job[]>;
   getJobById(id: number): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: number, job: Partial<Job>): Promise<Job>;
   deleteJob(id: string | number): Promise<void>;
-  
+
   // Questions
   getQuestionsByJobId(jobId: string | number): Promise<Question[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   updateQuestion(id: number, question: Partial<Question>): Promise<Question>;
   deleteQuestion(id: number): Promise<void>;
-  
+
   // Candidate Lists
   getCandidateListsByClientId(clientId: number): Promise<CandidateList[]>;
   getCandidateListById(id: number): Promise<CandidateList | undefined>;
   createCandidateList(list: InsertCandidateList): Promise<CandidateList>;
   updateCandidateList(id: number, list: Partial<CandidateList>): Promise<CandidateList>;
   deleteCandidateList(id: number): Promise<void>;
-  
+
   // Candidates
   getCandidatesByClientId(clientId: number): Promise<Candidate[]>;
   getCandidatesByListId(listId: number): Promise<Candidate[]>;
@@ -69,34 +69,34 @@ export interface IStorage {
   createCandidates(candidates: InsertCandidate[]): Promise<Candidate[]>;
   updateCandidate(id: number, candidate: Partial<Candidate>): Promise<Candidate>;
   deleteCandidate(id: number): Promise<void>;
-  
+
   // Selections
   getSelectionsByClientId(clientId: number): Promise<Selection[]>;
   getSelectionById(id: number): Promise<Selection | undefined>;
   createSelection(selection: InsertSelection): Promise<Selection>;
   updateSelection(id: number, selection: Partial<Selection>): Promise<Selection>;
   deleteSelection(id: number): Promise<void>;
-  
+
   // Interviews
   getInterviewsBySelectionId(selectionId: number): Promise<Interview[]>;
   getInterviewById(id: number): Promise<Interview | undefined>;
   getInterviewByToken(token: string): Promise<Interview | undefined>;
   createInterview(interview: InsertInterview): Promise<Interview>;
   updateInterview(id: number, interview: Partial<Interview>): Promise<Interview>;
-  
+
   // Responses
   getResponsesByInterviewId(interviewId: number): Promise<Response[]>;
   createResponse(response: InsertResponse): Promise<Response>;
   updateResponse(id: number, response: Partial<Response>): Promise<Response>;
-  
+
   // API Config
   getApiConfig(): Promise<ApiConfig | undefined>;
   upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
-  
+
   // Message Logs
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
   getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]>;
-  
+
   // Statistics
   getInterviewStats(): Promise<{
     totalClients: number;
@@ -104,7 +104,7 @@ export interface IStorage {
     pendingInterviews: number;
     avgScore: number;
   }>;
-  
+
   getClientStats(clientId: number): Promise<{
     activeJobs: number;
     totalCandidates: number;
@@ -223,10 +223,10 @@ export class FirebaseStorage implements IStorage {
   async createClient(insertClient: InsertClient): Promise<Client> {
     try {
       console.log('Firebase createClient iniciado com dados:', insertClient);
-      
+
       // Gerar ID único baseado em timestamp
       const id = Date.now();
-      
+
       // Converter datas para formato serializable
       const clientData = {
         id,
@@ -251,10 +251,10 @@ export class FirebaseStorage implements IStorage {
       };
 
       console.log('Dados processados para Firebase:', clientData);
-      
+
       await setDoc(doc(firebaseDb, 'clients', id.toString()), clientData);
       console.log('Cliente salvo no Firebase com ID:', id);
-      
+
       // Retornar com datas convertidas de volta para Date objects
       return {
         ...clientData,
@@ -273,24 +273,24 @@ export class FirebaseStorage implements IStorage {
     try {
       // Processar datas para formato ISO antes de salvar
       const processedUpdate = { ...clientUpdate };
-      
+
       if (processedUpdate.contractStart && processedUpdate.contractStart instanceof Date) {
         processedUpdate.contractStart = processedUpdate.contractStart.toISOString() as any;
       }
-      
+
       // Para contractEnd: se for null, manter null; se for Date, converter para ISO
       if (processedUpdate.contractEnd === null) {
         processedUpdate.contractEnd = null as any;
       } else if (processedUpdate.contractEnd && processedUpdate.contractEnd instanceof Date) {
         processedUpdate.contractEnd = processedUpdate.contractEnd.toISOString() as any;
       }
-      
+
       if (processedUpdate.additionalLimitExpiry && processedUpdate.additionalLimitExpiry instanceof Date) {
         processedUpdate.additionalLimitExpiry = processedUpdate.additionalLimitExpiry.toISOString() as any;
       }
 
       console.log('Atualizando cliente com dados:', processedUpdate);
-      
+
       await updateDoc(doc(firebaseDb, 'clients', id.toString()), processedUpdate);
       const updated = await this.getClientById(id);
       return updated as Client;
@@ -547,29 +547,27 @@ export class FirebaseStorage implements IStorage {
   // Candidates
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
     try {
-      const q = query(collection(firebaseDb, 'candidates'), where('clientId', '==', clientId));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Candidate[];
+      const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+      const candidates = candidatesSnapshot.docs
+        .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
+        .filter(candidate => candidate.clientId === clientId);
+      return candidates;
     } catch (error) {
-      console.error('Erro ao buscar candidates por cliente:', error);
-      return [];
+      console.error('Erro ao buscar candidates por clientId:', error);
+      throw error;
     }
   }
 
   async getCandidatesByListId(listId: number): Promise<Candidate[]> {
     try {
-      const q = query(collection(firebaseDb, 'candidates'), where('listId', '==', listId));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      })) as Candidate[];
+      const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+      const candidates = candidatesSnapshot.docs
+        .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
+        .filter(candidate => candidate.listId === listId);
+      return candidates;
     } catch (error) {
-      console.error('Erro ao buscar candidates por lista:', error);
-      return [];
+      console.error('Erro ao buscar candidates por listId:', error);
+      throw error;
     }
   }
 
@@ -902,13 +900,13 @@ export class FirebaseStorage implements IStorage {
     try {
       const clientsSnapshot = await getDocs(collection(firebaseDb, 'clients'));
       const interviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
-      
+
       const totalClients = clientsSnapshot.size;
       const totalInterviews = interviewsSnapshot.size;
-      
+
       const interviews = interviewsSnapshot.docs.map(doc => doc.data());
       const pendingInterviews = interviews.filter(i => i.status === 'pending').length;
-      
+
       const completedInterviews = interviews.filter(i => i.totalScore !== null && i.totalScore !== undefined);
       const avgScore = completedInterviews.length > 0 
         ? completedInterviews.reduce((sum, i) => sum + (i.totalScore || 0), 0) / completedInterviews.length
@@ -936,18 +934,18 @@ export class FirebaseStorage implements IStorage {
     try {
       const jobsSnapshot = await getDocs(query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId)));
       const candidatesSnapshot = await getDocs(query(collection(firebaseDb, 'candidates'), where('clientId', '==', clientId)));
-      
+
       const jobs = jobsSnapshot.docs.map(doc => doc.data());
       const activeJobs = jobs.filter(job => job.status === 'active').length;
       const totalCandidates = candidatesSnapshot.size;
-      
+
       const client = await this.getClientById(clientId);
       const monthlyLimit = client?.monthlyLimit || 100;
-      
+
       const currentMonth = new Date();
       currentMonth.setDate(1);
       currentMonth.setHours(0, 0, 0, 0);
-      
+
       const interviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
       const interviews = interviewsSnapshot.docs.map(doc => doc.data());
       const monthlyInterviews = interviews.filter(interview => {
@@ -1251,11 +1249,11 @@ export class DatabaseStorage implements IStorage {
   }> {
     const allClients = await pgDb.select().from(clients);
     const allInterviews = await pgDb.select().from(interviews);
-    
+
     const totalClients = allClients.length;
     const totalInterviews = allInterviews.length;
     const pendingInterviews = allInterviews.filter((i: any) => i.status === 'pending').length;
-    
+
     const completedInterviews = allInterviews.filter((i: any) => i.totalScore !== null);
     const avgScore = completedInterviews.length > 0 
       ? completedInterviews.reduce((sum: any, i: any) => sum + (i.totalScore || 0), 0) / completedInterviews.length
@@ -1278,18 +1276,18 @@ export class DatabaseStorage implements IStorage {
   }> {
     const clientJobs = await pgDb.select().from(jobs).where(eq(jobs.clientId, clientId));
     const activeJobs = clientJobs.filter((job: any) => job.status === 'active').length;
-    
+
     const clientCandidates = await pgDb.select().from(candidates).where(eq(candidates.clientId, clientId));
     const totalCandidates = clientCandidates.length;
-    
+
     const client = await this.getClientById(clientId);
     const monthlyLimit = client?.monthlyLimit || 100;
-    
+
     // Count interviews from current month
     const currentMonth = new Date();
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
-    
+
     const allInterviews = await pgDb.select().from(interviews);
     const monthlyInterviews = allInterviews.filter((interview: any) => {
       const interviewDate = new Date(interview.createdAt || '');

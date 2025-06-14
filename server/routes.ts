@@ -657,59 +657,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Arquivo vazio ou formato inválido' });
       }
 
+      // Buscar candidatos existentes na lista para verificar duplicatas
+      const existingCandidates = await storage.getCandidatesByListId(parseInt(listId));
+      
       // Validate and transform data
-      const candidatesData = jsonData.map((row: any, index: number) => {
-        const name = row['Nome'] || row['nome'] || row['Name'] || row['name'] || '';
-        const email = row['Email'] || row['email'] || '';
-        const phone = row['Celular'] || row['celular'] || row['Telefone'] || row['telefone'] || row['Phone'] || row['phone'] || '';
+      const validCandidates = [];
+      const duplicates = [];
+      const errors = [];
 
-        // Verificar se os campos estão preenchidos e não são apenas espaços vazios
-        if (!name || !name.toString().trim()) {
-          throw new Error(`Linha ${index + 2}: Nome é obrigatório`);
-        }
+      for (let index = 0; index < jsonData.length; index++) {
+        const row = jsonData[index];
         
-        if (!email || !email.toString().trim()) {
-          throw new Error(`Linha ${index + 2}: Email é obrigatório`);
-        }
-        
-        if (!phone || !phone.toString().trim()) {
-          throw new Error(`Linha ${index + 2}: Celular é obrigatório`);
-        }
+        try {
+          const name = row['Nome'] || row['nome'] || row['Name'] || row['name'] || '';
+          const email = row['Email'] || row['email'] || '';
+          const phone = row['Celular'] || row['celular'] || row['Telefone'] || row['telefone'] || row['Phone'] || row['phone'] || '';
 
-        // Validate email format
-        const emailStr = String(email).trim();
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(emailStr)) {
-          throw new Error(`Linha ${index + 2}: Email inválido - ${emailStr}`);
+          // Verificar se os campos estão preenchidos e não são apenas espaços vazios
+          if (!name || !name.toString().trim()) {
+            errors.push(`Linha ${index + 2}: Nome é obrigatório`);
+            continue;
+          }
+          
+          if (!email || !email.toString().trim()) {
+            errors.push(`Linha ${index + 2}: Email é obrigatório`);
+            continue;
+          }
+          
+          if (!phone || !phone.toString().trim()) {
+            errors.push(`Linha ${index + 2}: Celular é obrigatório`);
+            continue;
+          }
+
+          // Validate email format
+          const emailStr = String(email).trim().toLowerCase();
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailStr)) {
+            errors.push(`Linha ${index + 2}: Email inválido - ${emailStr}`);
+            continue;
+          }
+
+          // Validate Brazilian phone format
+          const phoneStr = String(phone);
+          const phoneDigits = phoneStr.replace(/\D/g, '');
+          if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+            errors.push(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
+            continue;
+          }
+
+          const nameStr = String(name).trim();
+
+          // Verificar duplicatas
+          const isDuplicate = existingCandidates.some(existing => 
+            existing.name.toLowerCase() === nameStr.toLowerCase() ||
+            existing.email.toLowerCase() === emailStr ||
+            existing.phone === phoneDigits
+          );
+
+          if (isDuplicate) {
+            duplicates.push({
+              line: index + 2,
+              name: nameStr,
+              email: emailStr,
+              phone: phoneDigits,
+              reason: 'Candidato já existe na lista (nome, email ou celular duplicado)'
+            });
+            continue;
+          }
+
+          const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+
+          validCandidates.push({
+            name: nameStr,
+            email: emailStr,
+            phone: phoneDigits,
+            clientId,
+            listId: parseInt(listId)
+          });
+        } catch (error) {
+          errors.push(`Linha ${index + 2}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
         }
+      }
 
-        // Validate Brazilian phone format
-        if (!phone) {
-          throw new Error(`Linha ${index + 2}: Celular é obrigatório`);
-        }
-        
-        const phoneStr = String(phone); // Converter para string
-        const phoneDigits = phoneStr.replace(/\D/g, '');
-        if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-          throw new Error(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
-        }
+      // Se há erros críticos, retornar erro
+      if (errors.length > 0) {
+        return res.status(400).json({ 
+          message: 'Erros encontrados no arquivo', 
+          errors 
+        });
+      }
 
-        const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+      // Importar apenas candidatos válidos (não duplicados)
+      let importedCandidates = [];
+      if (validCandidates.length > 0) {
+        importedCandidates = await storage.createCandidates(validCandidates);
+      }
 
-        return {
-          name: String(name).trim(),
-          email: emailStr.toLowerCase(),
-          phone: phoneDigits,
-          clientId,
-          listId: parseInt(listId)
-        };
-      });
+      // Preparar resposta
+      const response: any = {
+        message: `${importedCandidates.length} candidatos importados com sucesso`,
+        imported: importedCandidates.length,
+        duplicates: duplicates.length,
+        candidates: importedCandidates
+      };
 
-      const candidates = await storage.createCandidates(candidatesData);
-      res.status(201).json({
-        message: `${candidates.length} candidatos importados com sucesso`,
-        candidates
-      });
+      if (duplicates.length > 0) {
+        response.duplicatesList = duplicates;
+        response.message += `. ${duplicates.length} candidatos não foram importados por já existirem na lista`;
+      }
+
+      res.status(201).json(response);
     } catch (error: any) {
       console.error('Erro na importação:', error);
       res.status(400).json({ message: error.message || 'Falha na importação de candidatos' });
