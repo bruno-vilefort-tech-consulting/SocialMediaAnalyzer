@@ -1,9 +1,10 @@
 import {
   type User, type InsertUser, type Client, type InsertClient,
   type Job, type InsertJob, type Question, type InsertQuestion,
-  type Candidate, type InsertCandidate, type Selection, type InsertSelection,
-  type Interview, type InsertInterview, type Response, type InsertResponse,
-  type ApiConfig, type InsertApiConfig, type MessageLog, type InsertMessageLog
+  type CandidateList, type InsertCandidateList, type Candidate, type InsertCandidate, 
+  type Selection, type InsertSelection, type Interview, type InsertInterview, 
+  type Response, type InsertResponse, type ApiConfig, type InsertApiConfig, 
+  type MessageLog, type InsertMessageLog
 } from "@shared/schema";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "firebase/firestore";
@@ -53,8 +54,16 @@ export interface IStorage {
   updateQuestion(id: number, question: Partial<Question>): Promise<Question>;
   deleteQuestion(id: number): Promise<void>;
   
+  // Candidate Lists
+  getCandidateListsByClientId(clientId: number): Promise<CandidateList[]>;
+  getCandidateListById(id: number): Promise<CandidateList | undefined>;
+  createCandidateList(list: InsertCandidateList): Promise<CandidateList>;
+  updateCandidateList(id: number, list: Partial<CandidateList>): Promise<CandidateList>;
+  deleteCandidateList(id: number): Promise<void>;
+  
   // Candidates
   getCandidatesByClientId(clientId: number): Promise<Candidate[]>;
+  getCandidatesByListId(listId: number): Promise<Candidate[]>;
   getCandidateById(id: number): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
   createCandidates(candidates: InsertCandidate[]): Promise<Candidate[]>;
@@ -472,6 +481,69 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  // Candidate Lists
+  async getCandidateListsByClientId(clientId: number): Promise<CandidateList[]> {
+    try {
+      const q = query(collection(firebaseDb, 'candidateLists'), where('clientId', '==', clientId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as CandidateList[];
+    } catch (error) {
+      console.error('Erro ao buscar listas de candidatos por cliente:', error);
+      return [];
+    }
+  }
+
+  async getCandidateListById(id: number): Promise<CandidateList | undefined> {
+    try {
+      const listDoc = await getDoc(doc(firebaseDb, 'candidateLists', id.toString()));
+      if (listDoc.exists()) {
+        return { id: parseInt(listDoc.id), ...listDoc.data() } as CandidateList;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Erro ao buscar lista de candidatos por ID:', error);
+      return undefined;
+    }
+  }
+
+  async createCandidateList(insertList: InsertCandidateList): Promise<CandidateList> {
+    try {
+      const id = parseInt(this.generateId());
+      const listData = {
+        ...insertList,
+        createdAt: new Date(),
+      };
+      await setDoc(doc(firebaseDb, 'candidateLists', id.toString()), listData);
+      return { id, ...listData } as CandidateList;
+    } catch (error) {
+      console.error('Erro ao criar lista de candidatos:', error);
+      throw error;
+    }
+  }
+
+  async updateCandidateList(id: number, listUpdate: Partial<CandidateList>): Promise<CandidateList> {
+    try {
+      await updateDoc(doc(firebaseDb, 'candidateLists', id.toString()), listUpdate);
+      const updated = await this.getCandidateListById(id);
+      return updated as CandidateList;
+    } catch (error) {
+      console.error('Erro ao atualizar lista de candidatos:', error);
+      throw error;
+    }
+  }
+
+  async deleteCandidateList(id: number): Promise<void> {
+    try {
+      await deleteDoc(doc(firebaseDb, 'candidateLists', id.toString()));
+    } catch (error) {
+      console.error('Erro ao deletar lista de candidatos:', error);
+      throw error;
+    }
+  }
+
   // Candidates
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
     try {
@@ -483,6 +555,20 @@ export class FirebaseStorage implements IStorage {
       })) as Candidate[];
     } catch (error) {
       console.error('Erro ao buscar candidates por cliente:', error);
+      return [];
+    }
+  }
+
+  async getCandidatesByListId(listId: number): Promise<Candidate[]> {
+    try {
+      const q = query(collection(firebaseDb, 'candidates'), where('listId', '==', listId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Candidate[];
+    } catch (error) {
+      console.error('Erro ao buscar candidates por lista:', error);
       return [];
     }
   }

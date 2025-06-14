@@ -547,21 +547,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Candidates routes
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.clientId!;
-      const candidates = await storage.getCandidatesByClientId(clientId);
-      res.json(candidates);
+      const listId = req.query.listId as string;
+      if (listId) {
+        const candidates = await storage.getCandidatesByListId(parseInt(listId));
+        res.json(candidates);
+      } else {
+        const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
+        const candidates = await storage.getCandidatesByClientId(clientId);
+        res.json(candidates);
+      }
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch candidates' });
     }
   });
 
-  app.post("/api/candidates", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const candidateData = insertCandidateSchema.parse({
-        ...req.body,
-        clientId: req.user!.clientId!
-      });
-      
+      const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+      const candidateData = { ...req.body, clientId };
       const candidate = await storage.createCandidate(candidateData);
       res.status(201).json(candidate);
     } catch (error) {
@@ -592,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/candidates/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.patch("/api/candidates/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const candidate = await storage.updateCandidate(id, req.body);
@@ -602,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/candidates/:id", authenticate, authorize(['client']), async (req, res) => {
+  app.delete("/api/candidates/:id", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCandidate(id);
