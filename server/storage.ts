@@ -412,13 +412,14 @@ export class FirebaseStorage implements IStorage {
         
         // Buscar documento que tenha o mesmo ID nos dados
         const querySnapshot = await getDocs(collection(firebaseDb, 'jobs'));
-        let foundDoc = null;
+        let foundDoc: any = null;
         
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          if (data.id === jobId || data.id === parseInt(jobId)) {
-            foundDoc = doc;
-            console.log('Encontrado documento alternativo:', doc.id);
+        querySnapshot.forEach((docSnapshot) => {
+          const data = docSnapshot.data();
+          // Verificar se o ID do documento contém o jobId ou se o ID é igual
+          if (docSnapshot.id.includes(jobId) || data.id === jobId || data.id === parseInt(jobId)) {
+            foundDoc = docSnapshot;
+            console.log('Encontrado documento alternativo:', docSnapshot.id);
           }
         });
         
