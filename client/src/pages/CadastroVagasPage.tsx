@@ -61,6 +61,12 @@ export default function CadastroVagasPage() {
     queryKey: ["/api/jobs"],
   });
 
+  // Debug: mostrar dados no console
+  useEffect(() => {
+    console.log('Jobs carregadas:', jobs);
+    console.log('Total de jobs:', jobs.length);
+  }, [jobs]);
+
   // Buscar clientes (apenas para master)
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
