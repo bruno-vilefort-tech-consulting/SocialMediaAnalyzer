@@ -255,12 +255,44 @@ export default function InterviewPage() {
         return;
       }
       
-      // Fallback para Web Speech API se OpenAI falhar
+      // Fallback para Web Speech API com voz mais natural
       if ('speechSynthesis' in window) {
+        // Aguardar vozes carregarem
+        const waitForVoices = () => {
+          return new Promise<void>((resolve) => {
+            const voices = speechSynthesis.getVoices();
+            if (voices.length > 0) {
+              resolve();
+            } else {
+              speechSynthesis.addEventListener('voiceschanged', () => resolve(), { once: true });
+            }
+          });
+        };
+
+        await waitForVoices();
+        
+        const voices = speechSynthesis.getVoices();
         const utterance = new SpeechSynthesisUtterance(questionText);
+        
+        // Procurar por voz feminina brasileira ou portuguesa mais natural
+        const preferredVoice = voices.find(voice => 
+          (voice.lang.includes('pt-BR') || voice.lang.includes('pt-PT')) && 
+          (voice.name.toLowerCase().includes('google') || 
+           voice.name.toLowerCase().includes('microsoft') ||
+           voice.name.toLowerCase().includes('female') ||
+           voice.name.toLowerCase().includes('mulher'))
+        ) || voices.find(voice => voice.lang.includes('pt-BR')) || 
+           voices.find(voice => voice.lang.includes('pt'));
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+          console.log('🎙️ Usando voz:', preferredVoice.name);
+        }
+        
         utterance.lang = 'pt-BR';
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
+        utterance.rate = 0.85; // Mais devagar para soar mais natural
+        utterance.pitch = 1.1; // Um pouco mais agudo para feminino
+        utterance.volume = 0.9;
         
         utterance.onend = () => {
           setIsPlayingQuestion(false);
