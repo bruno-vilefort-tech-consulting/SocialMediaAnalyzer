@@ -880,9 +880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create interview link
         const interviewLink = `${baseUrl}/interview/${token}`;
 
-        // Prepare messages with candidate name and interview link
-        let whatsappMessage = selection.mensagemWhatsApp;
-        let emailMessage = selection.mensagemEmail || '';
+        // Prepare messages with candidate name and interview link using new field names
+        let whatsappMessage = selection.whatsappTemplate;
+        let emailMessage = selection.emailTemplate || '';
 
         // Replace placeholders in messages
         whatsappMessage = whatsappMessage
@@ -895,23 +895,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .replace(/\{vaga\}/g, job.nomeVaga)
           .replace(/\{link\}/g, interviewLink);
 
+        // Check sendVia field to determine what to send
+        const shouldSendWhatsApp = selection.sendVia === 'whatsapp' || selection.sendVia === 'both';
+        const shouldSendEmail = selection.sendVia === 'email' || selection.sendVia === 'both';
+
         // Log message sending (in production, integrate with WhatsApp API and email service)
-        if (selection.enviarWhatsApp) {
+        if (shouldSendWhatsApp) {
           await storage.createMessageLog({
             interviewId: interview.id,
             type: 'whatsapp',
-            recipient: candidate.phone || '',
-            message: whatsappMessage,
+            channel: 'whatsapp',
             status: 'sent'
           });
         }
 
-        if (selection.enviarEmail && candidate.email) {
+        if (shouldSendEmail && candidate.email) {
           await storage.createMessageLog({
             interviewId: interview.id,
             type: 'email',
-            recipient: candidate.email,
-            message: emailMessage,
+            channel: 'email',
             status: 'sent'
           });
         }
