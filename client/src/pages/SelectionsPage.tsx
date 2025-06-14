@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Users, Edit, Trash2, Send, Calendar, Search } from "lucide-react";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -194,6 +194,33 @@ export default function SelectionsPage() {
     setAgendamento(selection.agendamento ? new Date(selection.agendamento).toISOString().slice(0, 16) : "");
     setTipoEnvio(selection.agendamento ? "agendar" : "agora");
     setShowForm(true);
+  };
+
+  // Duplicar seleção
+  const duplicateSelection = (selection: Selection) => {
+    setEditingSelection(null); // Não é edição, é criação de nova seleção
+    setNomeSelecao(`${selection.name || selection.nomeSelecao} - Cópia`);
+    setCandidateListId(selection.candidateListId);
+    setJobId(selection.jobId);
+    setMensagemWhatsApp(selection.whatsappTemplate || selection.mensagemWhatsApp || defaultWhatsAppMessage);
+    setMensagemEmail(selection.emailTemplate || selection.mensagemEmail || defaultEmailMessage);
+    setEnviarWhatsApp(selection.sendVia?.includes('whatsapp') || selection.enviarWhatsApp || false);
+    setEnviarEmail(selection.sendVia?.includes('email') || selection.enviarEmail || false);
+    setAgendamento(""); // Reset agendamento para nova seleção
+    setTipoEnvio("agora"); // Default para enviar agora
+    setShowForm(true);
+  };
+
+  // Formatar data e hora
+  const formatDateTime = (dateString: string | Date) => {
+    if (!dateString) return { date: 'N/A', time: 'N/A' };
+    const date = new Date(dateString);
+    const dateFormatted = date.toLocaleDateString('pt-BR');
+    const timeFormatted = date.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    return { date: dateFormatted, time: timeFormatted };
   };
 
   // Salvar seleção
@@ -545,10 +572,15 @@ export default function SelectionsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {selection.createdAt 
-                        ? new Date(selection.createdAt).toLocaleDateString('pt-BR') 
-                        : new Date().toLocaleDateString('pt-BR')
-                      }
+                      {(() => {
+                        const dateTime = formatDateTime(selection.createdAt);
+                        return (
+                          <div className="text-sm">
+                            <div className="font-medium">{dateTime.date}</div>
+                            <div className="text-gray-500 text-xs">{dateTime.time}</div>
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -556,8 +588,18 @@ export default function SelectionsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => startEdit(selection)}
+                          title="Editar seleção"
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => duplicateSelection(selection)}
+                          title="Duplicar seleção"
+                        >
+                          <Copy className="w-4 h-4" />
                         </Button>
                         
                         {selection.status === 'rascunho' && (
@@ -566,6 +608,7 @@ export default function SelectionsPage() {
                             size="sm"
                             onClick={() => sendInterviewsMutation.mutate(selection.id)}
                             disabled={sendInterviewsMutation.isPending}
+                            title="Enviar entrevistas"
                           >
                             <Send className="w-4 h-4" />
                           </Button>
