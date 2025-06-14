@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 14, 2025: Sistema de voz otimizado e validação OpenAI corrigida
+  - **Sistema de login master corrigido**: Problema na ordem de parâmetros apiRequest resolvido
+  - **Validação OpenAI melhorada**: Mensagens específicas para quota excedida, chave inválida, formato incorreto
+  - **Voz do navegador otimizada**: Seleção automática da melhor voz portuguesa disponível  
+  - **Configurações de áudio ajustadas**: Rate 0.85, pitch 1.1, volume 0.9 para reduzir robotização
+  - **Sistema de fallback robusto**: TTS OpenAI → Web Speech API → mensagem de texto
+  - **Logs detalhados implementados**: Rastreamento completo de problemas de áudio e gravação
+  - **Detecção de compatibilidade**: Verificações robustas para MediaRecorder e getUserMedia
+
 - June 14, 2025: Sistema de entrevistas totalmente funcional - Problema dos links resolvido
   - **Links de entrevista 100% funcionais**: Corrigido problema crítico na query do frontend
   - **Frontend query corrigida**: Mudança de queryKey de array para string única `/api/interview/${token}`
