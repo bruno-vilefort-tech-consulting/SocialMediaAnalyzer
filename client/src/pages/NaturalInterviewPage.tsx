@@ -337,7 +337,7 @@ export default function NaturalInterviewPage() {
           // CORREÇÃO CRÍTICA: Reiniciar escuta automaticamente após IA falar
           console.log('🔄 Reiniciando escuta após IA falar...');
           setTimeout(() => {
-            if (!interviewCompleted && !isAISpeaking) {
+            if (!interviewCompleted && !isSpeaking) {
               startListening();
             }
           }, 1000); // 1 segundo de pausa antes de reiniciar

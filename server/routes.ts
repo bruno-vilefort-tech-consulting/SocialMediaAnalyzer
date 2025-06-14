@@ -1933,19 +1933,20 @@ Se ainda há perguntas, faça a próxima. Se todas foram respondidas, finalize c
       let nextQuestionIndex = currentQuestionIndex;
       let interviewCompleted = false;
 
-      // Se a IA mencionou fazer uma próxima pergunta, avançar
-      if (aiResponse.toLowerCase().includes('próxima') || 
-          aiResponse.toLowerCase().includes('agora') ||
-          currentQuestionIndex < questions.length - 1) {
-        nextQuestionIndex = Math.min(currentQuestionIndex + 1, questions.length - 1);
-      }
-
-      // Se chegou na última pergunta, marcar como completa
-      if (nextQuestionIndex >= questions.length - 1 && 
-          (aiResponse.toLowerCase().includes('finaliz') || 
-           aiResponse.toLowerCase().includes('obrigad') ||
-           aiResponse.toLowerCase().includes('prazer'))) {
-        interviewCompleted = true;
+      // Se o candidato respondeu uma pergunta, avançar automaticamente
+      if (candidateResponse && candidateResponse.trim().length > 0) {
+        console.log(`📈 Candidato respondeu pergunta ${currentQuestionIndex + 1}/${questions.length}`);
+        
+        // Avançar para próxima pergunta
+        nextQuestionIndex = currentQuestionIndex + 1;
+        
+        // Se passou do total de perguntas, finalizar entrevista
+        if (nextQuestionIndex >= questions.length) {
+          interviewCompleted = true;
+          console.log('🏁 Entrevista completa - todas as perguntas respondidas');
+        } else {
+          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
+        }
       }
 
       res.json({
