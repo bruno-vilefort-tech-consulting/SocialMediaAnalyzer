@@ -297,6 +297,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const clientId = req.user!.clientId!;
         jobs = await storage.getJobsByClientId(clientId);
       }
+      console.log('📋 Jobs retornados pela API:');
+      jobs.forEach(job => {
+        console.log(`  - ID: ${job.id} | Nome: ${job.nomeVaga}`);
+      });
       res.json(jobs);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch jobs' });
