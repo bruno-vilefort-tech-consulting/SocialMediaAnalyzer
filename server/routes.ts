@@ -624,10 +624,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Parse Excel/CSV file
-      const workbook = require('xlsx').read(req.file.buffer, { type: 'buffer' });
+      const xlsx = await import('xlsx');
+      const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = require('xlsx').utils.sheet_to_json(worksheet);
+      const jsonData = xlsx.utils.sheet_to_json(worksheet);
 
       if (jsonData.length === 0) {
         return res.status(400).json({ message: 'Arquivo vazio ou formato inválido' });
