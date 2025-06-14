@@ -867,7 +867,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log('📝 Job encontrado para envio automático:', job);
           
-          const candidates = await storage.getCandidatesByClientId(selection.clientId);
+          // Buscar candidatos da lista específica selecionada
+          let candidates = [];
+          if (selection.candidateListId) {
+            console.log('🎯 Buscando candidatos da lista ID:', selection.candidateListId);
+            candidates = await storage.getCandidatesByListId(selection.candidateListId);
+          } else {
+            console.log('🎯 Nenhuma lista específica selecionada, buscando todos os candidatos do cliente');
+            candidates = await storage.getCandidatesByClientId(selection.clientId);
+          }
           console.log('👥 Candidatos encontrados para envio automático:', candidates.length, 'candidatos');
           
           if (!job) {
