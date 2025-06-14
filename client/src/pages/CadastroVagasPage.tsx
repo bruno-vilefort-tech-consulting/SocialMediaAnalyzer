@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -57,8 +58,6 @@ export default function CadastroVagasPage() {
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
   const [mostrarFormularioPergunta, setMostrarFormularioPergunta] = useState(false);
   const [perguntaEditando, setPerguntaEditando] = useState<Pergunta | null>(null);
-  const [vagasCriadas, setVagasCriadas] = useState<Vaga[]>([]);
-  const [mostrarNovaVaga, setMostrarNovaVaga] = useState(false);
 
   // Formulários
   const vagaForm = useForm<VagaFormData>({
@@ -84,16 +83,24 @@ export default function CadastroVagasPage() {
     enabled: user?.role === 'master',
   });
 
-  // Buscar vagas existentes
-  const { data: vagasExistentes = [], refetch: refetchVagas } = useQuery<Vaga[]>({
-    queryKey: ["/api/jobs"],
-    select: (data: unknown) => {
-      if (Array.isArray(data)) {
-        return data;
-      }
-      return [];
+  // Carregar perguntas quando vaga atual mudar
+  useEffect(() => {
+    if (vagaAtual?.id) {
+      carregarPerguntas(vagaAtual.id);
     }
-  });
+  }, [vagaAtual]);
+
+  // Função para carregar perguntas da vaga
+  const carregarPerguntas = async (vagaId: string) => {
+    try {
+      const response = await apiRequest("GET", `/api/questions/${vagaId}`);
+      const perguntasData = await response.json();
+      setPerguntas(Array.isArray(perguntasData) ? perguntasData : []);
+    } catch (error) {
+      console.error("Erro ao carregar perguntas:", error);
+      setPerguntas([]);
+    }
+  };
 
   // Mutations para vagas
   const criarVagaMutation = useMutation({
@@ -104,7 +111,7 @@ export default function CadastroVagasPage() {
         nomeVaga: data.nomeVaga,
         descricaoVaga: data.descricaoVaga,
         clientId: clientId,
-        status: 'ativo'
+        status: 'not_finished' // Status inicial para vaga não finalizada
       };
 
       const response = await apiRequest("POST", "/api/jobs", vagaData);
@@ -112,11 +119,11 @@ export default function CadastroVagasPage() {
     },
     onSuccess: (novaVaga: Vaga) => {
       setVagaAtual(novaVaga);
+      setPerguntas([]);
       toast({
         title: "Sucesso",
-        description: "Vaga criada com sucesso! Agora adicione as perguntas da entrevista.",
+        description: "Vaga criada! Agora adicione as perguntas da entrevista.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
     },
     onError: (error: any) => {
       toast({
@@ -143,18 +150,21 @@ export default function CadastroVagasPage() {
       return await response.json();
     },
     onSuccess: (novaPergunta: Pergunta) => {
-      setPerguntas([...perguntas, novaPergunta]);
+      // Recarregar perguntas para garantir sincronização com o banco
+      if (vagaAtual?.id) {
+        carregarPerguntas(vagaAtual.id);
+      }
       setMostrarFormularioPergunta(false);
       perguntaForm.reset();
       toast({
         title: "Sucesso",
-        description: "Pergunta adicionada com sucesso!",
+        description: "Pergunta salva no banco de dados!",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao criar pergunta",
+        description: error.message || "Erro ao salvar pergunta",
         variant: "destructive",
       });
     },
@@ -172,14 +182,17 @@ export default function CadastroVagasPage() {
       const response = await apiRequest("PATCH", `/api/questions/${perguntaEditando.id}`, perguntaData);
       return await response.json();
     },
-    onSuccess: (perguntaAtualizada: Pergunta) => {
-      setPerguntas(perguntas.map(p => p.id === perguntaAtualizada.id ? perguntaAtualizada : p));
+    onSuccess: () => {
+      // Recarregar perguntas
+      if (vagaAtual?.id) {
+        carregarPerguntas(vagaAtual.id);
+      }
       setMostrarFormularioPergunta(false);
       setPerguntaEditando(null);
       perguntaForm.reset();
       toast({
         title: "Sucesso",
-        description: "Pergunta atualizada com sucesso!",
+        description: "Pergunta atualizada no banco de dados!",
       });
     },
     onError: (error: any) => {
@@ -193,14 +206,16 @@ export default function CadastroVagasPage() {
 
   const excluirPerguntaMutation = useMutation({
     mutationFn: async (perguntaId: number) => {
-      const response = await apiRequest("DELETE", `/api/questions/${perguntaId}`);
-      return await response.json();
+      await apiRequest("DELETE", `/api/questions/${perguntaId}`);
     },
-    onSuccess: (_, perguntaId) => {
-      setPerguntas(perguntas.filter(p => p.id !== perguntaId));
+    onSuccess: () => {
+      // Recarregar perguntas
+      if (vagaAtual?.id) {
+        carregarPerguntas(vagaAtual.id);
+      }
       toast({
         title: "Sucesso",
-        description: "Pergunta excluída com sucesso!",
+        description: "Pergunta excluída do banco de dados!",
       });
     },
     onError: (error: any) => {
@@ -212,12 +227,59 @@ export default function CadastroVagasPage() {
     },
   });
 
+  const finalizarVagaMutation = useMutation({
+    mutationFn: async () => {
+      if (!vagaAtual) throw new Error("Nenhuma vaga para finalizar");
+
+      const response = await apiRequest("PATCH", `/api/jobs/${vagaAtual.id}`, {
+        status: 'ativo'
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Sucesso",
+        description: `Vaga "${vagaAtual?.nomeVaga}" finalizada com ${perguntas.length} pergunta(s)!`,
+      });
+      // Reset form
+      setVagaAtual(null);
+      setPerguntas([]);
+      vagaForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao finalizar vaga",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Handlers
   const cadastrarVaga = (data: VagaFormData) => {
     criarVagaMutation.mutate(data);
   };
 
   const adicionarPergunta = () => {
+    if (!vagaAtual) {
+      toast({
+        title: "Erro",
+        description: "Primeiro crie uma vaga para adicionar perguntas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (perguntas.length >= 10) {
+      toast({
+        title: "Limite atingido",
+        description: "Máximo de 10 perguntas por vaga.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setMostrarFormularioPergunta(true);
     setPerguntaEditando(null);
     perguntaForm.reset();
@@ -247,7 +309,22 @@ export default function CadastroVagasPage() {
   };
 
   const excluirPergunta = (perguntaId: number) => {
-    excluirPerguntaMutation.mutate(perguntaId);
+    if (confirm("Tem certeza que deseja excluir esta pergunta?")) {
+      excluirPerguntaMutation.mutate(perguntaId);
+    }
+  };
+
+  const finalizarVaga = () => {
+    if (perguntas.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Adicione pelo menos uma pergunta antes de finalizar a vaga.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    finalizarVagaMutation.mutate();
   };
 
   return (
@@ -352,7 +429,7 @@ export default function CadastroVagasPage() {
               className="w-full"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Acrescentar Perguntas da Entrevista
+              Adicionar Pergunta ({perguntas.length}/10)
             </Button>
 
             {perguntas.length >= 10 && (
@@ -366,7 +443,7 @@ export default function CadastroVagasPage() {
               <Card className="border-2 border-blue-200">
                 <CardHeader>
                   <CardTitle className="text-lg">
-                    {perguntaEditando ? `Editar Pergunta ${perguntaEditando.numeroPergunta}` : `Pergunta ${perguntas.length + 1}`}
+                    {perguntaEditando ? `Editar Pergunta ${perguntaEditando.numeroPergunta}` : `Nova Pergunta ${perguntas.length + 1}`}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -422,7 +499,10 @@ export default function CadastroVagasPage() {
                           disabled={criarPerguntaMutation.isPending || atualizarPerguntaMutation.isPending}
                         >
                           <Save className="w-4 h-4 mr-2" />
-                          {perguntaEditando ? "Atualizar" : "Salvar"} Pergunta
+                          {criarPerguntaMutation.isPending || atualizarPerguntaMutation.isPending 
+                            ? "Salvando..." 
+                            : perguntaEditando ? "Atualizar Pergunta" : "Salvar Pergunta"
+                          }
                         </Button>
                         <Button 
                           type="button" 
@@ -438,20 +518,20 @@ export default function CadastroVagasPage() {
               </Card>
             )}
 
-            {/* Lista de Perguntas */}
+            {/* Preview das Perguntas Salvas */}
             {perguntas.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-semibold">Perguntas Cadastradas ({perguntas.length}/10)</h3>
                 {perguntas.map((pergunta) => (
-                  <Card key={pergunta.id} className="p-4">
+                  <Card key={pergunta.id} className="p-4 bg-green-50 border-green-200">
                     <CardContent className="p-0">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-medium text-sm text-muted-foreground mb-1">
-                            Pergunta {pergunta.numeroPergunta}
+                          <div className="font-medium text-sm text-green-700 mb-1">
+                            Pergunta {pergunta.numeroPergunta} ✓ Salva no banco
                           </div>
                           <div className="font-medium mb-2">
-                            {pergunta.perguntaCandidato}
+                            <strong>Pergunta:</strong> {pergunta.perguntaCandidato}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             <strong>Resposta esperada:</strong> {pergunta.respostaPerfeita}
@@ -480,25 +560,24 @@ export default function CadastroVagasPage() {
               </div>
             )}
 
-            {/* Botão final para finalizar cadastro da vaga */}
+            {/* Botão para finalizar cadastro da vaga - só aparece se tem perguntas */}
             {perguntas.length > 0 && (
               <div className="mt-6">
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-700"
                   size="lg"
-                  onClick={() => {
-                    toast({
-                      title: "Sucesso",
-                      description: `Vaga "${vagaAtual?.nomeVaga}" cadastrada com ${perguntas.length} pergunta(s)!`,
-                    });
-                    // Reset form
-                    setVagaAtual(null);
-                    setPerguntas([]);
-                    vagaForm.reset();
-                  }}
+                  onClick={finalizarVaga}
+                  disabled={finalizarVagaMutation.isPending}
                 >
-                  Finalizar Cadastro da Vaga
+                  {finalizarVagaMutation.isPending 
+                    ? "Finalizando..." 
+                    : `Finalizar Cadastro da Vaga (${perguntas.length} pergunta${perguntas.length > 1 ? 's' : ''} salva${perguntas.length > 1 ? 's' : ''})`
+                  }
                 </Button>
+                <p className="text-sm text-muted-foreground text-center mt-2">
+                  Todas as perguntas já estão salvas no banco de dados. 
+                  Clique para ativar a vaga e disponibilizá-la para seleções.
+                </p>
               </div>
             )}
           </CardContent>
