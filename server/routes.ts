@@ -305,7 +305,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      // Garantir que clientId seja um número válido e não muito grande
+      console.log('Dados recebidos para criação de vaga:', req.body);
+      
+      // Garantir que clientId seja um número válido
       let clientId = 1;
       if (req.user!.role === 'master') {
         clientId = req.body.clientId && Number.isInteger(req.body.clientId) && req.body.clientId < 2147483647 
@@ -317,24 +319,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : 1;
       }
 
-      console.log('ClientId para vaga:', clientId);
-      console.log('Dados recebidos do frontend:', req.body);
-      
-      // Mapear campos antigos para novos se necessário
-      const bodyData = {
-        nomeVaga: req.body.nomeVaga || req.body.title,
-        descricaoVaga: req.body.descricaoVaga || req.body.description,
+      // Validar dados básicos da vaga
+      const jobData = insertJobSchema.parse({
+        nomeVaga: req.body.nomeVaga,
+        descricaoVaga: req.body.descricaoVaga || '',
         clientId: clientId,
         status: req.body.status || 'ativo'
+      });
+      
+      // Criar vaga com perguntas integradas
+      const vagaCompleta = {
+        ...jobData,
+        perguntas: req.body.perguntas || []
       };
       
-      const jobData = insertJobSchema.parse(bodyData);
+      console.log('Criando vaga com dados:', vagaCompleta);
+      const job = await storage.createJob(vagaCompleta);
       
-      const job = await storage.createJob(jobData);
       res.status(201).json(job);
     } catch (error) {
       console.error("Erro ao criar vaga:", error);
-      res.status(400).json({ message: 'Failed to create job' });
+      res.status(400).json({ message: 'Failed to create job', error: error.message });
     }
   });
 

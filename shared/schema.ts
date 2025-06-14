@@ -146,8 +146,8 @@ export const messageLogs = pgTable("message_logs", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
 export const insertJobSchema = z.object({
-  nomeVaga: z.string().min(1, "Nome da vaga é obrigatório"),
-  descricaoVaga: z.string().optional(),
+  nomeVaga: z.string().min(1, "Nome da vaga é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
+  descricaoVaga: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional(),
   clientId: z.number().int().positive(),
   status: z.enum(['ativo', 'inativo', 'pausado']).default('ativo'),
 });
