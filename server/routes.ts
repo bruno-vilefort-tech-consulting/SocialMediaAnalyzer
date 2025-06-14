@@ -1251,8 +1251,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!response.ok) {
-        throw new Error('OpenAI TTS request failed');
+        const errorText = await response.text();
+        console.log('❌ OpenAI TTS Error:', response.status, errorText);
+        throw new Error(`OpenAI TTS request failed: ${response.status} - ${errorText}`);
       }
+      
+      console.log('✅ TTS request successful');
 
       const audioBuffer = await response.arrayBuffer();
       

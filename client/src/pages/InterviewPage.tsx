@@ -119,29 +119,92 @@ export default function InterviewPage() {
   // Inicializar gravação de áudio
   const initializeAudio = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      // Verificar se o navegador suporta getUserMedia
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Navegador não suporta gravação de áudio');
+      }
+
+      console.log('🎤 Solicitando acesso ao microfone...');
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      console.log('✅ Microfone autorizado');
+      
+      // Verificar se MediaRecorder é suportado
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        console.log('⚠️ WebM não suportado, usando padrão');
+      }
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : undefined
+      });
       
       mediaRecorderRef.current.ondataavailable = (event) => {
+        console.log('📊 Dados de áudio recebidos:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('🔴 Gravação parada, processando áudio...');
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: mediaRecorderRef.current?.mimeType || 'audio/webm' 
+        });
+        console.log('💾 Blob criado:', audioBlob.size, 'bytes');
+        
         setResponses(prev => new Map(prev.set(currentQuestionIndex, audioBlob)));
         audioChunksRef.current = [];
         
         // Salvar resposta automaticamente
         saveResponse(audioBlob);
       };
+
+      mediaRecorderRef.current.onstart = () => {
+        console.log('🎙️ Gravação iniciada');
+      };
+
+      mediaRecorderRef.current.onerror = (event) => {
+        console.error('❌ Erro na gravação:', event);
+        toast({
+          title: "Erro de gravação",
+          description: "Problema durante a gravação de áudio",
+          variant: "destructive"
+        });
+      };
+
+      toast({
+        title: "Microfone configurado",
+        description: "Agora você pode gravar suas respostas",
+        variant: "default"
+      });
+
     } catch (error) {
+      console.error('❌ Erro ao inicializar áudio:', error);
+      
+      let errorMessage = "Não foi possível acessar o microfone";
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage = "Permissão negada. Por favor, autorize o acesso ao microfone";
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = "Nenhum microfone encontrado no dispositivo";
+        } else if (error.name === 'NotSupportedError') {
+          errorMessage = "Navegador não suporta gravação de áudio";
+        }
+      }
+      
       toast({
         title: "Erro de áudio",
-        description: "Não foi possível acessar o microfone",
+        description: errorMessage,
         variant: "destructive"
       });
+      throw error;
     }
   };
 
@@ -164,11 +227,12 @@ export default function InterviewPage() {
     }
   };
 
-  // Reproduzir pergunta com TTS da OpenAI
+  // Reproduzir pergunta com TTS da OpenAI ou fallback para Web Speech API
   const playQuestionAudio = async (questionText: string) => {
     try {
       setIsPlayingQuestion(true);
       
+      // Tentar TTS da OpenAI primeiro
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,14 +252,60 @@ export default function InterviewPage() {
         };
         
         await audio.play();
+        return;
+      }
+      
+      // Fallback para Web Speech API se OpenAI falhar
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(questionText);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        
+        utterance.onend = () => {
+          setIsPlayingQuestion(false);
+        };
+        
+        utterance.onerror = () => {
+          setIsPlayingQuestion(false);
+          toast({
+            title: "Erro de áudio",
+            description: "Não foi possível reproduzir a pergunta",
+            variant: "destructive"
+          });
+        };
+        
+        speechSynthesis.speak(utterance);
+      } else {
+        setIsPlayingQuestion(false);
+        toast({
+          title: "Info",
+          description: "Leia a pergunta abaixo e responda ao microfone",
+          variant: "default"
+        });
       }
     } catch (error) {
       setIsPlayingQuestion(false);
-      toast({
-        title: "Erro de áudio",
-        description: "Não foi possível reproduzir a pergunta",
-        variant: "destructive"
-      });
+      
+      // Fallback para Web Speech API
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(questionText);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        
+        utterance.onend = () => {
+          setIsPlayingQuestion(false);
+        };
+        
+        speechSynthesis.speak(utterance);
+      } else {
+        toast({
+          title: "Info",
+          description: "Leia a pergunta abaixo e responda ao microfone",
+          variant: "default"
+        });
+      }
     }
   };
 
