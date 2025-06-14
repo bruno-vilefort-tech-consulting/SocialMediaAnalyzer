@@ -115,15 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 14, 2025: Interface de entrevista natural completamente otimizada - ChatGPT Voice Mode
+- June 14, 2025: Sistema de entrevista natural 100% funcional - Bugs críticos corrigidos
+  - **Bug da variável resolvido**: Corrigido erro `isAISpeaking is not defined` para `isSpeaking`
+  - **Loop infinito eliminado**: Sistema agora avança corretamente entre perguntas e finaliza automaticamente
+  - **Progressão validada**: Testa pergunta 1 → pergunta 2 → finalização (`interviewCompleted: true`)
   - **Interface totalmente limpa**: Removido texto das mensagens na tela para experiência idêntica ao ChatGPT
   - **Saudação personalizada**: Sistema usa nome do candidato do banco de dados na boas-vindas
-  - **Fluxo automático**: Conversa continua automaticamente após 2 segundos de silêncio do candidato
+  - **Fluxo automático**: Conversa continua automaticamente após 1 segundo quando IA termina de falar
+  - **Sistema robusto**: Busca inteligente de perguntas do Firebase funcionando perfeitamente
   - **Timing otimizado**: Sistema detecta quando candidato para de falar e prossegue naturalmente
-  - **Controle de conflitos**: Evita interrupção da IA quando candidato fala durante reprodução
-  - **Prompt personalizado**: "Olá [Nome]! Muito prazer, eu sou a Ana, entrevistadora do Grupo Maximus"
-  - **Sistema robusto**: Tratamento de erros e timeouts para experiência fluida
-  - **Interface minimalista**: Apenas indicadores visuais (microfone, alto-falante, ondas sonoras)
+  - **Logs detalhados**: Sistema registra progressão completa para debugging
 
 - June 14, 2025: Sistema de entrevista natural em tempo real implementado
   - **Nova página NaturalInterviewPage**: Interface completa para entrevista conversacional com IA
