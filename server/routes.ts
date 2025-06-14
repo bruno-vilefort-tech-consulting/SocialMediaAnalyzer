@@ -865,6 +865,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TTS route for OpenAI text-to-speech
+  app.post("/api/tts", async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ message: 'Text is required' });
+      }
+
+      // Get API config for OpenAI
+      const apiConfig = await storage.getApiConfig();
+      if (!apiConfig?.openaiApiKey) {
+        return res.status(500).json({ message: 'OpenAI API key not configured' });
+      }
+
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: apiConfig.openaiModel || 'tts-1',
+          voice: apiConfig.openaiVoice || 'nova',
+          input: text,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('OpenAI TTS request failed');
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.byteLength.toString(),
+      });
+      
+      res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+      console.error('TTS Error:', error);
+      res.status(500).json({ message: 'Failed to generate audio' });
+    }
+  });
+
   // Interview routes (public for candidates)
   app.get("/api/interview/:token", async (req, res) => {
     try {
@@ -875,23 +921,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Interview not found' });
       }
 
+      // Check if interview is already completed or expired
+      if (interview.status === 'completed') {
+        return res.json({
+          interview,
+          candidate: { name: 'Candidato', email: '' },
+          selection: { nomeSelecao: 'Entrevista' },
+          job: { nomeVaga: 'Vaga', descricaoVaga: '' },
+          questions: []
+        });
+      }
+
       // Get selection and job details
       const selection = await storage.getSelectionById(interview.selectionId);
       const job = selection ? await storage.getJobById(selection.jobId) : null;
+      const candidate = await storage.getCandidateById(interview.candidateId);
       const questions = job ? await storage.getQuestionsByJobId(job.id) : [];
-      
-      res.json({
+
+      const interviewData = {
         interview,
-        selection,
-        job,
-        questions: questions.map(q => ({ 
-          id: q.id, 
-          perguntaCandidato: q.perguntaCandidato, 
-          respostaPerfeita: q.respostaPerfeita, 
-          numeroPergunta: q.numeroPergunta 
-        }))
-      });
+        candidate: candidate || { name: 'Candidato', email: '' },
+        selection: selection || { nomeSelecao: 'Entrevista' },
+        job: job || { nomeVaga: 'Vaga', descricaoVaga: '' },
+        questions: questions.sort((a, b) => a.numeroPergunta - b.numeroPergunta)
+      };
+
+      res.json(interviewData);
     } catch (error) {
+      console.error('Get interview error:', error);
       res.status(500).json({ message: 'Failed to fetch interview' });
     }
   });
@@ -919,40 +976,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/interview/:token/response", upload.single('audio'), async (req, res) => {
     try {
       const token = req.params.token;
-      const { questionId } = req.body;
+      const { questionId, duration } = req.body;
       
       const interview = await storage.getInterviewByToken(token);
       if (!interview) {
         return res.status(404).json({ message: 'Interview not found' });
       }
 
-      let audioUrl = '';
+      if (!req.file) {
+        return res.status(400).json({ message: 'Audio file is required' });
+      }
+
+      // Get API config for OpenAI
+      const apiConfig = await storage.getApiConfig();
       let transcription = '';
       let score = 0;
+      
+      if (apiConfig?.openaiApiKey) {
+        try {
+          // Transcribe audio using OpenAI Whisper
+          const formData = new FormData();
+          const audioBlob = new Blob([req.file.buffer], { type: 'audio/webm' });
+          formData.append('file', audioBlob, 'audio.webm');
+          formData.append('model', 'whisper-1');
 
-      if (req.file) {
-        // In a real implementation, you would:
-        // 1. Upload to Firebase Storage
-        // 2. Use OpenAI Whisper for transcription
-        // 3. Use ChatGPT for analysis and scoring
-        
-        audioUrl = `/uploads/${req.file.filename}`;
-        transcription = "Sample transcription from audio file";
-        score = Math.floor(Math.random() * 100); // Mock score
+          const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
+            },
+            body: formData,
+          });
+
+          if (whisperResponse.ok) {
+            const result = await whisperResponse.json();
+            transcription = result.text;
+
+            // Get the question for analysis
+            const question = await storage.getQuestionsByJobId(interview.selectionId);
+            const currentQuestion = question.find(q => q.id === parseInt(questionId));
+            
+            if (currentQuestion) {
+              // Analyze response with ChatGPT
+              const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  model: 'gpt-4o',
+                  messages: [
+                    {
+                      role: 'system',
+                      content: 'Você é um especialista em análise de entrevistas. Avalie a resposta do candidato comparando com a resposta ideal. Retorne apenas um número de 0 a 100 representando a qualidade da resposta.'
+                    },
+                    {
+                      role: 'user',
+                      content: `Pergunta: ${currentQuestion.perguntaCandidato}\n\nResposta Ideal: ${currentQuestion.respostaPerfeita}\n\nResposta do Candidato: ${transcription}\n\nAvalie a resposta (0-100):`
+                    }
+                  ],
+                  max_tokens: 50,
+                }),
+              });
+
+              if (analysisResponse.ok) {
+                const analysisResult = await analysisResponse.json();
+                const scoreText = analysisResult.choices[0]?.message?.content || '0';
+                score = Math.max(0, Math.min(100, parseInt(scoreText.match(/\d+/)?.[0] || '0')));
+              }
+            }
+          }
+        } catch (error) {
+          console.error('OpenAI API error:', error);
+        }
       }
 
       const response = await storage.createResponse({
         interviewId: interview.id,
         questionId: parseInt(questionId),
-        audioUrl,
+        audioUrl: req.file ? `/uploads/${req.file.filename}` : '',
         transcription,
         score,
-        aiAnalysis: { similarity: score, feedback: "Sample AI analysis" },
-        recordingDuration: 120
+        aiAnalysis: { similarity: score, feedback: "Análise automática da resposta" },
+        recordingDuration: parseInt(duration) || 0
       });
 
       res.status(201).json(response);
     } catch (error) {
+      console.error('Save response error:', error);
       res.status(500).json({ message: 'Failed to save response' });
     }
   });
