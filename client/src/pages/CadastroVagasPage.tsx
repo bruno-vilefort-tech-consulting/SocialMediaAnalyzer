@@ -131,22 +131,29 @@ export default function CadastroVagasPage() {
 
   // Iniciar edição
   const startEdit = (job: Job) => {
-    console.log('Editando job:', job);
-    console.log('Clientes disponíveis:', clients);
+
     
     setEditingJob(job);
     setNomeVaga(job.nomeVaga);
     setDescricaoVaga(job.descricaoVaga);
     
     // Encontrar o cliente correto baseado no clientId do job
-    const clienteEncontrado = clients.find(client => client.id === job.clientId);
-    console.log('Cliente encontrado:', clienteEncontrado);
+    // O clientId pode vir como number (1) ou como ID completo do Firebase
+    const clienteEncontrado = clients.find(client => 
+      client.id === job.clientId || 
+      client.id === Number(job.clientId) ||
+      Number(client.id) === job.clientId
+    );
     
     if (clienteEncontrado) {
       setClientId(clienteEncontrado.id);
     } else {
-      console.warn('Cliente não encontrado para ID:', job.clientId);
-      setClientId(null);
+      // Se não encontrar, usar o primeiro cliente disponível para master
+      if (user?.role === 'master' && clients.length > 0) {
+        setClientId(clients[0].id);
+      } else {
+        setClientId(null);
+      }
     }
     
     setPerguntas(job.perguntas || []);
@@ -410,7 +417,7 @@ export default function CadastroVagasPage() {
             <div className="flex gap-2 pt-4">
               <Button 
                 onClick={salvarVaga}
-                disabled={createJobMutation.isPending || updateJobMutation.isPending}
+                disabled={createJobMutation.isPending || updateJobMutation.isPending || perguntas.length === 0}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <Save className="w-4 h-4 mr-2" />
@@ -468,7 +475,12 @@ export default function CadastroVagasPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{job.perguntas?.length || 0} perguntas</TableCell>
-                    <TableCell>{job.createdAt ? new Date(job.createdAt).toLocaleDateString('pt-BR') : 'Data não disponível'}</TableCell>
+                    <TableCell>
+                      {job.createdAt 
+                        ? new Date(job.createdAt).toLocaleDateString('pt-BR') 
+                        : new Date().toLocaleDateString('pt-BR')
+                      }
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
