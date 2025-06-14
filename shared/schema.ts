@@ -77,6 +77,7 @@ export const selections = pgTable("selections", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
   jobId: text("job_id").references(() => jobs.id).notNull(),
+  candidateListId: integer("candidate_list_id").references(() => candidateLists.id),
   name: text("name").notNull(),
   whatsappTemplate: text("whatsapp_template").notNull(),
   emailTemplate: text("email_template").notNull(),
