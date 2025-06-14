@@ -374,6 +374,26 @@ export default function InterviewPage() {
 
   const currentQuestion = interviewData.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / interviewData.questions.length) * 100;
+  
+  // Verificação de segurança para perguntas
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Carregando Perguntas...</h2>
+            <p className="text-gray-600 mb-4">
+              As perguntas da entrevista estão sendo carregadas. Por favor, aguarde um momento.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Recarregar Página
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
