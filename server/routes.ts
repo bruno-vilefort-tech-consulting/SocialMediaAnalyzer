@@ -1917,6 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Resposta substancial, avançar para próxima pergunta
           nextQuestionIndex = currentQuestionIndex + 1;
           shouldAskNextQuestion = true;
+          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
           
           // Se passou do total de perguntas, finalizar entrevista
           if (nextQuestionIndex >= questions.length) {
