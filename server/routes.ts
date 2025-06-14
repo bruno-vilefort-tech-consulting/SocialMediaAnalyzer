@@ -12,7 +12,12 @@ import fs from "fs";
 import OpenAI from "openai";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 interface AuthRequest extends Request {
   user?: {
@@ -614,8 +619,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates/bulk", authenticate, authorize(['client', 'master']), upload.single('file'), async (req: AuthRequest, res) => {
     try {
+      console.log('Arquivo recebido:', req.file);
+      
       if (!req.file) {
         return res.status(400).json({ message: 'Nenhum arquivo enviado' });
+      }
+
+      if (!req.file.buffer) {
+        return res.status(400).json({ message: 'Arquivo inválido ou corrompido' });
       }
 
       const { listId } = req.body;
@@ -623,9 +634,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Lista de candidatos obrigatória' });
       }
 
+      // Verificar se o arquivo tem conteúdo
+      if (req.file.buffer.length === 0) {
+        return res.status(400).json({ message: 'Arquivo vazio' });
+      }
+
       // Parse Excel/CSV file
       const xlsx = await import('xlsx');
+      console.log('Buffer length:', req.file.buffer.length);
+      
       const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+      
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        return res.status(400).json({ message: 'Arquivo Excel não contém planilhas válidas' });
+      }
+      
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = xlsx.utils.sheet_to_json(worksheet);
