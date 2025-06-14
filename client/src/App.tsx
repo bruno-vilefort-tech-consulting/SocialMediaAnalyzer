@@ -66,14 +66,6 @@ function Router() {
       <Route path="/vagas">
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
-            <JobsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
-      <Route path="/cadastro-vagas">
-        <PrivateRoute allowedRoles={['master', 'client']}>
-          <Layout>
             <CadastroVagasPage />
           </Layout>
         </PrivateRoute>
@@ -104,13 +96,7 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/jobs">
-        <PrivateRoute allowedRoles={['client', 'master']}>
-          <Layout>
-            <CadastroVagasPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
+
 
       <Route path="/candidates">
         <PrivateRoute allowedRoles={['client', 'master']}>
