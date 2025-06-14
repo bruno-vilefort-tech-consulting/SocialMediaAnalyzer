@@ -105,9 +105,9 @@ function Router() {
       </Route>
 
       <Route path="/jobs">
-        <PrivateRoute allowedRoles={['client']}>
+        <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
-            <JobsPage />
+            <CadastroVagasPage />
           </Layout>
         </PrivateRoute>
       </Route>
