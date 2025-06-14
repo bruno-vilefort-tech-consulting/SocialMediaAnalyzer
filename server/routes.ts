@@ -1654,6 +1654,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TTS Preview endpoint
+  app.post("/api/tts-preview", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { apiKey, voice, text } = req.body;
+      
+      console.log('🎵 Gerando preview TTS:', voice);
+      
+      if (!apiKey || !voice || !text) {
+        return res.status(400).json({ message: "API key, voice, and text are required" });
+      }
+
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: text,
+          voice: voice,
+          response_format: "mp3"
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ Preview TTS gerado com sucesso');
+        const audioBuffer = await response.arrayBuffer();
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': audioBuffer.byteLength.toString(),
+        });
+        res.send(Buffer.from(audioBuffer));
+      } else {
+        const errorData = await response.json();
+        console.log('❌ Erro TTS:', errorData);
+        res.status(400).json({ 
+          message: errorData.error?.message || "Failed to generate voice preview",
+          status: "error" 
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro gerando preview TTS:", error);
+      res.status(500).json({ 
+        message: "Failed to generate voice preview",
+        status: "error" 
+      });
+    }
+  });
+
   // Get interview results for a selection
   app.get("/api/selections/:id/results", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

@@ -238,14 +238,14 @@ export default function ApiConfigPage() {
     saveConfigMutation.mutate(configData);
   };
 
-  const getStatusIcon = (status: string) => {
+  const getTestStatusIcon = (status: string) => {
     switch (status) {
       case 'testing':
-        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>;
+        return <Loader2 className="h-4 w-4 animate-spin" />;
       case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'error':
-        return <AlertCircle className="w-4 h-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
         return null;
     }
@@ -253,255 +253,208 @@ export default function ApiConfigPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configurações da API</h1>
-          <p className="text-gray-600">Configure as integrações e limites do sistema</p>
-        </div>
-        <Button 
-          onClick={handleSaveConfig}
-          disabled={saveConfigMutation.isPending}
-          className="gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          {saveConfigMutation.isPending ? "Salvando..." : "Salvar Configurações"}
-        </Button>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center space-x-2">
+        <Settings className="h-6 w-6" />
+        <h1 className="text-3xl font-bold">Configurações da API</h1>
       </div>
 
-      {/* OpenAI Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-blue-600" />
-            Configurações OpenAI
-            {config?.openaiApiKey && (
-              <Badge variant="secondary" className="ml-auto">
-                Configurado
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* OpenAI Configuration */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Brain className="h-5 w-5" />
+              <CardTitle>Configurações OpenAI</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="openai-key">Chave da API OpenAI</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="openai-key"
-                  type="password"
-                  placeholder="sk-..."
-                  value={openaiApiKey}
-                  onChange={(e) => setOpenaiApiKey(e.target.value)}
-                  className="flex-1"
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={testOpenAI}
-                  disabled={!openaiApiKey || testStatus.openai === 'testing'}
-                  className="gap-2"
+              <Input
+                id="openai-key"
+                type="password"
+                placeholder="sk-proj-..."
+                value={openaiApiKey}
+                onChange={(e) => setOpenaiApiKey(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="openai-model">Modelo GPT</Label>
+              <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {modelOptions.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="openai-voice">Voz TTS</Label>
+              <div className="flex space-x-2">
+                <Select value={openaiVoice} onValueChange={setOpenaiVoice}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {voiceOptions.map((voice) => (
+                      <SelectItem key={voice.value} value={voice.value}>
+                        {voice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => playVoicePreview(openaiVoice)}
+                  disabled={isPlayingVoice || !openaiApiKey}
                 >
-                  {getStatusIcon(testStatus.openai)}
-                  Testar
+                  {isPlayingVoice ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
-              <p className="text-sm text-gray-500">
-                Necessária para TTS, transcrição Whisper e análise de respostas
+              <p className="text-sm text-muted-foreground">
+                Clique no botão play para ouvir um preview da voz selecionada
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="openai-model">Modelo ChatGPT</Label>
-                <Select value={openaiModel} onValueChange={setOpenaiModel}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <Button 
+              onClick={testOpenAI}
+              disabled={testStatus.openai === 'testing' || !openaiApiKey}
+              className="w-full"
+            >
+              {getTestStatusIcon(testStatus.openai)}
+              <Bot className="mr-2 h-4 w-4" />
+              Testar API OpenAI
+            </Button>
 
-              <div className="space-y-2">
-                <Label htmlFor="openai-voice">Voz TTS</Label>
-                <Select value={openaiVoice} onValueChange={setOpenaiVoice}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nova">Nova (Feminina)</SelectItem>
-                    <SelectItem value="alloy">Alloy (Neutra)</SelectItem>
-                    <SelectItem value="echo">Echo (Masculina)</SelectItem>
-                    <SelectItem value="fable">Fable (Neutra)</SelectItem>
-                    <SelectItem value="onyx">Onyx (Masculina)</SelectItem>
-                    <SelectItem value="shimmer">Shimmer (Feminina)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 p-4 bg-blue-50 rounded-lg">
-            <div className="text-center">
-              <Volume2 className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-              <p className="text-sm font-medium">Text-to-Speech</p>
-              <p className="text-xs text-gray-600">Perguntas em áudio</p>
-            </div>
-            <div className="text-center">
-              <Mic className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-              <p className="text-sm font-medium">Whisper</p>
-              <p className="text-xs text-gray-600">Transcrição de áudio</p>
-            </div>
-            <div className="text-center">
-              <Brain className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-              <p className="text-sm font-medium">Análise IA</p>
-              <p className="text-xs text-gray-600">Avaliação automática</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* WhatsApp Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-green-600" />
-            Configurações WhatsApp Business
-            {config?.whatsappToken && (
-              <Badge variant="secondary" className="ml-auto">
-                Configurado
+            {testStatus.openai === 'success' && (
+              <Badge variant="default" className="w-full justify-center bg-green-100 text-green-800">
+                <CheckCircle className="mr-1 h-3 w-3" />
+                API OpenAI funcionando corretamente
               </Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+
+            {testStatus.openai === 'error' && (
+              <Badge variant="destructive" className="w-full justify-center">
+                <AlertCircle className="mr-1 h-3 w-3" />
+                Erro na configuração da API
+              </Badge>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* WhatsApp Configuration */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <MessageCircle className="h-5 w-5" />
+              <CardTitle>Configurações WhatsApp</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="whatsapp-token">Token da API WhatsApp</Label>
+              <Label htmlFor="whatsapp-token">Token WhatsApp Business</Label>
               <Input
                 id="whatsapp-token"
                 type="password"
-                placeholder="Token da Meta Business API"
+                placeholder="EAAG..."
                 value={whatsappToken}
                 onChange={(e) => setWhatsappToken(e.target.value)}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsapp-phone">ID do Telefone WhatsApp</Label>
+              <Label htmlFor="whatsapp-phone">ID do Telefone</Label>
               <Input
                 id="whatsapp-phone"
-                placeholder="ID do número de telefone verificado"
+                placeholder="123456789"
                 value={whatsappPhoneId}
                 onChange={(e) => setWhatsappPhoneId(e.target.value)}
               />
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              <strong>Nota:</strong> Configure sua conta WhatsApp Business e obtenha as credenciais da API 
-              através do Meta Business Manager para enviar convites automaticamente.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* System Limits */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-purple-600" />
-            Limites do Sistema
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* System Configuration */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Database className="h-5 w-5" />
+              <CardTitle>Configurações do Sistema</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="monthly-limit">Limite Mensal Global</Label>
               <Input
                 id="monthly-limit"
                 type="number"
                 value={globalMonthlyLimit}
-                onChange={(e) => setGlobalMonthlyLimit(parseInt(e.target.value) || 0)}
+                onChange={(e) => setGlobalMonthlyLimit(Number(e.target.value))}
               />
-              <p className="text-xs text-gray-500">Entrevistas por mês (todos os clientes)</p>
+              <p className="text-xs text-muted-foreground">
+                Número máximo de entrevistas por mês
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="interview-time">Tempo Máximo por Entrevista</Label>
+              <Label htmlFor="interview-time">Tempo Máximo (segundos)</Label>
               <Input
                 id="interview-time"
                 type="number"
                 value={maxInterviewTime}
-                onChange={(e) => setMaxInterviewTime(parseInt(e.target.value) || 0)}
+                onChange={(e) => setMaxInterviewTime(Number(e.target.value))}
               />
-              <p className="text-xs text-gray-500">Segundos (padrão: 1800 = 30min)</p>
+              <p className="text-xs text-muted-foreground">
+                Duração máxima de cada entrevista
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="file-size">Tamanho Máximo de Arquivo</Label>
+              <Label htmlFor="file-size">Tamanho Máximo de Arquivo (bytes)</Label>
               <Input
                 id="file-size"
                 type="number"
-                value={Math.round(maxFileSize / 1024 / 1024)}
-                onChange={(e) => setMaxFileSize((parseInt(e.target.value) || 0) * 1024 * 1024)}
+                value={maxFileSize}
+                onChange={(e) => setMaxFileSize(Number(e.target.value))}
               />
-              <p className="text-xs text-gray-500">MB (padrão: 50MB)</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Status Summary */}
-      {config && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Status das Integrações</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4" />
-                  <span className="text-sm font-medium">OpenAI</span>
-                </div>
-                <Badge variant={config.openaiApiKey ? "default" : "secondary"}>
-                  {config.openaiApiKey ? "Ativo" : "Inativo"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="text-sm font-medium">WhatsApp</span>
-                </div>
-                <Badge variant={config.whatsappToken ? "default" : "secondary"}>
-                  {config.whatsappToken ? "Ativo" : "Inativo"}
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4" />
-                  <span className="text-sm font-medium">Sistema</span>
-                </div>
-                <Badge variant="default">Operacional</Badge>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Tamanho máximo para upload de áudio
+              </p>
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleSaveConfig}
+          disabled={saveConfigMutation.isPending}
+          size="lg"
+        >
+          {saveConfigMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Salvar Configurações
+        </Button>
+      </div>
     </div>
   );
 }
