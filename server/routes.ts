@@ -813,15 +813,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/selections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const selectionData = insertSelectionSchema.parse({
+      console.log('Received selection data:', req.body);
+      
+      const selectionData = {
         ...req.body,
         clientId: req.user!.role === 'master' ? req.body.clientId : req.user!.clientId!
-      });
+      };
+      
+      console.log('Processed selection data:', selectionData);
       
       const selection = await storage.createSelection(selectionData);
       res.status(201).json(selection);
     } catch (error) {
-      res.status(400).json({ message: 'Failed to create selection' });
+      console.error('Error creating selection:', error);
+      res.status(400).json({ 
+        message: 'Failed to create selection',
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 

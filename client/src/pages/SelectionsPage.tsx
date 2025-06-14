@@ -228,7 +228,7 @@ export default function SelectionsPage() {
 
     const selectionData = {
       name: nomeSelecao.trim(),
-      jobId: parseInt(jobId),
+      jobId: jobId, // Keep as string
       whatsappTemplate: mensagemWhatsApp.trim(),
       emailTemplate: enviarEmail ? mensagemEmail.trim() : "Convite para entrevista",
       emailSubject: "Convite para Entrevista - {vaga}",
