@@ -149,10 +149,7 @@ export default function CandidatesPage() {
 
   const updateCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      return await apiRequest(`/api/candidates/${editingCandidate!.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data)
-      });
+      return await apiRequest(`/api/candidates/${editingCandidate!.id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
@@ -167,9 +164,7 @@ export default function CandidatesPage() {
 
   const deleteCandidateMutation = useMutation({
     mutationFn: async (candidateId: number) => {
-      return await apiRequest(`/api/candidates/${candidateId}`, {
-        method: 'DELETE'
-      });
+      return await apiRequest(`/api/candidates/${candidateId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
