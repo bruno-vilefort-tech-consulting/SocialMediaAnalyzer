@@ -1869,35 +1869,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Buscar candidato
+      console.log(`🔍 Buscando candidato com ID: ${interview.candidateId}`);
       const candidate = await storage.getCandidateById(interview.candidateId);
+      console.log('👤 Candidato encontrado:', candidate ? { id: candidate.id, nome: candidate.nome } : 'Não encontrado');
       
       console.log('📋 Conversa natural - Dados:', {
         job: job?.nomeVaga,
-        candidate: candidate?.nome,
+        candidate: candidate?.name,
         questionsCount: questions.length,
-        currentQuestionIndex
+        currentQuestionIndex,
+        interviewCandidateId: interview.candidateId
       });
       
-      // Determinar se deve avançar para próxima pergunta
+      // Determinar o contexto da resposta e ação apropriada
       let nextQuestionIndex = currentQuestionIndex;
       let interviewCompleted = false;
       let shouldAskNextQuestion = false;
+      let isOffTopicResponse = false;
 
-      // Se o candidato respondeu uma pergunta, avançar automaticamente
-      if (candidateResponse && candidateResponse.trim().length > 5) {
-        console.log(`📈 Candidato respondeu pergunta ${currentQuestionIndex + 1}/${questions.length}: "${candidateResponse}"`);
+      // Se o candidato respondeu algo
+      if (candidateResponse && candidateResponse.trim().length > 0) {
+        console.log(`📝 Candidato disse: "${candidateResponse}"`);
         
-        // Avançar para próxima pergunta
-        nextQuestionIndex = currentQuestionIndex + 1;
-        shouldAskNextQuestion = true;
+        // Verificar se é uma resposta relacionada à pergunta atual ou conversa social
+        const currentQuestion = questions[currentQuestionIndex];
+        const lowerResponse = candidateResponse.toLowerCase();
         
-        // Se passou do total de perguntas, finalizar entrevista
-        if (nextQuestionIndex >= questions.length) {
-          interviewCompleted = true;
-          shouldAskNextQuestion = false;
-          console.log('🏁 Entrevista completa - todas as perguntas respondidas');
+        // Detectar respostas sociais/cortesia que não respondem a pergunta
+        const socialResponses = [
+          'sim', 'não', 'tudo bem', 'obrigado', 'obrigada', 'oi', 'olá', 
+          'bom dia', 'boa tarde', 'boa noite', 'como vai', 'e você', 'você está bem',
+          'estou bem', 'estou ótimo', 'estou ótima', 'muito bem', 'bem obrigado',
+          'bem obrigada', 'tudo certo', 'tudo ok', 'ok', 'beleza'
+        ];
+        
+        // Detectar perguntas de volta à entrevistadora
+        const isQuestionBack = lowerResponse.includes('e você') || 
+                               lowerResponse.includes('como está') ||
+                               lowerResponse.includes('como vai') ||
+                               lowerResponse.includes('você está bem');
+        
+        const isSocialResponse = socialResponses.some(phrase => 
+          lowerResponse.includes(phrase)
+        ) || isQuestionBack;
+        
+        // Se é resposta social/cortesia OU muito curta, não avançar pergunta
+        if ((isSocialResponse && lowerResponse.length < 40) || lowerResponse.length < 15) {
+          isOffTopicResponse = true;
+          console.log(`🔄 Resposta social/curta detectada, mantendo pergunta ${currentQuestionIndex + 1}: "${currentQuestion.perguntaCandidato}"`);
         } else {
-          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
+          // Resposta substancial, avançar para próxima pergunta
+          nextQuestionIndex = currentQuestionIndex + 1;
+          shouldAskNextQuestion = true;
+          
+          // Se passou do total de perguntas, finalizar entrevista
+          if (nextQuestionIndex >= questions.length) {
+            interviewCompleted = true;
+            shouldAskNextQuestion = false;
+            console.log('🏁 Entrevista completa - todas as perguntas respondidas');
+          } else {
+            console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
+          }
         }
       }
 
@@ -1916,7 +1948,7 @@ REGRAS ABSOLUTAS:
 - A entrevista termina aqui`;
       } else if (shouldAskNextQuestion) {
         const nextQuestion = questions[nextQuestionIndex];
-        systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
 - O candidato ${candidate?.nome || 'Candidato'} acabou de responder: "${candidateResponse}"
@@ -1924,22 +1956,40 @@ INSTRUÇÕES:
 - Imediatamente após, faça a próxima pergunta: "${nextQuestion.perguntaCandidato}"
 - Seja natural e conversacional
 
-PRÓXIMA PERGUNTA: ${nextQuestion.perguntaCandidato}
+PRÓXIMA PERGUNTA OBRIGATÓRIA: ${nextQuestion.perguntaCandidato}
 
 Confirme a resposta anterior e faça a próxima pergunta.`;
+      } else if (isOffTopicResponse) {
+        // Resposta social/cortesia - retornar ao roteiro
+        const currentQuestion = questions[currentQuestionIndex];
+        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+
+SITUAÇÃO:
+- O candidato ${candidate?.nome || 'Candidato'} fez uma resposta social: "${candidateResponse}"
+- Você deve responder educadamente e retornar ao roteiro da entrevista
+- A pergunta atual que precisa ser respondida é: "${currentQuestion.perguntaCandidato}"
+
+INSTRUÇÕES:
+- Responda brevemente à cortesia (ex: "Estou bem, obrigada!")
+- Imediatamente retorne ao foco da entrevista
+- Faça a pergunta atual: "${currentQuestion.perguntaCandidato}"
+
+PERGUNTA ATUAL: ${currentQuestion.perguntaCandidato}
+
+Responda à cortesia e faça a pergunta atual.`;
       } else {
         // Primeira pergunta ou pergunta inicial
         const currentQuestion = questions[currentQuestionIndex];
-        systemPrompt = `Você é um assistente de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
+        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
 
 INSTRUÇÕES:
-- Seja natural, empático e profissional
-- Cumprimente o candidato ${candidate?.nome || 'Candidato'}
+- Seja natural, empática e profissional
+- Cumprimente o candidato ${candidate?.nome || 'Candidato'} pelo nome
 - Faça a primeira pergunta: "${currentQuestion.perguntaCandidato}"
 
 PRIMEIRA PERGUNTA: ${currentQuestion.perguntaCandidato}
 
-Cumprimente e faça a primeira pergunta.`;
+Cumprimente pelo nome e faça a primeira pergunta.`;
       }
 
       // Construir mensagens para OpenAI

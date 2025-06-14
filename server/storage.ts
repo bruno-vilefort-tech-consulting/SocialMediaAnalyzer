@@ -682,10 +682,32 @@ export class FirebaseStorage implements IStorage {
 
   async getCandidateById(id: number): Promise<Candidate | undefined> {
     try {
+      console.log(`🔍 Firebase: Buscando candidato com ID: ${id}`);
+      
+      // Primeiro tenta busca direta
       const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', id.toString()));
       if (candidateDoc.exists()) {
-        return { id: parseInt(candidateDoc.id), ...candidateDoc.data() } as Candidate;
+        const candidate = { id: parseInt(candidateDoc.id), ...candidateDoc.data() } as Candidate;
+        console.log(`✅ Candidato encontrado direto:`, candidate.name);
+        return candidate;
       }
+      
+      // Se não encontrou, busca por todos os candidatos e procura por ID
+      console.log('🔍 Busca direta falhou, procurando em todos os candidatos...');
+      const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+      
+      for (const doc of candidatesSnapshot.docs) {
+        const candidateData = doc.data();
+        const candidateId = parseInt(doc.id);
+        
+        if (candidateId === id || candidateData.id === id) {
+          const candidate = { id: candidateId, ...candidateData } as Candidate;
+          console.log(`✅ Candidato encontrado na busca geral:`, candidate.name);
+          return candidate;
+        }
+      }
+      
+      console.log(`❌ Candidato não encontrado com ID: ${id}`);
       return undefined;
     } catch (error) {
       console.error('Erro ao buscar candidate por ID:', error);
