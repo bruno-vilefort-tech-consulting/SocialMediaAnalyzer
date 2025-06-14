@@ -907,23 +907,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const shouldSendWhatsApp = selection.sendVia === 'whatsapp' || selection.sendVia === 'both';
         const shouldSendEmail = selection.sendVia === 'email' || selection.sendVia === 'both';
 
-        // Log message sending (in production, integrate with WhatsApp API and email service)
+        // Send real emails using Resend
+        if (shouldSendEmail && candidate.email) {
+          const { emailService } = await import('./emailService');
+          
+          try {
+            const emailResult = await emailService.sendInterviewInvite({
+              candidateEmail: candidate.email,
+              candidateName: candidate.name,
+              jobTitle: job.nomeVaga,
+              interviewLink,
+              customMessage: emailMessage
+            });
+
+            await storage.createMessageLog({
+              interviewId: interview.id,
+              type: 'email',
+              channel: 'email',
+              status: emailResult.success ? 'sent' : 'failed'
+            });
+
+            if (emailResult.success) {
+              console.log(`✅ Email enviado para ${candidate.email} - Message ID: ${emailResult.messageId}`);
+            } else {
+              console.error(`❌ Falha ao enviar email para ${candidate.email}: ${emailResult.error}`);
+            }
+
+          } catch (error) {
+            console.error('❌ Erro no serviço de email:', error);
+            await storage.createMessageLog({
+              interviewId: interview.id,
+              type: 'email', 
+              channel: 'email',
+              status: 'failed'
+            });
+          }
+        }
+
+        // Log WhatsApp messages (for future integration)
         if (shouldSendWhatsApp) {
           await storage.createMessageLog({
             interviewId: interview.id,
             type: 'whatsapp',
             channel: 'whatsapp',
-            status: 'sent'
+            status: 'logged' // WhatsApp integration pending
           });
-        }
-
-        if (shouldSendEmail && candidate.email) {
-          await storage.createMessageLog({
-            interviewId: interview.id,
-            type: 'email',
-            channel: 'email',
-            status: 'sent'
-          });
+          console.log(`📱 WhatsApp message logged for ${candidate.phone}: ${whatsappMessage}`);
         }
 
         interviews.push({
