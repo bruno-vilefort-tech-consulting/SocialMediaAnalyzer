@@ -28,7 +28,7 @@ export default function InterviewDemoPage() {
 
   const jobInfo = {
     company: "Grupo Maximus",
-    position: "Desenvolvedor Full Stack",
+    position: "Faxineira",
     interviewer: "Sistema de IA"
   };
 
@@ -97,33 +97,28 @@ export default function InterviewDemoPage() {
         <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-blue-700">
-              🎯 DEMO - Entrevista por Voz
+              Entrevista Virtual
             </CardTitle>
             <div className="space-y-2 mt-4">
               <p className="text-lg font-semibold">{jobInfo.company}</p>
               <p className="text-md text-gray-600">Vaga: {jobInfo.position}</p>
-              <Badge variant="outline" className="bg-blue-100">
-                Entrevistador: {jobInfo.interviewer}
-              </Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <p className="text-sm text-yellow-800 mb-4">
+                <strong>📱 Importante:</strong> Para esta entrevista, recomenda-se que você esteja em um ambiente silencioso e livre de interrupções, a fim de garantir o pleno funcionamento e compreensão do sistema.
+              </p>
+            </div>
+            
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Como funciona:</h3>
               <ul className="space-y-2 text-sm">
                 <li>• Você ouvirá {demoQuestions.length} perguntas em áudio</li>
                 <li>• Grave suas respostas usando o microfone</li>
-                <li>• Você pode regravar quantas vezes quiser</li>
                 <li>• O sistema analisará suas respostas automaticamente</li>
                 <li>• Duração estimada: 10-15 minutos</li>
               </ul>
-            </div>
-            
-            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-              <p className="text-sm text-yellow-800">
-                <strong>📱 Importante:</strong> Permita o acesso ao microfone quando solicitado. 
-                Encontre um local silencioso para a melhor qualidade de áudio.
-              </p>
             </div>
 
             <Button 
