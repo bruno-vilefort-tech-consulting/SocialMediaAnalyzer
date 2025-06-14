@@ -1576,8 +1576,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { apiKey } = req.body;
       
+      console.log('🧪 Testando OpenAI API key...');
+      
       if (!apiKey) {
-        return res.status(400).json({ error: 'API key is required' });
+        return res.status(400).json({ success: false, error: 'Chave da API é obrigatória' });
+      }
+
+      if (!apiKey.startsWith('sk-')) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Formato de chave inválido. A chave deve começar com "sk-"' 
+        });
       }
 
       // Test the API key with a simple request
@@ -1586,16 +1595,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        timeout: 10000 // 10 second timeout
       });
 
+      console.log('📊 Resposta da OpenAI:', response.status, response.statusText);
+
       if (response.ok) {
-        res.json({ success: true, message: 'OpenAI API key is valid' });
+        const models = await response.json();
+        console.log('✅ OpenAI API key válida, modelos disponíveis:', models.data?.length || 0);
+        
+        res.json({ 
+          success: true, 
+          message: `Chave OpenAI válida! ${models.data?.length || 0} modelos disponíveis.`
+        });
       } else {
-        res.status(400).json({ success: false, error: 'Invalid OpenAI API key' });
+        const errorData = await response.text();
+        console.log('❌ Erro da OpenAI:', response.status, errorData);
+        
+        let errorMessage = 'Chave da API OpenAI inválida';
+        
+        try {
+          const parsedError = JSON.parse(errorData);
+          if (parsedError.error?.message) {
+            if (parsedError.error.code === 'invalid_api_key') {
+              errorMessage = 'Chave da API inválida. Verifique se foi copiada corretamente.';
+            } else if (parsedError.error.code === 'insufficient_quota') {
+              errorMessage = 'Quota excedida. Verifique seu plano e detalhes de faturamento na OpenAI.';
+            } else {
+              errorMessage = parsedError.error.message;
+            }
+          }
+        } catch (e) {
+          // Keep default error message if parsing fails
+        }
+        
+        res.status(400).json({ 
+          success: false, 
+          error: errorMessage,
+          details: response.status === 401 ? 'Unauthorized - verifique a chave' : `HTTP ${response.status}`
+        });
       }
     } catch (error) {
-      console.error('Error testing OpenAI API:', error);
-      res.status(500).json({ success: false, error: 'Failed to test OpenAI API' });
+      console.error('❌ Erro ao testar OpenAI API:', error);
+      
+      let errorMessage = 'Falha ao conectar com a OpenAI API';
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Timeout ao conectar com a OpenAI. Verifique sua conexão.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Erro de rede ao conectar com a OpenAI.';
+        }
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        error: errorMessage 
+      });
     }
   });
 
