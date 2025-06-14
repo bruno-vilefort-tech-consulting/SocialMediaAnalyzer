@@ -1,400 +1,388 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  BarChart, 
+  Search, 
+  Filter, 
   Download, 
   Play, 
-  Pause, 
-  Filter, 
-  TrendingUp, 
-  Users, 
+  Star, 
+  User, 
   Clock,
-  Star,
-  Search
+  TrendingUp,
+  BarChart3,
+  FileText
 } from "lucide-react";
-import { useAudioRecorder } from "@/hooks/useAudio";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InterviewResult {
   interview: {
     id: number;
     status: string;
+    completedAt: Date | null;
     totalScore: number;
-    category: string;
-    startedAt: string;
-    completedAt: string;
+    category: 'high' | 'medium' | 'low';
   };
   candidate: {
     id: number;
     name: string;
     email: string;
-    whatsapp: string;
+    phone: string;
   };
   responses: Array<{
     id: number;
-    audioUrl: string;
+    questionId: number;
     transcription: string;
     score: number;
+    audioUrl: string;
     recordingDuration: number;
+    aiAnalysis: any;
   }>;
 }
 
-export default function ResultsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [currentAudio, setCurrentAudio] = useState<string | null>(null);
-  const { playAudio, isPlaying } = useAudioRecorder();
-  
-  // Get selection ID from URL params
-  const [location] = useLocation();
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const selectionId = urlParams.get('selection') || '1';
+interface Selection {
+  id: number;
+  nomeSelecao: string;
+  status: string;
+  createdAt: Date | null;
+}
 
-  const { data: results = [], isLoading } = useQuery<InterviewResult[]>({
-    queryKey: ["/api/selections", selectionId, "results"],
+export default function ResultsPage() {
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedSelection, setSelectedSelection] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [selectedInterview, setSelectedInterview] = useState<InterviewResult | null>(null);
+
+  // Fetch selections
+  const { data: selections = [] } = useQuery<Selection[]>({
+    queryKey: ["/api/selections"],
   });
 
+  // Fetch results for selected selection
+  const { data: results = [], isLoading } = useQuery<InterviewResult[]>({
+    queryKey: ["/api/selections", selectedSelection, "results"],
+    enabled: !!selectedSelection,
+  });
+
+  // Filter results based on search and category
   const filteredResults = results.filter(result => {
     const matchesSearch = result.candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          result.candidate.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || result.interview.category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || result.interview.status === selectedStatus;
-    
-    return matchesSearch && matchesCategory && matchesStatus;
+    const matchesCategory = !categoryFilter || result.interview.category === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
 
-  const handlePlayAudio = (audioUrl: string) => {
-    if (currentAudio === audioUrl && isPlaying) {
-      setCurrentAudio(null);
-    } else {
-      setCurrentAudio(audioUrl);
-      playAudio(audioUrl);
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "high":
-        return "bg-green-100 text-green-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "low":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case "high":
-        return "Alto";
-      case "medium":
-        return "Médio";
-      case "low":
-        return "Baixo";
-      default:
-        return "Não avaliado";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "started":
-        return "bg-yellow-100 text-yellow-800";
-      case "pending":
-        return "bg-slate-100 text-slate-800";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "Concluída";
-      case "started":
-        return "Em Progresso";
-      case "pending":
-        return "Pendente";
-      default:
-        return "Não iniciada";
-    }
-  };
-
-  const completedResults = results.filter(r => r.interview.status === "completed");
-  const avgScore = completedResults.length > 0 
-    ? Math.round(completedResults.reduce((sum, r) => sum + (r.interview.totalScore || 0), 0) / completedResults.length)
+  // Calculate statistics
+  const completedInterviews = results.filter(r => r.interview.status === 'completed');
+  const averageScore = completedInterviews.length > 0 
+    ? Math.round(completedInterviews.reduce((sum, r) => sum + r.interview.totalScore, 0) / completedInterviews.length)
     : 0;
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">Resultados da Seleção</h2>
-            <p className="text-slate-600">Análise e avaliação dos candidatos</p>
-          </div>
-          <Button disabled>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-12 bg-slate-200 rounded mb-4"></div>
-                <div className="h-6 bg-slate-200 rounded mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const categoryStats = {
+    high: completedInterviews.filter(r => r.interview.category === 'high').length,
+    medium: completedInterviews.filter(r => r.interview.category === 'medium').length,
+    low: completedInterviews.filter(r => r.interview.category === 'low').length,
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600 bg-green-50";
+    if (score >= 60) return "text-yellow-600 bg-yellow-50";
+    return "text-red-600 bg-red-50";
+  };
+
+  const getCategoryBadge = (category: string) => {
+    const variants = {
+      high: "bg-green-100 text-green-800",
+      medium: "bg-yellow-100 text-yellow-800",
+      low: "bg-red-100 text-red-800"
+    };
+    return variants[category as keyof typeof variants] || "bg-gray-100 text-gray-800";
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Resultados da Seleção</h2>
-          <p className="text-slate-600">Análise e avaliação dos candidatos</p>
+          <h1 className="text-2xl font-bold text-gray-900">Resultados das Entrevistas</h1>
+          <p className="text-gray-600">Análise e resultados dos candidatos</p>
         </div>
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Exportar Resultados
+        <Button variant="outline" className="gap-2">
+          <Download className="w-4 h-4" />
+          Exportar Relatório
         </Button>
       </div>
-      
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{results.length}</div>
-                <div className="text-sm text-slate-500">Total de Candidatos</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <BarChart className="text-green-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{completedResults.length}</div>
-                <div className="text-sm text-slate-500">Entrevistas Concluídas</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Star className="text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">{avgScore}%</div>
-                <div className="text-sm text-slate-500">Score Médio</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
-                  {results.filter(r => r.interview.category === "high").length}
-                </div>
-                <div className="text-sm text-slate-500">Candidatos Top</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Filters */}
+
+      {/* Selection Filter */}
       <Card>
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar candidato..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex gap-4 items-center">
+            <div className="flex-1">
+              <Select value={selectedSelection} onValueChange={setSelectedSelection}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma seleção para ver os resultados" />
+                </SelectTrigger>
+                <SelectContent>
+                  {selections.map((selection) => (
+                    <SelectItem key={selection.id} value={selection.id.toString()}>
+                      {selection.nomeSelecao} - {selection.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <select 
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-            >
-              <option value="all">Todos os Status</option>
-              <option value="completed">Concluída</option>
-              <option value="started">Em Progresso</option>
-              <option value="pending">Pendente</option>
-            </select>
-            <select 
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="all">Todas as Categorias</option>
-              <option value="high">Alto</option>
-              <option value="medium">Médio</option>
-              <option value="low">Baixo</option>
-            </select>
-            <Button variant="outline">
-              <Filter className="mr-2 h-4 w-4" />
-              Aplicar Filtros
-            </Button>
           </div>
         </CardContent>
       </Card>
-      
-      {/* Results Table */}
-      {filteredResults.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <BarChart className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">Nenhum resultado encontrado</h3>
-            <p className="text-slate-500">
-              {searchTerm || selectedCategory !== "all" || selectedStatus !== "all"
-                ? "Tente ajustar os filtros de busca"
-                : "Os resultados aparecerão aqui quando as entrevistas forem concluídas"
-              }
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultados Detalhados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Candidato
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Score
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Categoria
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Duração
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
-                  {filteredResults.map((result) => (
-                    <tr key={result.interview.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <Users className="text-primary h-5 w-5" />
+
+      {selectedSelection && (
+        <>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Total de Candidatos</p>
+                    <p className="text-2xl font-bold">{results.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-green-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Média Geral</p>
+                    <p className="text-2xl font-bold">{averageScore}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Alto Desempenho</p>
+                    <p className="text-2xl font-bold">{categoryStats.high}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-purple-500" />
+                  <div>
+                    <p className="text-sm text-gray-600">Concluídas</p>
+                    <p className="text-2xl font-bold">{completedInterviews.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex gap-4 items-center">
+                <div className="flex-1 relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Buscar por nome ou email do candidato..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filtrar por categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas as categorias</SelectItem>
+                    <SelectItem value="high">Alto Desempenho</SelectItem>
+                    <SelectItem value="medium">Médio Desempenho</SelectItem>
+                    <SelectItem value="low">Baixo Desempenho</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Results Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Resultados dos Candidatos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : filteredResults.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {results.length === 0 ? 'Nenhuma entrevista encontrada para esta seleção' : 'Nenhum resultado encontrado com os filtros aplicados'}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Candidato</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Pontuação</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Data Conclusão</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredResults.map((result) => (
+                      <TableRow key={result.interview.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{result.candidate.name}</p>
+                            <p className="text-sm text-gray-500">{result.candidate.email}</p>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-slate-900">
-                              {result.candidate.name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={result.interview.status === 'completed' ? 'default' : 'secondary'}>
+                            {result.interview.status === 'completed' ? 'Concluída' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {result.interview.status === 'completed' ? (
+                            <div className={`inline-flex items-center px-2 py-1 rounded text-sm font-medium ${getScoreColor(result.interview.totalScore)}`}>
+                              <Star className="w-3 h-3 mr-1" />
+                              {result.interview.totalScore}%
                             </div>
-                            <div className="text-sm text-slate-500">
-                              {result.candidate.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getStatusColor(result.interview.status)}>
-                          {getStatusLabel(result.interview.status)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900">
-                          {result.interview.totalScore || 0}%
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getCategoryColor(result.interview.category)}>
-                          {getCategoryLabel(result.interview.category)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                        {result.interview.completedAt && result.interview.startedAt ? (
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 mr-1" />
-                            {Math.round(
-                              (new Date(result.interview.completedAt).getTime() - 
-                               new Date(result.interview.startedAt).getTime()) / 60000
-                            )} min
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          {result.responses.length > 0 && result.responses[0].audioUrl && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePlayAudio(result.responses[0].audioUrl)}
-                            >
-                              {currentAudio === result.responses[0].audioUrl && isPlaying ? (
-                                <Pause className="h-4 w-4" />
-                              ) : (
-                                <Play className="h-4 w-4" />
-                              )}
-                            </Button>
+                          ) : (
+                            <span className="text-gray-400">-</span>
                           )}
-                          <Button variant="ghost" size="sm">
-                            Ver Detalhes
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                        </TableCell>
+                        <TableCell>
+                          {result.interview.status === 'completed' ? (
+                            <Badge className={getCategoryBadge(result.interview.category)}>
+                              {result.interview.category === 'high' ? 'Alto' : 
+                               result.interview.category === 'medium' ? 'Médio' : 'Baixo'}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {result.interview.completedAt ? 
+                            new Date(result.interview.completedAt).toLocaleDateString('pt-BR') : 
+                            '-'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {result.interview.status === 'completed' && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => setSelectedInterview(result)}
+                                >
+                                  <FileText className="w-4 h-4 mr-1" />
+                                  Ver Detalhes
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl max-h-[80vh]">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    Entrevista - {result.candidate.name}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <ScrollArea className="h-[60vh]">
+                                  <div className="space-y-6">
+                                    {/* Candidate Info */}
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                                      <div>
+                                        <h4 className="font-semibold text-gray-900">Informações do Candidato</h4>
+                                        <p><strong>Nome:</strong> {result.candidate.name}</p>
+                                        <p><strong>Email:</strong> {result.candidate.email}</p>
+                                        <p><strong>Telefone:</strong> {result.candidate.phone}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="font-semibold text-gray-900">Resultado Geral</h4>
+                                        <p><strong>Pontuação:</strong> {result.interview.totalScore}%</p>
+                                        <p><strong>Categoria:</strong> {
+                                          result.interview.category === 'high' ? 'Alto Desempenho' : 
+                                          result.interview.category === 'medium' ? 'Médio Desempenho' : 'Baixo Desempenho'
+                                        }</p>
+                                      </div>
+                                    </div>
+
+                                    {/* Responses */}
+                                    <div className="space-y-4">
+                                      <h4 className="font-semibold text-gray-900">Respostas por Pergunta</h4>
+                                      {result.responses.map((response, index) => (
+                                        <Card key={response.id}>
+                                          <CardContent className="p-4">
+                                            <div className="space-y-3">
+                                              <div className="flex justify-between items-start">
+                                                <h5 className="font-medium">Pergunta {index + 1}</h5>
+                                                <div className="flex items-center gap-2">
+                                                  <Badge className={getScoreColor(response.score)}>
+                                                    {response.score}%
+                                                  </Badge>
+                                                  <span className="text-sm text-gray-500">
+                                                    {formatDuration(response.recordingDuration)}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              
+                                              <div className="bg-gray-50 p-3 rounded">
+                                                <h6 className="text-sm font-medium text-gray-700 mb-2">Transcrição:</h6>
+                                                <p className="text-sm text-gray-900">{response.transcription || 'Transcrição não disponível'}</p>
+                                              </div>
+
+                                              {response.audioUrl && (
+                                                <div className="flex items-center gap-2">
+                                                  <Play className="w-4 h-4" />
+                                                  <span className="text-sm text-gray-600">Áudio disponível</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

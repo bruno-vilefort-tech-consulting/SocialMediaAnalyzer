@@ -854,14 +854,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Selection not found' });
       }
 
+      // Get job and candidates data
+      const job = await storage.getJobById(selection.jobId);
+      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
+      
+      if (!job || candidates.length === 0) {
+        return res.status(400).json({ message: 'Job or candidates not found' });
+      }
+
+      const interviews = [];
+      const baseUrl = process.env.REPL_URL || 'http://localhost:5000';
+
+      for (const candidate of candidates) {
+        // Generate unique token for each candidate
+        const token = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+        
+        const interview = await storage.createInterview({
+          selectionId: id,
+          candidateId: candidate.id,
+          token,
+          status: 'pending'
+        });
+
+        // Create interview link
+        const interviewLink = `${baseUrl}/interview/${token}`;
+
+        // Prepare messages with candidate name and interview link
+        let whatsappMessage = selection.mensagemWhatsApp;
+        let emailMessage = selection.mensagemEmail || '';
+
+        // Replace placeholders in messages
+        whatsappMessage = whatsappMessage
+          .replace(/\{nome\}/g, candidate.name)
+          .replace(/\{vaga\}/g, job.nomeVaga)
+          .replace(/\{link\}/g, interviewLink);
+
+        emailMessage = emailMessage
+          .replace(/\{nome\}/g, candidate.name)
+          .replace(/\{vaga\}/g, job.nomeVaga)
+          .replace(/\{link\}/g, interviewLink);
+
+        // Log message sending (in production, integrate with WhatsApp API and email service)
+        if (selection.enviarWhatsApp) {
+          await storage.createMessageLog({
+            interviewId: interview.id,
+            type: 'whatsapp',
+            recipient: candidate.phone || '',
+            message: whatsappMessage,
+            status: 'sent'
+          });
+        }
+
+        if (selection.enviarEmail && candidate.email) {
+          await storage.createMessageLog({
+            interviewId: interview.id,
+            type: 'email',
+            recipient: candidate.email,
+            message: emailMessage,
+            status: 'sent'
+          });
+        }
+
+        interviews.push({
+          ...interview,
+          candidate,
+          interviewLink
+        });
+      }
+
       // Update selection status to 'enviado'
       await storage.updateSelection(id, { status: 'enviado' });
       
-      // TODO: Implement WhatsApp/Email sending logic here
-      
-      res.json({ message: 'Interviews sent successfully' });
+      res.json({ 
+        message: `Entrevistas enviadas para ${interviews.length} candidatos`,
+        interviews: interviews.length
+      });
     } catch (error) {
-      res.status(400).json({ message: 'Failed to send interviews' });
+      console.error('Send interviews error:', error);
+      res.status(500).json({ message: 'Falha ao enviar entrevistas' });
     }
   });
 
@@ -1127,6 +1197,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(results);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch results' });
+    }
+  });
+
+  // API Configuration routes
+  app.get("/api/config", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const config = await storage.getApiConfig();
+      res.json(config || {});
+    } catch (error) {
+      console.error('Error fetching API config:', error);
+      res.status(500).json({ error: 'Failed to fetch configuration' });
+    }
+  });
+
+  app.post("/api/config", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const config = await storage.upsertApiConfig(req.body);
+      res.json(config);
+    } catch (error) {
+      console.error('Error saving API config:', error);
+      res.status(500).json({ error: 'Failed to save configuration' });
+    }
+  });
+
+  // Test OpenAI API endpoint
+  app.post("/api/test-openai", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ error: 'API key is required' });
+      }
+
+      // Test the API key with a simple request
+      const response = await fetch('https://api.openai.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        res.json({ success: true, message: 'OpenAI API key is valid' });
+      } else {
+        res.status(400).json({ success: false, error: 'Invalid OpenAI API key' });
+      }
+    } catch (error) {
+      console.error('Error testing OpenAI API:', error);
+      res.status(500).json({ success: false, error: 'Failed to test OpenAI API' });
+    }
+  });
+
+  // Get interview results for a selection
+  app.get("/api/selections/:id/results", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = parseInt(req.params.id);
+      const interviews = await storage.getInterviewsBySelectionId(selectionId);
+      
+      const results = [];
+      for (const interview of interviews) {
+        const responses = await storage.getResponsesByInterviewId(interview.id);
+        const candidate = await storage.getCandidateById(interview.candidateId);
+        
+        if (candidate) {
+          results.push({
+            interview,
+            candidate,
+            responses
+          });
+        }
+      }
+      
+      res.json(results);
+    } catch (error) {
+      console.error('Error fetching selection results:', error);
+      res.status(500).json({ error: 'Failed to fetch results' });
     }
   });
 
