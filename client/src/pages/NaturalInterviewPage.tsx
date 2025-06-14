@@ -122,9 +122,14 @@ export default function NaturalInterviewPage() {
   const [interviewCompleted, setInterviewCompleted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   
+  // Estados para gravação completa da sessão
+  const [isRecordingSession, setIsRecordingSession] = useState(false);
+  const [sessionAudioChunks, setSessionAudioChunks] = useState<Blob[]>([]);
+  
   // Refs para controle de áudio
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const sessionRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -322,11 +327,82 @@ export default function NaturalInterviewPage() {
     }
   };
 
+  // Iniciar gravação da sessão completa
+  const startSessionRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        } 
+      });
+      
+      const sessionRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      sessionRecorderRef.current = sessionRecorder;
+      setSessionAudioChunks([]);
+      
+      sessionRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setSessionAudioChunks(prev => [...prev, event.data]);
+        }
+      };
+      
+      sessionRecorder.start(1000); // Coleta dados a cada segundo
+      setIsRecordingSession(true);
+      
+      console.log('🎙️ Gravação da sessão iniciada');
+    } catch (error) {
+      console.error('❌ Erro ao iniciar gravação da sessão:', error);
+    }
+  };
+
+  // Parar gravação da sessão e salvar
+  const stopSessionRecording = async () => {
+    if (sessionRecorderRef.current && isRecordingSession) {
+      sessionRecorderRef.current.stop();
+      setIsRecordingSession(false);
+      
+      // Aguardar processamento final dos chunks
+      setTimeout(async () => {
+        await saveSessionRecording();
+      }, 1000);
+    }
+  };
+
+  // Salvar gravação completa da sessão
+  const saveSessionRecording = async () => {
+    if (sessionAudioChunks.length === 0) return;
+    
+    try {
+      const audioBlob = new Blob(sessionAudioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append('sessionAudio', audioBlob, `session_${token}_${Date.now()}.webm`);
+      formData.append('conversationHistory', JSON.stringify(conversationHistory));
+      formData.append('duration', String(Math.floor((Date.now() - interview?.createdAt?.getTime() || 0) / 1000)));
+      
+      await fetch(`/api/interview/${token}/save-session`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      console.log('💾 Sessão completa salva no banco');
+    } catch (error) {
+      console.error('❌ Erro ao salvar sessão:', error);
+    }
+  };
+
   // Iniciar entrevista
   const startInterview = async () => {
     if (!interview) return;
     
     setIsInterviewStarted(true);
+    
+    // Iniciar gravação automática da sessão completa
+    await startSessionRecording();
     
     // Mensagem de boas-vindas
     const welcomeMessage = `Olá ${interview.candidate.nome}, tudo bem? Sou o assistente virtual que vai conduzir sua entrevista para a vaga de ${interview.job.nomeVaga}. Vou fazer algumas perguntas e você pode conversar comigo naturalmente. Está tudo bem para começarmos?`;
@@ -350,6 +426,9 @@ export default function NaturalInterviewPage() {
   // Finalizar entrevista
   const finishInterview = async () => {
     try {
+      // Parar gravação da sessão
+      await stopSessionRecording();
+      
       await fetch(`/api/interview/${token}/complete`, {
         method: 'POST',
         headers: {
@@ -410,166 +489,109 @@ export default function NaturalInterviewPage() {
         </Card>
 
         {!isInterviewStarted ? (
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="p-8 text-center space-y-6">
-              <div className="space-y-4">
-                <MessageCircle className="h-16 w-16 mx-auto text-blue-600" />
-                <h2 className="text-xl font-semibold">Pronto para começar?</h2>
-                <p className="text-muted-foreground">
-                  Esta será uma entrevista conversacional natural. Você poderá falar normalmente 
-                  com nosso assistente virtual, que fará perguntas sobre a vaga e sua experiência.
-                </p>
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Dicas importantes:</strong><br />
-                    • Fale claramente e em ritmo normal<br />
-                    • Aguarde o assistente terminar de falar antes de responder<br />
-                    • Seja natural e espontâneo em suas respostas
-                  </p>
-                </div>
+          <div className="max-w-2xl mx-auto text-center space-y-8">
+            <div className="space-y-4">
+              <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                <MessageCircle className="h-10 w-10 text-white" />
               </div>
-              
-              <Button 
-                onClick={startInterview}
-                size="lg"
-                className="w-full"
-              >
-                <Play className="mr-2 h-5 w-5" />
-                Iniciar Entrevista
-              </Button>
-            </CardContent>
-          </Card>
+              <h2 className="text-2xl font-light text-gray-800">Entrevista por Voz</h2>
+              <p className="text-gray-600 max-w-md mx-auto">
+                Conversa natural com nosso assistente virtual para a vaga de {interview.job.nomeVaga}
+              </p>
+            </div>
+            
+            <Button 
+              onClick={startInterview}
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full"
+            >
+              Começar Conversa
+            </Button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Painel de Controle */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Mic className="h-5 w-5" />
-                  <span>Controles</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status da IA:</span>
-                    <Badge variant={isSpeaking ? "default" : "secondary"}>
-                      {isSpeaking ? "Falando" : "Aguardando"}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Escuta:</span>
-                    <Badge variant={isListening ? "default" : "outline"}>
-                      {isListening ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Pergunta:</span>
-                    <Badge variant="outline">
-                      {currentQuestionIndex + 1} de {interview.questions.length}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t">
-                  {currentTranscript && (
-                    <div className="bg-yellow-50 p-3 rounded-lg">
-                      <p className="text-sm text-yellow-800">
-                        <strong>Detectando:</strong><br />
-                        {currentTranscript}
-                      </p>
+          <div className="max-w-4xl mx-auto">
+            {/* Interface Conversacional Limpa */}
+            <div className="space-y-6">
+              {/* Status Visual Central */}
+              <div className="text-center">
+                {isSpeaking && (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                      <Volume2 className="h-8 w-8 text-blue-600" />
                     </div>
-                  )}
-                </div>
-
-                <div className="flex space-x-2 pt-4">
-                  <Button
-                    variant={isListening ? "destructive" : "outline"}
-                    onClick={isListening ? stopListening : startListening}
-                    disabled={isSpeaking}
-                    className="flex-1"
-                  >
-                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  </Button>
-                  
-                  {!interviewCompleted && (
-                    <Button
-                      variant="outline"
-                      onClick={finishInterview}
-                      className="flex-1"
-                    >
-                      <Square className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Conversa */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MessageCircle className="h-5 w-5" />
-                  <span>Conversa</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {conversationHistory.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg ${
-                        message.type === 'ai'
-                          ? 'bg-blue-50 border-l-4 border-blue-500'
-                          : 'bg-green-50 border-l-4 border-green-500 ml-8'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2 mb-1">
-                        <Badge variant={message.type === 'ai' ? "default" : "secondary"}>
-                          {message.type === 'ai' ? 'Assistente' : interview.candidate.nome}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {message.timestamp.toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <p className="text-sm">{message.message}</p>
-                    </div>
-                  ))}
-                  
-                  {isSpeaking && (
-                    <div className="p-3 rounded-lg bg-blue-50 border-l-4 border-blue-500">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Volume2 className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm text-blue-800">Assistente está falando...</span>
-                      </div>
-                      <SpeakingWaves />
-                    </div>
-                  )}
-                  
-                  {isListening && !isSpeaking && (
-                    <div className="p-3 rounded-lg bg-green-50 border-l-4 border-green-500">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Mic className="h-4 w-4 text-green-600" />
-                        <span className="text-sm text-green-800">Te escutando...</span>
-                      </div>
-                      <VoiceVisualizer isActive={isListening} />
-                    </div>
-                  )}
-                </div>
-
-                {interviewCompleted && (
-                  <div className="mt-6 p-4 bg-green-50 rounded-lg text-center">
-                    <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-2" />
-                    <h3 className="font-semibold text-green-800">Entrevista Finalizada!</h3>
-                    <p className="text-sm text-green-700 mt-1">
-                      Obrigado pela sua participação. Em breve a empresa entrará em contato.
-                    </p>
+                    <p className="text-gray-600">Assistente falando...</p>
+                    <SpeakingWaves />
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                
+                {isListening && !isSpeaking && (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                      <Mic className="h-8 w-8 text-green-600" />
+                    </div>
+                    <p className="text-gray-600">Te escutando...</p>
+                    <VoiceVisualizer isActive={isListening} />
+                  </div>
+                )}
+                
+                {!isSpeaking && !isListening && !interviewCompleted && (
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                      <MessageCircle className="h-8 w-8 text-gray-500" />
+                    </div>
+                    <p className="text-gray-500">Preparando...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Transcrição em Tempo Real */}
+              {currentTranscript && (
+                <div className="bg-blue-50 p-4 rounded-lg max-w-2xl mx-auto">
+                  <p className="text-blue-800 text-center">{currentTranscript}</p>
+                </div>
+              )}
+
+              {/* Histórico da Conversa */}
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {conversationHistory.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`max-w-2xl mx-auto ${
+                      message.type === 'ai' ? 'text-left' : 'text-right'
+                    }`}
+                  >
+                    <div
+                      className={`inline-block p-4 rounded-2xl ${
+                        message.type === 'ai'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-blue-600 text-white'
+                      }`}
+                    >
+                      <p>{message.message}</p>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 px-4">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tela de Finalização */}
+              {interviewCompleted && (
+                <div className="text-center space-y-6 py-12">
+                  <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-10 w-10 text-green-600" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-medium text-gray-800">Entrevista Finalizada</h3>
+                    <p className="text-gray-600">
+                      Obrigado pela sua participação, {interview.candidate.nome}!<br />
+                      Em breve a empresa entrará em contato com o resultado.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
