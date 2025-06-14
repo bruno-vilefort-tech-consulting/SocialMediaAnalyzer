@@ -58,11 +58,11 @@ export default function CandidatesPage() {
   const [showCandidateForm, setShowCandidateForm] = useState(false);
 
   // Queries
-  const { data: candidateLists = [], isLoading: listsLoading } = useQuery({
+  const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
     queryKey: ['/api/candidate-lists']
   });
 
-  const { data: allCandidates = [], isLoading: candidatesLoading } = useQuery({
+  const { data: allCandidates = [], isLoading: candidatesLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/candidates']
   });
 
@@ -87,15 +87,13 @@ export default function CandidatesPage() {
 
   // Mutations
   const createListMutation = useMutation({
-    mutationFn: async (data: CandidateListFormData) => {
+    mutationFn: async (data: CandidateListFormData): Promise<CandidateList> => {
       const listData: InsertCandidateList = {
         ...data,
         clientId: user?.role === 'master' ? 1 : user?.clientId!
       };
-      return await apiRequest('/api/candidate-lists', {
-        method: 'POST',
-        body: JSON.stringify(listData)
-      });
+      const response = await apiRequest('/api/candidate-lists', 'POST', listData);
+      return response;
     },
     onSuccess: (newList: CandidateList) => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
@@ -113,9 +111,7 @@ export default function CandidatesPage() {
 
   const deleteListMutation = useMutation({
     mutationFn: async (listId: number) => {
-      return await apiRequest(`/api/candidate-lists/${listId}`, {
-        method: 'DELETE'
-      });
+      return await apiRequest(`/api/candidate-lists/${listId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
@@ -138,10 +134,7 @@ export default function CandidatesPage() {
         clientId: user?.role === 'master' ? 1 : user?.clientId!,
         listId: selectedListId!
       };
-      return await apiRequest('/api/candidates', {
-        method: 'POST',
-        body: JSON.stringify(candidateData)
-      });
+      return await apiRequest('/api/candidates', 'POST', candidateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
@@ -229,24 +222,33 @@ export default function CandidatesPage() {
     formData.append('listId', selectedListId.toString());
 
     try {
+      // Use apiRequest to maintain authentication
       const response = await fetch('/api/candidates/bulk', {
         method: 'POST',
         body: formData,
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          // Don't set Content-Type - let browser set it with boundary for multipart
+        }
       });
 
       if (response.ok) {
+        const result = await response.json();
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-        toast({ title: "Candidatos importados com sucesso!" });
+        toast({ 
+          title: "Sucesso!",
+          description: result.message || "Candidatos importados com sucesso!"
+        });
       } else {
         const error = await response.json();
         toast({ 
           title: "Erro na importação", 
-          description: error.message,
+          description: error.message || "Falha na importação",
           variant: "destructive" 
         });
       }
     } catch (error) {
+      console.error('Erro no upload:', error);
       toast({ 
         title: "Erro na importação", 
         description: "Falha no upload do arquivo",
