@@ -57,6 +57,8 @@ export default function CadastroVagasPage() {
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
   const [mostrarFormularioPergunta, setMostrarFormularioPergunta] = useState(false);
   const [perguntaEditando, setPerguntaEditando] = useState<Pergunta | null>(null);
+  const [vagasCriadas, setVagasCriadas] = useState<Vaga[]>([]);
+  const [mostrarNovaVaga, setMostrarNovaVaga] = useState(false);
 
   // Formulários
   const vagaForm = useForm<VagaFormData>({
@@ -80,6 +82,17 @@ export default function CadastroVagasPage() {
   const { data: clients = [] } = useQuery<any[]>({
     queryKey: ["/api/clients"],
     enabled: user?.role === 'master',
+  });
+
+  // Buscar vagas existentes
+  const { data: vagasExistentes = [], refetch: refetchVagas } = useQuery<Vaga[]>({
+    queryKey: ["/api/jobs"],
+    select: (data: unknown) => {
+      if (Array.isArray(data)) {
+        return data;
+      }
+      return [];
+    }
   });
 
   // Mutations para vagas

@@ -52,13 +52,23 @@ export const questions = pgTable("perguntas_entrevista", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Candidate lists
+export const candidateLists = pgTable("candidate_lists", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Candidates
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
+  listId: integer("list_id").references(() => candidateLists.id).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  whatsapp: text("whatsapp").notNull(),
+  phone: text("phone").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -142,7 +152,11 @@ export const insertQuestionSchema = z.object({
   respostaPerfeita: z.string().min(1, "Resposta perfeita é obrigatória").max(1000, "Máximo 1000 caracteres"),
   numeroPergunta: z.number().min(1).max(10),
 });
-export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true });
+export const insertCandidateListSchema = createInsertSchema(candidateLists).omit({ id: true, createdAt: true });
+export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true }).extend({
+  email: z.string().email("Email inválido"),
+  phone: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "Celular deve estar no formato brasileiro (ex: 11987654321)")
+});
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });
 export const insertResponseSchema = createInsertSchema(responses).omit({ id: true, createdAt: true });
