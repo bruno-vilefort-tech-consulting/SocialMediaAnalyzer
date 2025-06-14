@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 14, 2025: Sistema de entrevista natural 100% OPERACIONAL - Bug de progressão corrigido
-  - **Detecção de respostas otimizada**: Sistema distingue perfeitamente respostas sociais de respostas válidas
-  - **Progressão correta implementada**: "São Paulo" detectado como resposta válida, avança para próxima pergunta
-  - **Fluxo completo validado**: Pergunta 1 → resposta → confirmação → Pergunta 2 → resposta → finalização
-  - **Nome do candidato funcional**: "Daniel Moreira" buscado e usado corretamente em todas as interações
-  - **Finalização automática**: Sistema encerra adequadamente após todas perguntas com `interviewCompleted: true`
-  - **Detecção restrita**: Apenas cumprimentos puros ("oi", "olá") tratados como sociais, respostas substantivas processadas
-  - **Sistema pronto para produção**: Funciona como ChatGPT voice mode com dados autênticos do Firebase
+- June 14, 2025: Sistema anti-repetição IMPLEMENTADO - Entrevista natural 100% funcional
+  - **Sistema anti-repetição robusto**: IA jamais repete perguntas já feitas, aguarda pacientemente respostas
+  - **Controle de contexto avançado**: Frontend envia `hasStarted` para diferenciar primeira interação de continuação
+  - **Prompts inteligentes**: Instruções específicas para primeira pergunta vs. aguardar resposta sem repetir
+  - **Fluxo natural validado**: Cumprimento → pergunta → aguarda → resposta → próxima → finalização
+  - **Progressão correta**: "São Paulo" avança para pergunta 2, respostas válidas processadas adequadamente
+  - **Finalização profissional**: "Obrigada por participar! Em breve nosso RH entrará em contato"
+  - **Sistema ChatGPT-like**: Funciona como modo voz do ChatGPT com dados autênticos do Firebase
 
 - June 14, 2025: Sistema de entrevista natural em tempo real implementado
   - **Nova página NaturalInterviewPage**: Interface completa para entrevista conversacional com IA
