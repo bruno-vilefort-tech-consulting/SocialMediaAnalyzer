@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await apiRequest("POST", "/api/auth/login", { email, password });
+      const response = await apiRequest("/api/auth/login", "POST", { email, password });
       const data = await response.json();
       
       setToken(data.token);
