@@ -1895,28 +1895,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const currentQuestion = questions[currentQuestionIndex];
         const lowerResponse = candidateResponse.toLowerCase();
         
-        // Detectar respostas sociais/cortesia que não respondem a pergunta
-        const socialResponses = [
-          'sim', 'não', 'tudo bem', 'obrigado', 'obrigada', 'oi', 'olá', 
-          'bom dia', 'boa tarde', 'boa noite', 'como vai', 'e você', 'você está bem',
-          'estou bem', 'estou ótimo', 'estou ótima', 'muito bem', 'bem obrigado',
-          'bem obrigada', 'tudo certo', 'tudo ok', 'ok', 'beleza'
-        ];
-        
-        // Detectar perguntas de volta à entrevistadora
+        // Detectar apenas perguntas de volta à entrevistadora ou cumprimentos puros
         const isQuestionBack = lowerResponse.includes('e você') || 
                                lowerResponse.includes('como está') ||
                                lowerResponse.includes('como vai') ||
                                lowerResponse.includes('você está bem');
         
-        const isSocialResponse = socialResponses.some(phrase => 
-          lowerResponse.includes(phrase)
+        // Lista restrita de respostas puramente sociais (sem informação substantiva)
+        const pureSocialPhrases = ['oi', 'olá', 'tudo bem', 'boa tarde', 'bom dia', 'boa noite'];
+        
+        // Só considerar social se for uma frase social exata OU pergunta de volta
+        const isPureSocialResponse = pureSocialPhrases.some(phrase => 
+          lowerResponse.trim() === phrase
         ) || isQuestionBack;
         
-        // Se é resposta social/cortesia OU muito curta, não avançar pergunta
-        if ((isSocialResponse && lowerResponse.length < 40) || lowerResponse.length < 15) {
+        // Tratar como social apenas se for puramente social
+        if (isPureSocialResponse) {
           isOffTopicResponse = true;
-          console.log(`🔄 Resposta social/curta detectada, mantendo pergunta ${currentQuestionIndex + 1}: "${currentQuestion.perguntaCandidato}"`);
+          console.log(`🔄 Resposta social detectada, mantendo pergunta ${currentQuestionIndex + 1}: "${currentQuestion.perguntaCandidato}"`);
         } else {
           // Resposta substancial, avançar para próxima pergunta
           nextQuestionIndex = currentQuestionIndex + 1;
