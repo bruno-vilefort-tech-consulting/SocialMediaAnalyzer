@@ -215,7 +215,7 @@ class SimpleInterviewService {
       
       try {
         console.log(`🔄 [AUDIO] Chamando transcribeAudio...`);
-        const transcription = await this.transcribeAudio(audioMessage);
+        const transcription = await this.transcribeAudio(audioMessage, phone, text);
         
         if (transcription && transcription.length > 0) {
           responseText = transcription;
@@ -336,7 +336,7 @@ class SimpleInterviewService {
     console.log(`🎯 [AUDIO] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
-  private async transcribeAudio(audioMessage: any): Promise<string> {
+  private async transcribeAudio(audioMessage: any, phone: string, text = ''): Promise<string> {
     console.log(`\n🎯 [WHISPER] ===== INICIANDO TRANSCRIÇÃO =====`);
     
     try {
