@@ -335,52 +335,26 @@ class SimpleInterviewService {
         await fs.promises.writeFile(tempAudioPath, audioBuffer);
         console.log(`💾 [WHISPER] Áudio salvo temporariamente: ${tempAudioPath}`);
         
-        // Transcrever com OpenAI Whisper
-        const FormData = (await import('form-data')).default;
-        const formData = new FormData();
-        formData.append('file', fs.createReadStream(tempAudioPath), {
-          filename: 'audio.webm',
-          contentType: 'audio/webm'
-        });
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'pt');
-        
-        console.log(`🌐 [WHISPER] Enviando para OpenAI Whisper API...`);
-        console.log(`🔑 [WHISPER] API Key presente: ${process.env.OPENAI_API_KEY ? 'SIM' : 'NÃO'}`);
-        
-        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            ...formData.getHeaders()
-          },
-          body: formData
+        // Transcrever com OpenAI Whisper usando OpenAI SDK
+        const transcription = await this.openai.audio.transcriptions.create({
+          file: fs.createReadStream(tempAudioPath),
+          model: 'whisper-1',
+          language: 'pt',
+          response_format: 'text'
         });
         
-        console.log(`📡 [WHISPER] Status da resposta: ${response.status}`);
+        console.log(`🌐 [WHISPER] Transcrição via OpenAI SDK...`);
+        console.log(`✅ [WHISPER] Transcrição obtida: "${transcription}"`);
         
-        if (response.ok) {
-          const result = await response.json();
-          const transcription = result.text?.trim();
-          
-          console.log(`📝 [WHISPER] Resultado bruto:`, result);
-          
-          if (transcription && transcription.length > 0) {
-            console.log(`✅ [WHISPER] Transcrição real obtida: "${transcription}"`);
-            
-            // Limpar arquivo temporário
-            try {
-              await fs.promises.unlink(tempAudioPath);
-            } catch {}
-            
-            return transcription;
-          } else {
-            console.log(`⚠️ [WHISPER] Transcrição vazia ou inválida`);
-          }
-        } else {
-          const errorText = await response.text();
-          console.log(`❌ [WHISPER] Erro na API: ${response.status} - ${errorText}`);
+        // Limpar arquivo temporário
+        try {
+          await fs.promises.unlink(tempAudioPath);
+        } catch {}
+        
+        if (transcription && transcription.trim().length > 0) {
+          return transcription.trim();
         }
+
         
         // Limpar arquivo temporário em caso de erro
         try {
