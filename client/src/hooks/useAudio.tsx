@@ -7,7 +7,10 @@ interface UseAudioRecorderReturn {
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   playAudio: (audioUrl: string) => void;
+  pauseAudio: () => void;
+  stopAudio: () => void;
   isPlaying: boolean;
+  currentAudioUrl: string | null;
 }
 
 export const useAudioRecorder = (): UseAudioRecorderReturn => {
@@ -15,6 +18,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -75,14 +79,38 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     }
     
     audioRef.current = new Audio(audioUrl);
-    audioRef.current.onended = () => setIsPlaying(false);
-    audioRef.current.onerror = () => setIsPlaying(false);
+    audioRef.current.onended = () => {
+      setIsPlaying(false);
+      setCurrentAudioUrl(null);
+    };
+    audioRef.current.onerror = () => {
+      setIsPlaying(false);
+      setCurrentAudioUrl(null);
+    };
     
+    setCurrentAudioUrl(audioUrl);
     setIsPlaying(true);
     audioRef.current.play().catch((error) => {
       console.error('Error playing audio:', error);
       setIsPlaying(false);
+      setCurrentAudioUrl(null);
     });
+  }, []);
+
+  const pauseAudio = useCallback(() => {
+    if (audioRef.current && isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [isPlaying]);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentAudioUrl(null);
+    }
   }, []);
 
   return {
@@ -92,7 +120,10 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     startRecording,
     stopRecording,
     playAudio,
-    isPlaying
+    pauseAudio,
+    stopAudio,
+    isPlaying,
+    currentAudioUrl
   };
 };
 

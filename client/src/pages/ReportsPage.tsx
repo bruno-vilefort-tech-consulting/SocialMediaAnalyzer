@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle, Clock, Calendar, Phone, Mail, FileText, User, Briefcase, ChevronRight, Play, Volume2 } from "lucide-react";
+import { Users, CheckCircle, Clock, Calendar, Phone, Mail, FileText, User, Briefcase, ChevronRight, Play, Pause, Square, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { useAudioRecorder } from "@/hooks/useAudio";
 
 interface Selection {
   id: number;
@@ -39,6 +40,7 @@ interface Response {
 
 export default function ReportsPage() {
   const [selectedSelection, setSelectedSelection] = useState<number | null>(null);
+  const { playAudio: playAudioHook, pauseAudio, stopAudio, isPlaying, currentAudioUrl } = useAudioRecorder();
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
 
   const { data: selections = [] } = useQuery({
@@ -100,18 +102,11 @@ export default function ReportsPage() {
     });
   };
 
-  const playAudio = (audioFile: string) => {
+  const handlePlayAudio = (audioFile: string) => {
     if (audioFile) {
       // Garantir que o caminho do áudio está correto
       const audioUrl = audioFile.startsWith('/uploads/') ? audioFile : `/uploads/${audioFile}`;
-      const audio = new Audio(audioUrl);
-      audio.play().catch(err => {
-        console.error('Erro ao reproduzir áudio:', err);
-        console.log('Tentando caminho alternativo...');
-        // Tentar caminho direto se falhar
-        const alternativeAudio = new Audio(audioFile);
-        alternativeAudio.play().catch(altErr => console.error('Erro no caminho alternativo:', altErr));
-      });
+      playAudioHook(audioUrl);
     }
   };
 
