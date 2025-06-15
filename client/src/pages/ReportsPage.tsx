@@ -24,12 +24,16 @@ export default function ReportsPage() {
     queryKey: ['/api/selections'],
   });
 
-  const { data: interviews = [] } = useQuery({
+  const { data: interviewData } = useQuery({
     queryKey: ['/api/interview-responses'],
   });
 
+  // Garantir que interviews seja um array
+  const interviews = Array.isArray(interviewData) ? interviewData : 
+                    (interviewData?.responses || []);
+
   // Processar dados para relatórios
-  const selectionsWithStats = selections.map((selection: Selection) => {
+  const selectionsWithStats = (selections || []).map((selection: Selection) => {
     const selectionInterviews = interviews.filter((interview: any) => 
       interview.selectionId === selection.id
     );

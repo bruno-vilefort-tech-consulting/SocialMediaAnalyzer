@@ -2641,54 +2641,68 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
-  // Verificar respostas de entrevista no banco
-  app.get("/api/interview-responses", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+  // Buscar respostas de entrevista do Firebase
+  app.get("/api/interview-responses", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
-      // Buscar entrevistas ativas do SimpleInterviewService
-      const { simpleInterviewService } = await import('./simpleInterviewService');
-      const activeInterviews = simpleInterviewService.getActiveInterviews();
+      const allInterviews: any[] = [];
       
-      const allResponses: any[] = [];
+      // Buscar entrevistas do Firebase
+      const interviewsSnapshot = await storage.firestore.collection('interviews').get();
       
-      // Extrair respostas das entrevistas ativas
-      activeInterviews.forEach((interview, phone) => {
-        interview.responses.forEach((response, index) => {
-          allResponses.push({
-            id: `${phone}-${index}`,
-            candidateName: interview.candidateName,
-            candidatePhone: phone,
-            jobName: interview.jobName,
-            questionId: response.questionId,
-            questionText: response.questionText,
-            responseText: response.responseText,
-            audioFile: response.audioFile,
-            timestamp: response.timestamp,
-            interviewStartTime: interview.startTime
-          });
+      for (const interviewDoc of interviewsSnapshot.docs) {
+        const interviewData = interviewDoc.data();
+        
+        // Buscar respostas desta entrevista
+        const responsesSnapshot = await storage.firestore
+          .collection('interview_responses')
+          .where('interviewId', '==', interviewDoc.id)
+          .get();
+        
+        const responses = responsesSnapshot.docs.map(doc => {
+          const responseData = doc.data();
+          return {
+            questionText: responseData.questionText || '',
+            responseText: responseData.responseText || '',
+            audioUrl: responseData.audioFile || '',
+            timestamp: responseData.timestamp || new Date().toISOString()
+          };
         });
-      });
 
-      // Buscar também do Firebase se disponível
-      try {
-        const { getDocs, collection } = await import('firebase/firestore');
-        const { firebaseDb } = await import('./storage');
+        // Buscar informações do candidato
+        let candidateName = 'Candidato Desconhecido';
+        let candidatePhone = 'N/A';
         
-        const responsesSnapshot = await getDocs(collection(firebaseDb, 'interview_responses'));
-        const firebaseResponses = responsesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          source: 'firebase'
-        }));
-        
-        allResponses.push(...firebaseResponses);
-      } catch (firebaseError) {
-        console.log('Firebase não acessível, usando apenas dados em memória');
+        if (interviewData.candidateId) {
+          try {
+            const candidateDoc = await storage.firestore
+              .collection('candidates')
+              .doc(interviewData.candidateId.toString())
+              .get();
+            
+            if (candidateDoc.exists) {
+              const candidateData = candidateDoc.data();
+              candidateName = candidateData?.name || candidateName;
+              candidatePhone = candidateData?.whatsapp || candidateData?.phone || candidatePhone;
+            }
+          } catch (candidateError) {
+            console.log('Erro ao buscar candidato:', candidateError);
+          }
+        }
+
+        allInterviews.push({
+          id: interviewDoc.id,
+          interviewId: interviewDoc.id,
+          candidateName,
+          candidatePhone,
+          status: interviewData.status || 'pending',
+          selectionId: interviewData.selectionId,
+          responses,
+          totalQuestions: interviewData.totalQuestions || responses.length,
+          answeredQuestions: responses.length
+        });
       }
       
-      res.json({
-        total: allResponses.length,
-        responses: allResponses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      });
+      res.json(allInterviews);
     } catch (error) {
       console.error('Erro ao buscar respostas:', error);
       res.status(500).json({ error: 'Erro ao buscar respostas' });
