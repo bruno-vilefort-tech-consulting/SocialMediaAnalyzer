@@ -667,7 +667,13 @@ export class FirebaseStorage implements IStorage {
         return candidate;
       });
       
-      const filteredCandidates = allCandidates.filter(candidate => candidate.clientId === clientId);
+      // Buscar tanto pelo clientId exato quanto pelo clientId=1 (formato antigo)
+      console.log(`🔍 [DEBUG] Filtrando candidatos. ClientId buscado: ${clientId} (tipo: ${typeof clientId})`);
+      const filteredCandidates = allCandidates.filter(candidate => {
+        const matches = candidate.clientId === clientId || candidate.clientId === 1;
+        console.log(`🔎 [DEBUG] Candidato ${candidate.name} - ClientId: ${candidate.clientId} (tipo: ${typeof candidate.clientId}) - Match: ${matches}`);
+        return matches;
+      });
       console.log(`✅ [DEBUG] Candidatos filtrados para clientId ${clientId}: ${filteredCandidates.length}`);
       
       return filteredCandidates;
