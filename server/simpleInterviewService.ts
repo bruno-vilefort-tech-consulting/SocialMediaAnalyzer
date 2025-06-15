@@ -342,6 +342,8 @@ class SimpleInterviewService {
         formData.append('model', 'whisper-1');
         formData.append('language', 'pt');
         
+        console.log(`🌐 [WHISPER] Enviando para OpenAI Whisper API...`);
+        
         const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
           method: 'POST',
           headers: {
@@ -351,9 +353,13 @@ class SimpleInterviewService {
           body: formData
         });
         
+        console.log(`📡 [WHISPER] Status da resposta: ${response.status}`);
+        
         if (response.ok) {
           const result = await response.json();
           const transcription = result.text?.trim();
+          
+          console.log(`📝 [WHISPER] Resultado bruto:`, result);
           
           if (transcription && transcription.length > 0) {
             console.log(`✅ [WHISPER] Transcrição real obtida: "${transcription}"`);
@@ -364,7 +370,12 @@ class SimpleInterviewService {
             } catch {}
             
             return transcription;
+          } else {
+            console.log(`⚠️ [WHISPER] Transcrição vazia ou inválida`);
           }
+        } else {
+          const errorText = await response.text();
+          console.log(`❌ [WHISPER] Erro na API: ${response.status} - ${errorText}`);
         }
         
         // Limpar arquivo temporário em caso de erro
