@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mic, Building, Crown, User } from "lucide-react";
+import { Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
@@ -35,27 +35,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickLogin = async (role: string, loginEmail: string, loginPassword: string) => {
-    setIsLoading(true);
-    try {
-      await login(loginEmail, loginPassword);
-      if (role === "master") {
-        setLocation("/dashboard");
-      } else if (role === "client") {
-        setLocation("/client-dashboard");
-      } else {
-        setLocation("/interview");
-      }
-    } catch (error) {
-      toast({
-        title: "Erro no login",
-        description: "Falha na demonstração",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-slate-100 px-4 sm:px-6 lg:px-8">
@@ -118,39 +98,6 @@ export default function LoginPage() {
                 {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
-            
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <div className="text-center text-sm text-slate-600 mb-4">Acesso rápido para demonstração:</div>
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => handleQuickLogin("master", "master@maximus.com", "master123")}
-                  disabled={isLoading}
-                >
-                  <Crown className="mr-2 h-4 w-4" />
-                  Master Dashboard
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => handleQuickLogin("client", "client@example.com", "client123")}
-                  disabled={isLoading}
-                >
-                  <Building className="mr-2 h-4 w-4" />
-                  Cliente Dashboard
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start"
-                  onClick={() => handleQuickLogin("candidate", "candidate@example.com", "candidate123")}
-                  disabled={isLoading}
-                >
-                  <User className="mr-2 h-4 w-4" />
-                  Candidato Interview
-                </Button>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

@@ -40,9 +40,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const savedToken = localStorage.getItem("auth_token");
     const savedUser = localStorage.getItem("auth_user");
     
-    if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
+    if (savedToken && savedUser && savedUser !== "undefined") {
+      try {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+      }
     }
     setIsLoading(false);
   }, []);
