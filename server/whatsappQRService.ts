@@ -292,12 +292,13 @@ export class WhatsAppQRService {
       }
       console.log(`✅ [DEBUG] OpenAI API configurada, gerando áudio...`);
 
-      // Preparar dados para TTS
+      // Preparar dados para TTS com velocidade mais lenta e formato OGG para mobile
       const ttsData = {
         model: "tts-1",
         input: question.pergunta,
         voice: config.openaiVoice || "nova",
-        response_format: "mp3"
+        response_format: "opus",  // OGG/Opus funciona melhor no mobile
+        speed: 0.85  // Velocidade mais lenta (0.25 a 4.0, padrão 1.0)
       };
       console.log(`🎙️ [DEBUG] Dados TTS:`, ttsData);
 
