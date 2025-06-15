@@ -98,15 +98,15 @@ export async function initializeFirebaseData() {
       if (client) {
         await storage.createCandidate({
           clientId: client.id,
-          name: "João Silva",
-          email: "joao.silva@email.com",
+          name: "Daniel Moreira",
+          email: "daniel.moreira@email.com",
           whatsapp: "5511984316526",
           listId: null
         });
-        console.log("✅ Candidato de teste criado no Firebase");
+        console.log("✅ Candidato Daniel Moreira criado no Firebase com WhatsApp: 5511984316526");
       }
     } else {
-      console.log("✅ Candidato de teste já existe no Firebase");
+      console.log("✅ Candidato de teste já existe no Firebase:", testCandidate.name, testCandidate.whatsapp);
     }
 
     console.log("🎉 Dados iniciais do Firebase configurados com sucesso!");
