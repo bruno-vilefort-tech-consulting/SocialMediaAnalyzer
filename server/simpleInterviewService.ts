@@ -220,20 +220,34 @@ class SimpleInterviewService {
           console.log(`✅ [AUDIO] Transcrição bem-sucedida: "${responseText}"`);
           console.log(`📁 [AUDIO] Nome do arquivo de áudio: ${audioFile}`);
           
-          // Salvar áudio no Firebase Storage
+          // Salvar áudio localmente e no banco
           try {
-            console.log(`💾 [AUDIO] Salvando áudio no Firebase Storage...`);
-            // Salvar arquivo de áudio no uploads local temporariamente
+            console.log(`💾 [AUDIO] Salvando áudio no sistema...`);
             const fs = require('fs');
             const tempAudioPath = `./uploads/${audioFile}`;
             fs.writeFileSync(tempAudioPath, audioBuffer);
             
-            // TODO: Upload para Firebase Storage se configurado
+            // Salvar referência no banco de dados
+            const audioData = {
+              id: Date.now(),
+              candidatePhone: phone,
+              filename: audioFile,
+              filepath: tempAudioPath,
+              size: audioBuffer.length,
+              mimetype: audioMessage.mimetype || 'audio/ogg',
+              timestamp: new Date().toISOString()
+            };
+            
+            const storageModule = await import('./storage');
+            const { doc, setDoc, collection } = await import('firebase/firestore');
+            const db = storageModule.storage.db || storageModule.firebaseDb;
+            await setDoc(doc(collection(db, 'audio_files'), audioData.id.toString()), audioData);
+            
             audioSavedToDB = true;
             console.log(`✅ [AUDIO] Áudio salvo localmente: ${tempAudioPath}`);
-            console.log(`✅ [AUDIO] Áudio salvo no banco: ${audioSavedToDB}`);
+            console.log(`✅ [AUDIO] Referência salva no banco: ${audioData.id}`);
           } catch (saveError) {
-            console.log(`❌ [AUDIO] Erro ao salvar áudio no banco:`, saveError.message);
+            console.log(`❌ [AUDIO] Erro ao salvar áudio:`, saveError.message);
           }
           
         } else {
@@ -327,16 +341,44 @@ class SimpleInterviewService {
         url: audioMessage.url ? 'URL presente' : 'URL ausente'
       });
       
-      // Baixar áudio usando o WhatsApp service correto
-      if (!this.whatsappService || !this.whatsappService.downloadMediaMessage) {
-        throw new Error('WhatsApp service não disponível');
+      // Baixar áudio usando o socket do WhatsApp
+      let audioBuffer;
+      try {
+        if (this.whatsappService && this.whatsappService.socket) {
+          console.log(`🔌 [WHISPER] Usando socket ativo do WhatsApp service`);
+          
+          // Usar o socket diretamente para download
+          const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+          audioBuffer = await downloadMediaMessage(
+            audioMessage,
+            'buffer',
+            {},
+            {
+              reuploadRequest: this.whatsappService.socket.updateMediaMessage
+            }
+          );
+          console.log(`✅ [WHISPER] Download realizado com socket - Tamanho: ${audioBuffer?.length || 0} bytes`);
+        } else {
+          throw new Error('Socket do WhatsApp não disponível');
+        }
+      } catch (downloadError) {
+        console.log(`❌ [WHISPER] Erro no download:`, downloadError.message);
+        
+        // Tentar método alternativo com dados da mensagem original
+        try {
+          console.log(`🔄 [WHISPER] Tentando método alternativo de download...`);
+          const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+          audioBuffer = await downloadMediaMessage(audioMessage, 'buffer');
+          console.log(`✅ [WHISPER] Download alternativo realizado - Tamanho: ${audioBuffer?.length || 0} bytes`);
+        } catch (altError) {
+          console.log(`❌ [WHISPER] Download alternativo também falhou:`, altError.message);
+          throw new Error(`Falha no download de áudio: ${downloadError.message}`);
+        }
       }
-      const audioBuffer = await this.whatsappService.downloadMediaMessage(audioMessage);
-      console.log(`✅ [WHISPER] Áudio baixado - Tamanho: ${audioBuffer ? audioBuffer.length : 0} bytes`);
       
       if (!audioBuffer || audioBuffer.length === 0) {
         console.log(`❌ [WHISPER] Áudio vazio ou inválido`);
-        throw new Error('Áudio vazio');
+        throw new Error('Áudio vazio após download');
       }
 
       // Salvar temporariamente
