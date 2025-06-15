@@ -357,7 +357,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log('Criando vaga com dados:', vagaCompleta);
-      const job = await storage.createJob(vagaCompleta);
+      const job = await storage.createJob(jobData);
+      
+      // Criar perguntas se existirem
+      if (req.body.perguntas && req.body.perguntas.length > 0) {
+        for (const pergunta of req.body.perguntas) {
+          await storage.createQuestion({
+            vagaId: job.id,
+            perguntaCandidato: pergunta.pergunta,
+            respostaPerfeita: pergunta.respostaPerfeita,
+            numeroPergunta: pergunta.numero
+          });
+        }
+      }
       
       res.status(201).json(job);
     } catch (error) {

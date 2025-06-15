@@ -1279,11 +1279,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
-    const [job] = await pgDb
-      .insert(jobs)
-      .values(insertJob)
-      .returning();
-    return job;
+    // Gerar ID único para a vaga
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Usar SQL direto para inserir com ID especificado
+    const result = await pgDb.execute(sql`
+      INSERT INTO vagas_preset (id, client_id, nome_vaga, descricao_vaga, status, created_at)
+      VALUES (${jobId}, ${insertJob.clientId}, ${insertJob.nomeVaga}, ${insertJob.descricaoVaga || ''}, ${insertJob.status || 'ativo'}, NOW())
+      RETURNING *
+    `);
+    
+    return result.rows[0] as Job;
   }
 
   async updateJob(id: number, jobUpdate: Partial<Job>): Promise<Job> {
@@ -1295,8 +1301,12 @@ export class DatabaseStorage implements IStorage {
     return job;
   }
 
-  async deleteJob(id: number): Promise<void> {
-    await pgDb.delete(jobs).where(eq(jobs.id, id));
+  async deleteJob(id: string | number): Promise<void> {
+    // Primeiro deletar todas as perguntas relacionadas à vaga
+    await pgDb.delete(questions).where(eq(questions.vagaId, String(id)));
+    
+    // Depois deletar a vaga
+    await pgDb.delete(jobs).where(eq(jobs.id, String(id)));
   }
 
   // Questions
