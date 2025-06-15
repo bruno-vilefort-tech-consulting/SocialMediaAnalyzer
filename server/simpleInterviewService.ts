@@ -66,38 +66,49 @@ class SimpleInterviewService {
       return;
     }
 
-    // Buscar vaga com perguntas
-    const allJobs = await storage.getAllJobs();
-    const job = allJobs.find(j => j.perguntas && j.perguntas.length > 0);
-    
-    if (!job) {
-      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.");
-      return;
+    // Buscar vaga com perguntas diretamente do Firebase
+    try {
+      const jobsCollection = await storage.firestore.collection('jobs').get();
+      const jobs = jobsCollection.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      const job = jobs.find(j => j.perguntas && j.perguntas.length > 0);
+      
+      if (!job) {
+        await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.");
+        return;
+      }
+      
+      console.log(`✅ Vaga encontrada: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+      
+      // Criar entrevista ativa
+      const interview: ActiveInterview = {
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        phone: phone,
+        jobId: job.id,
+        jobName: job.nomeVaga,
+        currentQuestion: 0,
+        questions: job.perguntas,
+        responses: [],
+        startTime: new Date().toISOString()
+      };
+
+      this.activeInterviews.set(phone, interview);
+
+      await this.sendMessage(`${phone}@s.whatsapp.net`, 
+        `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
+      );
+
+      // Enviar primeira pergunta
+      await this.sendNextQuestion(phone, interview);
+      
+    } catch (error) {
+      console.log(`❌ Erro ao buscar vaga:`, error.message);
+      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Erro ao carregar entrevista. Tente novamente.");
     }
-
-    console.log(`✅ Vaga encontrada: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
-
-    // Criar entrevista ativa
-    const interview: ActiveInterview = {
-      candidateId: candidate.id,
-      candidateName: candidate.name,
-      phone: phone,
-      jobId: job.id,
-      jobName: job.nomeVaga,
-      currentQuestion: 0,
-      questions: job.perguntas,
-      responses: [],
-      startTime: new Date().toISOString()
-    };
-
-    this.activeInterviews.set(phone, interview);
-
-    await this.sendMessage(`${phone}@s.whatsapp.net`, 
-      `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
-    );
-
-    // Enviar primeira pergunta
-    await this.sendNextQuestion(phone, interview);
   }
 
   private async sendNextQuestion(phone: string, interview: ActiveInterview): Promise<void> {
