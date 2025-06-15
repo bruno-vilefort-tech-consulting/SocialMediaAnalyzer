@@ -514,15 +514,29 @@ export class WhatsAppQRService {
         console.log(`🔍 [DEBUG] Buscando seleção para telefone: ${phoneClean}`);
         
         try {
+          console.log(`🔍 [DEBUG] Importando storage...`);
           const { storage } = await import('./storage');
           
+          console.log(`🔍 [DEBUG] Buscando candidatos para cliente 1749849987543...`);
           // Buscar todos os candidatos diretamente via storage
           const candidates = await storage.getCandidatesByClientId(1749849987543); // buscar do cliente ativo
+          console.log(`👥 [DEBUG] Total de candidatos encontrados: ${candidates.length}`);
+          console.log(`👥 [DEBUG] Candidatos:`, candidates.map(c => ({ id: c.id, name: c.name, phone: c.phone })));
+          
+          console.log(`🔍 [DEBUG] Procurando candidato com telefone: ${phoneClean}`);
           const candidate = candidates.find(c => {
-            if (!c.phone) return false;
+            if (!c.phone) {
+              console.log(`⚠️ [DEBUG] Candidato ${c.name} sem telefone`);
+              return false;
+            }
             const candidatePhone = c.phone.replace(/\D/g, '');
             const searchPhone = phoneClean.replace(/\D/g, '');
-            return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+            console.log(`🔍 [DEBUG] Comparando: candidato ${candidatePhone} vs busca ${searchPhone}`);
+            const match = candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+            if (match) {
+              console.log(`✅ [DEBUG] Match encontrado para candidato: ${c.name}`);
+            }
+            return match;
           });
           
           if (candidate) {
