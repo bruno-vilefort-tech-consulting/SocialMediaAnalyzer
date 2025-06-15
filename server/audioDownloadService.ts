@@ -32,6 +32,17 @@ export class AudioDownloadService {
 
     try {
       const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+      
+      // Logger silencioso para evitar spam
+      const silentLogger = {
+        level: 'silent' as const,
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        trace: () => {},
+        child: () => silentLogger
+      };
 
       // Método 1: Download com socket do WhatsApp
       if (this.whatsappService?.socket) {

@@ -170,8 +170,14 @@ export class WhatsAppQRService {
         console.log(`📨 Nova mensagem de ${from.replace('@s.whatsapp.net', '')}`);
         console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
         
-        // Usar o novo sistema simplificado
-        await simpleInterviewService.handleMessage(from, text, audioMessage);
+        // Se é áudio, passar a mensagem completa para transcrição real
+        if (audioMessage) {
+          console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
+          await simpleInterviewService.handleMessage(from, text, message);
+        } else {
+          // Para mensagens de texto, usar o fluxo normal
+          await simpleInterviewService.handleMessage(from, text, null);
+        }
       }
     }
   }
