@@ -2688,8 +2688,26 @@ Responda de forma natural aguardando a resposta do candidato.`;
           try {
             const selectionsSnapshot = await storage.getSelectionsByClientId(1749849987543); // Grupo Maximus
             selectionData = selectionsSnapshot.find(s => s.id.toString() === interviewData.selectionId.toString());
+            
+            // Se não encontrou por ID, tentar encontrar por nome da vaga
+            if (!selectionData && interviewData.jobName) {
+              selectionData = selectionsSnapshot.find(s => s.jobName === interviewData.jobName || s.jobName.includes('Faxina'));
+            }
           } catch (err) {
             console.log('Erro ao buscar seleção:', err);
+          }
+        }
+        
+        // Para entrevistas sem selectionId, buscar pela vaga
+        if (!selectionData && interviewData.jobName) {
+          try {
+            const selectionsSnapshot = await storage.getSelectionsByClientId(1749849987543);
+            selectionData = selectionsSnapshot.find(s => 
+              s.jobName === interviewData.jobName || 
+              (s.jobName === 'Faxineira GM' && interviewData.jobName.includes('Faxina'))
+            );
+          } catch (err) {
+            console.log('Erro ao buscar seleção por nome da vaga:', err);
           }
         }
 
