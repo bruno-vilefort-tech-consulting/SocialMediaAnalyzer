@@ -115,6 +115,21 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🗑️ CLIENTE DELETADO COM SUCESSO - Limpeza de dados conforme solicitado
+  - **Cliente removido**: Grupo Maximus com CNPJ 12345678000123 (ID: 1750023251515)
+  - **Verificação completa**: Nenhum dado órfão encontrado no sistema
+  - **Sistema limpo**: 2 clientes restantes operando normalmente
+  - **Integridade mantida**: Todas as relações do banco de dados preservadas
+
+- June 15, 2025: 🔄 PADRONIZAÇÃO COMPLETA WHATSAPP - Sistema unificado para usar exclusivamente "WhatsApp"
+  - **Interface totalmente atualizada**: Campo "Celular" alterado para "WhatsApp" em formulários de cadastro
+  - **Schema de validação corrigido**: CandidatesPage.tsx usa campo `whatsapp` em formulários e validações
+  - **Backend unificado**: Sistema de upload CSV reconhece coluna "Celular" mas salva no campo `whatsapp`
+  - **Mensagens padronizadas**: Todas mensagens de erro usam "WhatsApp" em vez de "Celular"
+  - **Exibição atualizada**: Interface mostra "WhatsApp: 11987654321" na listagem de candidatos
+  - **Validação consistente**: Regex brasileiro aplicado ao campo `whatsapp` em todo sistema
+  - **Sistema unificado**: Uma única nomenclatura (WhatsApp) em frontend, backend e banco Firebase
+
 - June 15, 2025: 🎯 CAMPO CELULAR AUTOMATICAMENTE USADO PARA WHATSAPP - Sistema corrigido conforme solicitado
   - **Campo celular convertido automaticamente**: Upload de CSV agora usa coluna "Celular" como campo WhatsApp
   - **Busca aprimorada implementada**: Sistema busca candidatos tanto por `whatsapp` quanto por `phone` (compatibilidade)

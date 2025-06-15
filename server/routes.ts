@@ -762,7 +762,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const phoneStr = String(phone);
           const phoneDigits = phoneStr.replace(/\D/g, '');
           if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-            errors.push(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
+            errors.push(`Linha ${index + 2}: WhatsApp deve ter 10 ou 11 dígitos - ${phone}`);
             continue;
           }
 
@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: nameStr,
               email: emailStr,
               phone: phoneDigits,
-              reason: 'Candidato já existe na lista (nome, email ou celular duplicado)'
+              reason: 'Candidato já existe na lista (nome, email ou WhatsApp duplicado)'
             });
             continue;
           }
