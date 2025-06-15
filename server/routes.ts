@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, firebaseDb } from "./storage";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc } from "firebase/firestore";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
@@ -2851,20 +2851,25 @@ Responda de forma natural aguardando a resposta do candidato.`;
     try {
       console.log('🔧 Criando entrevista finalizada para Daniel Moreira...');
       
-      // Criar entrevista finalizada
-      const interviewId = Date.now().toString();
-      const interview = await storage.createInterview({
-        candidateId: 17498608963032, // ID do Daniel Moreira  
+      // Criar entrevista finalizada diretamente no Firebase
+      const interviewId = Date.now();
+      const interviewData = {
+        candidateId: '17498608963032', // ID como string
         candidateName: 'Daniel Moreira',
         phone: '11984316526',
-        jobId: '174986729964277', // ID da vaga Faxineira GM
+        jobId: '174986729964277',
         jobName: 'Faxineira Banco',
-        selectionId: 175001114365781, // ID da seleção faxina
+        selectionId: '175001114365781',
         status: 'completed',
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
-        token: `daniel-${Date.now()}`
-      });
+        token: `daniel-${interviewId}`,
+        createdAt: new Date()
+      };
+      
+      // Salvar no Firebase diretamente
+      await setDoc(doc(firebaseDb, "interviews", String(interviewId)), interviewData);
+      console.log(`📝 Entrevista ${interviewId} salva no Firebase`);
       
       // Criar respostas
       const respostas = [
@@ -2881,22 +2886,28 @@ Responda de forma natural aguardando a resposta do candidato.`;
       ];
       
       for (let i = 0; i < respostas.length; i++) {
-        await storage.createResponse({
-          interviewId: parseInt(interview.id),
+        const responseId = Date.now() + i;
+        const responseData = {
+          interviewId: String(interviewId), // Salvar como string
           questionId: i + 1,
           questionText: respostas[i].questionText,
           responseText: respostas[i].responseText,
           audioFile: respostas[i].audioFile,
-          score: 8.5 + (i * 0.3)
-        });
+          score: 8.5 + (i * 0.3),
+          timestamp: new Date().toISOString(),
+          createdAt: new Date()
+        };
+        
+        await setDoc(doc(firebaseDb, "responses", String(responseId)), responseData);
+        console.log(`💬 Resposta ${responseId} salva para entrevista ${interviewId}`);
       }
       
-      console.log(`✅ Entrevista criada: ${interview.id} com ${respostas.length} respostas`);
+      console.log(`✅ Entrevista ${interviewId} criada com ${respostas.length} respostas no Firebase`);
       
       res.json({
         success: true,
         interview: {
-          id: interview.id,
+          id: String(interviewId),
           candidateName: 'Daniel Moreira',
           phone: '11984316526',
           jobName: 'Faxineira Banco',
