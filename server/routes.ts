@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { whatsappService } from "./whatsappService";
+import { whatsappQRService } from "./whatsappQRService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
          insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
          insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
@@ -2460,6 +2461,181 @@ Responda de forma natural aguardando a resposta do candidato.`;
       console.error('❌ Erro no teste WhatsApp:', error);
       res.status(500).json({ 
         error: "Erro interno no teste",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
+  // WhatsApp QR Code Routes
+  app.get("/api/whatsapp-qr/status", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const status = whatsappQRService.getConnectionStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('❌ Erro ao obter status WhatsApp QR:', error);
+      res.status(500).json({ error: "Erro ao obter status da conexão" });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/disconnect", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      await whatsappQRService.disconnect();
+      res.json({ success: true, message: "WhatsApp desconectado com sucesso" });
+    } catch (error) {
+      console.error('❌ Erro ao desconectar WhatsApp QR:', error);
+      res.status(500).json({ error: "Erro ao desconectar" });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/reconnect", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      await whatsappQRService.reconnect();
+      res.json({ success: true, message: "Reconnectando WhatsApp..." });
+    } catch (error) {
+      console.error('❌ Erro ao reconectar WhatsApp QR:', error);
+      res.status(500).json({ error: "Erro ao reconectar" });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/test", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: "Telefone e mensagem são obrigatórios" });
+      }
+
+      let phone = phoneNumber.replace(/\D/g, '');
+      if (!phone.startsWith('55')) {
+        phone = '55' + phone;
+      }
+
+      console.log(`🧪 Teste WhatsApp QR para ${phone}: ${message}`);
+
+      const success = await whatsappQRService.sendTextMessage(phone, message);
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "Mensagem de teste enviada com sucesso via QR" 
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Falha ao enviar mensagem de teste",
+          details: "Verifique se o WhatsApp está conectado via QR Code"
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Erro no teste WhatsApp QR:', error);
+      res.status(500).json({ 
+        error: "Erro interno no teste",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { selectionId } = req.body;
+      
+      if (!selectionId) {
+        return res.status(400).json({ error: "ID da seleção é obrigatório" });
+      }
+
+      const status = whatsappQRService.getConnectionStatus();
+      if (!status.isConnected) {
+        return res.status(400).json({ 
+          error: "WhatsApp não está conectado",
+          details: "Conecte o WhatsApp via QR Code primeiro"
+        });
+      }
+
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        return res.status(404).json({ error: "Seleção não encontrada" });
+      }
+
+      if (req.user?.role === 'client' && selection.clientId !== req.user.clientId) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+
+      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
+      const job = await storage.getJobById(selection.jobId);
+
+      if (!job) {
+        return res.status(404).json({ error: "Vaga não encontrada" });
+      }
+
+      let sentCount = 0;
+      let errorCount = 0;
+      const results = [];
+
+      console.log(`📱 Iniciando campanha WhatsApp QR para ${candidates.length} candidatos`);
+
+      for (const candidate of candidates) {
+        try {
+          const success = await whatsappQRService.sendInterviewInvitation(
+            candidate.name,
+            candidate.phone,
+            job.nomeVaga,
+            selection.whatsappTemplate,
+            selection.id
+          );
+
+          if (success) {
+            sentCount++;
+            results.push({
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              phone: candidate.phone,
+              status: 'sent'
+            });
+          } else {
+            errorCount++;
+            results.push({
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              phone: candidate.phone,
+              status: 'error',
+              error: 'Falha no envio'
+            });
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+        } catch (error) {
+          errorCount++;
+          results.push({
+            candidateId: candidate.id,
+            candidateName: candidate.name,
+            phone: candidate.phone,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+          });
+        }
+      }
+
+      await storage.updateSelection(selection.id, {
+        status: 'enviado',
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ Campanha WhatsApp QR finalizada: ${sentCount} enviados, ${errorCount} erros`);
+
+      res.json({
+        success: true,
+        sentCount,
+        errorCount,
+        totalCandidates: candidates.length,
+        results,
+        message: `${sentCount} mensagens enviadas com sucesso via WhatsApp QR. ${errorCount} erros.`
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no envio da campanha WhatsApp QR:', error);
+      res.status(500).json({ 
+        error: "Erro interno no envio da campanha",
         details: error instanceof Error ? error.message : 'Erro desconhecido'
       });
     }

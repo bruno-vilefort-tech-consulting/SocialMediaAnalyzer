@@ -1,0 +1,90 @@
+
+📦 PROJETO: Conexão de WhatsApp via QR Code no Replit (usando WPPConnect ou Baileys)
+
+Este projeto permite que o usuário conecte seu próprio número de WhatsApp ao sistema via QR Code,
+sem necessidade de conta Meta ou API oficial.
+
+---
+
+✅ FUNCIONALIDADES DO MÓDULO:
+
+1. Gera um QR Code no navegador (igual WhatsApp Web)
+2. Cliente escaneia com o celular (WhatsApp Business ou pessoal)
+3. Conecta sessão e recebe um evento de 'login'
+4. Permite enviar mensagens de texto e áudio
+5. Pode ser integrado ao Firebase para armazenar as mensagens
+6. Detecta desconexão e exige novo escaneamento
+
+---
+
+🛠️ RECURSOS USADOS:
+
+- Node.js com biblioteca [Baileys](https://github.com/WhiskeySockets/Baileys)
+- Express para servir a página com o QR Code
+- QR Code gerado em tempo real
+- Firebase opcional para salvar mensagens recebidas
+
+---
+
+▶️ EXEMPLO DE USO BÁSICO (index.js):
+
+```javascript
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys')
+const express = require('express')
+const qrcode = require('qrcode-terminal')
+
+async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState('auth')
+  const sock = makeWASocket({ auth: state })
+
+  sock.ev.on('connection.update', ({ connection, qr }) => {
+    if (qr) {
+      console.log("Escaneie este QR Code no seu WhatsApp:")
+      qrcode.generate(qr, { small: true })
+    }
+    if (connection === 'open') {
+      console.log('✅ Conectado com sucesso!')
+    }
+  })
+
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg.key.fromMe) {
+      console.log('📩 Mensagem recebida:', msg.message?.conversation)
+      await sock.sendMessage(msg.key.remoteJid, { text: 'Recebido com sucesso!' })
+    }
+  })
+
+  sock.ev.on('creds.update', saveCreds)
+}
+
+connectToWhatsApp()
+```
+
+---
+
+🔧 COMO USAR NO REPLIT:
+
+1. Crie um novo projeto Node.js
+2. Instale as dependências:
+   ```
+   npm install @whiskeysockets/baileys express qrcode-terminal
+   ```
+3. Cole o código acima no `index.js`
+4. Rode o projeto com:
+   ```
+   node index.js
+   ```
+5. O QR Code vai aparecer no console do Replit. Escaneie com o WhatsApp.
+
+---
+
+⚠️ IMPORTANTE:
+
+- Não é oficial da Meta (pode ser instável ou ser bloqueado)
+- Serve bem para testes e clientes pequenos
+- Ideal usar em VPS ou Replit pago (para evitar sessões caindo)
+
+---
+
+Pronto! Esse módulo QR está pronto para testes e expansão.
