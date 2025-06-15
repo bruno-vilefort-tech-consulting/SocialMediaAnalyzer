@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy } from "lucide-react";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -141,7 +141,7 @@ export default function SelectionsPage() {
     }
   });
 
-  // Enviar entrevistas
+  // Enviar entrevistas via email
   const sendInterviewsMutation = useMutation({
     mutationFn: async (selectionId: number) => {
       const response = await apiRequest(`/api/selections/${selectionId}/send`, 'POST');
@@ -149,10 +149,32 @@ export default function SelectionsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      toast({ title: "Entrevistas enviadas com sucesso!" });
+      toast({ title: "Entrevistas enviadas por email com sucesso!" });
     },
     onError: () => {
-      toast({ title: "Erro ao enviar entrevistas", variant: "destructive" });
+      toast({ title: "Erro ao enviar entrevistas por email", variant: "destructive" });
+    }
+  });
+
+  // Enviar campanha WhatsApp
+  const sendWhatsAppCampaignMutation = useMutation({
+    mutationFn: async (selectionId: number) => {
+      const response = await apiRequest('/api/whatsapp/send-campaign', 'POST', { selectionId });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({ 
+        title: "Campanha WhatsApp enviada!", 
+        description: `${data.sentCount} mensagens enviadas com sucesso. ${data.errorCount} erros.`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Erro ao enviar campanha WhatsApp", 
+        description: error?.message || "Verifique as configurações do WhatsApp",
+        variant: "destructive" 
+      });
     }
   });
 

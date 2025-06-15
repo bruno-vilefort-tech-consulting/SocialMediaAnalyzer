@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { whatsappService } from "./whatsappService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
          insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
          insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
@@ -2266,6 +2267,201 @@ Responda de forma natural aguardando a resposta do candidato.`;
     } catch (error) {
       console.error('Save response error:', error);
       res.status(500).json({ message: 'Failed to save response' });
+    }
+  });
+
+  // WhatsApp Webhook Routes
+  app.get("/webhook/whatsapp", (req, res) => {
+    try {
+      const mode = req.query['hub.mode'];
+      const token = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+      
+      console.log('🔍 Verificação webhook WhatsApp:', { mode, token });
+      
+      const verificationChallenge = whatsappService.verifyWebhook(
+        mode as string,
+        token as string,
+        challenge as string
+      );
+      
+      if (verificationChallenge) {
+        res.status(200).send(verificationChallenge);
+      } else {
+        res.status(403).send('Forbidden');
+      }
+    } catch (error) {
+      console.error('❌ Erro na verificação do webhook:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  app.post("/webhook/whatsapp", async (req, res) => {
+    try {
+      console.log('📱 Webhook WhatsApp recebido');
+      await whatsappService.handleWebhook(req.body);
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('❌ Erro no webhook WhatsApp:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  // WhatsApp Manual Send Route - para teste e envio manual de campanhas
+  app.post("/api/whatsapp/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { selectionId } = req.body;
+      
+      if (!selectionId) {
+        return res.status(400).json({ error: "Selection ID é obrigatório" });
+      }
+
+      console.log(`📤 Iniciando envio WhatsApp para seleção ${selectionId}`);
+
+      // Buscar seleção
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        return res.status(404).json({ error: "Seleção não encontrada" });
+      }
+
+      // Buscar job
+      const job = await storage.getJobById(selection.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Vaga não encontrada" });
+      }
+
+      // Buscar candidatos da lista
+      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
+      if (!candidates || candidates.length === 0) {
+        return res.status(400).json({ error: "Nenhum candidato encontrado na lista" });
+      }
+
+      let sentCount = 0;
+      let errorCount = 0;
+      const results = [];
+
+      // Enviar para cada candidato
+      for (const candidate of candidates) {
+        try {
+          if (!candidate.phone) {
+            console.log(`⚠️ Candidato ${candidate.name} sem telefone`);
+            errorCount++;
+            continue;
+          }
+
+          // Formatar telefone (garantir formato internacional)
+          let phone = candidate.phone.replace(/\D/g, '');
+          if (!phone.startsWith('55')) {
+            phone = '55' + phone;
+          }
+
+          console.log(`📞 Enviando para ${candidate.name} (${phone})`);
+
+          const success = await whatsappService.sendInterviewInvitation(
+            candidate.name,
+            phone,
+            job.nomeVaga,
+            selection.whatsappTemplate,
+            selection.id
+          );
+
+          if (success) {
+            sentCount++;
+            results.push({
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              phone: phone,
+              status: 'sent'
+            });
+          } else {
+            errorCount++;
+            results.push({
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              phone: phone,
+              status: 'failed'
+            });
+          }
+
+          // Aguardar um pouco entre envios para evitar rate limit
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        } catch (error) {
+          console.error(`❌ Erro enviando para ${candidate.name}:`, error);
+          errorCount++;
+          results.push({
+            candidateId: candidate.id,
+            candidateName: candidate.name,
+            phone: candidate.phone,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+          });
+        }
+      }
+
+      // Atualizar status da seleção
+      await storage.updateSelection(selection.id, {
+        status: 'enviado',
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ Campanha WhatsApp finalizada: ${sentCount} enviados, ${errorCount} erros`);
+
+      res.json({
+        success: true,
+        sentCount,
+        errorCount,
+        totalCandidates: candidates.length,
+        results,
+        message: `${sentCount} mensagens enviadas com sucesso. ${errorCount} erros.`
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no envio da campanha WhatsApp:', error);
+      res.status(500).json({ 
+        error: "Erro interno no envio da campanha",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
+  // WhatsApp Configuration Test Route
+  app.post("/api/whatsapp/test", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: "Telefone e mensagem são obrigatórios" });
+      }
+
+      // Formatar telefone
+      let phone = phoneNumber.replace(/\D/g, '');
+      if (!phone.startsWith('55')) {
+        phone = '55' + phone;
+      }
+
+      console.log(`🧪 Teste WhatsApp para ${phone}: ${message}`);
+
+      const success = await whatsappService.sendTextMessage(phone, message);
+
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: "Mensagem de teste enviada com sucesso!" 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          error: "Falha ao enviar mensagem de teste" 
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Erro no teste WhatsApp:', error);
+      res.status(500).json({ 
+        error: "Erro interno no teste",
+        details: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   });
 

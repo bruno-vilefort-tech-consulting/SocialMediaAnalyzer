@@ -1,0 +1,75 @@
+
+📋 Requisito do Módulo de Entrevista via WhatsApp
+
+Objetivo:
+Criar um módulo de entrevista automática via WhatsApp, utilizando a API oficial da Meta (Cloud API), Firebase, TTS da OpenAI (voz natural) e Whisper para transcrição de áudio. O sistema já tem os seguintes recursos prontos e configurados:
+
+- Banco de dados Firebase com:
+  - Lista de candidatos: { nome, numeroWhatsapp }
+  - Vagas com até 10 perguntas: { nomeVaga, perguntas[1...10] }
+  - Mensagem inicial padrão
+- API do WhatsApp Business (Meta Cloud API): será configurada
+- API do Whisper da OpenAI: já configurada
+- API do TTS da OpenAI: já configurada
+- Firebase Firestore e Storage: já integrados
+
+🔧 Funcionalidade esperada:
+
+1. O admin clica em "Seleções" e seleciona:
+   - A vaga (que contém as perguntas)
+   - A lista de candidatos (com nome e WhatsApp)
+   - A mensagem inicial
+   - A opção: enviar agora ou agendar o envio
+
+2. O sistema dispara mensagens no WhatsApp via Meta Cloud API, com:
+   - A mensagem inicial personalizada com nome do candidato
+   - Dois botões interativos:
+     - "Quero fazer entrevista"
+     - "Não quero fazer entrevista"
+
+3. Se o candidato clicar em "Não quero fazer entrevista":
+   - O sistema salva a recusa no banco de dados e encerra.
+
+4. Se clicar em "Quero fazer entrevista", o sistema:
+   - Envia áudio TTS com saudação personalizada: "Olá, [nome]. Vamos começar sua entrevista."
+   - Inicia a entrevista com a primeira pergunta (texto + TTS em áudio)
+
+🔁 Lógica da entrevista:
+
+- O candidato responde com áudio.
+- O sistema:
+  - Salva o áudio no Firebase Storage
+  - Converte para texto com Whisper
+  - Salva no Firestore com os dados:
+    {
+      nome: "Fulano",
+      numero: "5511999999999",
+      pergunta: "Conte sobre sua experiência.",
+      respostaAudioUrl: "link_do_audio",
+      respostaTexto: "Trabalhei por 5 anos em...",
+      numeroDaPergunta: 1
+    }
+- O sistema então envia a próxima pergunta, e repete até a última.
+
+🟢 Fim da entrevista:
+
+- Após a última pergunta, o sistema envia áudio TTS de encerramento:
+  "Obrigado, [nome]. Sua entrevista foi finalizada. Em breve você receberá o resultado. Até logo!"
+
+🛠️ O que deve ser implementado:
+
+- Integração com Meta Cloud API (com envio, recebimento, botões e webhook)
+- Lógica para progredir nas perguntas
+- Tratamento de áudio recebido, com:
+  - Salvamento no Firebase Storage
+  - Transcrição via Whisper
+  - Gravação estruturada no Firestore
+- Suporte a envio imediato ou agendamento
+- Tratamento completo dos fluxos de sim/não
+- Validação do progresso do candidato
+
+⚙️ Tecnologias utilizadas:
+- Replit (backend Python ou Node.js)
+- Firebase (Firestore + Storage)
+- Meta Cloud API (WhatsApp Business)
+- OpenAI TTS + Whisper
