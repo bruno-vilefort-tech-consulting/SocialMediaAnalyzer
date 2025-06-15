@@ -477,7 +477,18 @@ export default function CadastroVagasPage() {
                     <TableCell>{job.perguntas?.length || 0} perguntas</TableCell>
                     <TableCell>
                       {job.createdAt 
-                        ? new Date(job.createdAt).toLocaleDateString('pt-BR') 
+                        ? (() => {
+                            try {
+                              // Se for timestamp do Firebase
+                              if (typeof job.createdAt === 'object' && job.createdAt.seconds) {
+                                return new Date(job.createdAt.seconds * 1000).toLocaleDateString('pt-BR');
+                              }
+                              // Se for string de data normal
+                              return new Date(job.createdAt).toLocaleDateString('pt-BR');
+                            } catch {
+                              return new Date().toLocaleDateString('pt-BR');
+                            }
+                          })()
                         : new Date().toLocaleDateString('pt-BR')
                       }
                     </TableCell>
