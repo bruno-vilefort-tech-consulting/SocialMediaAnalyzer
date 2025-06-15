@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🧹 DASHBOARD ZERADO COMPLETAMENTE - Limpeza total de entrevistas realizada
+  - **Entrevistas removidas**: 14 entrevistas deletadas do Firebase
+  - **Seleções removidas**: 1 seleção deletada do sistema  
+  - **Dashboard limpo**: Contadores zerados (0 realizadas, 0 pendentes)
+  - **Sistema operacional**: Clientes, vagas e candidatos preservados
+  - **Integridade mantida**: Estrutura do banco Firebase intacta
+
 - June 15, 2025: 🗑️ CLIENTE DELETADO COM SUCESSO - Limpeza de dados conforme solicitado
   - **Cliente removido**: Grupo Maximus com CNPJ 12345678000123 (ID: 1750023251515)
   - **Verificação completa**: Nenhum dado órfão encontrado no sistema
