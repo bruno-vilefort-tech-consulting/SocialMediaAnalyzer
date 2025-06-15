@@ -201,32 +201,55 @@ export class WhatsAppQRService {
 
   private async startInterviewProcess(phoneNumber: string, selectionId: number, candidateName: string) {
     try {
-      console.log(`🎤 [DEBUG] Iniciando processo de entrevista para ${candidateName}`);
+      console.log(`🎤 [DEBUG] ===== INICIANDO PROCESSO DE ENTREVISTA =====`);
+      console.log(`👤 [DEBUG] Candidato: ${candidateName}`);
+      console.log(`📞 [DEBUG] Telefone: ${phoneNumber}`);
+      console.log(`🆔 [DEBUG] Seleção ID: ${selectionId}`);
       
       // Buscar dados da seleção e job
       const { storage } = await import('./storage');
+      console.log(`🔍 [DEBUG] Buscando seleção no storage...`);
       const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
-        console.error(`❌ Seleção ${selectionId} não encontrada`);
+        console.error(`❌ [DEBUG] Seleção ${selectionId} não encontrada no storage`);
+        await this.sendTextMessage(phoneNumber, "Erro: seleção não encontrada.");
         return;
       }
+      console.log(`✅ [DEBUG] Seleção encontrada:`, { id: selection.id, jobId: selection.jobId, clientId: selection.clientId });
 
       // Buscar job e perguntas
+      console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId}...`);
       let job = await storage.getJobById(selection.jobId);
+      
       if (!job) {
-        // Busca por ID parcial se não encontrar
+        console.log(`⚠️ [DEBUG] Job não encontrado com ID exato, tentando busca alternativa...`);
         const allJobs = await storage.getJobsByClientId(selection.clientId);
-        job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
+        console.log(`📋 [DEBUG] Jobs disponíveis no cliente:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga, perguntas: j.perguntas?.length || 0 })));
+        job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
+        if (job) {
+          console.log(`✅ [DEBUG] Job encontrado via busca alternativa:`, { id: job.id, nome: job.nomeVaga });
+        }
+      } else {
+        console.log(`✅ [DEBUG] Job encontrado com ID exato:`, { id: job.id, nome: job.nomeVaga, perguntas: job.perguntas?.length || 0 });
       }
 
-      if (!job || !job.perguntas || job.perguntas.length === 0) {
-        await this.sendTextMessage(phoneNumber, "Desculpe, não conseguimos encontrar as perguntas da entrevista. Entre em contato conosco.");
+      if (!job) {
+        console.error(`❌ [DEBUG] Job não encontrado de forma alguma`);
+        await this.sendTextMessage(phoneNumber, "Erro: vaga não encontrada.");
         return;
       }
 
-      console.log(`📋 [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+      if (!job.perguntas || job.perguntas.length === 0) {
+        console.error(`❌ [DEBUG] Job sem perguntas. Perguntas:`, job.perguntas);
+        await this.sendTextMessage(phoneNumber, "Desculpe, esta vaga não possui perguntas cadastradas. Entre em contato conosco.");
+        return;
+      }
+
+      console.log(`📋 [DEBUG] Job válido encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+      console.log(`📝 [DEBUG] Primeira pergunta:`, job.perguntas[0]);
 
       // Criar registro de entrevista
+      console.log(`💾 [DEBUG] Criando registro de entrevista...`);
       const interview = await storage.createInterview({
         selectionId: selectionId,
         candidateId: 0, // Placeholder - buscar pelo telefone depois
@@ -237,66 +260,97 @@ export class WhatsAppQRService {
       console.log(`🆔 [DEBUG] Entrevista criada com ID: ${interview.id}`);
 
       // Enviar primeira pergunta por áudio
+      console.log(`🎵 [DEBUG] Chamando sendQuestionAudio para primeira pergunta...`);
       await this.sendQuestionAudio(phoneNumber, candidateName, job.perguntas[0], interview.id, 0, job.perguntas.length);
+      console.log(`✅ [DEBUG] ===== PROCESSO DE ENTREVISTA FINALIZADO =====`);
 
     } catch (error) {
-      console.error(`❌ Erro ao iniciar processo de entrevista:`, error);
+      console.error(`❌ [DEBUG] Erro ao iniciar processo de entrevista:`, error);
+      console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
       await this.sendTextMessage(phoneNumber, "Desculpe, ocorreu um erro ao iniciar a entrevista. Tente novamente mais tarde.");
     }
   }
 
   private async sendQuestionAudio(phoneNumber: string, candidateName: string, question: any, interviewId: number, questionIndex: number, totalQuestions: number) {
     try {
-      console.log(`🎵 [DEBUG] Enviando pergunta ${questionIndex + 1} de ${totalQuestions} por áudio para ${candidateName}`);
+      console.log(`🎵 [DEBUG] ===== ENVIANDO PERGUNTA POR ÁUDIO =====`);
+      console.log(`👤 [DEBUG] Candidato: ${candidateName}`);
+      console.log(`📞 [DEBUG] Telefone: ${phoneNumber}`);
+      console.log(`❓ [DEBUG] Pergunta ${questionIndex + 1} de ${totalQuestions}: ${question.pergunta}`);
+      console.log(`🆔 [DEBUG] Interview ID: ${interviewId}`);
+      console.log(`📝 [DEBUG] Objeto pergunta completo:`, question);
       
       // Buscar configuração de voz
       const { storage } = await import('./storage');
+      console.log(`🔍 [DEBUG] Buscando configuração OpenAI...`);
       const config = await storage.getApiConfig();
       
       if (!config?.openaiApiKey) {
-        console.error(`❌ OpenAI API não configurada`);
+        console.error(`❌ [DEBUG] OpenAI API não configurada - enviando pergunta por texto`);
         await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
         return;
       }
+      console.log(`✅ [DEBUG] OpenAI API configurada, gerando áudio...`);
+
+      // Preparar dados para TTS
+      const ttsData = {
+        model: "tts-1",
+        input: question.pergunta,
+        voice: config.openaiVoice || "nova",
+        response_format: "mp3"
+      };
+      console.log(`🎙️ [DEBUG] Dados TTS:`, ttsData);
 
       // Gerar áudio da pergunta
+      console.log(`🌐 [DEBUG] Fazendo requisição para OpenAI TTS...`);
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${config.openaiApiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: question.pergunta,
-          voice: config.voiceSettings?.voice || "nova",
-          response_format: "mp3"
-        }),
+        body: JSON.stringify(ttsData),
       });
 
+      console.log(`📡 [DEBUG] Resposta OpenAI TTS - Status: ${response.status}`);
+
       if (response.ok) {
+        console.log(`✅ [DEBUG] Áudio gerado com sucesso, baixando buffer...`);
         const audioBuffer = await response.arrayBuffer();
+        console.log(`💾 [DEBUG] Buffer de áudio criado - Tamanho: ${audioBuffer.byteLength} bytes`);
         
         // Enviar áudio via WhatsApp
         const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
-        await this.socket.sendMessage(jid, {
+        console.log(`📱 [DEBUG] JID formatado: ${jid}`);
+        console.log(`📤 [DEBUG] Enviando áudio via WhatsApp...`);
+        
+        const sendResult = await this.socket.sendMessage(jid, {
           audio: Buffer.from(audioBuffer),
           mimetype: 'audio/mp4',
           ptt: true // Nota de voz
         });
 
-        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por áudio`);
+        console.log(`✅ [DEBUG] Áudio enviado via WhatsApp - Resultado:`, sendResult);
+        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por áudio com sucesso`);
         
         // Salvar estado da entrevista
+        console.log(`💾 [DEBUG] Salvando estado da entrevista...`);
         await this.saveInterviewState(interviewId, questionIndex, question.pergunta);
+        console.log(`✅ [DEBUG] Estado da entrevista salvo`);
         
       } else {
-        console.error(`❌ Erro na API OpenAI para TTS`);
+        const errorText = await response.text();
+        console.error(`❌ [DEBUG] Erro na API OpenAI para TTS - Status: ${response.status}, Erro: ${errorText}`);
+        console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback...`);
         await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
       }
 
+      console.log(`🏁 [DEBUG] ===== ENVIO DE PERGUNTA FINALIZADO =====`);
+
     } catch (error) {
-      console.error(`❌ Erro ao enviar pergunta por áudio:`, error);
+      console.error(`❌ [DEBUG] Erro ao enviar pergunta por áudio:`, error);
+      console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
+      console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback de erro...`);
       await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
     }
   }
@@ -489,15 +543,26 @@ export class WhatsAppQRService {
               console.log(`📋 [DEBUG] Seleção encontrada: ${selection.name} (ID: ${selection.id})`);
               
               // Buscar job e suas perguntas
-              const job = await storage.getJobById(selection.jobId);
+              console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId}`);
+              let job = await storage.getJobById(selection.jobId);
+              
+              if (!job) {
+                console.log(`⚠️ [DEBUG] Job não encontrado com ID exato, tentando busca por partial match`);
+                const allJobs = await storage.getJobsByClientId(selection.clientId);
+                console.log(`📋 [DEBUG] Jobs disponíveis:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga })));
+                job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
+              }
+              
               if (job && job.perguntas && job.perguntas.length > 0) {
-                console.log(`❓ [DEBUG] Job encontrado com ${job.perguntas.length} perguntas`);
+                console.log(`❓ [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+                console.log(`📝 [DEBUG] Perguntas:`, job.perguntas.map((p, i) => `${i+1}. ${p.pergunta}`));
                 
                 // Iniciar processo de entrevista
+                console.log(`🚀 [DEBUG] Chamando startInterviewProcess...`);
                 await this.startInterviewProcess(from, selection.id, candidate.name);
                 return;
               } else {
-                console.log(`❌ [DEBUG] Job não encontrado ou sem perguntas`);
+                console.log(`❌ [DEBUG] Job não encontrado ou sem perguntas. Job:`, job ? { id: job.id, nome: job.nomeVaga, perguntas: job.perguntas?.length || 0 } : 'null');
               }
             }
           }
