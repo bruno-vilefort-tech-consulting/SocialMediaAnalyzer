@@ -459,9 +459,14 @@ export class FirebaseStorage implements IStorage {
   // Responses
   async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
     const snapshot = await getDocs(collection(firebaseDb, "responses"));
+    const interviewIdStr = String(interviewId);
     return snapshot.docs
       .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Response))
-      .filter(response => response.interviewId === interviewId);
+      .filter(response => {
+        // Comparar tanto como string quanto como número para máxima compatibilidade
+        return String(response.interviewId) === interviewIdStr || 
+               response.interviewId === interviewId;
+      });
   }
 
   async createResponse(insertResponse: InsertResponse): Promise<Response> {
