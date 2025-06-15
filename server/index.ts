@@ -1,13 +1,28 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import path from "path";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Servir arquivos de áudio estáticos com Content-Type correto
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.ogg')) {
+      res.setHeader('Content-Type', 'audio/ogg; codecs=opus');
+    } else if (filePath.endsWith('.webm')) {
+      res.setHeader('Content-Type', 'audio/webm');
+    } else if (filePath.endsWith('.mp3')) {
+      res.setHeader('Content-Type', 'audio/mpeg');
+    }
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+  }
+}));
+
 // Rota de áudio deve vir ANTES do middleware Vite
-import path from "path";
 import fs from "fs";
 
 app.get('/audio/:filename', (req, res) => {

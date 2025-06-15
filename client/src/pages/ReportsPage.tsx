@@ -105,7 +105,11 @@ export default function ReportsPage() {
   const handlePlayAudio = (audioFile: string) => {
     if (audioFile) {
       // Garantir que o caminho do áudio está correto
-      const audioUrl = audioFile.startsWith('/uploads/') ? audioFile : `/uploads/${audioFile}`;
+      let audioUrl = audioFile;
+      if (!audioFile.startsWith('http') && !audioFile.startsWith('/uploads/')) {
+        audioUrl = `/uploads/${audioFile}`;
+      }
+      console.log('🎵 Reproduzindo áudio:', audioUrl);
       playAudioHook(audioUrl);
     }
   };
@@ -398,7 +402,7 @@ export default function ReportsPage() {
                       <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 mb-2">
                         Pergunta {(response.questionId || 0) + 1}
                       </h4>
-                      <p className="text-base mb-3 font-medium">{response.questionText || `Pergunta ${(response.questionId || 0) + 1}`}</p>
+                      <p className="text-base mb-3 font-medium">{response.questionText}</p>
                     </div>
                   </div>
                   

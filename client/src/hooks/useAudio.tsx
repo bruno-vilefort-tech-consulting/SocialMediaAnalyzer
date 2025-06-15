@@ -74,27 +74,45 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
   }, [isRecording]);
 
   const playAudio = useCallback((audioUrl: string) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      console.log('Tentando reproduzir áudio:', audioUrl);
+      
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.onended = () => {
+        setIsPlaying(false);
+        setCurrentAudioUrl(null);
+      };
+      audioRef.current.onerror = (e) => {
+        console.error('Erro no áudio:', e);
+        console.log('URL que falhou:', audioUrl);
+        setIsPlaying(false);
+        setCurrentAudioUrl(null);
+      };
+      audioRef.current.onloadstart = () => {
+        console.log('Carregando áudio...');
+      };
+      audioRef.current.oncanplay = () => {
+        console.log('Áudio pronto para tocar');
+      };
+      
+      setCurrentAudioUrl(audioUrl);
+      setIsPlaying(true);
+      
+      audioRef.current.play().catch((error) => {
+        console.error('Error playing audio:', error);
+        console.log('Detalhes do erro:', error.name, error.message);
+        setIsPlaying(false);
+        setCurrentAudioUrl(null);
+      });
+    } catch (error) {
+      console.error('Erro geral ao reproduzir áudio:', error);
+      setIsPlaying(false);
+      setCurrentAudioUrl(null);
     }
-    
-    audioRef.current = new Audio(audioUrl);
-    audioRef.current.onended = () => {
-      setIsPlaying(false);
-      setCurrentAudioUrl(null);
-    };
-    audioRef.current.onerror = () => {
-      setIsPlaying(false);
-      setCurrentAudioUrl(null);
-    };
-    
-    setCurrentAudioUrl(audioUrl);
-    setIsPlaying(true);
-    audioRef.current.play().catch((error) => {
-      console.error('Error playing audio:', error);
-      setIsPlaying(false);
-      setCurrentAudioUrl(null);
-    });
   }, []);
 
   const pauseAudio = useCallback(() => {
