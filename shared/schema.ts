@@ -65,10 +65,10 @@ export const candidateLists = pgTable("candidate_lists", {
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),
-  listId: integer("list_id").references(() => candidateLists.id).notNull(),
+  listId: integer("list_id").references(() => candidateLists.id),
   name: text("name").notNull(),
   email: text("email").notNull(),
-  phone: text("phone").notNull(),
+  whatsapp: text("whatsapp").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -164,7 +164,7 @@ export const insertQuestionSchema = z.object({
 export const insertCandidateListSchema = createInsertSchema(candidateLists).omit({ id: true, createdAt: true });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true }).extend({
   email: z.string().email("Email inválido"),
-  phone: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "Celular deve estar no formato brasileiro (ex: 11987654321)")
+  whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)")
 });
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });

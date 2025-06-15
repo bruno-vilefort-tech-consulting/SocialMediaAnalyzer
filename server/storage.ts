@@ -669,7 +669,7 @@ export class FirebaseStorage implements IStorage {
       const allCandidates = candidatesSnapshot.docs.map(doc => {
         const data = doc.data();
         const candidate = { id: parseInt(doc.id), ...data } as Candidate;
-        console.log(`👤 [DEBUG] Candidato: ${candidate.name} - ClientId: ${candidate.clientId} - Telefone: ${candidate.phone}`);
+        console.log(`👤 [DEBUG] Candidato: ${candidate.name} - ClientId: ${candidate.clientId} - Telefone: ${candidate.whatsapp}`);
         return candidate;
       });
       

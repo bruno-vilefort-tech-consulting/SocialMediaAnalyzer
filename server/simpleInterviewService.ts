@@ -459,12 +459,12 @@ class SimpleInterviewService {
   }
 
   private async findCandidate(phone: string) {
-    // Buscar candidatos do cliente ativo (1749849987543)
+    // Buscar candidatos do cliente ativo (ID=1)
     console.log(`🔍 [DEBUG] Buscando candidatos para telefone: ${phone}`);
-    const candidates = await storage.getCandidatesByClientId(1749849987543);
+    const candidates = await storage.getCandidatesByClientId(1);
     return candidates.find(c => {
-      if (!c.phone) return false;
-      const candidatePhone = c.phone.replace(/\D/g, '');
+      if (!c.whatsapp) return false;
+      const candidatePhone = c.whatsapp.replace(/\D/g, '');
       const searchPhone = phone.replace(/\D/g, '');
       return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
     });
