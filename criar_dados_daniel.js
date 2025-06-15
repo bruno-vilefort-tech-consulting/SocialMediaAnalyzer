@@ -1,155 +1,86 @@
-// Script para criar dados do Daniel do zero com debug completo
-import admin from 'firebase-admin';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 
-// Inicializar Firebase Admin se não estiver inicializado
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+const firebaseConfig = {
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+};
 
-const db = admin.firestore();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 async function criarDadosDaniel() {
+  console.log('🧪 Criando dados de teste para Daniel...');
+  
   try {
-    console.log('🧹 LIMPANDO DADOS ANTIGOS...');
-    
-    // 1. Limpar todas as entrevistas antigas do Daniel
-    const interviewsSnapshot = await db.collection('interviews').get();
-    for (const doc of interviewsSnapshot.docs) {
-      const data = doc.data();
-      if (data.phone === '11984316526' || data.phone === '5511984316526') {
-        console.log(`🗑️ Removendo entrevista antiga: ${doc.id}`);
-        await doc.ref.delete();
-      }
-    }
-    
-    // 2. Limpar todas as respostas antigas do Daniel
-    const responsesSnapshot = await db.collection('responses').get();
-    for (const doc of responsesSnapshot.docs) {
-      const data = doc.data();
-      if (data.candidateName?.toLowerCase().includes('daniel')) {
-        console.log(`🗑️ Removendo resposta antiga: ${doc.id}`);
-        await doc.ref.delete();
-      }
-    }
-    
-    // 3. Limpar candidatos antigos do Daniel
-    const candidatesSnapshot = await db.collection('candidates').get();
-    for (const doc of candidatesSnapshot.docs) {
-      const data = doc.data();
-      if (data.name?.toLowerCase().includes('daniel') || data.whatsapp === '11984316526' || data.whatsapp === '5511984316526') {
-        console.log(`🗑️ Removendo candidato antigo: ${doc.id} (${data.name})`);
-        await doc.ref.delete();
-      }
-    }
-    
-    // 4. Limpar listas de candidatos antigas
-    const listsSnapshot = await db.collection('candidateLists').get();
-    for (const doc of listsSnapshot.docs) {
-      const data = doc.data();
-      if (data.name?.toLowerCase().includes('daniel') || data.name?.includes('Novo')) {
-        console.log(`🗑️ Removendo lista antiga: ${doc.id} (${data.name})`);
-        await doc.ref.delete();
-      }
-    }
-    
-    // 5. Limpar seleções antigas
-    const selectionsSnapshot = await db.collection('selections').get();
-    for (const doc of selectionsSnapshot.docs) {
-      const data = doc.data();
-      if (data.name?.toLowerCase().includes('faxineira') || data.name?.includes('Teste')) {
-        console.log(`🗑️ Removendo seleção antiga: ${doc.id} (${data.name})`);
-        await doc.ref.delete();
-      }
-    }
-    
-    console.log('✅ LIMPEZA CONCLUÍDA - Sistema pronto para dados novos');
-    
-    // 6. Buscar cliente e vaga existentes
-    const clientsSnapshot = await db.collection('clients').get();
-    let grupoMaximus = null;
-    clientsSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.companyName?.includes('Grupo Maximus')) {
-        grupoMaximus = { id: doc.id, ...data };
-        console.log(`👑 Cliente encontrado: ${data.companyName} (ID: ${doc.id})`);
-      }
+    // Criar uma nova vaga para teste
+    const vagaTest = {
+      nomeVaga: 'Desenvolvedor Web',
+      descricaoVaga: 'Vaga para desenvolvedor web com experiência em React',
+      clientId: 1,
+      status: 'active',
+      createdAt: new Date(),
+      perguntas: [
+        {
+          pergunta: 'Conte um pouco sobre sua experiência com desenvolvimento web.',
+          respostaIdeal: 'Experiência com HTML, CSS, JavaScript e frameworks modernos'
+        },
+        {
+          pergunta: 'Como você aborda a resolução de problemas complexos?',
+          respostaIdeal: 'Análise sistemática, pesquisa e testes incrementais'
+        }
+      ]
+    };
+
+    const vagaRef = await addDoc(collection(db, 'jobs'), vagaTest);
+    console.log(`✅ Vaga criada: ${vagaRef.id}`);
+
+    // Criar lista de candidatos
+    const listaRef = await addDoc(collection(db, 'candidateLists'), {
+      name: 'Lista Daniel - Teste Campo Celular',
+      clientId: 1,
+      createdAt: new Date()
     });
-    
-    if (!grupoMaximus) {
-      console.log('❌ Cliente Grupo Maximus não encontrado');
-      return;
-    }
-    
-    const jobsSnapshot = await db.collection('jobs').get();
-    let faxineiraJob = null;
-    jobsSnapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.nomeVaga?.includes('Faxineira') && data.clientId === parseInt(grupoMaximus.id)) {
-        faxineiraJob = { id: doc.id, ...data };
-        console.log(`💼 Vaga encontrada: ${data.nomeVaga} (ID: ${doc.id})`);
-      }
-    });
-    
-    if (!faxineiraJob) {
-      console.log('❌ Vaga de Faxineira não encontrada');
-      return;
-    }
-    
-    // 7. Criar nova lista de candidatos
-    const listaId = Date.now();
-    const novaLista = {
-      id: listaId,
-      name: 'Lista Teste Daniel - Nova',
-      clientId: parseInt(grupoMaximus.id),
+    console.log(`✅ Lista criada: ${listaRef.id}`);
+
+    // Criar candidato Daniel usando o campo whatsapp
+    const candidatoDaniel = {
+      name: 'Daniel Silva',
+      email: 'daniel.silva@email.com',
+      whatsapp: '5511984316526', // Campo celular vai para whatsapp
+      clientId: 1,
+      listId: listaRef.id,
       createdAt: new Date()
     };
-    
-    await db.collection('candidateLists').doc(listaId.toString()).set(novaLista);
-    console.log(`📋 Nova lista criada: ${novaLista.name} (ID: ${listaId})`);
-    
-    // 8. Criar novo candidato Daniel
-    const candidatoId = Date.now() + 1;
-    const novoCandidato = {
-      id: candidatoId,
-      name: 'Daniel Moreira Teste',
-      email: 'daniel.teste@email.com',
-      whatsapp: '11984316526',
-      clientId: parseInt(grupoMaximus.id),
-      listId: listaId,
+
+    const candidatoRef = await addDoc(collection(db, 'candidates'), candidatoDaniel);
+    console.log(`✅ Candidato criado: ${candidatoRef.id}`);
+
+    // Criar seleção para teste
+    const selecao = {
+      jobId: vagaRef.id,
+      candidateListId: listaRef.id,
+      clientId: 1,
+      status: 'active',
+      sendVia: 'whatsapp',
+      whatsappTemplate: 'Olá [nome do candidato]! Você foi selecionado para a vaga de [Nome da Vaga]. Digite 1 para aceitar a entrevista.',
       createdAt: new Date()
     };
-    
-    await db.collection('candidates').doc(candidatoId.toString()).set(novoCandidato);
-    console.log(`👤 Novo candidato criado: ${novoCandidato.name} (ID: ${candidatoId})`);
-    console.log(`📱 WhatsApp: ${novoCandidato.whatsapp}`);
-    
-    // 9. Criar nova seleção
-    const selecaoId = Date.now() + 2;
-    const novaSelecao = {
-      id: selecaoId,
-      name: 'Seleção Faxineira - Teste Daniel',
-      jobId: faxineiraJob.id,
-      candidateListId: listaId,
-      status: 'preparando',
-      whatsappTemplate: 'Olá [nome do candidato]! Você foi selecionado(a) para a vaga de [Nome da Vaga]. Deseja participar da entrevista?',
-      emailTemplate: 'Prezado(a) [nome do candidato], você foi convidado(a) para a vaga de [Nome da Vaga].',
-      createdAt: new Date()
-    };
-    
-    await db.collection('selections').doc(selecaoId.toString()).set(novaSelecao);
-    console.log(`🎯 Nova seleção criada: ${novaSelecao.name} (ID: ${selecaoId})`);
-    
-    console.log('\n🎉 DADOS CRIADOS COM SUCESSO!');
-    console.log('📊 RESUMO:');
-    console.log(`   Cliente: ${grupoMaximus.companyName} (${grupoMaximus.id})`);
-    console.log(`   Vaga: ${faxineiraJob.nomeVaga} (${faxineiraJob.id})`);
-    console.log(`   Lista: ${novaLista.name} (${listaId})`);
-    console.log(`   Candidato: ${novoCandidato.name} (${candidatoId})`);
-    console.log(`   Seleção: ${novaSelecao.name} (${selecaoId})`);
-    console.log(`   WhatsApp: ${novoCandidato.whatsapp}`);
+
+    const selecaoRef = await addDoc(collection(db, 'selections'), selecao);
+    console.log(`✅ Seleção criada: ${selecaoRef.id}`);
+
+    console.log(`\n🎉 Dados de teste criados com sucesso!`);
+    console.log(`📝 Vaga: Desenvolvedor Web (${vagaRef.id})`);
+    console.log(`👤 Candidato: Daniel Silva - WhatsApp: 5511984316526`);
+    console.log(`📋 Lista: ${listaRef.id}`);
+    console.log(`🎯 Seleção: ${selecaoRef.id}`);
     
   } catch (error) {
-    console.error('❌ Erro:', error);
+    console.error('❌ Erro ao criar dados:', error);
   }
 }
 

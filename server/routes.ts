@@ -2518,7 +2518,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
           results.push({
             candidateId: candidate.id,
             candidateName: candidate.name,
-            phone: candidate.phone,
+            phone: candidate.whatsapp,
             status: 'error',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
           });
@@ -3084,9 +3084,9 @@ Responda de forma natural aguardando a resposta do candidato.`;
 
       for (const candidate of candidates) {
         try {
-          console.log(`\n🚀 [DEBUG] Processando candidato: ${candidate.name} (${candidate.phone})`);
+          console.log(`\n🚀 [DEBUG] Processando candidato: ${candidate.name} (${candidate.whatsapp})`);
           
-          if (!candidate.phone) {
+          if (!candidate.whatsapp) {
             console.log(`⚠️ [DEBUG] Candidato ${candidate.name} sem telefone, pulando...`);
             errorCount++;
             results.push({
@@ -3100,11 +3100,11 @@ Responda de forma natural aguardando a resposta do candidato.`;
           }
 
           // Formatar telefone
-          let phone = candidate.phone.replace(/\D/g, '');
+          let phone = candidate.whatsapp.replace(/\D/g, '');
           if (!phone.startsWith('55')) {
             phone = '55' + phone;
           }
-          console.log(`📞 [DEBUG] Telefone formatado: ${candidate.phone} → ${phone}`);
+          console.log(`📞 [DEBUG] Telefone formatado: ${candidate.whatsapp} → ${phone}`);
 
           console.log(`📨 [DEBUG] Enviando convite para ${candidate.name}...`);
           const success = await whatsappQRService.sendInterviewInvitation(
@@ -3143,7 +3143,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
           results.push({
             candidateId: candidate.id,
             candidateName: candidate.name,
-            phone: candidate.phone,
+            phone: candidate.whatsapp,
             status: 'error',
             error: error instanceof Error ? error.message : 'Erro desconhecido'
           });

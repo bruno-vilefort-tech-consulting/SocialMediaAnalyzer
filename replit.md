@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🎯 CAMPO CELULAR AUTOMATICAMENTE USADO PARA WHATSAPP - Sistema corrigido conforme solicitado
+  - **Campo celular convertido automaticamente**: Upload de CSV agora usa coluna "Celular" como campo WhatsApp
+  - **Busca aprimorada implementada**: Sistema busca candidatos tanto por `whatsapp` quanto por `phone` (compatibilidade)
+  - **Todas referências corrigidas**: candidate.phone alterado para candidate.whatsapp em todo código
+  - **Verificação de duplicatas atualizada**: Sistema verifica duplicatas pelo campo WhatsApp correto
+  - **Dados de teste validados**: Candidato Daniel Silva criado com WhatsApp 5511984316526 funcionando
+  - **Jacqueline corrigida**: Campo whatsapp atualizado para 5511994640330 baseado no phone original
+  - **Sistema unificado**: Campo celular do CSV → whatsapp no Firebase → disparo automático WhatsApp
+
 - June 15, 2025: 🔥 SISTEMA 100% FIREBASE IMPLEMENTADO - PostgreSQL completamente removido conforme solicitado
   - **Busca melhorada por candidatos**: Sistema agora reconhece "Daniel Moreira" (11984316526) corretamente
   - **Matching por telefone implementado**: Busca por números 11984316526 e 5511984316526 funcional
