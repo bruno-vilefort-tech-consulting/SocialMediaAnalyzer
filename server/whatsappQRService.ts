@@ -1,6 +1,7 @@
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import { storage } from './storage';
+import { simpleInterviewService } from './simpleInterviewService';
 
 interface WhatsAppQRConfig {
   isConnected: boolean;
@@ -162,21 +163,13 @@ export class WhatsAppQRService {
         const from = message.key.remoteJid;
         const text = message.message.conversation || 
                     message.message.extendedTextMessage?.text || '';
-        const buttonResponse = message.message?.buttonsResponseMessage?.selectedButtonId;
         const audioMessage = message.message?.audioMessage;
         
-        console.log(`📨 [DEBUG] Mensagem recebida de ${from}`);
-        console.log(`📝 [DEBUG] Texto: ${text || 'N/A'}`);
-        console.log(`🔘 [DEBUG] Botão: ${buttonResponse || 'N/A'}`);
-        console.log(`🎵 [DEBUG] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
+        console.log(`📨 Nova mensagem de ${from.replace('@s.whatsapp.net', '')}`);
+        console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
         
-        if (buttonResponse) {
-          await this.processButtonResponse(from, buttonResponse);
-        } else if (audioMessage) {
-          await this.processAudioResponse(from, message);
-        } else if (text) {
-          await this.processInterviewMessage(from, text, message);
-        }
+        // Usar o novo sistema simplificado
+        await simpleInterviewService.handleMessage(from, text, audioMessage);
       }
     }
   }
