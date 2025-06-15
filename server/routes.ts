@@ -772,7 +772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const isDuplicate = existingCandidates.some(existing => 
             existing.name.toLowerCase() === nameStr.toLowerCase() ||
             existing.email.toLowerCase() === emailStr ||
-            existing.phone === phoneDigits
+            existing.whatsapp === phoneDigits
           );
 
           if (isDuplicate) {
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validCandidates.push({
             name: nameStr,
             email: emailStr,
-            phone: phoneDigits,
+            whatsapp: phoneDigits, // Campo celular vai para whatsapp
             clientId,
             listId: parseInt(listId)
           });
@@ -923,14 +923,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               for (const candidate of candidates) {
                 try {
-                  if (!candidate.phone) {
+                  if (!candidate.whatsapp) {
                     console.log(`⚠️ [AUTO] Candidato ${candidate.name} sem telefone, pulando...`);
                     errorCount++;
                     continue;
                   }
 
                   // Formatar telefone
-                  let phone = candidate.phone.replace(/\D/g, '');
+                  let phone = candidate.whatsapp.replace(/\D/g, '');
                   if (!phone.startsWith('55')) {
                     phone = '55' + phone;
                   }
@@ -1320,7 +1320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             channel: 'whatsapp',
             status: 'logged' // WhatsApp integration pending
           });
-          console.log(`📱 WhatsApp message logged for ${candidate.phone}: ${whatsappMessage}`);
+          console.log(`📱 WhatsApp message logged for ${candidate.whatsapp}: ${whatsappMessage}`);
         }
 
         interviews.push({
@@ -2469,14 +2469,14 @@ Responda de forma natural aguardando a resposta do candidato.`;
       // Enviar para cada candidato
       for (const candidate of candidates) {
         try {
-          if (!candidate.phone) {
+          if (!candidate.whatsapp) {
             console.log(`⚠️ Candidato ${candidate.name} sem telefone`);
             errorCount++;
             continue;
           }
 
           // Formatar telefone (garantir formato internacional)
-          let phone = candidate.phone.replace(/\D/g, '');
+          let phone = candidate.whatsapp.replace(/\D/g, '');
           if (!phone.startsWith('55')) {
             phone = '55' + phone;
           }
