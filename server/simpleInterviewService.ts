@@ -284,11 +284,16 @@ class SimpleInterviewService {
         transcriptionSuccess: responseText.length > 0
       };
       
-      // Salvar no Firebase Storage
-      const { firebaseDb } = await import('./storage');
-      const { doc, setDoc, collection } = await import('firebase/firestore');
-      
-      await setDoc(doc(collection(firebaseDb, 'interview_responses'), responseData.id.toString()), responseData);
+      // Salvar resposta usando storage interface
+      await storage.createResponse({
+        interviewId: parseInt(interview.candidateId),
+        questionId: currentQuestion.id,
+        audioUrl: audioFile || null,
+        transcription: responseText,
+        score: null,
+        aiAnalysis: { rawResponse: responseData },
+        recordingDuration: null
+      });
       transcriptionSavedToDB = true;
       console.log(`✅ [AUDIO] Resposta salva no Firebase:`, responseData.id);
     } catch (saveError) {

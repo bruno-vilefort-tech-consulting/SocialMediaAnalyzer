@@ -1,0 +1,118 @@
+import { storage } from './storage';
+import bcrypt from 'bcrypt';
+
+export async function initializeFirebaseData() {
+  try {
+    console.log("🔥 Inicializando dados essenciais no Firebase...");
+
+    // Verificar se o usuário master já existe
+    const existingMaster = await storage.getUserByEmail("daniel@grupomaximuns.com.br");
+    if (!existingMaster) {
+      // Criar usuário master
+      const hashedPassword = await bcrypt.hash("daniel580190", 10);
+      await storage.createUser({
+        id: "1749848502212",
+        email: "daniel@grupomaximuns.com.br",
+        password: hashedPassword,
+        role: "master",
+        name: "Daniel - Grupo Maximus"
+      });
+      console.log("✅ Usuário master criado no Firebase");
+    } else {
+      console.log("✅ Usuário master já existe no Firebase");
+    }
+
+    // Verificar se o cliente Grupo Maximus já existe
+    const existingClient = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+    if (!existingClient) {
+      // Criar cliente Grupo Maximus
+      const hashedClientPassword = await bcrypt.hash("cliente123", 10);
+      await storage.createClient({
+        companyName: "Grupo Maximus",
+        cnpj: "12345678000123",
+        email: "cliente@grupomaximuns.com.br",
+        password: hashedClientPassword,
+        phone: "11999999999",
+        monthlyLimit: 100,
+        additionalLimit: 0,
+        contractStart: new Date(),
+        status: "active",
+        responsibleName: "Daniel",
+        responsiblePhone: "11984316526",
+        responsibleEmail: "daniel@grupomaximuns.com.br"
+      });
+      console.log("✅ Cliente Grupo Maximus criado no Firebase");
+    } else {
+      console.log("✅ Cliente Grupo Maximus já existe no Firebase");
+    }
+
+    // Criar vaga de exemplo se não existir
+    const jobs = await storage.getJobs();
+    if (jobs.length === 0) {
+      const client = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+      if (client) {
+        const job = await storage.createJob({
+          clientId: client.id,
+          nomeVaga: "Assistente Administrativo",
+          descricaoVaga: "Vaga para assistente administrativo com experiência em atendimento ao cliente",
+          status: "ativo"
+        });
+
+        // Adicionar perguntas à vaga
+        const questions = [
+          {
+            vagaId: job.id,
+            perguntaCandidato: "Fale um pouco sobre sua experiência profissional",
+            respostaPerfeita: "Candidato deve demonstrar experiência relevante e capacidade de comunicação",
+            numeroPergunta: 1
+          },
+          {
+            vagaId: job.id,
+            perguntaCandidato: "Por que você tem interesse nesta vaga?",
+            respostaPerfeita: "Candidato deve mostrar motivação e alinhamento com a empresa",
+            numeroPergunta: 2
+          },
+          {
+            vagaId: job.id,
+            perguntaCandidato: "Como você lidaria com um cliente insatisfeito?",
+            respostaPerfeita: "Candidato deve demonstrar habilidades de resolução de conflitos e empatia",
+            numeroPergunta: 3
+          }
+        ];
+
+        for (const question of questions) {
+          await storage.createQuestion(question);
+        }
+
+        console.log("✅ Vaga e perguntas criadas no Firebase");
+      }
+    } else {
+      console.log("✅ Vagas já existem no Firebase");
+    }
+
+    // Criar candidato de teste se não existir
+    const candidates = await storage.getAllCandidates();
+    const testCandidate = candidates.find(c => c.whatsapp === "5511984316526");
+    if (!testCandidate) {
+      const client = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+      if (client) {
+        await storage.createCandidate({
+          clientId: client.id,
+          name: "João Silva",
+          email: "joao.silva@email.com",
+          whatsapp: "5511984316526",
+          listId: null
+        });
+        console.log("✅ Candidato de teste criado no Firebase");
+      }
+    } else {
+      console.log("✅ Candidato de teste já existe no Firebase");
+    }
+
+    console.log("🎉 Dados iniciais do Firebase configurados com sucesso!");
+    return true;
+  } catch (error) {
+    console.error("❌ Erro ao inicializar dados do Firebase:", error);
+    return false;
+  }
+}
