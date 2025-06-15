@@ -1,0 +1,46 @@
+📋 BUG NA RESPOSTA DE ÁUDIO – CORRIGIR FLUXO DA ENTREVISTA
+
+O sistema de entrevista via WhatsApp está com um problema quando o candidato responde com áudio. A primeira resposta não está sendo processada corretamente. Segue abaixo o que precisa funcionar e o que está falhando:
+
+✅ FUNCIONAMENTO ESPERADO:
+
+1. O sistema envia uma pergunta por áudio e texto para o candidato.
+2. O candidato responde com um áudio (PTT) pelo WhatsApp.
+3. O sistema deve:
+   - Detectar a mensagem de áudio (audioMessage)
+   - Baixar o áudio (message.audioMessage.url ou equivalente)
+   - Salvar o áudio no Firebase Storage
+   - Enviar o áudio para a API do Whisper (já configurada) e obter a transcrição
+   - Salvar no Firestore com os dados:
+     {
+       nome: "Nome do candidato",
+       numero: "5511999999999",
+       pergunta: "Texto da pergunta atual",
+       respostaAudioUrl: "URL do Firebase Storage",
+       respostaTexto: "Texto transcrito da resposta",
+       numeroDaPergunta: 1
+     }
+   - Em seguida:
+     - Se ainda houver perguntas, enviar a próxima automaticamente (texto + áudio TTS)
+     - Se for a última pergunta, encerrar com mensagem final em áudio: "Obrigado, [nome]. Sua entrevista foi finalizada..."
+
+❌ PROBLEMA ATUAL:
+
+- Ao receber a primeira resposta em áudio:
+  - O áudio não é salvo no banco de dados
+  - O texto transcrito não é salvo
+  - A entrevista não continua para a próxima pergunta
+
+🛠️ O QUE PRECISA SER FEITO:
+
+1. Garantir que a mensagem de áudio seja corretamente reconhecida e tratada.
+2. Baixar e salvar o áudio no Firebase Storage.
+3. Transcrever o áudio com Whisper e aguardar a resposta.
+4. Salvar todos os dados no Firestore com a estrutura correta.
+5. Chamar a função que envia a próxima pergunta após salvar a resposta.
+6. Validar se era a última pergunta e encerrar corretamente se for o caso.
+
+🧠 OBSERVAÇÃO:
+- As APIs do Whisper e TTS já estão funcionando.
+- O Firebase está configurado.
+- A falha está na lógica entre: receber áudio → salvar → transcrever → continuar a entrevista.
