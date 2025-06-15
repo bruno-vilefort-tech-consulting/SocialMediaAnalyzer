@@ -473,16 +473,42 @@ export class WhatsAppQRService {
       
       // Buscar seleção com logs detalhados
       console.log(`🔍 [DEBUG] Buscando seleção com ID: ${currentInterview.selectionId}`);
-      const selection = await storage.getSelectionById(currentInterview.selectionId);
-      console.log(`📋 [DEBUG] Seleção encontrada:`, selection ? {
+      console.log(`🔍 [DEBUG] Tipo do selectionId: ${typeof currentInterview.selectionId}`);
+      
+      // Tentar buscar por ID exato primeiro
+      let selection = await storage.getSelectionById(currentInterview.selectionId);
+      console.log(`📋 [DEBUG] Seleção encontrada por ID exato:`, selection ? {
         id: selection.id,
         jobId: selection.jobId,
         status: selection.status
       } : 'NULL');
       
+      // Se não encontrou, listar todas as seleções para debug
       if (!selection) {
-        console.log(`❌ [DEBUG] Seleção não encontrada para entrevista ${currentInterview.id}`);
-        await this.sendTextMessage(from, "Erro: dados da seleção não encontrados.");
+        console.log(`🔍 [DEBUG] Seleção não encontrada, listando todas as seleções...`);
+        const allSelections = await storage.getAllSelections();
+        console.log(`📋 [DEBUG] Total de seleções no sistema: ${allSelections.length}`);
+        console.log(`📋 [DEBUG] Todas as seleções:`, allSelections.map(s => ({
+          id: s.id,
+          status: s.status,
+          jobId: s.jobId
+        })));
+        
+        // Tentar encontrar seleção ativa para este candidato
+        selection = allSelections.find(s => s.status === 'enviado');
+        if (selection) {
+          console.log(`✅ [DEBUG] Usando seleção ativa encontrada: ID ${selection.id}`);
+          // Atualizar a entrevista com a seleção correta
+          await storage.updateInterview(currentInterview.id, { 
+            selectionId: selection.id 
+          });
+          console.log(`🔄 [DEBUG] Entrevista atualizada com seleção correta`);
+        }
+      }
+      
+      if (!selection) {
+        console.log(`❌ [DEBUG] Nenhuma seleção ativa encontrada no sistema`);
+        await this.sendTextMessage(from, "Erro: nenhuma seleção ativa encontrada. Tente enviar uma nova campanha.");
         return;
       }
       

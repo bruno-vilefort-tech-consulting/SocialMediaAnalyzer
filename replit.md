@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: Sistema de debug avançado implementado para corrigir problema de associação entrevista-seleção
+  - **Velocidade TTS alterada**: De 0.75 para 1.0 (velocidade normal) conforme solicitado
+  - **Texto antes do áudio implementado**: Sistema envia pergunta por texto primeiro, depois áudio TTS
+  - **Logs detalhados completos**: Debug extensivo mostra transcrição OpenAI, salvamento no BD e arquivos de áudio
+  - **Bug identificado**: Entrevista ID 17499681673027 não encontra seleção associada - problema na vinculação
+  - **Sistema de recuperação**: Busca automática por seleções ativas quando ID não funciona
+  - **Timeout API**: Proteção de 15 segundos contra travamento nas chamadas OpenAI
+  - **Sistema pronto**: Aguardando teste para validar correção da associação entrevista-seleção
+
 - June 15, 2025: 🎯 FLUXO SEQUENCIAL DE ENTREVISTA COMPLETAMENTE CORRIGIDO - Bug crítico resolvido
   - **Problema de múltiplas entrevistas eliminado**: Sistema agora reutiliza entrevistas existentes em vez de criar novas a cada resposta
   - **Fluxo sequencial implementado**: Busca entrevistas 'in_progress', conta respostas existentes e determina pergunta atual corretamente
