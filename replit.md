@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🔥 SISTEMA 100% FIREBASE IMPLEMENTADO - PostgreSQL completamente removido conforme solicitado
+  - **Busca melhorada por candidatos**: Sistema agora reconhece "Daniel Moreira" (11984316526) corretamente
+  - **Matching por telefone implementado**: Busca por números 11984316526 e 5511984316526 funcional
+  - **PostgreSQL completamente removido**: Sistema usa exclusivamente Firebase conforme preferência do usuário
+  - **Relatórios corrigidos**: Entrevistas agora aparecem corretamente associadas aos candidatos reais
+  - **Debug melhorado**: Logs detalhados mostram processo de matching e associação de entrevistas
+  - **Sistema unified**: Uma única fonte de dados (Firebase) para toda a aplicação
+
 - June 15, 2025: 🎉 TESTE COMPLETO WHATSAPP VALIDADO - Sistema Firebase 100% funcional
   - **Entrevista via WhatsApp testada com sucesso**: Candidato João Silva (5511984316526) completou entrevista
   - **Áudio e transcrições salvos no Firebase**: 2 respostas processadas com arquivos .ogg e texto

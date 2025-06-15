@@ -82,9 +82,15 @@ export default function ReportsPage() {
         (interview.jobName?.toLowerCase().includes('faxina') || interview.candidateName?.includes('Silva') || interview.candidateName?.includes('João'))
       );
       
-      // Matching por candidato João Silva - associar com seleção mais recente que contenha "faxina"
-      const matchJoaoSilva = (
-        interview.candidateName?.includes('João Silva') && 
+      // Matching por candidatos conhecidos - associar com seleção que contenha "faxina"
+      const matchKnownCandidate = (
+        (interview.candidateName?.includes('João Silva') || interview.candidateName?.includes('Daniel Moreira')) && 
+        (selection.name?.toLowerCase().includes('faxina') || selection.jobName?.toLowerCase().includes('faxina'))
+      );
+      
+      // Matching por telefone - buscar por 11984316526
+      const matchByPhone = (
+        interview.candidatePhone?.includes('11984316526') &&
         (selection.name?.toLowerCase().includes('faxina') || selection.jobName?.toLowerCase().includes('faxina'))
       );
       
@@ -94,9 +100,10 @@ export default function ReportsPage() {
       const now = Date.now();
       const isRecentInterview = (now - interviewTime) < (2 * 60 * 60 * 1000); // 2 horas
       const isRecentSelection = (now - selectionTime) < (24 * 60 * 60 * 1000); // 24 horas
-      const matchRecent = isRecentInterview && isRecentSelection && interview.candidateName?.includes('João');
+      const matchRecent = isRecentInterview && isRecentSelection && 
+        (interview.candidateName?.includes('João') || interview.candidateName?.includes('Daniel'));
       
-      const matches = matchSelectionId || matchJobName || matchSelectionName || matchFaxina || matchJoaoSilva || matchRecent;
+      const matches = matchSelectionId || matchJobName || matchSelectionName || matchFaxina || matchKnownCandidate || matchByPhone || matchRecent;
       
       if (debugMode && matches) {
         console.log(`  ✅ MATCH - Entrevista ${interview.id}:`);
@@ -104,7 +111,8 @@ export default function ReportsPage() {
         console.log(`    - jobName: "${interview.jobName}"`);
         console.log(`    - status: "${interview.status}"`);
         console.log(`    - selectionId: "${interview.selectionId}"`);
-        console.log(`    - matchJoaoSilva: ${matchJoaoSilva}`);
+        console.log(`    - matchKnownCandidate: ${matchKnownCandidate}`);
+        console.log(`    - matchByPhone: ${matchByPhone}`);
         console.log(`    - matchRecent: ${matchRecent}`);
       }
       

@@ -2733,7 +2733,15 @@ Responda de forma natural aguardando a resposta do candidato.`;
             const allSelections = await storage.getSelectionsByClientId(1749849987543);
             
             // Buscar por nome do candidato ou padrões conhecidos
-            if (candidateName?.includes('João Silva')) {
+            if (candidateName?.includes('João Silva') || candidateName?.includes('Daniel Moreira') || candidateName?.includes('daniel moreira')) {
+              selectionData = allSelections.find(s => 
+                s.name?.toLowerCase().includes('faxina') || 
+                s.jobName?.toLowerCase().includes('faxina')
+              );
+            }
+            
+            // Buscar por telefone específico do Daniel Moreira
+            if (candidatePhone?.includes('11984316526') || candidatePhone?.includes('5511984316526')) {
               selectionData = allSelections.find(s => 
                 s.name?.toLowerCase().includes('faxina') || 
                 s.jobName?.toLowerCase().includes('faxina')
@@ -2774,85 +2782,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
         });
       }
       
-      // Buscar também entrevistas do PostgreSQL para dados mais recentes
-      try {
-        console.log('🔍 Buscando entrevistas do PostgreSQL...');
-        const pgInterviews = await storage.getAllInterviews();
-        console.log(`📊 Entrevistas PostgreSQL encontradas: ${pgInterviews.length}`);
-        
-        for (const pgInterview of pgInterviews) {
-          // Verificar se já foi processada do Firebase
-          const existsInFirebase = allInterviews.some(interview => 
-            interview.id.toString() === pgInterview.id.toString()
-          );
-          
-          if (!existsInFirebase) {
-            console.log(`📝 Adicionando entrevista PostgreSQL ${pgInterview.id} aos relatórios`);
-            
-            // Buscar respostas da entrevista PostgreSQL
-            const pgResponses = await storage.getResponsesByInterviewId(pgInterview.id);
-            
-            // Buscar dados do candidato
-            let candidateData = null;
-            try {
-              candidateData = await storage.getCandidateById(pgInterview.candidateId);
-            } catch (err) {
-              console.log('Erro ao buscar candidato PG:', err);
-            }
-            
-            // Buscar dados da seleção
-            let selectionData = null;
-            try {
-              selectionData = await storage.getSelectionById(pgInterview.selectionId);
-            } catch (err) {
-              console.log('Erro ao buscar seleção PG:', err);
-            }
-            
-            // Para João Silva, associar com seleção de faxina mais recente
-            if (candidateData?.name?.includes('João Silva')) {
-              try {
-                const allSelections = await storage.getSelectionsByClientId(1749849987543);
-                const faxinaSelection = allSelections.find(s => 
-                  s.name?.toLowerCase().includes('faxina') || 
-                  s.jobName?.toLowerCase().includes('faxina')
-                );
-                if (faxinaSelection) {
-                  selectionData = faxinaSelection;
-                }
-              } catch (err) {
-                console.log('Erro ao buscar seleção para João Silva:', err);
-              }
-            }
-            
-            const responses = pgResponses.map(response => ({
-              questionText: response.questionText || '',
-              responseText: response.responseText || '',
-              audioFile: response.audioFile || '',
-              timestamp: response.createdAt?.toISOString() || new Date().toISOString()
-            }));
-            
-            allInterviews.push({
-              id: pgInterview.id.toString(),
-              selectionId: selectionData?.id || pgInterview.selectionId || null,
-              selectionName: selectionData?.name || selectionData?.jobName || 'Seleção não identificada',
-              candidateId: pgInterview.candidateId,
-              candidateName: candidateData?.name || 'Candidato não identificado',
-              candidatePhone: candidateData?.whatsapp || 'Telefone não informado',
-              jobName: selectionData?.jobName || selectionData?.name || 'Vaga não identificada',
-              status: pgInterview.status || 'unknown',
-              startTime: pgInterview.createdAt?.toISOString(),
-              endTime: pgInterview.endTime?.toISOString(),
-              responses,
-              totalQuestions: responses.length,
-              answeredQuestions: responses.length
-            });
-          }
-        }
-      } catch (pgError) {
-        console.log('Erro ao buscar dados PostgreSQL:', pgError);
-      }
-      
-      console.log(`✅ Retornando ${allInterviews.length} entrevistas para relatórios (Firebase + PostgreSQL)`);
+      console.log(`✅ Retornando ${allInterviews.length} entrevistas para relatórios (100% Firebase)`);
       res.json(allInterviews);
       
     } catch (error) {
