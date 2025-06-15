@@ -2682,12 +2682,28 @@ Responda de forma natural aguardando a resposta do candidato.`;
         
         console.log(`📝 Processando entrevista: ${interviewDoc.id} - ${interviewData.candidateName}`);
         
-        // Buscar respostas na coleção 'responses'
-        const responsesQuery = query(
-          collection(db, 'responses'),
-          where('interviewId', '==', interviewDoc.id)
-        );
-        const responsesSnapshot = await getDocs(responsesQuery);
+        // Buscar respostas na coleção 'responses' - tentar tanto string quanto número
+        let responsesSnapshot;
+        try {
+          // Primeiro tentar com ID como string
+          const responsesQuery1 = query(
+            collection(db, 'responses'),
+            where('interviewId', '==', interviewDoc.id)
+          );
+          responsesSnapshot = await getDocs(responsesQuery1);
+          
+          // Se não encontrou, tentar com ID como número
+          if (responsesSnapshot.empty) {
+            const responsesQuery2 = query(
+              collection(db, 'responses'),
+              where('interviewId', '==', parseInt(interviewDoc.id))
+            );
+            responsesSnapshot = await getDocs(responsesQuery2);
+          }
+        } catch (err) {
+          console.log('Erro ao buscar respostas:', err);
+          responsesSnapshot = { docs: [] };
+        }
         
         // Buscar perguntas da vaga no Firebase
         let jobQuestions = [];
