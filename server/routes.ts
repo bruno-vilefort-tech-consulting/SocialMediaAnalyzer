@@ -45,14 +45,19 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     
     // If not found in users table, try clients table
     if (!user) {
-      const client = await storage.getClientById(decoded.id);
-      if (client) {
-        user = {
-          id: client.id,
-          email: client.email,
-          role: 'client',
-          createdAt: client.createdAt
-        };
+      try {
+        const client = await storage.getClientById(decoded.id);
+        if (client) {
+          user = {
+            id: client.id,
+            email: client.email,
+            role: 'client',
+            createdAt: client.createdAt
+          };
+        }
+      } catch (error) {
+        // Skip if ID is too large or invalid
+        console.log('Cliente não encontrado para ID:', decoded.id);
       }
     }
     
