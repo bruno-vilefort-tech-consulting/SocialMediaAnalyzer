@@ -321,8 +321,46 @@ export class WhatsAppQRService {
     try {
       console.log(`🤖 Processando mensagem de entrevista de ${from}: ${text}`);
       
-      // Fallback para mensagens de texto
-      await this.sendTextMessage(from, "Olá! Por favor, use os botões para responder ou envie suas respostas por áudio após iniciar a entrevista.");
+      // Normalizar texto
+      const normalizedText = text.toLowerCase().trim();
+      
+      // Detectar respostas de aceitar entrevista
+      if (normalizedText === 'sim' || normalizedText === '1' || 
+          normalizedText === 'aceito' || normalizedText === 'começar' ||
+          normalizedText === 'ok' || normalizedText === 'yes') {
+        
+        console.log(`✅ [DEBUG] Candidato aceitou entrevista via texto: ${text}`);
+        
+        // Buscar seleção mais recente para este telefone
+        const phoneClean = from.replace('@s.whatsapp.net', '');
+        console.log(`🔍 [DEBUG] Buscando seleção para telefone: ${phoneClean}`);
+        
+        // Por agora vamos simular uma resposta positiva
+        await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
+        
+        // TODO: Buscar seleção real e iniciar entrevista
+        // await this.startInterviewProcess(from, selectionId, candidateName);
+        
+      } 
+      // Detectar respostas de recusar entrevista
+      else if (normalizedText === 'não' || normalizedText === 'nao' || 
+               normalizedText === '2' || normalizedText === 'recuso' || 
+               normalizedText === 'no') {
+        
+        console.log(`❌ [DEBUG] Candidato recusou entrevista via texto: ${text}`);
+        await this.sendTextMessage(from, "Obrigado pela resposta. Caso mude de ideia, entre em contato conosco.");
+        
+      } 
+      // Mensagem padrão
+      else {
+        await this.sendTextMessage(from, `Olá! Para participar da entrevista, responda:
+
+*"SIM"* ou *"1"* - para começar a entrevista
+*"NÃO"* ou *"2"* - para não participar
+
+Ou use os botões se disponíveis.`);
+      }
+      
     } catch (error) {
       console.error('❌ Erro ao processar mensagem de entrevista:', error);
     }
@@ -420,19 +458,19 @@ Você gostaria de iniciar a entrevista?`;
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
       
-      // Criar mensagem com botões
+      // Criar mensagem com botões (formato correto para Baileys)
       const messageWithButtons = {
         text: finalMessage,
         footer: 'Sistema de Entrevistas IA - Grupo Maximus',
         buttons: [
           {
-            buttonId: `start_interview_${selectionId}_${candidateName}`,
-            buttonText: { displayText: 'Sim, começar agora' },
+            buttonId: `start_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
+            buttonText: { displayText: '✅ Sim, começar agora' },
             type: 1
           },
           {
-            buttonId: `decline_interview_${selectionId}_${candidateName}`,
-            buttonText: { displayText: 'Não quero participar' },
+            buttonId: `decline_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
+            buttonText: { displayText: '❌ Não quero participar' },
             type: 1
           }
         ],
@@ -440,14 +478,58 @@ Você gostaria de iniciar a entrevista?`;
       };
 
       console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
-      const result = await this.socket.sendMessage(jid, messageWithButtons);
-      console.log(`✅ [DEBUG] Mensagem com botões enviada:`, result?.key || 'sem key');
+      
+      try {
+        // Primeiro tenta enviar com botões
+        const result = await this.socket.sendMessage(jid, messageWithButtons);
+        console.log(`✅ [DEBUG] Mensagem com botões enviada:`, result?.key || 'sem key');
+        return true;
+      } catch (buttonError) {
+        console.log(`⚠️ [DEBUG] Botões falharam, tentando lista interativa:`, buttonError);
+        
+        // Fallback para lista interativa
+        const listMessage = {
+          text: finalMessage,
+          footer: 'Sistema de Entrevistas IA - Grupo Maximus',
+          title: 'Entrevista de Emprego',
+          buttonText: 'Escolha uma opção',
+          sections: [{
+            title: 'Opções de Entrevista',
+            rows: [
+              {
+                rowId: `start_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
+                title: '✅ Sim, começar agora',
+                description: 'Iniciar a entrevista por voz'
+              },
+              {
+                rowId: `decline_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
+                title: '❌ Não quero participar',
+                description: 'Recusar a entrevista'
+              }
+            ]
+          }]
+        };
 
-      return true;
+        try {
+          const listResult = await this.socket.sendMessage(jid, listMessage);
+          console.log(`✅ [DEBUG] Lista interativa enviada:`, listResult?.key || 'sem key');
+          return true;
+        } catch (listError) {
+          console.log(`⚠️ [DEBUG] Lista também falhou, usando texto simples:`, listError);
+          // Fallback final para texto simples com instruções
+          const textMessage = `${finalMessage}
+
+*Responda com:*
+• "SIM" ou "1" para começar a entrevista
+• "NÃO" ou "2" para não participar`;
+          
+          return await this.sendTextMessage(phoneNumber, textMessage);
+        }
+      }
+
     } catch (error) {
-      console.error(`❌ Erro ao enviar convite com botões:`, error);
-      // Fallback para mensagem simples se botões falharem
-      return await this.sendTextMessage(phoneNumber, finalMessage);
+      console.error(`❌ Erro geral ao enviar convite:`, error);
+      return false;
     }
   }
 
