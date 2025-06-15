@@ -91,6 +91,33 @@ const authorize = (roles: string[]) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Rota específica para servir arquivos de áudio com headers corretos
+  app.get('/audio/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const audioPath = path.join(process.cwd(), 'uploads', filename);
+    
+    console.log(`🎵 Servindo áudio: ${filename} de ${audioPath}`);
+    
+    if (!fs.existsSync(audioPath)) {
+      console.log(`❌ Arquivo não encontrado: ${audioPath}`);
+      return res.status(404).json({ error: 'Arquivo de áudio não encontrado' });
+    }
+    
+    // Headers específicos para áudio .ogg
+    res.setHeader('Content-Type', 'audio/ogg; codecs=opus');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    const stat = fs.statSync(audioPath);
+    res.setHeader('Content-Length', stat.size);
+    
+    console.log(`✅ Enviando áudio: ${filename} (${stat.size} bytes)`);
+    
+    const readStream = fs.createReadStream(audioPath);
+    readStream.pipe(res);
+  });
+  
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -2700,7 +2727,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
             questionId: questionId,
             questionText: questionTexts[questionId] || `Pergunta ${questionId + 1}`,
             responseText: responseData.transcription || '',
-            audioFile: responseData.audioUrl || '',
+            audioFile: responseData.audioUrl ? `/audio/${responseData.audioUrl}` : '',
             timestamp: responseData.createdAt ? new Date(responseData.createdAt.seconds * 1000).toISOString() : new Date().toISOString()
           };
         });
