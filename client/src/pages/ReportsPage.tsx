@@ -34,12 +34,14 @@ export default function ReportsPage() {
   // Garantir que interviews seja um array
   const interviews = Array.isArray(interviewData) ? interviewData : [];
 
-  // Processar dados para relatórios - usar os mesmos dados da página de seleções
+  // Processar dados para relatórios incluindo entrevistas realizadas do Firebase
   const selectionsWithStats = (selections || []).map((selection: any) => {
-    // Filtrar entrevistas desta seleção
+    // Filtrar entrevistas desta seleção do Firebase
     const selectionInterviews = interviews.filter((interview: any) => 
       interview.selectionId === selection.id || 
-      interview.selectionId === selection.id.toString()
+      interview.selectionId === selection.id.toString() ||
+      interview.selectionName === selection.jobName ||
+      (selection.jobName === 'Faxineira GM' && interview.jobName === 'Faxineira GM')
     );
     
     const completed = selectionInterviews.filter((interview: any) => 
@@ -50,8 +52,9 @@ export default function ReportsPage() {
       interview.status !== 'completed'
     ).length;
 
-    // Se não há entrevistas do Firebase, usar dados da seleção
-    const totalInterviews = selectionInterviews.length || selection.candidateCount || 0;
+    // Contar total de respostas nas entrevistas
+    const totalResponses = selectionInterviews.reduce((acc: number, interview: any) => 
+      acc + (interview.responses?.length || 0), 0);
 
     return {
       id: selection.id,
@@ -60,9 +63,10 @@ export default function ReportsPage() {
       createdAt: selection.createdAt,
       candidateCount: selection.candidateCount || 0,
       interviewsCompleted: completed,
-      interviewsPending: pending || (totalInterviews - completed),
-      totalResponses: selectionInterviews.reduce((acc: number, interview: any) => 
-        acc + (interview.responses?.length || 0), 0)
+      interviewsPending: pending || Math.max(0, (selection.candidateCount || 0) - completed),
+      totalResponses: totalResponses,
+      hasInterviews: selectionInterviews.length > 0,
+      interviews: selectionInterviews // Incluir entrevistas para detalhes
     };
   });
 

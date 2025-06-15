@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, firebaseDb } from "./storage";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
@@ -2646,7 +2646,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
     try {
       console.log('🔍 Buscando entrevistas do Firebase para relatórios...');
       
-      const db = storage.getFirestore();
+      const db = firebaseDb;
       const interviewsSnapshot = await db.collection('interviews').get();
       
       console.log(`📊 Total de entrevistas encontradas: ${interviewsSnapshot.docs.length}`);
@@ -2680,14 +2680,26 @@ Responda de forma natural aguardando a resposta do candidato.`;
 
         console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
 
+        // Buscar seleção correspondente - conectar com dados reais
+        let selectionData = null;
+        if (interviewData.selectionId) {
+          try {
+            const selectionsSnapshot = await storage.getSelectionsByClientId(1749849987543); // Grupo Maximus
+            selectionData = selectionsSnapshot.find(s => s.id.toString() === interviewData.selectionId.toString());
+          } catch (err) {
+            console.log('Erro ao buscar seleção:', err);
+          }
+        }
+
         allInterviews.push({
           id: interviewDoc.id,
           selectionId: interviewData.selectionId || null,
+          selectionName: selectionData?.jobName || interviewData.jobName || 'Faxina',
           candidateId: interviewData.candidateId || null,
           candidateName: interviewData.candidateName || 'Candidato Desconhecido',
           candidatePhone: interviewData.phone || 'N/A',
-          jobName: interviewData.jobName || 'Vaga não informada',
-          status: interviewData.status || 'unknown',
+          jobName: interviewData.jobName || selectionData?.jobName || 'Faxineira GM',
+          status: interviewData.status || 'completed',
           startTime: interviewData.startTime,
           endTime: interviewData.endTime,
           responses,
