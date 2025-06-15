@@ -123,6 +123,7 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Rotas backend completas**: /api/whatsapp-qr/ com status, teste, conexão e envio de campanhas
   - **Importação dinâmica**: Baileys carregado corretamente com async import para resolver problemas ES modules
   - **Teste validado**: Mensagem de teste enviada com sucesso via WhatsApp QR
+  - **Persistência no banco**: Conexão WhatsApp QR salva automaticamente em api_configs com status, telefone e timestamp
 
 - June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema "Preparando..." resolvido
   - **Processamento em tempo real corrigido**: Sistema não trava mais em "Preparando..." ao processar respostas
