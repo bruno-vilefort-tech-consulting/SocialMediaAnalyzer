@@ -612,7 +612,7 @@ function PerguntaCard({
                 onChange={(e) => setEditPergunta(e.target.value.slice(0, 100))}
                 maxLength={100}
               />
-              <p className="text-xs text-muted-foreground">{editPergunta.length}/100 caracteres</p>
+              <p className="text-xs text-muted-foreground">{editPergunta?.length || 0}/100 caracteres</p>
             </div>
             <div className="space-y-1">
               <Label>Resposta Perfeita</Label>
@@ -623,7 +623,7 @@ function PerguntaCard({
                 rows={3}
                 className="resize-y"
               />
-              <p className="text-xs text-muted-foreground">{editResposta.length}/1000 caracteres</p>
+              <p className="text-xs text-muted-foreground">{editResposta?.length || 0}/1000 caracteres</p>
             </div>
           </div>
         ) : (
