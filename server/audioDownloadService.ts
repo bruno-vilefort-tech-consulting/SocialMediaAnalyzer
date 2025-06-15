@@ -44,59 +44,69 @@ export class AudioDownloadService {
         child: () => silentLogger
       };
 
-      // Método 1: Download com socket do WhatsApp
+      // Método 1: Download direto com downloadMediaMessage
+      try {
+        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 1: downloadMediaMessage direto`);
+        
+        const audioBuffer = await downloadMediaMessage(
+          audioMessage,
+          'buffer',
+          {},
+          {
+            logger: silentLogger,
+            reuploadRequest: this.whatsappService?.socket?.updateMediaMessage
+          }
+        );
+        
+        if (audioBuffer && audioBuffer.length > 0) {
+          console.log(`✅ [AUDIO_DOWNLOAD] Sucesso método 1 - ${audioBuffer.length} bytes`);
+          return audioBuffer;
+        }
+      } catch (method1Error: any) {
+        console.log(`⚠️ [AUDIO_DOWNLOAD] Método 1 falhou:`, method1Error?.message || 'Erro desconhecido');
+      }
+
+      // Método 2: Download direto sem parâmetros extras
+      try {
+        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 2: Download direto simples`);
+        const audioBuffer = await downloadMediaMessage(audioMessage, 'buffer');
+        
+        if (audioBuffer && audioBuffer.length > 0) {
+          console.log(`✅ [AUDIO_DOWNLOAD] Sucesso método 2 - ${audioBuffer.length} bytes`);
+          return audioBuffer;
+        }
+      } catch (directError: any) {
+        console.log(`⚠️ [AUDIO_DOWNLOAD] Método 2 falhou:`, directError?.message || 'Erro desconhecido');
+      }
+
+      // Método 3: Com socket caso disponível
       if (this.whatsappService?.socket) {
         try {
-          console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 1: Com socket WhatsApp`);
+          console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 3: Com socket disponível`);
           
           const audioBuffer = await downloadMediaMessage(
             audioMessage,
             'buffer',
             {},
             {
-              logger: {
-                level: 'silent',
-                debug: () => {},
-                info: () => {},
-                warn: () => {},
-                error: () => {},
-                child: () => ({ 
-                  debug: () => {}, 
-                  info: () => {}, 
-                  warn: () => {}, 
-                  error: () => {},
-                  level: 'silent'
-                })
-              }
+              logger: silentLogger,
+              reuploadRequest: this.whatsappService.socket.updateMediaMessage
             }
           );
           
           if (audioBuffer && audioBuffer.length > 0) {
-            console.log(`✅ [AUDIO_DOWNLOAD] Sucesso com socket - ${audioBuffer.length} bytes`);
+            console.log(`✅ [AUDIO_DOWNLOAD] Sucesso método 3 - ${audioBuffer.length} bytes`);
             return audioBuffer;
           }
+          
         } catch (socketError: any) {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Socket falhou:`, socketError?.message || 'Erro desconhecido');
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Método 3 falhou:`, socketError?.message || 'Erro desconhecido');
         }
       }
 
-      // Método 2: Download direto
+      // Método 4: Verificar URL direta
       try {
-        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 2: Download direto`);
-        
-        const audioBuffer = await downloadMediaMessage(audioMessage, 'buffer');
-        
-        if (audioBuffer && audioBuffer.length > 0) {
-          console.log(`✅ [AUDIO_DOWNLOAD] Sucesso direto - ${audioBuffer.length} bytes`);
-          return audioBuffer;
-        }
-      } catch (directError: any) {
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Download direto falhou:`, directError?.message || 'Erro desconhecido');
-      }
-
-      // Método 3: Verificar URL direta
-      try {
-        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 3: Verificando URL direta`);
+        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 4: Verificando URL direta`);
         
         const audioMsg = audioMessage?.message?.audioMessage;
         if (audioMsg?.url) {
@@ -115,24 +125,6 @@ export class AudioDownloadService {
         }
       } catch (urlError: any) {
         console.log(`⚠️ [AUDIO_DOWNLOAD] Download via URL falhou:`, urlError?.message || 'Erro desconhecido');
-      }
-
-      // Método 4: Usar downloadMediaMessage diretamente do Baileys
-      try {
-        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 4: downloadMediaMessage direto`);
-        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-        
-        const buffer = await downloadMediaMessage(audioMessage, 'buffer', {}, {
-          logger: this.logger,
-          reuploadRequest: this.whatsappService?.sock?.updateMediaMessage
-        });
-        
-        if (buffer && buffer.length > 0) {
-          console.log(`✅ [AUDIO_DOWNLOAD] Sucesso via Baileys direto - ${buffer.length} bytes`);
-          return buffer;
-        }
-      } catch (baileysError: any) {
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Baileys direto falhou:`, baileysError?.message || 'Erro desconhecido');
       }
 
       console.log(`❌ [AUDIO_DOWNLOAD] Todos os métodos falharam`);
