@@ -24,18 +24,22 @@ export default function ReportsPage() {
     queryKey: ['/api/selections'],
   });
 
-  const { data: interviewData } = useQuery({
+  // Buscar dados de entrevistas do Firebase para cada seleção
+  const { data: interviewData = [] } = useQuery({
     queryKey: ['/api/interview-responses'],
+    retry: 1,
+    retryOnMount: false
   });
 
   // Garantir que interviews seja um array
-  const interviews = Array.isArray(interviewData) ? interviewData : 
-                    (interviewData?.responses || []);
+  const interviews = Array.isArray(interviewData) ? interviewData : [];
 
-  // Processar dados para relatórios
-  const selectionsWithStats = (selections || []).map((selection: Selection) => {
+  // Processar dados para relatórios - usar os mesmos dados da página de seleções
+  const selectionsWithStats = (selections || []).map((selection: any) => {
+    // Filtrar entrevistas desta seleção
     const selectionInterviews = interviews.filter((interview: any) => 
-      interview.selectionId === selection.id
+      interview.selectionId === selection.id || 
+      interview.selectionId === selection.id.toString()
     );
     
     const completed = selectionInterviews.filter((interview: any) => 
@@ -43,13 +47,22 @@ export default function ReportsPage() {
     ).length;
     
     const pending = selectionInterviews.filter((interview: any) => 
-      interview.status === 'in_progress' || interview.status === 'pending'
+      interview.status !== 'completed'
     ).length;
 
+    // Se não há entrevistas do Firebase, usar dados da seleção
+    const totalInterviews = selectionInterviews.length || selection.candidateCount || 0;
+
     return {
-      ...selection,
+      id: selection.id,
+      jobName: selection.jobName,
+      status: selection.status,
+      createdAt: selection.createdAt,
+      candidateCount: selection.candidateCount || 0,
       interviewsCompleted: completed,
-      interviewsPending: pending
+      interviewsPending: pending || (totalInterviews - completed),
+      totalResponses: selectionInterviews.reduce((acc: number, interview: any) => 
+        acc + (interview.responses?.length || 0), 0)
     };
   });
 

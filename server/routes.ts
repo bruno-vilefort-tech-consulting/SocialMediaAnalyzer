@@ -2641,19 +2641,29 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
-  // Buscar respostas de entrevista do Firebase
+  // Buscar entrevistas realizadas no Firebase para relatórios
   app.get("/api/interview-responses", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
-      const allInterviews: any[] = [];
+      console.log('🔍 Buscando entrevistas do Firebase para relatórios...');
       
-      // Buscar entrevistas do Firebase
-      const interviewsSnapshot = await storage.firestore.collection('interviews').get();
+      const db = storage.getFirestore();
+      const interviewsSnapshot = await db.collection('interviews').get();
+      
+      console.log(`📊 Total de entrevistas encontradas: ${interviewsSnapshot.docs.length}`);
+      
+      const allInterviews: any[] = [];
       
       for (const interviewDoc of interviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
         
+        console.log(`📝 Processando entrevista ${interviewDoc.id}:`, {
+          status: interviewData.status,
+          candidateName: interviewData.candidateName,
+          jobName: interviewData.jobName
+        });
+        
         // Buscar respostas desta entrevista
-        const responsesSnapshot = await storage.firestore
+        const responsesSnapshot = await db
           .collection('interview_responses')
           .where('interviewId', '==', interviewDoc.id)
           .get();
@@ -2663,49 +2673,35 @@ Responda de forma natural aguardando a resposta do candidato.`;
           return {
             questionText: responseData.questionText || '',
             responseText: responseData.responseText || '',
-            audioUrl: responseData.audioFile || '',
+            audioFile: responseData.audioFile || '',
             timestamp: responseData.timestamp || new Date().toISOString()
           };
         });
 
-        // Buscar informações do candidato
-        let candidateName = 'Candidato Desconhecido';
-        let candidatePhone = 'N/A';
-        
-        if (interviewData.candidateId) {
-          try {
-            const candidateDoc = await storage.firestore
-              .collection('candidates')
-              .doc(interviewData.candidateId.toString())
-              .get();
-            
-            if (candidateDoc.exists) {
-              const candidateData = candidateDoc.data();
-              candidateName = candidateData?.name || candidateName;
-              candidatePhone = candidateData?.whatsapp || candidateData?.phone || candidatePhone;
-            }
-          } catch (candidateError) {
-            console.log('Erro ao buscar candidato:', candidateError);
-          }
-        }
+        console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
 
         allInterviews.push({
           id: interviewDoc.id,
-          interviewId: interviewDoc.id,
-          candidateName,
-          candidatePhone,
-          status: interviewData.status || 'pending',
-          selectionId: interviewData.selectionId,
+          selectionId: interviewData.selectionId || null,
+          candidateId: interviewData.candidateId || null,
+          candidateName: interviewData.candidateName || 'Candidato Desconhecido',
+          candidatePhone: interviewData.phone || 'N/A',
+          jobName: interviewData.jobName || 'Vaga não informada',
+          status: interviewData.status || 'unknown',
+          startTime: interviewData.startTime,
+          endTime: interviewData.endTime,
           responses,
           totalQuestions: interviewData.totalQuestions || responses.length,
           answeredQuestions: responses.length
         });
       }
       
+      console.log(`✅ Retornando ${allInterviews.length} entrevistas para relatórios`);
       res.json(allInterviews);
+      
     } catch (error) {
-      console.error('Erro ao buscar respostas:', error);
-      res.status(500).json({ error: 'Erro ao buscar respostas' });
+      console.error('❌ Erro ao buscar entrevistas:', error);
+      res.status(500).json({ error: 'Erro ao buscar entrevistas' });
     }
   });
 
