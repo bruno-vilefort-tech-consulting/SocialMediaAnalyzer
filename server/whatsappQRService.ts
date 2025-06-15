@@ -248,16 +248,47 @@ export class WhatsAppQRService {
       console.log(`📋 [DEBUG] Job válido encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
       console.log(`📝 [DEBUG] Primeira pergunta:`, job.perguntas[0]);
 
-      // Criar registro de entrevista
-      console.log(`💾 [DEBUG] Criando registro de entrevista...`);
-      const interview = await storage.createInterview({
-        selectionId: selectionId,
-        candidateId: 0, // Placeholder - buscar pelo telefone depois
-        token: `whatsapp_${Date.now()}`,
-        status: 'in_progress'
+      // Buscar candidato pelo telefone
+      const phoneClean = phoneNumber.replace('@s.whatsapp.net', '');
+      console.log(`🔍 [DEBUG] Buscando candidato para telefone: ${phoneClean}`);
+      
+      const allCandidates = await storage.getAllCandidates();
+      const candidate = allCandidates.find(c => {
+        if (!c.phone) return false;
+        const candidatePhone = c.phone.replace(/\D/g, '');
+        const searchPhone = phoneClean.replace(/\D/g, '');
+        return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
       });
+      
+      if (!candidate) {
+        console.log(`❌ [DEBUG] Candidato não encontrado para ${phoneClean}`);
+        await this.sendTextMessage(phoneNumber, "Erro: candidato não encontrado.");
+        return;
+      }
+      
+      console.log(`✅ [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
 
-      console.log(`🆔 [DEBUG] Entrevista criada com ID: ${interview.id}`);
+      // Verificar se já existe entrevista em andamento
+      const allInterviews = await storage.getAllInterviews();
+      let interview = allInterviews.find(i => 
+        i.selectionId === selectionId && 
+        i.candidateId === candidate.id && 
+        i.status === 'in_progress'
+      );
+      
+      if (!interview) {
+        // Criar nova entrevista apenas se não existir
+        console.log(`💾 [DEBUG] Criando nova entrevista...`);
+        interview = await storage.createInterview({
+          selectionId: selectionId,
+          candidateId: candidate.id,
+          token: `whatsapp_${Date.now()}`,
+          status: 'in_progress'
+        });
+        console.log(`🆔 [DEBUG] Nova entrevista criada com ID: ${interview.id}`);
+      } else {
+        console.log(`🔄 [DEBUG] Usando entrevista existente: ID ${interview.id}`);
+      }
 
       // Enviar primeira pergunta por áudio
       console.log(`🎵 [DEBUG] Chamando sendQuestionAudio para primeira pergunta...`);

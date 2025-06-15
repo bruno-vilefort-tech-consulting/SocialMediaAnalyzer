@@ -1149,6 +1149,59 @@ export class FirebaseStorage implements IStorage {
       return { activeJobs: 0, totalCandidates: 0, monthlyInterviews: 0, monthlyLimit: 100, currentUsage: 0 };
     }
   }
+
+  // Global getters implementation
+  async getAllCandidates(): Promise<Candidate[]> {
+    try {
+      const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+      return candidatesSnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Candidate[];
+    } catch (error) {
+      console.error('Erro ao buscar todos os candidatos:', error);
+      return [];
+    }
+  }
+
+  async getAllInterviews(): Promise<Interview[]> {
+    try {
+      const interviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
+      return interviewsSnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Interview[];
+    } catch (error) {
+      console.error('Erro ao buscar todas as entrevistas:', error);
+      return [];
+    }
+  }
+
+  async getAllResponses(): Promise<Response[]> {
+    try {
+      const responsesSnapshot = await getDocs(collection(firebaseDb, 'responses'));
+      return responsesSnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Response[];
+    } catch (error) {
+      console.error('Erro ao buscar todas as respostas:', error);
+      return [];
+    }
+  }
+
+  async getAllSelections(): Promise<Selection[]> {
+    try {
+      const selectionsSnapshot = await getDocs(collection(firebaseDb, 'selections'));
+      return selectionsSnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Selection[];
+    } catch (error) {
+      console.error('Erro ao buscar todas as seleções:', error);
+      return [];
+    }
+  }
 }
 
 export class DatabaseStorage implements IStorage {
