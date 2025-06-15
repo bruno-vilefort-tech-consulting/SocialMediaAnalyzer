@@ -526,13 +526,23 @@ export class WhatsAppQRService {
           });
           
           if (candidate) {
-            console.log(`👤 [DEBUG] Candidato encontrado: ${candidate.name}`);
+            console.log(`👤 [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
             
             // Buscar seleção mais recente que inclua este candidato
+            console.log(`🔍 [DEBUG] Buscando todas as seleções...`);
             const allSelections = await storage.getAllSelections();
+            console.log(`📋 [DEBUG] Total de seleções encontradas: ${allSelections.length}`);
+            console.log(`📋 [DEBUG] Seleções:`, allSelections.map(s => ({ 
+              id: s.id, 
+              name: s.name, 
+              status: s.status, 
+              candidateListId: s.candidateListId 
+            })));
+            
             const candidateSelections = allSelections.filter(s => 
               s.candidateListId && s.status === 'enviado'
             );
+            console.log(`📋 [DEBUG] Seleções com status 'enviado': ${candidateSelections.length}`);
             
             if (candidateSelections.length > 0) {
               // Pegar a seleção mais recente
@@ -540,7 +550,13 @@ export class WhatsAppQRService {
                 new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
               )[0];
               
-              console.log(`📋 [DEBUG] Seleção encontrada: ${selection.name} (ID: ${selection.id})`);
+              console.log(`📋 [DEBUG] Seleção mais recente encontrada: ${selection.name} (ID: ${selection.id})`);
+              console.log(`📋 [DEBUG] Detalhes da seleção:`, { 
+                id: selection.id, 
+                jobId: selection.jobId, 
+                clientId: selection.clientId, 
+                candidateListId: selection.candidateListId 
+              });
               
               // Buscar job e suas perguntas
               console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId}`);
@@ -549,22 +565,37 @@ export class WhatsAppQRService {
               if (!job) {
                 console.log(`⚠️ [DEBUG] Job não encontrado com ID exato, tentando busca por partial match`);
                 const allJobs = await storage.getJobsByClientId(selection.clientId);
-                console.log(`📋 [DEBUG] Jobs disponíveis:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga })));
+                console.log(`📋 [DEBUG] Jobs disponíveis:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga, perguntas: j.perguntas?.length || 0 })));
                 job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
+                if (job) {
+                  console.log(`✅ [DEBUG] Job encontrado via partial match: ${job.nomeVaga}`);
+                }
+              } else {
+                console.log(`✅ [DEBUG] Job encontrado com ID exato: ${job.nomeVaga}`);
               }
               
               if (job && job.perguntas && job.perguntas.length > 0) {
-                console.log(`❓ [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
-                console.log(`📝 [DEBUG] Perguntas:`, job.perguntas.map((p, i) => `${i+1}. ${p.pergunta}`));
+                console.log(`❓ [DEBUG] Job válido com ${job.perguntas.length} perguntas`);
+                console.log(`📝 [DEBUG] Primeira pergunta: ${job.perguntas[0].pergunta}`);
                 
                 // Iniciar processo de entrevista
-                console.log(`🚀 [DEBUG] Chamando startInterviewProcess...`);
+                console.log(`🚀 [DEBUG] ===== CHAMANDO START INTERVIEW PROCESS =====`);
                 await this.startInterviewProcess(from, selection.id, candidate.name);
+                console.log(`✅ [DEBUG] ===== START INTERVIEW PROCESS FINALIZADO =====`);
                 return;
               } else {
-                console.log(`❌ [DEBUG] Job não encontrado ou sem perguntas. Job:`, job ? { id: job.id, nome: job.nomeVaga, perguntas: job.perguntas?.length || 0 } : 'null');
+                console.log(`❌ [DEBUG] Job inválido - sem perguntas`);
+                if (job) {
+                  console.log(`❌ [DEBUG] Job encontrado mas perguntas:`, job.perguntas);
+                } else {
+                  console.log(`❌ [DEBUG] Job não encontrado`);
+                }
               }
+            } else {
+              console.log(`❌ [DEBUG] Nenhuma seleção com status 'enviado' encontrada`);
             }
+          } else {
+            console.log(`❌ [DEBUG] Candidato não encontrado para telefone: ${phoneClean}`);
           }
           
           // Fallback se não encontrar dados
