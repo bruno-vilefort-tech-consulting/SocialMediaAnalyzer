@@ -1,4 +1,5 @@
-import makeWASocket, { useMultiFileAuthState, ConnectionState, WASocket, proto } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, ConnectionState, DisconnectReason } from '@whiskeysockets/baileys';
+import type { WASocket, proto } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import { storage } from './storage';
