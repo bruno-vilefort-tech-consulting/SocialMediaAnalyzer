@@ -2615,18 +2615,50 @@ Responda de forma natural aguardando a resposta do candidato.`;
   // Verificar respostas de entrevista no banco
   app.get("/api/interview-responses", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
-      const { getDocs, collection } = await import('firebase/firestore');
-      const { firebaseDb } = await import('./storage');
+      // Buscar entrevistas ativas do SimpleInterviewService
+      const { simpleInterviewService } = await import('./simpleInterviewService');
+      const activeInterviews = simpleInterviewService.getActiveInterviews();
       
-      const responsesSnapshot = await getDocs(collection(firebaseDb, 'interview_responses'));
-      const responses = responsesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const allResponses: any[] = [];
+      
+      // Extrair respostas das entrevistas ativas
+      activeInterviews.forEach((interview, phone) => {
+        interview.responses.forEach((response, index) => {
+          allResponses.push({
+            id: `${phone}-${index}`,
+            candidateName: interview.candidateName,
+            candidatePhone: phone,
+            jobName: interview.jobName,
+            questionId: response.questionId,
+            questionText: response.questionText,
+            responseText: response.responseText,
+            audioFile: response.audioFile,
+            timestamp: response.timestamp,
+            interviewStartTime: interview.startTime
+          });
+        });
+      });
+
+      // Buscar também do Firebase se disponível
+      try {
+        const { getDocs, collection } = await import('firebase/firestore');
+        const { firebaseDb } = await import('./storage');
+        
+        const responsesSnapshot = await getDocs(collection(firebaseDb, 'interview_responses'));
+        const firebaseResponses = responsesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          source: 'firebase'
+        }));
+        
+        allResponses.push(...firebaseResponses);
+      } catch (firebaseError) {
+        console.log('Firebase não acessível, usando apenas dados em memória');
+      }
       
       res.json({
-        total: responses.length,
-        responses: responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        total: allResponses.length,
+        responses: allResponses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       });
     } catch (error) {
       console.error('Erro ao buscar respostas:', error);
