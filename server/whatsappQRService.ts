@@ -298,7 +298,7 @@ export class WhatsAppQRService {
         input: question.pergunta,
         voice: config.openaiVoice || "nova",
         response_format: "opus",  // OGG/Opus funciona melhor no mobile
-        speed: 0.85  // Velocidade mais lenta (0.25 a 4.0, padrão 1.0)
+        speed: 0.75  // Velocidade mais lenta para melhor compreensão
       };
       console.log(`🎙️ [DEBUG] Dados TTS:`, ttsData);
 
@@ -393,8 +393,8 @@ export class WhatsAppQRService {
       let audioBuffer: Buffer;
       
       try {
-        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-        audioBuffer = await downloadMediaMessage(message, 'buffer', {});
+        // Usar o socket diretamente para baixar mídia
+        audioBuffer = await this.socket.downloadMediaMessage(message);
         
         if (!audioBuffer) {
           console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio`);
