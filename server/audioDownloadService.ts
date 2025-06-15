@@ -106,21 +106,22 @@ export class AudioDownloadService {
         console.log(`⚠️ [AUDIO_DOWNLOAD] Download via URL falhou:`, urlError?.message || 'Erro desconhecido');
       }
 
-      // Método 4: Criar arquivo de áudio dummy para teste (temporário)
+      // Método 4: Usar downloadMediaMessage diretamente do Baileys
       try {
-        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 4: Criando arquivo dummy para manter fluxo`);
+        console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 4: downloadMediaMessage direto`);
+        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
         
-        // Criar um pequeno arquivo OGG vazio válido para manter o fluxo funcionando
-        const dummyOggHeader = Buffer.from([
-          0x4F, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1A, 0x00
-        ]);
+        const buffer = await downloadMediaMessage(audioMessage, 'buffer', {}, {
+          logger: this.logger,
+          reuploadRequest: this.whatsappService?.sock?.updateMediaMessage
+        });
         
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Usando arquivo dummy - ${dummyOggHeader.length} bytes`);
-        return dummyOggHeader;
-        
-      } catch (dummyError: any) {
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Método dummy falhou:`, dummyError?.message || 'Erro desconhecido');
+        if (buffer && buffer.length > 0) {
+          console.log(`✅ [AUDIO_DOWNLOAD] Sucesso via Baileys direto - ${buffer.length} bytes`);
+          return buffer;
+        }
+      } catch (baileysError: any) {
+        console.log(`⚠️ [AUDIO_DOWNLOAD] Baileys direto falhou:`, baileysError?.message || 'Erro desconhecido');
       }
 
       console.log(`❌ [AUDIO_DOWNLOAD] Todos os métodos falharam`);
