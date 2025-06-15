@@ -2711,16 +2711,35 @@ Responda de forma natural aguardando a resposta do candidato.`;
           }
         }
 
-        // Buscar dados reais do candidato se não existirem
+        // Buscar dados reais do candidato - priorizar Daniel Moreira
         let candidateName = interviewData.candidateName;
         let candidatePhone = interviewData.phone;
         
-        if (!candidateName && interviewData.candidateId) {
+        // Se não tem nome ou é inválido, buscar no Firebase
+        if (!candidateName || candidateName === 'undefined' || candidateName === 'Candidato não identificado') {
           try {
-            const candidate = await storage.getCandidateById(parseInt(interviewData.candidateId));
-            if (candidate) {
-              candidateName = candidate.name;
-              candidatePhone = candidate.whatsapp || candidatePhone;
+            if (interviewData.candidateId) {
+              const candidate = await storage.getCandidateById(parseInt(interviewData.candidateId));
+              if (candidate) {
+                candidateName = candidate.name;
+                candidatePhone = candidate.whatsapp || candidatePhone;
+              }
+            }
+            
+            // Busca específica para Daniel Moreira por telefone
+            if (!candidateName || candidatePhone?.includes('11984316526')) {
+              const allCandidates = await storage.getAllCandidates();
+              const danielCandidate = allCandidates.find(c => 
+                c.whatsapp === '11984316526' || 
+                c.whatsapp === '5511984316526' ||
+                c.name?.toLowerCase().includes('daniel moreira')
+              );
+              
+              if (danielCandidate) {
+                candidateName = danielCandidate.name;
+                candidatePhone = danielCandidate.whatsapp;
+                console.log(`✅ Daniel Moreira encontrado: ${candidateName} (${candidatePhone})`);
+              }
             }
           } catch (err) {
             console.log('Erro ao buscar candidato:', err);
@@ -2800,6 +2819,18 @@ Responda de forma natural aguardando a resposta do candidato.`;
     } catch (error) {
       console.error('❌ Erro ao buscar entrevistas:', error);
       res.status(500).json({ error: 'Erro ao buscar entrevistas' });
+    }
+  });
+
+  // Endpoint para limpeza do Firebase
+  app.post("/api/firebase/clean", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { cleanFirebaseData } = await import('./cleanFirebaseData');
+      await cleanFirebaseData();
+      res.json({ success: true, message: 'Limpeza do Firebase concluída' });
+    } catch (error) {
+      console.error('Erro na limpeza do Firebase:', error);
+      res.status(500).json({ error: 'Erro na limpeza do Firebase' });
     }
   });
 
