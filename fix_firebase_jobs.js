@@ -1,6 +1,6 @@
 // Script para corrigir problema das vagas no Firebase
-const { initializeApp } = require('firebase/app');
-const { getFirestore, collection, getDocs, doc, deleteDoc, setDoc } = require('firebase/firestore');
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
