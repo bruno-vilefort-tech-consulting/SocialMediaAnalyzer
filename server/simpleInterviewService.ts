@@ -338,11 +338,15 @@ class SimpleInterviewService {
         // Transcrever com OpenAI Whisper
         const FormData = (await import('form-data')).default;
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(tempAudioPath));
+        formData.append('file', fs.createReadStream(tempAudioPath), {
+          filename: 'audio.webm',
+          contentType: 'audio/webm'
+        });
         formData.append('model', 'whisper-1');
         formData.append('language', 'pt');
         
         console.log(`🌐 [WHISPER] Enviando para OpenAI Whisper API...`);
+        console.log(`🔑 [WHISPER] API Key presente: ${process.env.OPENAI_API_KEY ? 'SIM' : 'NÃO'}`);
         
         const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
           method: 'POST',
