@@ -850,6 +850,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const selection = await storage.createSelection(selectionData);
       
+      // Envio automático via WhatsApp
+      if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'whatsapp' || selection.sendVia === 'both')) {
+        console.log('🚀 [AUTO] Iniciando envio automático via WhatsApp');
+        
+        try {
+          const { whatsappQRService } = await import('./whatsappQRService');
+          
+          // Buscar job e candidatos
+          let job = await storage.getJobById(selection.jobId);
+          if (!job) {
+            const allJobs = await storage.getJobsByClientId(selection.clientId);
+            job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
+          }
+
+          if (job) {
+            const candidates = await storage.getCandidatesByListId(selection.candidateListId);
+            
+            if (candidates.length > 0) {
+              let sentCount = 0;
+              let errorCount = 0;
+
+              console.log(`📱 [AUTO] Enviando para ${candidates.length} candidatos automaticamente`);
+
+              for (const candidate of candidates) {
+                try {
+                  if (!candidate.phone) {
+                    console.log(`⚠️ [AUTO] Candidato ${candidate.name} sem telefone, pulando...`);
+                    errorCount++;
+                    continue;
+                  }
+
+                  // Formatar telefone
+                  let phone = candidate.phone.replace(/\D/g, '');
+                  if (!phone.startsWith('55')) {
+                    phone = '55' + phone;
+                  }
+
+                  console.log(`📨 [AUTO] Enviando para ${candidate.name} (${phone})`);
+                  const success = await whatsappQRService.sendInterviewInvitation(
+                    phone,
+                    candidate.name,
+                    job.nomeVaga,
+                    selection.whatsappTemplate,
+                    selection.id
+                  );
+
+                  if (success) {
+                    sentCount++;
+                    console.log(`✅ [AUTO] Enviado para ${candidate.name}`);
+                  } else {
+                    errorCount++;
+                    console.log(`❌ [AUTO] Falha para ${candidate.name}`);
+                  }
+
+                  // Pequena pausa entre envios
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                } catch (candidateError) {
+                  console.error(`❌ [AUTO] Erro ao enviar para ${candidate.name}:`, candidateError);
+                  errorCount++;
+                }
+              }
+
+              console.log(`✅ [AUTO] Envio automático via WhatsApp finalizado: ${sentCount} enviados, ${errorCount} erros`);
+            }
+          }
+        } catch (autoSendError) {
+          console.error('❌ [AUTO] Erro no envio automático via WhatsApp:', autoSendError);
+        }
+      }
+      
       // Enviar emails automaticamente se a seleção for criada como "active"
       if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'email' || selection.sendVia === 'both')) {
         console.log('🚀 INICIANDO ENVIO AUTOMÁTICO DE EMAILS - Selection ID:', selection.id);

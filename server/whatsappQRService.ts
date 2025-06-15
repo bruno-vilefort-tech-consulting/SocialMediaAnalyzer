@@ -458,19 +458,19 @@ Você gostaria de iniciar a entrevista?`;
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
       
-      // Criar mensagem com botões (formato correto para Baileys)
+      // Criar mensagem com botões (formato mais simples para máxima compatibilidade)
       const messageWithButtons = {
         text: finalMessage,
-        footer: 'Sistema de Entrevistas IA - Grupo Maximus',
+        footer: 'Sistema de Entrevistas IA',
         buttons: [
           {
-            buttonId: `start_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
-            buttonText: { displayText: '✅ Sim, começar agora' },
+            buttonId: `start_${selectionId}_${Date.now()}`,
+            buttonText: { displayText: 'Sim, começar agora' },
             type: 1
           },
           {
-            buttonId: `decline_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
-            buttonText: { displayText: '❌ Não quero participar' },
+            buttonId: `decline_${selectionId}_${Date.now()}`,
+            buttonText: { displayText: 'Não quero participar' },
             type: 1
           }
         ],
@@ -480,50 +480,90 @@ Você gostaria de iniciar a entrevista?`;
       console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
       
       try {
-        // Primeiro tenta enviar com botões
-        const result = await this.socket.sendMessage(jid, messageWithButtons);
-        console.log(`✅ [DEBUG] Mensagem com botões enviada:`, result?.key || 'sem key');
-        return true;
-      } catch (buttonError) {
-        console.log(`⚠️ [DEBUG] Botões falharam, tentando lista interativa:`, buttonError);
-        
-        // Fallback para lista interativa
-        const listMessage = {
+        // Tentar Quick Reply buttons primeiro (mais compatível)
+        const quickReplyMessage = {
           text: finalMessage,
-          footer: 'Sistema de Entrevistas IA - Grupo Maximus',
-          title: 'Entrevista de Emprego',
-          buttonText: 'Escolha uma opção',
-          sections: [{
-            title: 'Opções de Entrevista',
-            rows: [
-              {
-                rowId: `start_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
-                title: '✅ Sim, começar agora',
-                description: 'Iniciar a entrevista por voz'
-              },
-              {
-                rowId: `decline_interview_${selectionId}_${candidateName.replace(/\s+/g, '_')}`,
-                title: '❌ Não quero participar',
-                description: 'Recusar a entrevista'
-              }
-            ]
-          }]
+          footer: 'Sistema de Entrevistas IA',
+          buttons: [
+            {
+              buttonId: `start_${selectionId}_${Date.now()}`,
+              buttonText: { displayText: 'Sim, começar agora' },
+              type: 1
+            },
+            {
+              buttonId: `decline_${selectionId}_${Date.now()}`,
+              buttonText: { displayText: 'Não quero participar' },
+              type: 1
+            }
+          ],
+          headerType: 1
         };
 
+        console.log(`🔄 [DEBUG] Tentando Quick Reply buttons...`);
+        const quickResult = await this.socket.sendMessage(jid, quickReplyMessage);
+        console.log(`✅ [DEBUG] Quick Reply buttons enviados:`, quickResult?.key || 'sem key');
+        return true;
+        
+      } catch (quickError) {
+        console.log(`⚠️ [DEBUG] Quick Reply falhou, tentando botões simples:`, quickError);
+        
         try {
-          const listResult = await this.socket.sendMessage(jid, listMessage);
-          console.log(`✅ [DEBUG] Lista interativa enviada:`, listResult?.key || 'sem key');
+          // Fallback para botões mais simples
+          const simpleButtons = {
+            text: finalMessage,
+            buttons: [
+              { buttonId: `start_${selectionId}`, buttonText: { displayText: 'Sim' }, type: 1 },
+              { buttonId: `decline_${selectionId}`, buttonText: { displayText: 'Não' }, type: 1 }
+            ]
+          };
+          
+          const simpleResult = await this.socket.sendMessage(jid, simpleButtons);
+          console.log(`✅ [DEBUG] Botões simples enviados:`, simpleResult?.key || 'sem key');
           return true;
-        } catch (listError) {
-          console.log(`⚠️ [DEBUG] Lista também falhou, usando texto simples:`, listError);
-          // Fallback final para texto simples com instruções
-          const textMessage = `${finalMessage}
+          
+        } catch (simpleError) {
+          console.log(`⚠️ [DEBUG] Botões simples falharam, tentando lista:`, simpleError);
+          
+          try {
+            // Fallback para lista interativa
+            const listMessage = {
+              text: finalMessage,
+              footer: 'Sistema de Entrevistas IA',
+              title: 'Entrevista de Emprego',
+              buttonText: 'Escolha uma opção',
+              sections: [{
+                title: 'Opções',
+                rows: [
+                  {
+                    rowId: `start_${selectionId}_${Date.now()}`,
+                    title: 'Sim, começar agora',
+                    description: 'Iniciar a entrevista'
+                  },
+                  {
+                    rowId: `decline_${selectionId}_${Date.now()}`,
+                    title: 'Não quero participar',
+                    description: 'Recusar a entrevista'
+                  }
+                ]
+              }]
+            };
+
+            const listResult = await this.socket.sendMessage(jid, listMessage);
+            console.log(`✅ [DEBUG] Lista interativa enviada:`, listResult?.key || 'sem key');
+            return true;
+            
+          } catch (listError) {
+            console.log(`⚠️ [DEBUG] Lista também falhou, usando texto simples:`, listError);
+            
+            // Fallback final para texto simples
+            const textMessage = `${finalMessage}
 
 *Responda com:*
 • "SIM" ou "1" para começar a entrevista
 • "NÃO" ou "2" para não participar`;
-          
-          return await this.sendTextMessage(phoneNumber, textMessage);
+            
+            return await this.sendTextMessage(phoneNumber, textMessage);
+          }
         }
       }
 

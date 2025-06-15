@@ -627,19 +627,7 @@ export default function SelectionsPage() {
                         </Button>
                         
                         {(selection.status === 'draft' || selection.status === 'active') && (
-                          <div className="flex gap-1">
-                            {(selection.sendVia === 'whatsapp' || selection.sendVia === 'both') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => sendWhatsAppQRCampaignMutation.mutate(selection.id)}
-                                disabled={sendWhatsAppQRCampaignMutation.isPending}
-                                title="Enviar via WhatsApp"
-                                className="bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
-                              >
-                                <MessageCircle className="w-4 h-4 text-emerald-600" />
-                              </Button>
-                            )}
+                          <div className="flex gap-1">{/* Botão WhatsApp removido - envio agora é automático */}
                             
                             {(selection.sendVia === 'email' || selection.sendVia === 'both') && (
                               <Button
