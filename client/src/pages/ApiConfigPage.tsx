@@ -247,6 +247,58 @@ export default function ApiConfigPage() {
     saveConfigMutation.mutate(configData);
   };
 
+  // Test WhatsApp API (apenas master)
+  const testWhatsApp = async () => {
+    if (!whatsappToken || !whatsappPhoneId) {
+      toast({
+        title: "Erro",
+        description: "Configure as credenciais do WhatsApp primeiro",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTestStatus(prev => ({ ...prev, whatsapp: 'testing' }));
+
+    try {
+      const response = await fetch('/api/whatsapp/test', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem("auth_token")}`
+        },
+        body: JSON.stringify({ 
+          phoneNumber: "5511999999999", // Número de teste
+          message: "Teste de configuração WhatsApp - Sistema de Entrevistas AI"
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setTestStatus(prev => ({ ...prev, whatsapp: 'success' }));
+        toast({
+          title: "Teste WhatsApp bem-sucedido",
+          description: "WhatsApp Business API configurado corretamente",
+        });
+      } else {
+        setTestStatus(prev => ({ ...prev, whatsapp: 'error' }));
+        toast({
+          title: "Erro no teste WhatsApp",
+          description: result.error || "Verifique as credenciais do WhatsApp Business API",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setTestStatus(prev => ({ ...prev, whatsapp: 'error' }));
+      toast({
+        title: "Erro",
+        description: "Falha ao conectar com a API do WhatsApp",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getTestStatusIcon = (status: string) => {
     switch (status) {
       case 'testing':
@@ -480,6 +532,41 @@ export default function ApiConfigPage() {
                 value={whatsappPhoneId}
                 onChange={(e) => setWhatsappPhoneId(e.target.value)}
               />
+            </div>
+
+            <Button 
+              onClick={testWhatsApp}
+              disabled={testStatus.whatsapp === 'testing' || !whatsappToken || !whatsappPhoneId}
+              className="w-full"
+            >
+              {getTestStatusIcon(testStatus.whatsapp)}
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Testar WhatsApp Business API
+            </Button>
+
+            {testStatus.whatsapp === 'success' && (
+              <Badge variant="default" className="w-full justify-center bg-green-100 text-green-800">
+                <CheckCircle className="mr-1 h-3 w-3" />
+                WhatsApp Business API funcionando corretamente
+              </Badge>
+            )}
+
+            {testStatus.whatsapp === 'error' && (
+              <Badge variant="destructive" className="w-full justify-center">
+                <AlertCircle className="mr-1 h-3 w-3" />
+                Erro na configuração do WhatsApp
+              </Badge>
+            )}
+
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <h4 className="font-medium text-blue-900 mb-2">Como configurar WhatsApp Business API:</h4>
+              <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                <li>Acesse o <a href="https://developers.facebook.com/" target="_blank" className="underline">Meta for Developers</a></li>
+                <li>Crie um aplicativo e adicione o produto "WhatsApp Business"</li>
+                <li>Configure o webhook: <code className="bg-blue-100 px-1 rounded">https://[seu-dominio]/api/whatsapp/webhook</code></li>
+                <li>Copie o Token de Acesso e o ID do Número de Telefone</li>
+                <li>Adicione o número no sandbox para testes</li>
+              </ol>
             </div>
           </CardContent>
         </Card>

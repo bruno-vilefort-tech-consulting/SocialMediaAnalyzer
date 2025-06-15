@@ -624,16 +624,34 @@ export default function SelectionsPage() {
                           <Copy className="w-4 h-4" />
                         </Button>
                         
-                        {selection.status === 'rascunho' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => sendInterviewsMutation.mutate(selection.id)}
-                            disabled={sendInterviewsMutation.isPending}
-                            title="Enviar entrevistas"
-                          >
-                            <Send className="w-4 h-4" />
-                          </Button>
+                        {(selection.status === 'draft' || selection.status === 'active') && (
+                          <div className="flex gap-1">
+                            {(selection.sendVia === 'whatsapp' || selection.sendVia === 'both') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendWhatsAppCampaignMutation.mutate(selection.id)}
+                                disabled={sendWhatsAppCampaignMutation.isPending}
+                                title="Enviar via WhatsApp"
+                                className="bg-green-50 hover:bg-green-100 border-green-200"
+                              >
+                                <MessageCircle className="w-4 h-4 text-green-600" />
+                              </Button>
+                            )}
+                            
+                            {(selection.sendVia === 'email' || selection.sendVia === 'both') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendInterviewsMutation.mutate(selection.id)}
+                                disabled={sendInterviewsMutation.isPending}
+                                title="Enviar via E-mail"
+                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+                              >
+                                <Mail className="w-4 h-4 text-blue-600" />
+                              </Button>
+                            )}
+                          </div>
                         )}
 
                         <AlertDialog>
