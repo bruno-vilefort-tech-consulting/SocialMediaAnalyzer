@@ -226,36 +226,12 @@ class SimpleInterviewService {
           // Salvar áudio localmente e no banco
           try {
             console.log(`💾 [AUDIO] Salvando áudio no sistema...`);
-            const fs = require('fs');
-            const tempAudioPath = `./uploads/${audioFile}`;
-            fs.writeFileSync(tempAudioPath, audioBuffer);
-            
-            // Salvar referência no banco de dados
-            const audioData = {
-              id: Date.now(),
-              candidatePhone: phone,
-              filename: audioFile,
-              filepath: tempAudioPath,
-              size: audioBuffer.length,
-              mimetype: audioMessage.mimetype || 'audio/ogg',
-              timestamp: new Date().toISOString()
-            };
-            
-            const { storage } = await import('./storage');
-            const { doc, setDoc, collection } = await import('firebase/firestore');
-            
-            // Usar o Firebase db do storage
-            if (storage.db) {
-              await setDoc(doc(collection(storage.db, 'audio_files'), audioData.id.toString()), audioData);
-            } else {
-              console.log(`⚠️ [AUDIO] Firebase db não disponível, dados salvos apenas localmente`);
-            }
+            audioFile = await this.audioDownloadService.saveAudioFile(audioBuffer, phone);
             
             audioSavedToDB = true;
-            console.log(`✅ [AUDIO] Áudio salvo localmente: ${tempAudioPath}`);
-            console.log(`✅ [AUDIO] Referência salva no banco: ${audioData.id}`);
-          } catch (saveError) {
-            console.log(`❌ [AUDIO] Erro ao salvar áudio:`, saveError.message);
+            console.log(`✅ [AUDIO] Áudio salvo com sucesso: ${audioFile}`);
+          } catch (saveError: any) {
+            console.log(`❌ [AUDIO] Erro ao salvar áudio:`, saveError?.message || saveError);
           }
           
         } else {
@@ -376,35 +352,16 @@ class SimpleInterviewService {
       console.log(`💾 [WHISPER] Arquivo temporário salvo: ${tempFile}`);
       console.log(`📊 [WHISPER] Tamanho do arquivo: ${fs.statSync(tempFile).size} bytes`);
 
-      // Preparar FormData para OpenAI
-      console.log(`🔄 [WHISPER] Preparando FormData para OpenAI Whisper...`);
-      const formData = new FormData();
-      formData.append('file', fs.createReadStream(tempFile));
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
-      
-      console.log(`🚀 [WHISPER] Enviando para OpenAI Whisper API...`);
+      // Usar OpenAI SDK oficial
+      console.log(`🔄 [WHISPER] Preparando para OpenAI Whisper SDK...`);
       console.log(`🔑 [WHISPER] API Key presente: ${process.env.OPENAI_API_KEY ? 'SIM' : 'NÃO'}`);
 
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          ...formData.getHeaders()
-        },
-        body: formData
+      const result = await this.openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempFile),
+        model: 'whisper-1',
+        language: 'pt',
       });
 
-      console.log(`📡 [WHISPER] Response status: ${response.status}`);
-      console.log(`📡 [WHISPER] Response ok: ${response.ok}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log(`❌ [WHISPER] Erro da API OpenAI:`, errorText);
-        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
-      }
-
-      const result = await response.json();
       console.log(`📝 [WHISPER] Resultado completo da API:`, result);
       
       const transcription = result.text || '';
