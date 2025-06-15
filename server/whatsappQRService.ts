@@ -185,17 +185,47 @@ export class WhatsAppQRService {
 
   public async sendTextMessage(phoneNumber: string, message: string): Promise<boolean> {
     try {
+      console.log(`🚀 [DEBUG] Iniciando envio WhatsApp QR`);
+      console.log(`📞 [DEBUG] Telefone: ${phoneNumber}`);
+      console.log(`💬 [DEBUG] Mensagem: ${message.substring(0, 100)}...`);
+      console.log(`🔌 [DEBUG] Socket existe: ${!!this.socket}`);
+      console.log(`✅ [DEBUG] Status conectado: ${this.config.isConnected}`);
+
       if (!this.socket || !this.config.isConnected) {
+        console.log(`❌ [DEBUG] WhatsApp QR não conectado - Socket: ${!!this.socket}, Connected: ${this.config.isConnected}`);
         throw new Error('WhatsApp QR não está conectado');
       }
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
-      await this.socket.sendMessage(jid, { text: message });
+      console.log(`📤 [DEBUG] JID formatado: ${jid}`);
+      console.log(`⏰ [DEBUG] Iniciando envio às: ${new Date().toISOString()}`);
+
+      // Verificar se o número existe no WhatsApp
+      console.log(`🔍 [DEBUG] Verificando se número existe no WhatsApp...`);
+      try {
+        const [exists] = await this.socket.onWhatsApp(jid);
+        console.log(`📱 [DEBUG] Número existe no WhatsApp: ${!!exists}`);
+        if (!exists) {
+          console.log(`❌ [DEBUG] Número ${phoneNumber} não existe no WhatsApp`);
+          return false;
+        }
+      } catch (checkError) {
+        console.log(`⚠️ [DEBUG] Erro ao verificar número, continuando:`, checkError);
+      }
+
+      console.log(`📨 [DEBUG] Enviando mensagem via socket...`);
+      const result = await this.socket.sendMessage(jid, { text: message });
+      console.log(`✅ [DEBUG] Resultado do envio:`, result?.key || 'sem key');
+      console.log(`⏰ [DEBUG] Envio finalizado às: ${new Date().toISOString()}`);
       
-      console.log(`✅ Mensagem enviada via QR para ${phoneNumber}: ${message}`);
+      console.log(`✅ Mensagem enviada via QR para ${phoneNumber}: ${message.substring(0, 50)}...`);
       return true;
     } catch (error) {
-      console.error(`❌ Erro ao enviar mensagem via QR para ${phoneNumber}:`, error);
+      console.error(`❌ [DEBUG] Erro detalhado ao enviar mensagem via QR para ${phoneNumber}:`);
+      console.error(`❌ [DEBUG] Tipo do erro: ${error?.constructor?.name}`);
+      console.error(`❌ [DEBUG] Mensagem do erro: ${error?.message}`);
+      console.error(`❌ [DEBUG] Código do erro: ${error?.output?.statusCode || error?.code}`);
+      console.error(`❌ [DEBUG] Stack trace:`, error?.stack);
       return false;
     }
   }

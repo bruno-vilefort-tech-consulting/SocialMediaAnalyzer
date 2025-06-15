@@ -2589,24 +2589,50 @@ Responda de forma natural aguardando a resposta do candidato.`;
       let errorCount = 0;
       const results = [];
 
-      console.log(`📱 Iniciando campanha WhatsApp QR para ${candidates.length} candidatos`);
+      console.log(`📱 [DEBUG] Iniciando campanha WhatsApp QR para ${candidates.length} candidatos`);
+      console.log(`📋 [DEBUG] Job encontrado: ${job.nomeVaga}`);
+      console.log(`📞 [DEBUG] Lista de candidatos:`, candidates.map(c => ({ id: c.id, name: c.name, phone: c.phone })));
 
       for (const candidate of candidates) {
         try {
+          console.log(`\n🚀 [DEBUG] Processando candidato: ${candidate.name} (${candidate.phone})`);
+          
+          if (!candidate.phone) {
+            console.log(`⚠️ [DEBUG] Candidato ${candidate.name} sem telefone, pulando...`);
+            errorCount++;
+            results.push({
+              candidateId: candidate.id,
+              candidateName: candidate.name,
+              phone: 'N/A',
+              status: 'error',
+              error: 'Telefone não informado'
+            });
+            continue;
+          }
+
+          // Formatar telefone
+          let phone = candidate.phone.replace(/\D/g, '');
+          if (!phone.startsWith('55')) {
+            phone = '55' + phone;
+          }
+          console.log(`📞 [DEBUG] Telefone formatado: ${candidate.phone} → ${phone}`);
+
+          console.log(`📨 [DEBUG] Enviando convite para ${candidate.name}...`);
           const success = await whatsappQRService.sendInterviewInvitation(
+            phone,
             candidate.name,
-            candidate.phone,
             job.nomeVaga,
-            selection.whatsappTemplate,
-            selection.id
+            `http://localhost:5000/interview/${selection.id}/${candidate.id}`
           );
+
+          console.log(`📤 [DEBUG] Resultado do envio para ${candidate.name}: ${success ? 'SUCESSO' : 'FALHA'}`);
 
           if (success) {
             sentCount++;
             results.push({
               candidateId: candidate.id,
               candidateName: candidate.name,
-              phone: candidate.phone,
+              phone: phone,
               status: 'sent'
             });
           } else {
@@ -2614,7 +2640,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
             results.push({
               candidateId: candidate.id,
               candidateName: candidate.name,
-              phone: candidate.phone,
+              phone: phone,
               status: 'error',
               error: 'Falha no envio'
             });
