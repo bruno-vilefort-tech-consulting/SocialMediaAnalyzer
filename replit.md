@@ -115,13 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 15, 2025: Sistema WhatsApp QR é agora o ÚNICO sistema de WhatsApp - Meta Cloud API removido
-  - **WhatsApp QR como sistema principal**: Removido botão Meta Cloud API, WhatsApp QR é agora o sistema único
-  - **Busca inteligente de jobs corrigida**: Erro 404 "vaga não encontrada" resolvido com busca por ID parcial
-  - **Firebase ID handling**: Sistema agora encontra jobs mesmo com sufixos extras do Firebase
-  - **Interface simplificada**: Apenas um botão WhatsApp (verde esmeralda) nas seleções
-  - **Logs detalhados**: Sistema mostra exatamente qual job foi encontrado ou por que falhou
-  - **Sistema totalmente funcional**: WhatsApp QR funcionando para campanhas de seleção
+- June 15, 2025: Sistema de entrevista interativa via WhatsApp COMPLETAMENTE IMPLEMENTADO
+  - **Mensagens personalizadas**: Sistema usa mensagem do campo "Mensagem Inicial WhatsApp" da seleção
+  - **Botões interativos**: "Sim, começar agora" e "Não quero participar" funcionando
+  - **Entrevistas automáticas por áudio**: Perguntas enviadas via TTS OpenAI como notas de voz
+  - **Processamento de respostas**: Sistema detecta áudio dos candidatos e processa automaticamente
+  - **Fluxo completo implementado**: Convite → botões → perguntas por áudio → respostas → próxima pergunta
+  - **Logs detalhados**: Debug completo de todo o processo de entrevista
+  - **Substituição de placeholders**: [nome do candidato], [Nome da Vaga] etc. funcionando
+  - **Sistema robusto**: Fallback para texto se TTS falhar, busca inteligente de jobs
+  - **WhatsApp QR único**: Meta Cloud API removido, apenas Baileys operacional
   - **Conexão persistente**: Telefone 5511984316526 conectado e salvo no banco PostgreSQL
 
 - June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema "Preparando..." resolvido

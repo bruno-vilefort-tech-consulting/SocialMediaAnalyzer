@@ -2622,7 +2622,8 @@ Responda de forma natural aguardando a resposta do candidato.`;
             phone,
             candidate.name,
             job.nomeVaga,
-            `http://localhost:5000/interview/${selection.id}/${candidate.id}`
+            selection.whatsappTemplate || selection.mensagemWhatsApp,
+            selection.id
           );
 
           console.log(`📤 [DEBUG] Resultado do envio para ${candidate.name}: ${success ? 'SUCESSO' : 'FALHA'}`);

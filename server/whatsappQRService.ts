@@ -162,24 +162,188 @@ export class WhatsAppQRService {
         const from = message.key.remoteJid;
         const text = message.message.conversation || 
                     message.message.extendedTextMessage?.text || '';
+        const buttonResponse = message.message?.buttonsResponseMessage?.selectedButtonId;
+        const audioMessage = message.message?.audioMessage;
         
-        if (text && from) {
-          console.log(`📨 Mensagem recebida de ${from}: ${text}`);
+        console.log(`📨 [DEBUG] Mensagem recebida de ${from}`);
+        console.log(`📝 [DEBUG] Texto: ${text || 'N/A'}`);
+        console.log(`🔘 [DEBUG] Botão: ${buttonResponse || 'N/A'}`);
+        console.log(`🎵 [DEBUG] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
+        
+        if (buttonResponse) {
+          await this.processButtonResponse(from, buttonResponse);
+        } else if (audioMessage) {
+          await this.processAudioResponse(from, audioMessage);
+        } else if (text) {
           await this.processInterviewMessage(from, text, message);
         }
       }
     }
   }
 
+  private async processButtonResponse(from: string, buttonId: string) {
+    console.log(`🔘 [DEBUG] Processando resposta de botão: ${buttonId}`);
+    
+    if (buttonId.startsWith('start_interview_')) {
+      // Extrair dados do botão: start_interview_{selectionId}_{candidateName}
+      const parts = buttonId.split('_');
+      const selectionId = parseInt(parts[2]);
+      const candidateName = parts.slice(3).join('_');
+      
+      console.log(`🚀 [DEBUG] Iniciando entrevista - Seleção: ${selectionId}, Candidato: ${candidateName}`);
+      
+      await this.startInterviewProcess(from, selectionId, candidateName);
+    } 
+    else if (buttonId.startsWith('decline_interview_')) {
+      await this.sendTextMessage(from, "Obrigado pela resposta. Caso mude de ideia, entre em contato conosco.");
+    }
+  }
+
+  private async startInterviewProcess(phoneNumber: string, selectionId: number, candidateName: string) {
+    try {
+      console.log(`🎤 [DEBUG] Iniciando processo de entrevista para ${candidateName}`);
+      
+      // Buscar dados da seleção e job
+      const { storage } = await import('./storage');
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        console.error(`❌ Seleção ${selectionId} não encontrada`);
+        return;
+      }
+
+      // Buscar job e perguntas
+      let job = await storage.getJobById(selection.jobId);
+      if (!job) {
+        // Busca por ID parcial se não encontrar
+        const allJobs = await storage.getJobsByClientId(selection.clientId);
+        job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
+      }
+
+      if (!job || !job.perguntas || job.perguntas.length === 0) {
+        await this.sendTextMessage(phoneNumber, "Desculpe, não conseguimos encontrar as perguntas da entrevista. Entre em contato conosco.");
+        return;
+      }
+
+      console.log(`📋 [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+
+      // Criar registro de entrevista
+      const interview = await storage.createInterview({
+        selectionId: selectionId,
+        candidateId: 0, // Placeholder - buscar pelo telefone depois
+        token: `whatsapp_${Date.now()}`,
+        status: 'in_progress'
+      });
+
+      console.log(`🆔 [DEBUG] Entrevista criada com ID: ${interview.id}`);
+
+      // Enviar primeira pergunta por áudio
+      await this.sendQuestionAudio(phoneNumber, candidateName, job.perguntas[0], interview.id, 0, job.perguntas.length);
+
+    } catch (error) {
+      console.error(`❌ Erro ao iniciar processo de entrevista:`, error);
+      await this.sendTextMessage(phoneNumber, "Desculpe, ocorreu um erro ao iniciar a entrevista. Tente novamente mais tarde.");
+    }
+  }
+
+  private async sendQuestionAudio(phoneNumber: string, candidateName: string, question: any, interviewId: number, questionIndex: number, totalQuestions: number) {
+    try {
+      console.log(`🎵 [DEBUG] Enviando pergunta ${questionIndex + 1} de ${totalQuestions} por áudio para ${candidateName}`);
+      
+      // Buscar configuração de voz
+      const { storage } = await import('./storage');
+      const config = await storage.getApiConfig();
+      
+      if (!config?.openaiApiKey) {
+        console.error(`❌ OpenAI API não configurada`);
+        await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+        return;
+      }
+
+      // Gerar áudio da pergunta
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: question.pergunta,
+          voice: config.voiceSettings?.voice || "nova",
+          response_format: "mp3"
+        }),
+      });
+
+      if (response.ok) {
+        const audioBuffer = await response.arrayBuffer();
+        
+        // Enviar áudio via WhatsApp
+        const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+        await this.socket.sendMessage(jid, {
+          audio: Buffer.from(audioBuffer),
+          mimetype: 'audio/mp4',
+          ptt: true // Nota de voz
+        });
+
+        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por áudio`);
+        
+        // Salvar estado da entrevista
+        await this.saveInterviewState(interviewId, questionIndex, question.pergunta);
+        
+      } else {
+        console.error(`❌ Erro na API OpenAI para TTS`);
+        await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ Erro ao enviar pergunta por áudio:`, error);
+      await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+    }
+  }
+
+  private async processAudioResponse(from: string, audioMessage: any) {
+    try {
+      console.log(`🎵 [DEBUG] Processando resposta de áudio de ${from}`);
+      
+      // Por enquanto, confirmar recebimento e simular próxima pergunta
+      await this.sendTextMessage(from, "✅ Resposta recebida! Processando próxima pergunta...");
+      
+      // TODO: Implementar download e transcrição do áudio
+      // TODO: Salvar resposta no banco
+      // TODO: Buscar próxima pergunta ou finalizar entrevista
+      
+    } catch (error) {
+      console.error(`❌ Erro ao processar áudio:`, error);
+    }
+  }
+
   private async processInterviewMessage(from: string, text: string, message: any) {
     try {
-      // Aqui implementaria a lógica de entrevista similar ao whatsappService.ts
       console.log(`🤖 Processando mensagem de entrevista de ${from}: ${text}`);
       
-      // Por agora, apenas responde com uma mensagem padrão
-      await this.sendTextMessage(from, "Olá! Sua mensagem foi recebida via WhatsApp QR. Sistema de entrevistas em desenvolvimento.");
+      // Fallback para mensagens de texto
+      await this.sendTextMessage(from, "Olá! Por favor, use os botões para responder ou envie suas respostas por áudio após iniciar a entrevista.");
     } catch (error) {
       console.error('❌ Erro ao processar mensagem de entrevista:', error);
+    }
+  }
+
+  private async saveInterviewState(interviewId: number, questionIndex: number, questionText: string) {
+    try {
+      const { storage } = await import('./storage');
+      
+      // Salvar log da pergunta enviada
+      await storage.createMessageLog({
+        interviewId: interviewId,
+        type: 'question',
+        channel: 'whatsapp',
+        status: 'sent',
+        content: `Pergunta ${questionIndex + 1}: ${questionText}`
+      });
+      
+      console.log(`💾 [DEBUG] Estado da entrevista salvo - Pergunta ${questionIndex + 1}`);
+    } catch (error) {
+      console.error(`❌ Erro ao salvar estado da entrevista:`, error);
     }
   }
 
@@ -234,25 +398,57 @@ export class WhatsAppQRService {
     phoneNumber: string, 
     candidateName: string, 
     jobTitle: string, 
-    interviewLink: string
+    customMessage: string,
+    selectionId: number
   ): Promise<boolean> {
-    const message = `Olá ${candidateName}! 👋
+    // Substituir placeholders na mensagem personalizada
+    const personalizedMessage = customMessage
+      .replace(/\[nome do candidato\]/g, candidateName)
+      .replace(/\[Nome do Cliente\]/g, 'Grupo Maximus')
+      .replace(/\[Nome da Vaga\]/g, jobTitle)
+      .replace(/\[número de perguntas\]/g, '5'); // Placeholder por enquanto
 
-Você foi selecionado(a) para a próxima etapa da vaga: *${jobTitle}*
+    const finalMessage = `${personalizedMessage}
 
-🎤 *Entrevista por Voz Online*
-- Sistema inteligente com perguntas por áudio
-- Responda também por áudio
-- Processo rápido e moderno
+Você gostaria de iniciar a entrevista?`;
 
-🔗 *Acesse sua entrevista:*
-${interviewLink}
+    // Enviar mensagem com botões interativos
+    try {
+      if (!this.socket || !this.config.isConnected) {
+        throw new Error('WhatsApp QR não está conectado');
+      }
 
-⏰ Complete quando estiver pronto(a)!
+      const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      
+      // Criar mensagem com botões
+      const messageWithButtons = {
+        text: finalMessage,
+        footer: 'Sistema de Entrevistas IA - Grupo Maximus',
+        buttons: [
+          {
+            buttonId: `start_interview_${selectionId}_${candidateName}`,
+            buttonText: { displayText: 'Sim, começar agora' },
+            type: 1
+          },
+          {
+            buttonId: `decline_interview_${selectionId}_${candidateName}`,
+            buttonText: { displayText: 'Não quero participar' },
+            type: 1
+          }
+        ],
+        headerType: 1
+      };
 
-_Mensagem enviada via WhatsApp QR - Sistema de Entrevistas IA_`;
+      console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
+      const result = await this.socket.sendMessage(jid, messageWithButtons);
+      console.log(`✅ [DEBUG] Mensagem com botões enviada:`, result?.key || 'sem key');
 
-    return await this.sendTextMessage(phoneNumber, message);
+      return true;
+    } catch (error) {
+      console.error(`❌ Erro ao enviar convite com botões:`, error);
+      // Fallback para mensagem simples se botões falharem
+      return await this.sendTextMessage(phoneNumber, finalMessage);
+    }
   }
 
   public getConnectionStatus(): WhatsAppQRConfig {
