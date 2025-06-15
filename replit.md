@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🔊 SISTEMA DE ÁUDIO APRIMORADO - Correções implementadas para compatibilidade mobile
+  - **Download de áudio corrigido**: Implementada abordagem robusta com parâmetros adequados do Baileys
+  - **Velocidade de fala otimizada**: TTS configurado com speed 0.75 para melhor compreensão
+  - **Compatibilidade mobile melhorada**: Formato OGG/Opus para funcionamento em celulares
+  - **Transcrição aprimorada**: Headers e contentType adequados para OpenAI Whisper API
+  - **Logs detalhados**: Debug completo do processo de download e transcrição
+  - **Sistema aguardando validação**: Teste final pendente para confirmar funcionamento completo
+
 - June 15, 2025: 🎉 SISTEMA TOTALMENTE FUNCIONAL - Problema de busca de candidatos RESOLVIDO
   - **Bug crítico corrigido**: getCandidatesByClientId agora encontra candidatos corretamente
   - **Incompatibilidade de IDs resolvida**: Sistema busca tanto clientId exato quanto formato antigo (clientId=1)
