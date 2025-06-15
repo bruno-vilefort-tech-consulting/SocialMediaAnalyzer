@@ -109,8 +109,8 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* Grid horizontal compacto de seleções */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Lista horizontal de seleções - uma linha por seleção */}
+        <div className="space-y-3">
           {validSelections.map((selection: any) => {
             const stats = getSelectionStats(selection.id);
             
@@ -120,51 +120,58 @@ export default function ReportsPage() {
                 className="cursor-pointer hover:shadow-lg transition-shadow"
                 onClick={() => setSelectedSelection(selection.id)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold">
-                      {selection.jobName || selection.name}
-                    </CardTitle>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <Badge variant={selection.status === 'enviado' ? 'default' : 'secondary'}>
-                    {selection.status}
-                  </Badge>
-                </CardHeader>
-                
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Criado em:</span>
-                    <span>{formatDate(selection.createdAt)}</span>
-                  </div>
-                  
-                  {/* Estatísticas horizontais */}
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded">
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {stats.completed}
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between w-full">
+                    {/* Nome da vaga */}
+                    <div className="flex items-center space-x-4 min-w-0 flex-1">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <div className="text-xs text-green-600 dark:text-green-400">Finalizadas</div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-lg truncate">
+                          {selection.jobName || selection.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Criado em {formatDate(selection.createdAt)}
+                        </p>
+                      </div>
                     </div>
                     
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
-                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        {stats.inProgress}
+                    {/* Status */}
+                    <div className="flex items-center space-x-6">
+                      <Badge variant={selection.status === 'enviado' ? 'default' : 'secondary'}>
+                        {selection.status}
+                      </Badge>
+                      
+                      {/* Estatísticas inline */}
+                      <div className="flex items-center space-x-4 text-sm">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <span className="font-medium">{stats.completed}</span>
+                          <span className="text-muted-foreground">Finalizadas</span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                          <span className="font-medium">{stats.inProgress}</span>
+                          <span className="text-muted-foreground">Em andamento</span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                          <span className="font-medium">{stats.pending}</span>
+                          <span className="text-muted-foreground">Pendentes</span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1 border-l pl-4 ml-4">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{stats.total}</span>
+                          <span className="text-muted-foreground">Total</span>
+                        </div>
                       </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400">Em andamento</div>
+                      
+                      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                     </div>
-                    
-                    <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                      <div className="text-lg font-bold text-gray-600 dark:text-gray-400">
-                        {stats.pending}
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">Pendentes</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Total de candidatos:</span>
-                    <span className="font-semibold">{stats.total}</span>
                   </div>
                 </CardContent>
               </Card>
