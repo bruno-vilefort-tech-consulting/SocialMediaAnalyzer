@@ -2943,6 +2943,41 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Endpoint para verificar todas as vagas no Firebase
+  app.get("/api/debug/firebase-jobs", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔍 Verificando todas as vagas diretamente no Firebase...');
+      
+      // Usar Firebase diretamente
+      const { getDocs, collection } = await import('firebase/firestore');
+      const { firebaseDb } = await import('../server/db');
+      
+      const snapshot = await getDocs(collection(firebaseDb, "jobs"));
+      const allJobs = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        allJobs.push({
+          id: doc.id,
+          ...data
+        });
+        console.log(`📄 Vaga Firebase: ID=${doc.id}, cliente=${data.clientId}, nome=${data.nomeVaga}`);
+      });
+      
+      console.log(`📊 Total de vagas no Firebase: ${allJobs.length}`);
+      
+      res.json({
+        success: true,
+        totalJobs: allJobs.length,
+        jobs: allJobs
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro verificando vagas:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // Endpoint para verificar dados específicos do Daniel Moreira
   app.get("/api/debug/daniel-data", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {

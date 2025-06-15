@@ -188,21 +188,37 @@ export class FirebaseStorage implements IStorage {
 
   // Jobs
   async getJobsByClientId(clientId: number): Promise<Job[]> {
+    console.log(`🔍 Buscando vagas do cliente ID: ${clientId}`);
     const snapshot = await getDocs(collection(firebaseDb, "jobs"));
-    return snapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      perguntas: doc.data().perguntas || []
-    } as Job)).filter(job => job.clientId === clientId);
+    const allJobs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log(`📄 Vaga encontrada: ID=${doc.id}, clientId=${data.clientId}, nome=${data.nomeVaga}`);
+      return { 
+        id: doc.id, 
+        ...data,
+        perguntas: data.perguntas || []
+      } as Job;
+    });
+    
+    const filteredJobs = allJobs.filter(job => job.clientId === clientId);
+    console.log(`📋 Vagas filtradas para cliente ${clientId}: ${filteredJobs.length}`);
+    return filteredJobs;
   }
 
   async getJobs(): Promise<Job[]> {
+    console.log('🔍 Buscando todas as vagas no Firebase...');
     const snapshot = await getDocs(collection(firebaseDb, "jobs"));
-    return snapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data(),
-      perguntas: doc.data().perguntas || []
-    } as Job));
+    const jobs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log(`📄 Vaga: ID=${doc.id}, cliente=${data.clientId}, nome=${data.nomeVaga}`);
+      return { 
+        id: doc.id, 
+        ...data,
+        perguntas: data.perguntas || []
+      } as Job;
+    });
+    console.log(`📊 Total de vagas encontradas: ${jobs.length}`);
+    return jobs;
   }
 
   async getJobById(id: string): Promise<Job | undefined> {
