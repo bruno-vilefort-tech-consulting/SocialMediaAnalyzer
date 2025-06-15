@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🔄 SISTEMA SIMPLIFICADO IMPLEMENTADO - Nova solução para resolver bugs de mensagens
+  - **Problema anterior resolvido**: Fluxo complexo com múltiplas entrevistas duplicadas e IDs conflitantes eliminado
+  - **SimpleInterviewService criado**: Sistema em memória que gerencia entrevistas ativas sem dependência do banco
+  - **Comandos simplificados**: "1" para iniciar, "2" para recusar, "parar" para encerrar entrevista
+  - **Estado persistente em memória**: Map de entrevistas ativas por telefone do candidato
+  - **Integração direta**: WhatsApp QR Service conectado ao sistema simplificado sem referências circulares
+  - **Fluxo robusto**: Busca automática de candidatos e vagas, progressão sequencial de perguntas
+  - **TTS mantido**: Áudio OpenAI funcional com fallback para texto quando necessário
+  - **Transcrição Whisper**: Processamento de respostas de áudio com salvamento de transcrições
+  - **Sistema pronto**: Aguardando teste com dados reais para validação final
+
 - June 15, 2025: Sistema de debug avançado implementado para corrigir problema de associação entrevista-seleção
   - **Velocidade TTS alterada**: De 0.75 para 1.0 (velocidade normal) conforme solicitado
   - **Texto antes do áudio implementado**: Sistema envia pergunta por texto primeiro, depois áudio TTS

@@ -28,6 +28,8 @@ export class WhatsAppQRService {
     this.initializeBaileys().then(() => {
       this.loadConnectionFromDB().then(() => {
         this.initializeConnection();
+        // Conectar ao sistema simplificado
+        simpleInterviewService.setWhatsAppService(this);
       });
     }).catch(error => {
       console.error('❌ Erro ao inicializar WhatsApp QR:', error.message);

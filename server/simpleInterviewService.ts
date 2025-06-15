@@ -136,13 +136,15 @@ class SimpleInterviewService {
       if (response.ok) {
         const audioBuffer = await response.arrayBuffer();
         
-        await whatsappQRService.socket.sendMessage(`${phone}@s.whatsapp.net`, {
-          audio: Buffer.from(audioBuffer),
-          mimetype: 'audio/mp4',
-          ptt: true
-        });
-        
-        console.log(`🎵 Áudio TTS enviado para ${phone}`);
+        if (this.whatsappService && this.whatsappService.socket) {
+          await this.whatsappService.socket.sendMessage(`${phone}@s.whatsapp.net`, {
+            audio: Buffer.from(audioBuffer),
+            mimetype: 'audio/mp4',
+            ptt: true
+          });
+          
+          console.log(`🎵 Áudio TTS enviado para ${phone}`);
+        }
       }
     } catch (error) {
       console.log(`❌ Erro TTS:`, error.message);
@@ -294,7 +296,11 @@ class SimpleInterviewService {
   }
 
   private async sendMessage(to: string, message: string): Promise<void> {
-    await whatsappQRService.sendTextMessage(to, message);
+    if (this.whatsappService) {
+      await this.whatsappService.sendTextMessage(to, message);
+    } else {
+      console.log(`📱 Enviaria mensagem para ${to}: ${message}`);
+    }
   }
 
   // Métodos para debug
