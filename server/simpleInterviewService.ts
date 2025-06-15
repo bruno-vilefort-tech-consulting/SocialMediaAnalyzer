@@ -472,15 +472,34 @@ class SimpleInterviewService {
     
     // Log dos candidatos para debug
     candidates.forEach(c => {
-      console.log(`📱 [DEBUG] Candidato: ${c.name} - WhatsApp: ${c.whatsapp}`);
+      const candidatePhone = (c as any).phone || c.whatsapp;
+      console.log(`📱 [DEBUG] Candidato: ${c.name} - WhatsApp: ${c.whatsapp} - Phone: ${candidatePhone}`);
     });
     
     const candidate = candidates.find(c => {
-      if (!c.whatsapp) return false;
-      const candidatePhone = c.whatsapp.replace(/\D/g, '');
+      // Buscar tanto no campo whatsapp quanto no campo phone
+      const candidateWhatsApp = c.whatsapp;
+      const candidatePhone = (c as any).phone;
+      
+      if (!candidateWhatsApp && !candidatePhone) return false;
+      
       const searchPhone = phone.replace(/\D/g, '');
-      console.log(`🔍 [DEBUG] Comparando: ${candidatePhone} com ${searchPhone}`);
-      return candidatePhone === searchPhone;
+      
+      // Verificar campo whatsapp
+      if (candidateWhatsApp) {
+        const normalizedWhatsApp = candidateWhatsApp.replace(/\D/g, '');
+        console.log(`🔍 [DEBUG] Comparando WhatsApp: ${normalizedWhatsApp} com ${searchPhone}`);
+        if (normalizedWhatsApp === searchPhone) return true;
+      }
+      
+      // Verificar campo phone
+      if (candidatePhone) {
+        const normalizedPhone = candidatePhone.replace(/\D/g, '');
+        console.log(`🔍 [DEBUG] Comparando Phone: ${normalizedPhone} com ${searchPhone}`);
+        if (normalizedPhone === searchPhone) return true;
+      }
+      
+      return false;
     });
     
     if (candidate) {
