@@ -50,7 +50,7 @@ const candidateListSchema = z.object({
 const candidateSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
-  phone: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "Celular deve estar no formato brasileiro (ex: 11987654321)"),
+  whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)"),
 });
 
 type CandidateListFormData = z.infer<typeof candidateListSchema>;
@@ -93,7 +93,7 @@ export default function CandidatesPage() {
 
   const candidateForm = useForm<CandidateFormData>({
     resolver: zodResolver(candidateSchema),
-    defaultValues: { name: "", email: "", phone: "" }
+    defaultValues: { name: "", email: "", whatsapp: "" }
   });
 
   // Mutations
@@ -216,7 +216,7 @@ export default function CandidatesPage() {
     candidateForm.reset({
       name: candidate.name,
       email: candidate.email,
-      phone: candidate.phone
+      whatsapp: candidate.whatsapp
     });
     setShowCandidateForm(true);
   };
@@ -464,7 +464,7 @@ export default function CandidatesPage() {
                       <div>
                         <h4 className="font-semibold">{candidate.name}</h4>
                         <p className="text-sm text-muted-foreground">{candidate.email}</p>
-                        <p className="text-sm text-muted-foreground">{candidate.phone}</p>
+                        <p className="text-sm text-muted-foreground">WhatsApp: {candidate.whatsapp}</p>
                       </div>
                       <div className="flex space-x-2">
                         <Button
@@ -604,10 +604,10 @@ export default function CandidatesPage() {
               />
               <FormField
                 control={candidateForm.control}
-                name="phone"
+                name="whatsapp"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Celular</FormLabel>
+                    <FormLabel>WhatsApp</FormLabel>
                     <FormControl>
                       <Input placeholder="11987654321" {...field} />
                     </FormControl>

@@ -746,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           if (!phone || !phone.toString().trim()) {
-            errors.push(`Linha ${index + 2}: Celular é obrigatório`);
+            errors.push(`Linha ${index + 2}: WhatsApp é obrigatório`);
             continue;
           }
 
