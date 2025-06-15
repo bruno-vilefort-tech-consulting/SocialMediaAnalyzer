@@ -13,7 +13,8 @@ import {
   X,
   Mic,
   LogOut,
-  MessageCircle
+  MessageCircle,
+  FileText
 } from "lucide-react";
 
 interface SidebarProps {
@@ -30,10 +31,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
     { path: "/candidates", label: "Candidatos", icon: Users },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
+    { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/api-config", label: "Configurações API", icon: Settings },
     { path: "/whatsapp-qr", label: "WhatsApp QR", icon: MessageCircle },
-    { path: "/reports", label: "Relatórios Globais", icon: PieChart },
   ];
 
   const clientMenuItems = [
@@ -41,6 +42,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/jobs", label: "Vagas", icon: Briefcase },
     { path: "/candidates", label: "Candidatos", icon: Users },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
+    { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/results", label: "Resultados", icon: PieChart },
   ];
 

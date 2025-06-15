@@ -19,6 +19,8 @@ import InterviewPage from "@/pages/InterviewPage";
 import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
 import WhatsAppQRPage from "@/pages/WhatsAppQRPage";
+import ReportsPage from "@/pages/ReportsPage";
+import InterviewDetailsPage from "@/pages/InterviewDetailsPage";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
@@ -100,10 +102,18 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/reports">
-        <PrivateRoute allowedRoles={['master']}>
+      <Route path="/relatorios">
+        <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
-            <MasterDashboard />
+            <ReportsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
+      <Route path="/relatorios/:selectionId">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <InterviewDetailsPage />
           </Layout>
         </PrivateRoute>
       </Route>
