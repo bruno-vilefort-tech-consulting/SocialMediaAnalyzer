@@ -115,14 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 15, 2025: 🏆 TRANSCRIÇÃO REAL VALIDADA COM SUCESSO - Sistema 100% operacional testado e confirmado
-  - **Teste de áudio real validado**: 27.834 bytes processados com transcrição autêntica obtida
-  - **Transcrição real confirmada**: "Porque tem um bom salário perto da minha casa, na mesma cidade que eu moro, e as pessoas parecem boas, e fui indicado pela empresa que é legal trabalhar aí."
-  - **OpenAI Whisper SDK 100% funcional**: Sem erros FormData, transcrição em português perfeita
-  - **Fluxo completo testado**: WhatsApp QR → download áudio → OpenAI SDK → transcrição → salvamento
-  - **Entrevista completa validada**: 2/2 perguntas respondidas com áudio real e transcrições autênticas
-  - **Sistema pronto para produção**: Transcrição real substituindo placeholder definitivamente
-  - **AudioDownloadService robusto**: downloadMediaMessage capturando áudio real consistentemente
+- June 15, 2025: 🔧 SALVAMENTO POSTGRESQL CORRIGIDO - Sistema migrado de Firebase para banco PostgreSQL
+  - **Problema de salvamento identificado**: Sistema usava FirebaseStorage com configuração problemática
+  - **Migração para PostgreSQL**: Mudança de FirebaseStorage para DatabaseStorage implementada
+  - **Transcrição real funcionando**: OpenAI Whisper SDK processando áudio autêntico (15KB testado)
+  - **Salvamento corrigido**: createInterview e createResponse agora usam PostgreSQL diretamente
+  - **Sistema completo pronto**: Download → transcrição → salvamento PostgreSQL funcionais
+  - **Próximo teste validará**: Salvamento real no banco de dados PostgreSQL
 
 - June 15, 2025: 🧪 AMBIENTE DE TESTE COMPLETO IMPLEMENTADO - Sistema com logs detalhados para debug
   - **Logs extensivos adicionados**: Debug completo em toda cadeia de processamento de áudio

@@ -1542,7 +1542,7 @@ export class DatabaseStorage implements IStorage {
 }
 
 // Initialize storage and create master user if needed
-export const storage = new FirebaseStorage();
+export const storage = new DatabaseStorage();
 
 // Create master user on startup
 const initializeStorage = async () => {
@@ -1556,9 +1556,9 @@ const initializeStorage = async () => {
         password: hashedPassword,
         role: 'master'
       });
-      console.log('✅ Usuário master criado no Firebase');
+      console.log('✅ Usuário master criado no PostgreSQL');
     } else {
-      console.log('✅ Usuário master já existe no Firebase');
+      console.log('✅ Usuário master já existe no PostgreSQL');
     }
   } catch (error) {
     console.error('❌ Erro ao inicializar storage:', error);
