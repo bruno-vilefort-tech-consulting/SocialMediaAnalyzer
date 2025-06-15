@@ -2765,21 +2765,33 @@ Responda de forma natural aguardando a resposta do candidato.`;
           jobName = selectionData.jobName || selectionData.name;
         }
 
-        allInterviews.push({
-          id: interviewDoc.id,
-          selectionId: selectionData?.id || interviewData.selectionId || null,
-          selectionName: selectionData?.jobName || 'Seleção não identificada',
-          candidateId: interviewData.candidateId || null,
-          candidateName: candidateName || 'Candidato não identificado',
-          candidatePhone: candidatePhone || 'Telefone não informado',
-          jobName: jobName || 'Vaga não identificada',
-          status: interviewData.status || 'unknown',
-          startTime: interviewData.startTime,
-          endTime: interviewData.endTime,
-          responses,
-          totalQuestions: interviewData.totalQuestions || responses.length,
-          answeredQuestions: responses.length
-        });
+        // Filtrar entrevistas com dados inválidos - mostrar apenas candidatos reais
+        if (candidateName && 
+            candidateName !== 'Candidato não identificado' && 
+            candidateName !== 'undefined' &&
+            candidatePhone && 
+            candidatePhone !== 'Telefone não informado' &&
+            jobName &&
+            jobName !== 'Vaga não identificada') {
+          
+          allInterviews.push({
+            id: interviewDoc.id,
+            selectionId: selectionData?.id || interviewData.selectionId || null,
+            selectionName: selectionData?.jobName || selectionData?.name || 'Seleção não identificada',
+            candidateId: interviewData.candidateId || null,
+            candidateName: candidateName,
+            candidatePhone: candidatePhone,
+            jobName: jobName,
+            status: interviewData.status || 'unknown',
+            startTime: interviewData.startTime,
+            endTime: interviewData.endTime,
+            responses,
+            totalQuestions: interviewData.totalQuestions || responses.length,
+            answeredQuestions: responses.length
+          });
+        } else {
+          console.log(`🚫 Filtrando entrevista ${interviewDoc.id} - dados inválidos: candidato="${candidateName}", telefone="${candidatePhone}", vaga="${jobName}"`);
+        }
       }
       
       console.log(`✅ Retornando ${allInterviews.length} entrevistas para relatórios (100% Firebase)`);
