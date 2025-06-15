@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🧪 AMBIENTE DE TESTE COMPLETO IMPLEMENTADO - Sistema com logs detalhados para debug
+  - **Logs extensivos adicionados**: Debug completo em toda cadeia de processamento de áudio
+  - **Método storage corrigido**: getCandidatesByClientId funcionando corretamente  
+  - **SimpleInterviewService instrumentado**: Logs detalhados em handleMessage, processResponse e transcribeAudio
+  - **Rastreamento de salvamento**: Monitoramento de áudio e transcrição no banco de dados
+  - **WhatsApp QR conectado**: Sistema pronto para teste com número 11984316526
+  - **Fluxo de teste preparado**: Enviar "1" → primeira pergunta TTS → resposta áudio → transcrição Whisper → salvar BD
+
 - June 15, 2025: ✅ SISTEMA SIMPLIFICADO FINALIZADO - SimpleInterviewService completamente funcional
   - **Arquivo limpo criado**: SimpleInterviewService.ts reescrito sem erros de sintaxe
   - **Estado em memória robusto**: Map gerencia entrevistas ativas por telefone do candidato

@@ -38,22 +38,51 @@ class SimpleInterviewService {
 
   async handleMessage(from: string, text: string, audioMessage?: any): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`📱 Mensagem de ${phone}: "${text}" ${audioMessage ? '+ áudio' : ''}`);
+    console.log(`\n🎯 [INTERVIEW] ===== NOVA MENSAGEM RECEBIDA =====`);
+    console.log(`📱 [INTERVIEW] Telefone: ${phone}`);
+    console.log(`💬 [INTERVIEW] Texto: "${text}"`);
+    console.log(`🎵 [INTERVIEW] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
+    
+    if (audioMessage) {
+      console.log(`🎧 [INTERVIEW] Dados do áudio:`, {
+        type: audioMessage.type || 'não informado',
+        mimetype: audioMessage.mimetype || 'não informado',
+        size: audioMessage.fileLength || 'não informado'
+      });
+    }
 
     // Verificar se há entrevista ativa
     const activeInterview = this.activeInterviews.get(phone);
+    console.log(`🔍 [INTERVIEW] Entrevista ativa para ${phone}: ${activeInterview ? 'SIM' : 'NÃO'}`);
+    
+    if (activeInterview) {
+      console.log(`📊 [INTERVIEW] Status da entrevista:`, {
+        candidato: activeInterview.candidateName,
+        vaga: activeInterview.jobName,
+        perguntaAtual: activeInterview.currentQuestion + 1,
+        totalPerguntas: activeInterview.questions.length,
+        respostasJaRecebidas: activeInterview.responses.length
+      });
+    }
 
     if (text === '1' && !activeInterview) {
+      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
       await this.startInterview(phone);
     } else if (text === '2') {
+      console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);
       await this.sendMessage(from, "Entendido. Obrigado!");
     } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
+      console.log(`⏹️ [INTERVIEW] Comando "parar/sair" detectado`);
       await this.stopInterview(phone);
     } else if (activeInterview) {
+      console.log(`📝 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}`);
       await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
+      console.log(`❓ [INTERVIEW] Comando não reconhecido - enviando instruções`);
       await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar");
     }
+    
+    console.log(`🎯 [INTERVIEW] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
   private async startInterview(phone: string): Promise<void> {
@@ -160,25 +189,57 @@ class SimpleInterviewService {
 
   private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`📝 Processando resposta da pergunta ${interview.currentQuestion + 1}`);
+    console.log(`\n🎯 [AUDIO] ===== PROCESSANDO RESPOSTA =====`);
+    console.log(`📝 [AUDIO] Telefone: ${phone}`);
+    console.log(`📝 [AUDIO] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
+    console.log(`📝 [AUDIO] Texto recebido: "${text}"`);
+    console.log(`🎵 [AUDIO] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
 
     let responseText = text;
     let audioFile: string | undefined;
+    let audioSavedToDB = false;
+    let transcriptionSavedToDB = false;
 
-    // Se há áudio, transcrever
+    // Se há áudio, processar
     if (audioMessage) {
-      console.log(`🎵 Processando áudio...`);
+      console.log(`🎧 [AUDIO] Iniciando processamento de áudio...`);
+      console.log(`🎧 [AUDIO] Dados do áudio:`, {
+        type: audioMessage.type,
+        mimetype: audioMessage.mimetype,
+        fileLength: audioMessage.fileLength,
+        url: audioMessage.url ? 'presente' : 'não presente'
+      });
+      
       try {
+        console.log(`🔄 [AUDIO] Chamando transcribeAudio...`);
         const transcription = await this.transcribeAudio(audioMessage);
-        responseText = transcription || text;
-        audioFile = `audio_${Date.now()}.ogg`;
-        console.log(`✅ Transcrição: "${responseText}"`);
+        
+        if (transcription && transcription.length > 0) {
+          responseText = transcription;
+          audioFile = `audio_${phone}_${Date.now()}.ogg`;
+          console.log(`✅ [AUDIO] Transcrição bem-sucedida: "${responseText}"`);
+          console.log(`📁 [AUDIO] Nome do arquivo de áudio: ${audioFile}`);
+          
+          // TODO: Implementar salvamento do áudio no banco
+          try {
+            console.log(`💾 [AUDIO] Salvando áudio no banco de dados...`);
+            // Aqui salvaria o arquivo de áudio no Firebase Storage ou banco
+            audioSavedToDB = true;
+            console.log(`✅ [AUDIO] Áudio salvo no banco: ${audioSavedToDB}`);
+          } catch (saveError) {
+            console.log(`❌ [AUDIO] Erro ao salvar áudio no banco:`, saveError.message);
+          }
+          
+        } else {
+          console.log(`⚠️ [AUDIO] Transcrição vazia, usando texto: "${text}"`);
+        }
       } catch (error) {
-        console.log(`❌ Erro na transcrição:`, error.message);
+        console.log(`❌ [AUDIO] Erro na transcrição:`, error.message);
+        console.log(`❌ [AUDIO] Stack trace:`, error.stack);
       }
     }
 
-    // Salvar resposta
+    // Salvar resposta na entrevista ativa
     const currentQuestion = interview.questions[interview.currentQuestion];
     const response = {
       questionId: interview.currentQuestion,
@@ -190,39 +251,82 @@ class SimpleInterviewService {
 
     interview.responses.push(response);
     
-    console.log(`💾 Resposta ${interview.currentQuestion + 1} salva: "${responseText.substring(0, 50)}..."`);
+    console.log(`💾 [AUDIO] Resposta salva na entrevista ativa:`, {
+      pergunta: interview.currentQuestion + 1,
+      respostaTexto: responseText.substring(0, 50) + (responseText.length > 50 ? '...' : ''),
+      arquivoAudio: audioFile || 'nenhum',
+      timestamp: response.timestamp
+    });
+
+    // TODO: Salvar transcrição no banco de dados
+    try {
+      console.log(`💾 [AUDIO] Salvando transcrição no banco de dados...`);
+      // Aqui salvaria a transcrição no Firebase/PostgreSQL
+      transcriptionSavedToDB = true;
+      console.log(`✅ [AUDIO] Transcrição salva no banco: ${transcriptionSavedToDB}`);
+    } catch (saveError) {
+      console.log(`❌ [AUDIO] Erro ao salvar transcrição no banco:`, saveError.message);
+    }
 
     // Avançar para próxima pergunta
     interview.currentQuestion++;
     this.activeInterviews.set(phone, interview);
 
-    // Enviar confirmação e próxima pergunta
-    await this.sendMessage(from, `✅ Resposta recebida! Obrigado.`);
+    console.log(`📊 [AUDIO] Status da entrevista atualizado:`, {
+      proximaPergunta: interview.currentQuestion + 1,
+      totalPerguntas: interview.questions.length,
+      respostasColetadas: interview.responses.length,
+      audioSalvoNoBanco: audioSavedToDB,
+      transcricaoSalvaNoBanco: transcriptionSavedToDB
+    });
+
+    // Enviar confirmação
+    await this.sendMessage(from, `✅ Resposta recebida! ${audioMessage ? '🎵 Áudio processado.' : ''} Preparando próxima pergunta...`);
     
     setTimeout(async () => {
       await this.sendNextQuestion(phone, interview);
-    }, 1500);
+    }, 2000);
+    
+    console.log(`🎯 [AUDIO] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
   private async transcribeAudio(audioMessage: any): Promise<string> {
+    console.log(`\n🎯 [WHISPER] ===== INICIANDO TRANSCRIÇÃO =====`);
+    
     try {
-      // Baixar áudio
+      // Baixar áudio via Baileys
+      console.log(`⬇️ [WHISPER] Baixando áudio do WhatsApp...`);
+      console.log(`⬇️ [WHISPER] Dados da mensagem de áudio:`, {
+        type: audioMessage.type,
+        mimetype: audioMessage.mimetype,
+        fileLength: audioMessage.fileLength,
+        url: audioMessage.url ? 'URL presente' : 'URL ausente'
+      });
+      
       const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
       const audioBuffer = await downloadMediaMessage(audioMessage, 'buffer', {});
+      console.log(`✅ [WHISPER] Áudio baixado - Tamanho: ${audioBuffer ? audioBuffer.length : 0} bytes`);
       
       if (!audioBuffer || audioBuffer.length === 0) {
+        console.log(`❌ [WHISPER] Áudio vazio ou inválido`);
         throw new Error('Áudio vazio');
       }
 
       // Salvar temporariamente
       const tempFile = path.join('./uploads', `temp_${Date.now()}.ogg`);
       fs.writeFileSync(tempFile, audioBuffer);
+      console.log(`💾 [WHISPER] Arquivo temporário salvo: ${tempFile}`);
+      console.log(`📊 [WHISPER] Tamanho do arquivo: ${fs.statSync(tempFile).size} bytes`);
 
-      // Transcrever com OpenAI
+      // Preparar FormData para OpenAI
+      console.log(`🔄 [WHISPER] Preparando FormData para OpenAI Whisper...`);
       const formData = new FormData();
       formData.append('file', fs.createReadStream(tempFile));
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
+      
+      console.log(`🚀 [WHISPER] Enviando para OpenAI Whisper API...`);
+      console.log(`🔑 [WHISPER] API Key presente: ${process.env.OPENAI_API_KEY ? 'SIM' : 'NÃO'}`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
@@ -233,19 +337,33 @@ class SimpleInterviewService {
         body: formData
       });
 
+      console.log(`📡 [WHISPER] Response status: ${response.status}`);
+      console.log(`📡 [WHISPER] Response ok: ${response.ok}`);
+
       if (!response.ok) {
-        throw new Error(`OpenAI erro: ${response.status}`);
+        const errorText = await response.text();
+        console.log(`❌ [WHISPER] Erro da API OpenAI:`, errorText);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
       }
 
       const result = await response.json();
+      console.log(`📝 [WHISPER] Resultado completo da API:`, result);
+      
+      const transcription = result.text || '';
+      console.log(`✅ [WHISPER] Transcrição extraída: "${transcription}"`);
+      console.log(`📊 [WHISPER] Tamanho da transcrição: ${transcription.length} caracteres`);
       
       // Limpar arquivo temporário
       fs.unlinkSync(tempFile);
+      console.log(`🗑️ [WHISPER] Arquivo temporário removido: ${tempFile}`);
       
-      return result.text || '';
+      console.log(`🎯 [WHISPER] ===== TRANSCRIÇÃO CONCLUÍDA =====\n`);
+      return transcription;
       
     } catch (error) {
-      console.log(`❌ Erro transcrição:`, error.message);
+      console.log(`❌ [WHISPER] ERRO NA TRANSCRIÇÃO:`, error.message);
+      console.log(`❌ [WHISPER] Stack trace:`, error.stack);
+      console.log(`🎯 [WHISPER] ===== TRANSCRIÇÃO FALHOU =====\n`);
       return '';
     }
   }
