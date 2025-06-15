@@ -2846,6 +2846,85 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Endpoint para verificar dados específicos do Daniel Moreira
+  app.get("/api/debug/daniel-data", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔍 Verificando dados do Daniel Moreira no Firebase...');
+      
+      // 1. Buscar candidatos Daniel
+      const allCandidates = await storage.getAllCandidates();
+      const danielCandidates = allCandidates.filter(c => 
+        c.name?.toLowerCase().includes('daniel') || 
+        c.whatsapp?.includes('11984316526')
+      );
+      
+      // 2. Buscar seleção Faxineira
+      const allSelections = await storage.getAllSelections();
+      const faxineiraSelections = allSelections.filter(s => 
+        s.name?.toLowerCase().includes('faxineira') ||
+        s.jobName?.toLowerCase().includes('faxineira')
+      );
+      
+      // 3. Buscar entrevistas do Daniel
+      const allInterviews = await storage.getAllInterviews();
+      const danielInterviews = allInterviews.filter(i => 
+        i.candidateName?.toLowerCase().includes('daniel') ||
+        i.phone?.includes('11984316526')
+      );
+      
+      // 4. Buscar respostas das entrevistas do Daniel
+      const danielResponses = [];
+      for (const interview of danielInterviews) {
+        const responses = await storage.getResponsesByInterviewId(parseInt(interview.id));
+        if (responses.length > 0) {
+          danielResponses.push({
+            interviewId: interview.id,
+            status: interview.status,
+            responses: responses.map(r => ({
+              questionText: r.questionText,
+              responseText: r.responseText?.substring(0, 100) + '...',
+              hasAudio: !!r.audioFile
+            }))
+          });
+        }
+      }
+      
+      const summary = {
+        candidatos: danielCandidates.map(c => ({
+          id: c.id,
+          name: c.name,
+          whatsapp: c.whatsapp,
+          clientId: c.clientId
+        })),
+        selecoes_faxineira: faxineiraSelections.map(s => ({
+          id: s.id,
+          name: s.name || s.jobName,
+          status: s.status
+        })),
+        entrevistas_daniel: danielInterviews.map(i => ({
+          id: i.id,
+          status: i.status,
+          candidateName: i.candidateName,
+          phone: i.phone,
+          selectionId: i.selectionId
+        })),
+        respostas_daniel: danielResponses,
+        resumo: {
+          total_candidatos_daniel: danielCandidates.length,
+          total_selecoes_faxineira: faxineiraSelections.length,
+          total_entrevistas_daniel: danielInterviews.length,
+          entrevistas_finalizadas: danielInterviews.filter(i => i.status === 'completed').length,
+          total_respostas: danielResponses.reduce((acc, r) => acc + r.responses.length, 0)
+        }
+      };
+      
+      res.json(summary);
+    } catch (error) {
+      console.error('Erro ao verificar dados do Daniel:', error);
+      res.status(500).json({ error: 'Erro ao verificar dados' });
+    }
+  });
+
   app.post("/api/whatsapp-qr/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const { selectionId } = req.body;
