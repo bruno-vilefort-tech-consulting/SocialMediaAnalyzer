@@ -18,6 +18,7 @@ import ResultsPage from "@/pages/ResultsPage";
 import InterviewPage from "@/pages/InterviewPage";
 import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
+import WhatsAppQRPage from "@/pages/WhatsAppQRPage";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
@@ -87,6 +88,14 @@ function Router() {
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
             <ApiConfigPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
+      <Route path="/whatsapp-qr">
+        <PrivateRoute allowedRoles={['master']}>
+          <Layout>
+            <WhatsAppQRPage />
           </Layout>
         </PrivateRoute>
       </Route>

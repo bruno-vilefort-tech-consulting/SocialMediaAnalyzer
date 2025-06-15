@@ -156,7 +156,7 @@ export default function SelectionsPage() {
     }
   });
 
-  // Enviar campanha WhatsApp
+  // Enviar campanha WhatsApp (Meta Cloud API)
   const sendWhatsAppCampaignMutation = useMutation({
     mutationFn: async (selectionId: number) => {
       const response = await apiRequest('/api/whatsapp/send-campaign', 'POST', { selectionId });
@@ -173,6 +173,28 @@ export default function SelectionsPage() {
       toast({ 
         title: "Erro ao enviar campanha WhatsApp", 
         description: error?.message || "Verifique as configurações do WhatsApp",
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Enviar campanha WhatsApp QR
+  const sendWhatsAppQRCampaignMutation = useMutation({
+    mutationFn: async (selectionId: number) => {
+      const response = await apiRequest('/api/whatsapp-qr/send-campaign', 'POST', { selectionId });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({ 
+        title: "Campanha WhatsApp QR enviada!", 
+        description: `${data.sentCount} mensagens enviadas com sucesso via QR. ${data.errorCount} erros.`
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Erro ao enviar campanha WhatsApp QR", 
+        description: error?.message || "Verifique se o WhatsApp está conectado via QR Code",
         variant: "destructive" 
       });
     }

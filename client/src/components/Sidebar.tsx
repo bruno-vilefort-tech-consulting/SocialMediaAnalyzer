@@ -12,7 +12,8 @@ import {
   Crown,
   X,
   Mic,
-  LogOut
+  LogOut,
+  MessageCircle
 } from "lucide-react";
 
 interface SidebarProps {
@@ -31,6 +32,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/api-config", label: "Configurações API", icon: Settings },
+    { path: "/whatsapp-qr", label: "WhatsApp QR", icon: MessageCircle },
     { path: "/reports", label: "Relatórios Globais", icon: PieChart },
   ];
 
