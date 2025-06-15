@@ -2561,7 +2561,25 @@ Responda de forma natural aguardando a resposta do candidato.`;
       }
 
       const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-      const job = await storage.getJobById(selection.jobId);
+      
+      console.log(`🔍 Buscando job no Firebase com ID: ${selection.jobId}`);
+      let job = await storage.getJobById(selection.jobId);
+
+      // Se não encontrou, buscar por ID parcial (Firebase pode ter sufixos)
+      if (!job) {
+        console.log(`❌ Job não encontrado com ID exato, buscando por ID parcial...`);
+        const allJobs = await storage.getJobsByClientId(selection.clientId);
+        job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
+        
+        if (job) {
+          console.log(`✅ Job encontrado com ID parcial: ${job.id} -> ${job.nomeVaga}`);
+        } else {
+          console.log(`❌ Job não encontrado mesmo com busca parcial. Jobs disponíveis:`, 
+            allJobs.map(j => `ID: ${j.id} | Nome: ${j.nomeVaga}`));
+        }
+      } else {
+        console.log(`✅ Job encontrado: ${job.nomeVaga}`);
+      }
 
       if (!job) {
         return res.status(404).json({ error: "Vaga não encontrada" });
