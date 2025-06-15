@@ -329,7 +329,7 @@ export class WhatsAppQRService {
         input: question.pergunta,
         voice: config.openaiVoice || "nova",
         response_format: "opus",  // OGG/Opus funciona melhor no mobile
-        speed: 0.75  // Velocidade mais lenta para melhor compreensão
+        speed: 1.0  // Velocidade normal do TTS
       };
       console.log(`🎙️ [DEBUG] Dados TTS:`, ttsData);
 
@@ -370,13 +370,20 @@ export class WhatsAppQRService {
         return;
       }
 
+      // Primeiro enviar pergunta por texto
+      const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      console.log(`📝 [DEBUG] Enviando pergunta por texto primeiro...`);
+      await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+      
       if (response.ok) {
         console.log(`✅ [DEBUG] Áudio gerado com sucesso, baixando buffer...`);
         const audioBuffer = await response.arrayBuffer();
         console.log(`💾 [DEBUG] Buffer de áudio criado - Tamanho: ${audioBuffer.byteLength} bytes`);
         
+        // Aguardar um momento antes de enviar o áudio
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Enviar áudio via WhatsApp
-        const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
         console.log(`📱 [DEBUG] JID formatado: ${jid}`);
         console.log(`📤 [DEBUG] Enviando áudio via WhatsApp...`);
         
@@ -387,7 +394,7 @@ export class WhatsAppQRService {
         });
 
         console.log(`✅ [DEBUG] Áudio enviado via WhatsApp - Resultado:`, sendResult);
-        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por áudio com sucesso`);
+        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por texto + áudio com sucesso`);
         
         // Salvar estado da entrevista
         console.log(`💾 [DEBUG] Salvando estado da entrevista...`);
@@ -397,8 +404,7 @@ export class WhatsAppQRService {
       } else {
         const errorText = await response.text();
         console.error(`❌ [DEBUG] Erro na API OpenAI para TTS - Status: ${response.status}, Erro: ${errorText}`);
-        console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback...`);
-        await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+        console.log(`📝 [DEBUG] Pergunta já foi enviada por texto - continuando...`);
       }
 
       console.log(`🏁 [DEBUG] ===== ENVIO DE PERGUNTA FINALIZADO =====`);
@@ -443,6 +449,15 @@ export class WhatsAppQRService {
       
       // Buscar entrevista em andamento para este candidato
       const allInterviews = await storage.getAllInterviews();
+      console.log(`🔍 [DEBUG] Total de entrevistas encontradas: ${allInterviews.length}`);
+      console.log(`🔍 [DEBUG] Entrevistas do candidato ${candidate.id}:`, 
+        allInterviews.filter(i => i.candidateId === candidate.id).map(i => ({
+          id: i.id,
+          status: i.status,
+          selectionId: i.selectionId
+        }))
+      );
+      
       let currentInterview = allInterviews.find(i => 
         i.candidateId === candidate.id && 
         i.status === 'in_progress'
@@ -450,35 +465,24 @@ export class WhatsAppQRService {
       
       if (!currentInterview) {
         console.log(`❌ [DEBUG] Entrevista em andamento não encontrada para candidato ${candidate.id}`);
-        // Vamos tentar encontrar uma seleção ativa para este candidato e criar entrevista
-        console.log(`🔍 [DEBUG] Tentando encontrar seleção ativa para criar entrevista...`);
-        
-        const allSelections = await storage.getAllSelections();
-        const activeSelection = allSelections.find(s => s.status === 'enviado' && s.candidateListId);
-        
-        if (!activeSelection) {
-          await this.sendTextMessage(from, "Erro: nenhuma entrevista ativa encontrada. Responda '1' para iniciar.");
-          return;
-        }
-        
-        // Criar nova entrevista
-        console.log(`💾 [DEBUG] Criando nova entrevista para seleção ${activeSelection.id}...`);
-        currentInterview = await storage.createInterview({
-          selectionId: activeSelection.id,
-          candidateId: candidate.id,
-          token: `whatsapp_${Date.now()}`,
-          status: 'in_progress'
-        });
-        console.log(`✅ [DEBUG] Nova entrevista criada: ID ${currentInterview.id}`);
+        await this.sendTextMessage(from, "Erro: entrevista não encontrada. Digite '1' novamente para iniciar.");
+        return;
       }
       
-      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Status: ${currentInterview.status}`);
+      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Status: ${currentInterview.status}, SelectionId: ${currentInterview.selectionId}`);
       
-      // Buscar seleção
+      // Buscar seleção com logs detalhados
+      console.log(`🔍 [DEBUG] Buscando seleção com ID: ${currentInterview.selectionId}`);
       const selection = await storage.getSelectionById(currentInterview.selectionId);
+      console.log(`📋 [DEBUG] Seleção encontrada:`, selection ? {
+        id: selection.id,
+        jobId: selection.jobId,
+        status: selection.status
+      } : 'NULL');
+      
       if (!selection) {
         console.log(`❌ [DEBUG] Seleção não encontrada para entrevista ${currentInterview.id}`);
-        await this.sendTextMessage(from, "Erro: dados da entrevista não encontrados.");
+        await this.sendTextMessage(from, "Erro: dados da seleção não encontrados.");
         return;
       }
       
@@ -634,8 +638,17 @@ export class WhatsAppQRService {
         audioFileName
       });
       
-      // Salvar resposta no banco de dados com a estrutura solicitada
+      // Salvar resposta no banco de dados com logs detalhados
       try {
+        console.log(`💾 [DEBUG] ===== SALVANDO RESPOSTA NO BANCO =====`);
+        console.log(`📋 [DEBUG] Dados para salvamento:`, {
+          interviewId: currentInterview.id,
+          questionId: currentQuestion.id,
+          transcricao: transcription.substring(0, 100) + (transcription.length > 100 ? '...' : ''),
+          audioFileName: audioFileName,
+          questionIndex: currentQuestionIndex
+        });
+        
         const response = await storage.createResponse({
           interviewId: currentInterview.id,
           questionId: currentQuestion.id,
@@ -645,24 +658,26 @@ export class WhatsAppQRService {
           feedback: null
         });
         
-        console.log(`✅ [DEBUG] Resposta salva no banco com ID: ${response.id}`);
+        console.log(`✅ [DEBUG] RESPOSTA SALVA COM SUCESSO!`);
+        console.log(`🆔 [DEBUG] Response ID: ${response.id}`);
+        console.log(`📝 [DEBUG] Transcrição salva: "${transcription}"`);
+        console.log(`🎵 [DEBUG] Áudio salvo: ${audioFileName}`);
+        console.log(`📊 [DEBUG] Pergunta ${currentQuestionIndex + 1} processada e salva`);
         
-        // Salvar também no formato personalizado do Firebase para relatórios
-        const responseData = {
-          nome: candidate.name,
-          numero: phoneClean,
-          pergunta: currentQuestion.pergunta,
-          respostaAudioUrl: audioFileName,
-          respostaTexto: transcription,
-          numeroDaPergunta: currentQuestionIndex + 1,
-          interviewId: currentInterview.id,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log(`📊 [DEBUG] Dados da entrevista salvos para relatório`);
+        // Verificar se salvou corretamente
+        const allResponses = await storage.getResponsesByInterviewId(currentInterview.id);
+        console.log(`📈 [DEBUG] Total de respostas da entrevista ${currentInterview.id}: ${allResponses.length}`);
+        console.log(`📋 [DEBUG] Últimas respostas:`, allResponses.map(r => ({
+          id: r.id,
+          questionId: r.questionId,
+          hasAudio: !!r.audioUrl,
+          hasText: !!r.responseText
+        })));
         
       } catch (saveError) {
-        console.log(`❌ [DEBUG] Erro ao salvar resposta:`, saveError);
+        console.log(`❌ [DEBUG] ===== ERRO AO SALVAR RESPOSTA =====`);
+        console.log(`💥 [DEBUG] Erro completo:`, saveError);
+        console.log(`🔍 [DEBUG] Stack trace:`, saveError.stack);
         await this.sendTextMessage(from, "Erro ao salvar resposta. Tente novamente.");
         return;
       }
