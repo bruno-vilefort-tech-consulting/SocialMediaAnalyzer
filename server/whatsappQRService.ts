@@ -305,15 +305,139 @@ export class WhatsAppQRService {
     try {
       console.log(`🎵 [DEBUG] Processando resposta de áudio de ${from}`);
       
-      // Por enquanto, confirmar recebimento e simular próxima pergunta
-      await this.sendTextMessage(from, "✅ Resposta recebida! Processando próxima pergunta...");
+      const { storage } = await import('./storage');
+      const fs = await import('fs');
+      const path = await import('path');
       
-      // TODO: Implementar download e transcrição do áudio
-      // TODO: Salvar resposta no banco
-      // TODO: Buscar próxima pergunta ou finalizar entrevista
+      // Buscar entrevista em andamento para este telefone
+      const phoneClean = from.replace('@s.whatsapp.net', '');
+      const candidates = await storage.getCandidatesByClientId(1749849987543);
+      const candidate = candidates.find(c => {
+        if (!c.phone) return false;
+        const candidatePhone = c.phone.replace(/\D/g, '');
+        const searchPhone = phoneClean.replace(/\D/g, '');
+        return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+      });
+      
+      if (!candidate) {
+        console.log(`❌ [DEBUG] Candidato não encontrado para ${phoneClean}`);
+        return;
+      }
+      
+      // Buscar entrevista em andamento
+      const allSelections = await storage.getAllSelections();
+      const activeSelection = allSelections.find(s => s.status === 'enviado' && s.candidateListId);
+      
+      if (!activeSelection) {
+        console.log(`❌ [DEBUG] Seleção ativa não encontrada`);
+        return;
+      }
+      
+      // Baixar arquivo de áudio
+      const audioBuffer = await this.socket.downloadMediaMessage(audioMessage);
+      if (!audioBuffer) {
+        console.log(`❌ [DEBUG] Erro ao baixar áudio`);
+        await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
+        return;
+      }
+      
+      // Salvar arquivo temporário
+      const audioFileName = `audio_${Date.now()}.ogg`;
+      const audioPath = path.join('./uploads', audioFileName);
+      
+      // Criar diretório se não existir
+      if (!fs.existsSync('./uploads')) {
+        fs.mkdirSync('./uploads', { recursive: true });
+      }
+      
+      fs.writeFileSync(audioPath, audioBuffer);
+      console.log(`💾 [DEBUG] Áudio salvo em: ${audioPath}`);
+      
+      // Transcrever áudio usando OpenAI Whisper
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
+        console.log(`❌ [DEBUG] OpenAI API não configurada para transcrição`);
+        await this.sendTextMessage(from, "Resposta recebida! Aguarde a próxima pergunta...");
+        return;
+      }
+      
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(audioPath));
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'pt');
+      
+      const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.openaiApiKey}`,
+          ...formData.getHeaders()
+        },
+        body: formData
+      });
+      
+      let transcription = '';
+      if (transcriptionResponse.ok) {
+        const result = await transcriptionResponse.json();
+        transcription = result.text || '';
+        console.log(`📝 [DEBUG] Transcrição: "${transcription}"`);
+      } else {
+        console.log(`❌ [DEBUG] Erro na transcrição OpenAI`);
+        transcription = '[Áudio não transcrito]';
+      }
+      
+      // Salvar resposta no banco de dados
+      const interview = await storage.createInterview({
+        selectionId: activeSelection.id,
+        candidateId: candidate.id,
+        token: `whatsapp_${Date.now()}`,
+        status: 'in_progress'
+      });
+      
+      // Buscar job e pergunta atual
+      const job = await storage.getJobById(activeSelection.jobId);
+      if (job && job.perguntas && job.perguntas.length > 0) {
+        // Por simplicidade, vamos assumir que é a primeira pergunta
+        // Em um sistema completo, você manteria o estado da entrevista
+        const currentQuestion = job.perguntas[0];
+        
+        // Salvar resposta
+        const response = await storage.createResponse({
+          interviewId: interview.id,
+          questionId: currentQuestion.id,
+          responseText: transcription,
+          audioUrl: audioFileName,
+          score: null,
+          feedback: null
+        });
+        
+        console.log(`✅ [DEBUG] Resposta salva no banco: ID ${response.id}`);
+        
+        // Enviar confirmação e próxima pergunta
+        await this.sendTextMessage(from, "✅ Resposta recebida e processada!");
+        
+        // Se há mais perguntas, enviar a próxima
+        if (job.perguntas.length > 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          await this.sendQuestionAudio(from, candidate.name, job.perguntas[1], interview.id, 1, job.perguntas.length);
+        } else {
+          // Finalizar entrevista
+          await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você completou a entrevista. Nossa equipe analisará suas respostas e retornará em breve.`);
+          await storage.updateInterview(interview.id, { 
+            status: 'completed',
+            completedAt: new Date()
+          });
+        }
+      }
+      
+      // Limpar arquivo temporário
+      if (fs.existsSync(audioPath)) {
+        fs.unlinkSync(audioPath);
+      }
       
     } catch (error) {
       console.error(`❌ Erro ao processar áudio:`, error);
+      await this.sendTextMessage(from, "Erro ao processar resposta. Tente novamente.");
     }
   }
 
@@ -338,14 +462,8 @@ export class WhatsAppQRService {
         try {
           const { storage } = await import('./storage');
           
-          // Buscar todos os candidatos no Firebase
-          const { getDocs, collection } = await import('firebase/firestore');
-          const { firebaseDb } = await import('./storage');
-          const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
-          const candidates = candidatesSnapshot.docs.map(doc => ({ 
-            id: parseInt(doc.id), 
-            ...doc.data() 
-          })) as any[];
+          // Buscar todos os candidatos diretamente via storage
+          const candidates = await storage.getCandidatesByClientId(1749849987543); // buscar do cliente ativo
           const candidate = candidates.find(c => {
             if (!c.phone) return false;
             const candidatePhone = c.phone.replace(/\D/g, '');

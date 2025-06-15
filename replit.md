@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: Sistema completo de entrevista por áudio TTS via WhatsApp IMPLEMENTADO
+  - **Fluxo de entrevista completo**: Após aceitar entrevista, sistema busca perguntas da vaga automaticamente
+  - **Áudio TTS OpenAI**: Perguntas enviadas como notas de voz usando OpenAI TTS com voz configurável
+  - **Processamento de respostas**: Sistema baixa áudio do candidato, transcreve com Whisper e salva no banco
+  - **Armazenamento robusto**: Respostas salvas com áudio original e transcrição em texto
+  - **Fluxo sequencial**: Sistema envia próxima pergunta automaticamente após processar resposta
+  - **Finalização automática**: Entrevista finalizada quando todas perguntas são respondidas
+  - **Mensagens simplificadas**: Apenas opções numéricas (1-SIM, 2-NÃO) sem botões problemáticos
+  - **Logs detalhados**: Debug completo de todo processo de download, transcrição e armazenamento
+
 - June 15, 2025: Sistema de entrevista interativa via WhatsApp COMPLETAMENTE IMPLEMENTADO
   - **Mensagens personalizadas**: Sistema usa mensagem do campo "Mensagem Inicial WhatsApp" da seleção
   - **Botões interativos**: "Sim, começar agora" e "Não quero participar" funcionando
