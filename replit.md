@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: Sistema WhatsApp QR COMPLETAMENTE FUNCIONAL - Conexão via Baileys implementada
+  - **WhatsApp QR totalmente operacional**: Conexão via QR Code funcionando com Baileys
+  - **Interface completa implementada**: WhatsAppQRPage.tsx com status em tempo real
+  - **Integração com campanhas**: Botões específicos QR (verde esmeralda) na página de seleções
+  - **Sistema duplo WhatsApp**: Meta Cloud API (produção) + WhatsApp QR (testes) funcionando em paralelo
+  - **Rotas backend completas**: /api/whatsapp-qr/ com status, teste, conexão e envio de campanhas
+  - **Importação dinâmica**: Baileys carregado corretamente com async import para resolver problemas ES modules
+  - **Teste validado**: Mensagem de teste enviada com sucesso via WhatsApp QR
+
 - June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema "Preparando..." resolvido
   - **Processamento em tempo real corrigido**: Sistema não trava mais em "Preparando..." ao processar respostas
   - **Reconhecimento contínuo implementado**: Voz processada automaticamente e reinicia após cada resposta

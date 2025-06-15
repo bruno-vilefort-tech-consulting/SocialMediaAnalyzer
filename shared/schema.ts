@@ -127,6 +127,9 @@ export const apiConfigs = pgTable("api_configs", {
   firebaseServiceAccount: jsonb("firebase_service_account"),
   whatsappToken: text("whatsapp_token"),
   whatsappPhoneId: text("whatsapp_phone_id"),
+  whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
+  whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
+  whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
   globalMonthlyLimit: integer("global_monthly_limit").default(10000),
   maxInterviewTime: integer("max_interview_time").default(1800), // seconds
   maxFileSize: integer("max_file_size").default(52428800), // bytes (50MB)

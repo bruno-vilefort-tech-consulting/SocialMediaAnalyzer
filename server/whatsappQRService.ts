@@ -25,7 +25,9 @@ export class WhatsAppQRService {
 
   constructor() {
     this.initializeBaileys().then(() => {
-      this.initializeConnection();
+      this.loadConnectionFromDB().then(() => {
+        this.initializeConnection();
+      });
     }).catch(error => {
       console.error('❌ Erro ao inicializar WhatsApp QR:', error.message);
     });
@@ -43,6 +45,39 @@ export class WhatsAppQRService {
     } catch (error) {
       console.error('❌ Erro ao importar Baileys:', error);
       throw error;
+    }
+  }
+
+  private async loadConnectionFromDB() {
+    try {
+      const config = await storage.getApiConfig();
+      if (config && config.whatsappQrConnected) {
+        this.config.isConnected = config.whatsappQrConnected;
+        this.config.phoneNumber = config.whatsappQrPhoneNumber || null;
+        this.config.lastConnection = config.whatsappQrLastConnection;
+        console.log('📱 Dados WhatsApp QR carregados do banco:', {
+          connected: this.config.isConnected,
+          phone: this.config.phoneNumber,
+          lastConnection: this.config.lastConnection
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar dados WhatsApp QR do banco:', error);
+    }
+  }
+
+  private async saveConnectionToDB() {
+    try {
+      const currentConfig = await storage.getApiConfig();
+      await storage.upsertApiConfig({
+        ...currentConfig,
+        whatsappQrConnected: this.config.isConnected,
+        whatsappQrPhoneNumber: this.config.phoneNumber,
+        whatsappQrLastConnection: this.config.lastConnection
+      });
+      console.log('💾 Conexão WhatsApp QR salva no banco de dados');
+    } catch (error) {
+      console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
     }
   }
 
@@ -77,6 +112,9 @@ export class WhatsAppQRService {
           this.config.lastConnection = null;
           this.notifyConnectionListeners(false);
           
+          // Salvar desconexão no banco de dados
+          this.saveConnectionToDB();
+          
           if (shouldReconnect) {
             console.log('🔄 Reconectando...');
             setTimeout(() => this.initializeConnection(), 5000);
@@ -89,6 +127,9 @@ export class WhatsAppQRService {
           this.config.lastConnection = new Date();
           this.notifyQRListeners(null);
           this.notifyConnectionListeners(true);
+          
+          // Salvar conexão no banco de dados
+          this.saveConnectionToDB();
         }
       });
 
