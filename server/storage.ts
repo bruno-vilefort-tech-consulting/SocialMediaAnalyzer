@@ -1302,10 +1302,10 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJob(id: string | number): Promise<void> {
     // Primeiro deletar todas as perguntas relacionadas à vaga
-    await pgDb.delete(questions).where(eq(questions.vagaId, String(id)));
+    await pool.query("DELETE FROM perguntas_entrevista WHERE vaga_id = $1", [String(id)]);
     
     // Depois deletar a vaga
-    await pgDb.delete(jobs).where(eq(jobs.id, String(id)));
+    await pool.query("DELETE FROM vagas_preset WHERE id = $1", [String(id)]);
   }
 
   // Questions
@@ -1314,11 +1314,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
-    const [question] = await pgDb
-      .insert(questions)
-      .values(insertQuestion)
-      .returning();
-    return question;
+    // Usar pool PostgreSQL direto para criar pergunta
+    const result = await pool.query(
+      "INSERT INTO perguntas_entrevista (vaga_id, pergunta_candidato, resposta_perfeita, numero_pergunta, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *",
+      [insertQuestion.vagaId, insertQuestion.perguntaCandidato, insertQuestion.respostaPerfeita, insertQuestion.numeroPergunta]
+    );
+    
+    return result.rows[0] as Question;
   }
 
   async updateQuestion(id: number, questionUpdate: Partial<Question>): Promise<Question> {

@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: ✅ CRIAÇÃO E EXCLUSÃO DE VAGAS TOTALMENTE CORRIGIDA - Sistema PostgreSQL operacional
+  - **Problema de ID nulo resolvido**: createJob agora usa pool PostgreSQL direto com IDs únicos gerados
+  - **Exclusão em cascata implementada**: deleteJob remove perguntas associadas antes de deletar a vaga
+  - **Criação de perguntas corrigida**: createQuestion usa SQL direto para inserir perguntas com vaga_id
+  - **Testes completos validados**: Criação, listagem e exclusão de vagas funcionando perfeitamente
+  - **Pool PostgreSQL integrado**: Métodos críticos usam conexão direta para evitar problemas do Drizzle
+  - **Sistema master funcional**: Login daniel@grupomaximuns.com.br operando todas funcionalidades
+
 - June 15, 2025: ✅ SISTEMA COMPLETO POSTGRESQL FUNCIONANDO - Todos os erros de autenticação corrigidos
   - **Problema de token antigo resolvido**: Sistema não conseguia processar IDs muito grandes de tokens anteriores
   - **API de vagas totalmente funcional**: Master visualiza todas as vagas de todos os clientes corretamente
