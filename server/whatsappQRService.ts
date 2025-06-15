@@ -1,5 +1,3 @@
-import makeWASocket, { useMultiFileAuthState, ConnectionState, DisconnectReason } from '@whiskeysockets/baileys';
-import type { WASocket, proto } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import { storage } from './storage';
@@ -12,7 +10,7 @@ interface WhatsAppQRConfig {
 }
 
 export class WhatsAppQRService {
-  private socket: WASocket | null = null;
+  private socket: any = null;
   private config: WhatsAppQRConfig = {
     isConnected: false,
     qrCode: null,
@@ -21,165 +19,169 @@ export class WhatsAppQRService {
   };
   private qrCodeListeners: ((qr: string | null) => void)[] = [];
   private connectionListeners: ((isConnected: boolean) => void)[] = [];
+  private makeWASocket: any = null;
+  private useMultiFileAuthState: any = null;
+  private baileys: any = null;
 
   constructor() {
-    this.initializeConnection();
+    this.initializeBaileys().then(() => {
+      this.initializeConnection();
+    }).catch(error => {
+      console.error('❌ Erro ao inicializar WhatsApp QR:', error.message);
+    });
+  }
+
+  private async initializeBaileys() {
+    try {
+      this.baileys = await import('@whiskeysockets/baileys');
+      this.makeWASocket = this.baileys.default || this.baileys.makeWASocket;
+      this.useMultiFileAuthState = this.baileys.useMultiFileAuthState;
+      
+      if (!this.makeWASocket) {
+        throw new Error('makeWASocket não encontrado na biblioteca Baileys');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao importar Baileys:', error);
+      throw error;
+    }
   }
 
   private async initializeConnection() {
     try {
+      if (!this.makeWASocket || !this.useMultiFileAuthState) {
+        throw new Error('Baileys não foi inicializado corretamente');
+      }
+
       console.log('🔗 Inicializando conexão WhatsApp QR...');
       
-      const { state, saveCreds } = await useMultiFileAuthState('./whatsapp-auth');
+      const { state, saveCreds } = await this.useMultiFileAuthState('./whatsapp-auth');
       
-      this.socket = makeWASocket({
+      this.socket = this.makeWASocket({
         auth: state,
-        printQRInTerminal: false, // Vamos gerar nosso próprio QR
+        printQRInTerminal: true,
       });
 
-      this.socket.ev.on('connection.update', async (update) => {
+      this.socket.ev.on('connection.update', (update: any) => {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr) {
-          console.log('📱 Novo QR Code gerado');
-          qrcodeTerminal.generate(qr, { small: true });
-          
-          // Gerar QR Code como string base64 para exibir no frontend
-          const qrString = await qrcode.toDataURL(qr);
-          this.config.qrCode = qrString;
-          this.notifyQRListeners(qrString);
+          this.generateQRCode(qr);
         }
-
+        
         if (connection === 'close') {
-          console.log('❌ Conexão WhatsApp fechada');
+          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
+          console.log('🔌 Conexão fechada devido a:', lastDisconnect?.error?.message);
+          
           this.config.isConnected = false;
-          this.config.qrCode = null;
+          this.config.phoneNumber = null;
+          this.config.lastConnection = null;
           this.notifyConnectionListeners(false);
           
-          // Tentar reconectar
-          setTimeout(() => {
-            this.initializeConnection();
-          }, 5000);
+          if (shouldReconnect) {
+            console.log('🔄 Reconectando...');
+            setTimeout(() => this.initializeConnection(), 5000);
+          }
         } else if (connection === 'open') {
-          console.log('✅ WhatsApp conectado com sucesso!');
+          console.log('✅ WhatsApp QR conectado com sucesso!');
           this.config.isConnected = true;
           this.config.qrCode = null;
+          this.config.phoneNumber = this.socket.user?.id?.split(':')[0] || 'Conectado';
           this.config.lastConnection = new Date();
-          this.config.phoneNumber = this.socket?.user?.id?.split('@')[0] || null;
-          this.notifyConnectionListeners(true);
           this.notifyQRListeners(null);
+          this.notifyConnectionListeners(true);
         }
-      });
-
-      this.socket.ev.on('messages.upsert', async ({ messages }) => {
-        await this.handleIncomingMessages(messages);
       });
 
       this.socket.ev.on('creds.update', saveCreds);
+      this.socket.ev.on('messages.upsert', this.handleIncomingMessages.bind(this));
 
     } catch (error) {
-      console.error('❌ Erro ao inicializar WhatsApp QR:', error);
+      console.error('❌ Erro ao inicializar conexão WhatsApp QR:', error);
+      this.config.isConnected = false;
+      this.notifyConnectionListeners(false);
     }
   }
 
-  private async handleIncomingMessages(messages: proto.IWebMessageInfo[]) {
-    for (const msg of messages) {
-      if (!msg.key.fromMe && msg.message) {
-        const from = msg.key.remoteJid;
-        const messageText = msg.message.conversation || 
-                           msg.message.extendedTextMessage?.text || '';
-        
-        console.log(`📩 Mensagem recebida de ${from}: ${messageText}`);
-        
-        // Aqui você pode implementar lógica para processar mensagens de entrevista
-        // Por exemplo, verificar se é uma resposta de entrevista em andamento
-        await this.processInterviewMessage(from!, messageText, msg);
-      }
-    }
-  }
-
-  private async processInterviewMessage(from: string, text: string, message: proto.IWebMessageInfo) {
+  private async generateQRCode(qr: string) {
     try {
-      // Extrair número de telefone
-      const phoneNumber = from.split('@')[0];
+      const qrCodeDataURL = await qrcode.toDataURL(qr);
+      this.config.qrCode = qrCodeDataURL;
+      this.notifyQRListeners(qrCodeDataURL);
       
-      // Verificar se há uma entrevista em andamento para este número
-      const interviewState = await this.getInterviewState(phoneNumber);
-      
-      if (interviewState) {
-        // Processar resposta da entrevista
-        console.log(`🎤 Processando resposta de entrevista de ${phoneNumber}`);
+      console.log('📱 QR Code gerado! Escaneie com seu WhatsApp.');
+      qrcodeTerminal.generate(qr, { small: true });
+    } catch (error) {
+      console.error('❌ Erro ao gerar QR Code:', error);
+    }
+  }
+
+  private async handleIncomingMessages({ messages }: any) {
+    for (const message of messages) {
+      if (!message.key.fromMe && message.message) {
+        const from = message.key.remoteJid;
+        const text = message.message.conversation || 
+                    message.message.extendedTextMessage?.text || '';
         
-        // Se for áudio, processar o áudio
-        if (message.message?.audioMessage) {
-          await this.handleAudioResponse(phoneNumber, message.message.audioMessage);
-        } else {
-          // Se for texto, processar como resposta de texto
-          await this.handleTextResponse(phoneNumber, text);
+        if (text && from) {
+          console.log(`📨 Mensagem recebida de ${from}: ${text}`);
+          await this.processInterviewMessage(from, text, message);
         }
-      } else {
-        // Mensagem geral - responder com informações básicas
-        await this.sendTextMessage(phoneNumber, 'Olá! Este é o sistema de entrevistas da empresa. Aguarde instruções ou entre em contato com o RH.');
       }
+    }
+  }
+
+  private async processInterviewMessage(from: string, text: string, message: any) {
+    try {
+      // Aqui implementaria a lógica de entrevista similar ao whatsappService.ts
+      console.log(`🤖 Processando mensagem de entrevista de ${from}: ${text}`);
+      
+      // Por agora, apenas responde com uma mensagem padrão
+      await this.sendTextMessage(from, "Olá! Sua mensagem foi recebida via WhatsApp QR. Sistema de entrevistas em desenvolvimento.");
     } catch (error) {
       console.error('❌ Erro ao processar mensagem de entrevista:', error);
     }
   }
 
-  private async handleAudioResponse(phone: string, audioMessage: any) {
-    // Implementar processamento de áudio similar ao whatsappService.ts
-    console.log(`🎵 Processando áudio de ${phone}`);
-    // TODO: Integrar com OpenAI para transcrição
-  }
-
-  private async handleTextResponse(phone: string, text: string) {
-    // Implementar processamento de texto
-    console.log(`💬 Processando texto de ${phone}: ${text}`);
-    // TODO: Integrar com lógica de entrevista
-  }
-
-  private async getInterviewState(phone: string): Promise<any> {
-    // TODO: Implementar busca de estado de entrevista no Firebase/storage
-    return null;
-  }
-
   public async sendTextMessage(phoneNumber: string, message: string): Promise<boolean> {
     try {
       if (!this.socket || !this.config.isConnected) {
-        console.error('❌ WhatsApp não está conectado');
-        return false;
+        throw new Error('WhatsApp QR não está conectado');
       }
 
-      // Formatar número para WhatsApp (adicionar @s.whatsapp.net)
-      const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      await this.socket.sendMessage(jid, { text: message });
       
-      await this.socket.sendMessage(formattedNumber, { text: message });
-      console.log(`✅ Mensagem enviada para ${phoneNumber}: ${message}`);
-      
+      console.log(`✅ Mensagem enviada via QR para ${phoneNumber}: ${message}`);
       return true;
     } catch (error) {
-      console.error('❌ Erro ao enviar mensagem:', error);
+      console.error(`❌ Erro ao enviar mensagem via QR para ${phoneNumber}:`, error);
       return false;
     }
   }
 
   public async sendInterviewInvitation(
-    candidateName: string,
-    phoneNumber: string,
-    jobTitle: string,
-    message: string,
-    selectionId: number
+    phoneNumber: string, 
+    candidateName: string, 
+    jobTitle: string, 
+    interviewLink: string
   ): Promise<boolean> {
-    try {
-      const personalizedMessage = message
-        .replace(/\[nome do candidato\]/gi, candidateName)
-        .replace(/\[cargo\]/gi, jobTitle);
+    const message = `Olá ${candidateName}! 👋
 
-      return await this.sendTextMessage(phoneNumber, personalizedMessage);
-    } catch (error) {
-      console.error('❌ Erro ao enviar convite de entrevista:', error);
-      return false;
-    }
+Você foi selecionado(a) para a próxima etapa da vaga: *${jobTitle}*
+
+🎤 *Entrevista por Voz Online*
+- Sistema inteligente com perguntas por áudio
+- Responda também por áudio
+- Processo rápido e moderno
+
+🔗 *Acesse sua entrevista:*
+${interviewLink}
+
+⏰ Complete quando estiver pronto(a)!
+
+_Mensagem enviada via WhatsApp QR - Sistema de Entrevistas IA_`;
+
+    return await this.sendTextMessage(phoneNumber, message);
   }
 
   public getConnectionStatus(): WhatsAppQRConfig {
@@ -203,20 +205,29 @@ export class WhatsAppQRService {
   }
 
   public async disconnect() {
-    if (this.socket) {
-      await this.socket.logout();
-      this.socket = null;
+    try {
+      if (this.socket) {
+        await this.socket.logout();
+        this.socket = null;
+      }
+      
       this.config.isConnected = false;
       this.config.qrCode = null;
-      console.log('🔌 WhatsApp desconectado');
+      this.config.phoneNumber = null;
+      this.config.lastConnection = null;
+      
+      this.notifyConnectionListeners(false);
+      this.notifyQRListeners(null);
+      
+      console.log('🔌 WhatsApp QR desconectado');
+    } catch (error) {
+      console.error('❌ Erro ao desconectar WhatsApp QR:', error);
     }
   }
 
   public async reconnect() {
     await this.disconnect();
-    setTimeout(() => {
-      this.initializeConnection();
-    }, 2000);
+    setTimeout(() => this.initializeConnection(), 2000);
   }
 }
 
