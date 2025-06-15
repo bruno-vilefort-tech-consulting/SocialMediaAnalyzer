@@ -645,53 +645,33 @@ export class WhatsAppQRService {
       
       console.log(`🔧 [DEBUG] OpenAI configurado - iniciando transcrição...`);
       
-      // Transcrever áudio usando OpenAI Whisper API
+      // Transcrever áudio usando OpenAI SDK (corrigido)
       let transcription = '';
       try {
-        const FormData = (await import('form-data')).default;
-        const formData = new FormData();
-        
-        // Anexar arquivo de áudio
-        formData.append('file', fs.createReadStream(audioPath), {
-          filename: audioFileName,
-          contentType: 'audio/ogg',
-          knownLength: fs.statSync(audioPath).size
-        });
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'pt');
-        formData.append('response_format', 'json');
-        
-        console.log(`🌐 [DEBUG] Enviando arquivo para OpenAI Whisper API...`);
+        console.log(`🌐 [DEBUG] Iniciando transcrição via OpenAI SDK...`);
         console.log(`📊 [DEBUG] Tamanho do arquivo: ${fs.statSync(audioPath).size} bytes`);
         
-        const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${config.openaiApiKey}`,
-            ...formData.getHeaders()
-          },
-          body: formData
+        // Usar OpenAI SDK em vez de FormData
+        const OpenAI = (await import('openai')).default;
+        const openai = new OpenAI({ apiKey: config.openaiApiKey });
+        
+        const transcriptionResult = await openai.audio.transcriptions.create({
+          file: fs.createReadStream(audioPath),
+          model: 'whisper-1',
+          language: 'pt',
+          response_format: 'text'
         });
         
-        console.log(`📡 [DEBUG] Status da resposta Whisper: ${transcriptionResponse.status}`);
+        transcription = transcriptionResult || '';
+        console.log(`📝 [DEBUG] Transcrição via SDK recebida: "${transcription}"`);
         
-        if (transcriptionResponse.ok) {
-          const result = await transcriptionResponse.json();
-          transcription = result.text || '';
-          console.log(`📝 [DEBUG] Transcrição recebida: "${transcription}"`);
-          
-          if (!transcription.trim()) {
-            transcription = '[Áudio sem fala detectada]';
-            console.log(`⚠️ [DEBUG] Transcrição vazia - áudio pode não conter fala`);
-          }
-        } else {
-          const errorText = await transcriptionResponse.text();
-          console.log(`❌ [DEBUG] Erro na API Whisper: ${transcriptionResponse.status} - ${errorText}`);
-          transcription = '[Erro na transcrição]';
+        if (!transcription.trim()) {
+          transcription = '[Áudio sem fala detectada]';
+          console.log(`⚠️ [DEBUG] Transcrição vazia - áudio pode não conter fala`);
         }
         
       } catch (transcriptionError) {
-        console.log(`❌ [DEBUG] Erro na requisição Whisper:`, transcriptionError);
+        console.log(`❌ [DEBUG] Erro na transcrição SDK:`, transcriptionError.message);
         transcription = '[Erro na transcrição]';
       }
       
