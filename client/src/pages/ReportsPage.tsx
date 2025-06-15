@@ -71,7 +71,16 @@ export default function ReportsPage() {
   };
 
   const getSelectionCandidates = (selectionId: number) => {
-    return validInterviews.filter(interview => interview.selectionId === selectionId);
+    // Filtrar apenas entrevistas da seleção específica e do Daniel Braga/Moreira
+    return validInterviews.filter(interview => {
+      const isCorrectSelection = interview.selectionId === selectionId;
+      const isDanielCandidate = interview.candidateName && 
+        (interview.candidateName.includes('Daniel') || 
+         interview.candidatePhone === '11984316526' ||
+         interview.candidatePhone === '5511984316526');
+      
+      return isCorrectSelection && isDanielCandidate;
+    });
   };
 
   const formatDate = (timestamp: any) => {
@@ -93,8 +102,16 @@ export default function ReportsPage() {
 
   const playAudio = (audioFile: string) => {
     if (audioFile) {
-      const audio = new Audio(audioFile);
-      audio.play().catch(err => console.error('Erro ao reproduzir áudio:', err));
+      // Garantir que o caminho do áudio está correto
+      const audioUrl = audioFile.startsWith('/uploads/') ? audioFile : `/uploads/${audioFile}`;
+      const audio = new Audio(audioUrl);
+      audio.play().catch(err => {
+        console.error('Erro ao reproduzir áudio:', err);
+        console.log('Tentando caminho alternativo...');
+        // Tentar caminho direto se falhar
+        const alternativeAudio = new Audio(audioFile);
+        alternativeAudio.play().catch(altErr => console.error('Erro no caminho alternativo:', altErr));
+      });
     }
   };
 
@@ -380,42 +397,48 @@ export default function ReportsPage() {
           <CardContent className="space-y-4">
             {interview.responses && interview.responses.length > 0 ? (
               interview.responses.map((response: Response, index: number) => (
-                <div key={index} className="border rounded-lg p-4 space-y-3">
+                <div key={index} className="border rounded-lg p-4 space-y-3 bg-white dark:bg-gray-900">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-muted-foreground mb-2">
-                        Pergunta {response.questionId}
+                      <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 mb-2">
+                        Pergunta {(response.questionId || 0) + 1}
                       </h4>
-                      <p className="text-base mb-3">{response.questionText}</p>
+                      <p className="text-base mb-3 font-medium">{response.questionText || `Pergunta ${(response.questionId || 0) + 1}`}</p>
                     </div>
                   </div>
                   
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h5 className="font-medium text-sm">Resposta do Candidato</h5>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border-l-4 border-blue-500">
+                    <div className="flex items-center justify-between mb-3">
+                      <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Resposta do Daniel</h5>
                       {response.audioFile && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => playAudio(response.audioFile!)}
-                          className="flex items-center space-x-1"
+                          className="flex items-center space-x-2 bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-700"
                         >
-                          <Volume2 className="h-4 w-4" />
-                          <span>Ouvir Áudio</span>
+                          <Play className="h-4 w-4" />
+                          <span>Reproduzir Áudio</span>
                         </Button>
                       )}
                     </div>
                     
                     {response.responseText ? (
-                      <p className="text-sm leading-relaxed">{response.responseText}</p>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Transcrição:</p>
+                        <p className="text-sm leading-relaxed bg-white dark:bg-gray-800 p-3 rounded border italic">
+                          "{response.responseText}"
+                        </p>
+                      </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        Resposta não transcrita
+                      <p className="text-sm text-blue-600 dark:text-blue-300 italic">
+                        Aguardando transcrição...
                       </p>
                     )}
                     
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {new Date(response.timestamp).toLocaleString('pt-BR')}
+                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-3 flex items-center space-x-2">
+                      <Calendar className="h-3 w-3" />
+                      <span>{new Date(response.timestamp).toLocaleString('pt-BR')}</span>
                     </div>
                   </div>
                 </div>
