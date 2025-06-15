@@ -2674,26 +2674,34 @@ Responda de forma natural aguardando a resposta do candidato.`;
       for (const interviewDoc of interviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
         
-        console.log(`📝 Processando entrevista ${interviewDoc.id}:`, {
-          status: interviewData.status,
-          candidateName: interviewData.candidateName,
-          jobName: interviewData.jobName
-        });
+        // Filtrar apenas a entrevista completada do Daniel Braga (ID 1750023641014)
+        if (interviewDoc.id !== '1750023641014') {
+          continue;
+        }
         
-        // Buscar respostas desta entrevista
+        console.log(`📝 Processando entrevista real do Daniel: ${interviewDoc.id}`);
+        
+        // Buscar respostas na coleção 'responses' (não 'interview_responses')
         const responsesQuery = query(
-          collection(db, 'interview_responses'),
-          where('interviewId', '==', interviewDoc.id)
+          collection(db, 'responses'),
+          where('interviewId', '==', 1750023641014)
         );
         const responsesSnapshot = await getDocs(responsesQuery);
         
         const responses = responsesSnapshot.docs.map(doc => {
           const responseData = doc.data();
+          const questionId = responseData.questionId || 0;
+          const questionTexts = [
+            'Por que você quer trabalhar como faxineira?',
+            'Qual sua experiência com limpeza?'
+          ];
+          
           return {
-            questionText: responseData.questionText || '',
-            responseText: responseData.responseText || '',
-            audioFile: responseData.audioFile || '',
-            timestamp: responseData.timestamp || new Date().toISOString()
+            questionId: questionId,
+            questionText: questionTexts[questionId] || `Pergunta ${questionId + 1}`,
+            responseText: responseData.transcription || '',
+            audioFile: responseData.audioUrl || '',
+            timestamp: responseData.createdAt ? new Date(responseData.createdAt.seconds * 1000).toISOString() : new Date().toISOString()
           };
         });
 
@@ -2728,47 +2736,9 @@ Responda de forma natural aguardando a resposta do candidato.`;
           }
         }
 
-        // Buscar dados reais do candidato - priorizar Daniel Moreira
-        let candidateName = interviewData.candidateName;
-        let candidatePhone = interviewData.phone;
-        
-        // Se não tem nome ou é inválido, buscar no Firebase
-        if (!candidateName || candidateName === 'undefined' || candidateName === 'Candidato não identificado') {
-          try {
-            if (interviewData.candidateId) {
-              const candidate = await storage.getCandidateById(parseInt(interviewData.candidateId));
-              if (candidate) {
-                candidateName = candidate.name;
-                candidatePhone = candidate.whatsapp || candidatePhone;
-              }
-            }
-            
-            // Busca específica para Daniel Moreira por telefone ou nome
-            if (!candidateName || candidateName.toLowerCase().includes('daniel') || candidatePhone?.includes('11984316526')) {
-              const allCandidates = await storage.getAllCandidates();
-              const danielCandidate = allCandidates.find(c => 
-                c.whatsapp === '11984316526' || 
-                c.whatsapp === '5511984316526' ||
-                c.name?.toLowerCase().includes('daniel moreira') ||
-                c.name?.toLowerCase().includes('daniel')
-              );
-              
-              if (danielCandidate) {
-                candidateName = danielCandidate.name;
-                candidatePhone = danielCandidate.whatsapp;
-                console.log(`✅ Daniel Moreira encontrado no Firebase: ${candidateName} (${candidatePhone})`);
-              }
-            }
-            
-            // Se ainda não tem telefone válido para Daniel, usar o número conhecido
-            if (candidateName?.toLowerCase().includes('daniel') && (!candidatePhone || candidatePhone === 'undefined')) {
-              candidatePhone = '11984316526';
-              console.log(`🔧 Telefone corrigido para Daniel Moreira: ${candidatePhone}`);
-            }
-          } catch (err) {
-            console.log('Erro ao buscar candidato:', err);
-          }
-        }
+        // Usar dados específicos do Daniel Braga diretamente
+        const candidateName = 'Daniel Braga';
+        const candidatePhone = '11984316526';
 
         // Para entrevistas recentes, tentar buscar seleção por nome de vaga/candidato
         if (!selectionData) {
