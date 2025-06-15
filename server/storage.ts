@@ -656,11 +656,21 @@ export class FirebaseStorage implements IStorage {
   // Candidates
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
     try {
+      console.log(`🔍 [DEBUG] Buscando candidatos para clientId: ${clientId}`);
       const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
-      const candidates = candidatesSnapshot.docs
-        .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
-        .filter(candidate => candidate.clientId === clientId);
-      return candidates;
+      console.log(`📋 [DEBUG] Total de documentos de candidatos: ${candidatesSnapshot.docs.length}`);
+      
+      const allCandidates = candidatesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        const candidate = { id: parseInt(doc.id), ...data } as Candidate;
+        console.log(`👤 [DEBUG] Candidato: ${candidate.name} - ClientId: ${candidate.clientId} - Telefone: ${candidate.phone}`);
+        return candidate;
+      });
+      
+      const filteredCandidates = allCandidates.filter(candidate => candidate.clientId === clientId);
+      console.log(`✅ [DEBUG] Candidatos filtrados para clientId ${clientId}: ${filteredCandidates.length}`);
+      
+      return filteredCandidates;
     } catch (error) {
       console.error('Erro ao buscar candidates por clientId:', error);
       throw error;
