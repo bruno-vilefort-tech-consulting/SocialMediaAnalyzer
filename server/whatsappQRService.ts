@@ -570,11 +570,49 @@ export class WhatsAppQRService {
         return;
       }
       
-      // Buscar job e perguntas
-      const job = await storage.getJobById(selection.jobId);
-      if (!job || !job.perguntas || job.perguntas.length === 0) {
-        console.log(`❌ [DEBUG] Job sem perguntas válidas`);
-        await this.sendTextMessage(from, "Erro: vaga sem perguntas configuradas.");
+      // Buscar job com estratégia robusta
+      console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId} (tipo: ${typeof selection.jobId})`);
+      let job = await storage.getJobById(selection.jobId);
+      
+      if (!job) {
+        console.log(`❌ [DEBUG] Job não encontrado por ID exato, tentando busca robusta...`);
+        
+        // Buscar todos os jobs do cliente
+        const allJobs = await storage.getJobsByClientId(selection.clientId);
+        console.log(`📋 [DEBUG] Jobs do cliente ${selection.clientId}:`, allJobs.map(j => ({
+          id: j.id,
+          nome: j.nomeVaga,
+          perguntas: j.perguntas?.length || 0
+        })));
+        
+        // Tentar encontrar por match parcial ou contém
+        job = allJobs.find(j => 
+          String(j.id).includes(String(selection.jobId)) || 
+          String(selection.jobId).includes(String(j.id)) ||
+          j.id === selection.jobId ||
+          String(j.id) === String(selection.jobId)
+        );
+        
+        if (job) {
+          console.log(`✅ [DEBUG] Job encontrado por busca robusta: ${job.id} -> ${job.nomeVaga}`);
+          // Atualizar seleção com ID correto
+          await storage.updateSelection(selection.id, { jobId: job.id });
+          console.log(`🔄 [DEBUG] Seleção atualizada com jobId correto`);
+        }
+      }
+      
+      if (!job) {
+        console.log(`❌ [DEBUG] Job não encontrado em nenhuma estratégia de busca`);
+        await this.sendTextMessage(from, "Erro: vaga não encontrada no sistema.");
+        return;
+      }
+      
+      console.log(`✅ [DEBUG] Job encontrado: ${job.nomeVaga} (ID: ${job.id})`);
+      console.log(`📝 [DEBUG] Perguntas disponíveis: ${job.perguntas?.length || 0}`);
+      
+      if (!job.perguntas || job.perguntas.length === 0) {
+        console.log(`❌ [DEBUG] Job sem perguntas configuradas`);
+        await this.sendTextMessage(from, "Erro: esta vaga não possui perguntas cadastradas.");
         return;
       }
       
