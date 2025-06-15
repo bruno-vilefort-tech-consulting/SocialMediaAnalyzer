@@ -66,13 +66,9 @@ class SimpleInterviewService {
       return;
     }
 
-    // Buscar vaga com perguntas diretamente do Firebase
+    // Buscar vaga com perguntas
     try {
-      const jobsCollection = await storage.firestore.collection('jobs').get();
-      const jobs = jobsCollection.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const jobs = await storage.getJobs();
       
       const job = jobs.find(j => j.perguntas && j.perguntas.length > 0);
       
@@ -297,7 +293,9 @@ class SimpleInterviewService {
   }
 
   private async findCandidate(phone: string) {
-    const candidates = await storage.getAllCandidates();
+    // Buscar candidatos do cliente ativo (1749849987543)
+    console.log(`🔍 [DEBUG] Buscando candidatos para telefone: ${phone}`);
+    const candidates = await storage.getCandidatesByClientId(1749849987543);
     return candidates.find(c => {
       if (!c.phone) return false;
       const candidatePhone = c.phone.replace(/\D/g, '');
