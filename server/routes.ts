@@ -2711,15 +2711,37 @@ Responda de forma natural aguardando a resposta do candidato.`;
           }
         }
 
+        // Buscar dados reais do candidato se não existirem
+        let candidateName = interviewData.candidateName;
+        let candidatePhone = interviewData.phone;
+        
+        if (!candidateName && interviewData.candidateId) {
+          try {
+            const candidate = await storage.getCandidateById(parseInt(interviewData.candidateId));
+            if (candidate) {
+              candidateName = candidate.name;
+              candidatePhone = candidate.whatsapp || candidatePhone;
+            }
+          } catch (err) {
+            console.log('Erro ao buscar candidato:', err);
+          }
+        }
+
+        // Buscar dados da vaga se não existirem
+        let jobName = interviewData.jobName;
+        if (!jobName && selectionData) {
+          jobName = selectionData.jobName;
+        }
+
         allInterviews.push({
           id: interviewDoc.id,
-          selectionId: interviewData.selectionId || null,
-          selectionName: selectionData?.jobName || interviewData.jobName || 'Faxina',
+          selectionId: selectionData?.id || interviewData.selectionId || null,
+          selectionName: selectionData?.jobName || 'Seleção não identificada',
           candidateId: interviewData.candidateId || null,
-          candidateName: interviewData.candidateName || 'Candidato Desconhecido',
-          candidatePhone: interviewData.phone || 'N/A',
-          jobName: interviewData.jobName || selectionData?.jobName || 'Faxineira GM',
-          status: interviewData.status || 'completed',
+          candidateName: candidateName || 'Candidato não identificado',
+          candidatePhone: candidatePhone || 'Telefone não informado',
+          jobName: jobName || 'Vaga não identificada',
+          status: interviewData.status || 'unknown',
           startTime: interviewData.startTime,
           endTime: interviewData.endTime,
           responses,
