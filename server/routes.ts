@@ -406,8 +406,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = req.params.id;
       console.log('Tentando deletar vaga ID:', id, 'pelo usuário:', req.user?.email);
       
-      // Converter para string para ser compatível com Firebase
-      await storage.deleteJob(id);
+      // Forçar exclusão múltipla para garantir remoção
+      try {
+        await storage.deleteJob(id);
+        console.log('✅ Primeira tentativa de exclusão concluída');
+        
+        // Aguardar um pouco e tentar novamente para garantir
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar se ainda existe e tentar deletar novamente
+        const jobExists = await storage.getJobById(id);
+        if (jobExists) {
+          console.log('⚠️ Vaga ainda existe, tentando deletar novamente...');
+          await storage.deleteJob(id);
+          console.log('✅ Segunda tentativa de exclusão concluída');
+        } else {
+          console.log('✅ Vaga removida com sucesso na primeira tentativa');
+        }
+        
+      } catch (deleteError) {
+        console.error('❌ Erro durante exclusão:', deleteError);
+        throw deleteError;
+      }
+      
       res.status(204).send();
     } catch (error) {
       console.error('Erro ao deletar vaga:', error);

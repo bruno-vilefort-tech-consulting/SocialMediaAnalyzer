@@ -236,7 +236,30 @@ export class FirebaseStorage implements IStorage {
   }
 
   async deleteJob(id: string): Promise<void> {
-    await deleteDoc(doc(firebaseDb, "jobs", id));
+    console.log(`🗑️ Tentando deletar vaga Firebase ID: ${id}`);
+    
+    // Verificar se a vaga existe antes de deletar
+    const docRef = doc(firebaseDb, "jobs", id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) {
+      console.log(`❌ Vaga ${id} não encontrada no Firebase`);
+      return;
+    }
+    
+    console.log(`📄 Vaga encontrada: ${JSON.stringify(docSnap.data())}`);
+    
+    // Deletar do Firebase
+    await deleteDoc(docRef);
+    console.log(`✅ Vaga ${id} deletada do Firebase`);
+    
+    // Verificar se foi deletada
+    const checkDoc = await getDoc(docRef);
+    if (!checkDoc.exists()) {
+      console.log(`✅ Confirmado: Vaga ${id} removida do Firebase`);
+    } else {
+      console.log(`❌ ERRO: Vaga ${id} ainda existe no Firebase após exclusão!`);
+    }
   }
 
   // Questions
