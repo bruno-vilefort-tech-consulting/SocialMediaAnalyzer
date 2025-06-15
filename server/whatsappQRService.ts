@@ -173,7 +173,7 @@ export class WhatsAppQRService {
         if (buttonResponse) {
           await this.processButtonResponse(from, buttonResponse);
         } else if (audioMessage) {
-          await this.processAudioResponse(from, audioMessage);
+          await this.processAudioResponse(from, message);
         } else if (text) {
           await this.processInterviewMessage(from, text, message);
         }
@@ -356,7 +356,7 @@ export class WhatsAppQRService {
     }
   }
 
-  private async processAudioResponse(from: string, audioMessage: any) {
+  private async processAudioResponse(from: string, message: any) {
     try {
       console.log(`🎵 [DEBUG] Processando resposta de áudio de ${from}`);
       
@@ -394,7 +394,7 @@ export class WhatsAppQRService {
       
       try {
         const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-        audioBuffer = await downloadMediaMessage(audioMessage, 'buffer', {});
+        audioBuffer = await downloadMediaMessage(message, 'buffer', {});
         
         if (!audioBuffer) {
           console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio`);
