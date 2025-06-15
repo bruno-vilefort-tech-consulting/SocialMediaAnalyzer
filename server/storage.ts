@@ -460,13 +460,28 @@ export class FirebaseStorage implements IStorage {
   async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
     const snapshot = await getDocs(collection(firebaseDb, "responses"));
     const interviewIdStr = String(interviewId);
-    return snapshot.docs
+    
+    const responses = snapshot.docs
       .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Response))
       .filter(response => {
         // Comparar tanto como string quanto como número para máxima compatibilidade
-        return String(response.interviewId) === interviewIdStr || 
-               response.interviewId === interviewId;
+        const responseInterviewId = String(response.interviewId);
+        const match = responseInterviewId === interviewIdStr || 
+                     response.interviewId === interviewId;
+        
+        if (match) {
+          console.log(`🎯 Resposta encontrada para entrevista ${interviewId}:`, {
+            responseId: doc.id,
+            interviewId: response.interviewId,
+            questionText: response.questionText?.substring(0, 50) + '...'
+          });
+        }
+        
+        return match;
       });
+    
+    console.log(`📋 Total de respostas para entrevista ${interviewId}: ${responses.length}`);
+    return responses;
   }
 
   async createResponse(insertResponse: InsertResponse): Promise<Response> {
