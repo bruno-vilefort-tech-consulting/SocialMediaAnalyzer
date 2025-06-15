@@ -464,15 +464,32 @@ class SimpleInterviewService {
   }
 
   private async findCandidate(phone: string) {
-    // Buscar candidatos do cliente ativo (ID=1)
     console.log(`🔍 [DEBUG] Buscando candidatos para telefone: ${phone}`);
-    const candidates = await storage.getCandidatesByClientId(1);
-    return candidates.find(c => {
+    
+    // Buscar todos os candidatos no Firebase
+    const candidates = await storage.getAllCandidates();
+    console.log(`📋 [DEBUG] Total de candidatos encontrados: ${candidates.length}`);
+    
+    // Log dos candidatos para debug
+    candidates.forEach(c => {
+      console.log(`📱 [DEBUG] Candidato: ${c.name} - WhatsApp: ${c.whatsapp}`);
+    });
+    
+    const candidate = candidates.find(c => {
       if (!c.whatsapp) return false;
       const candidatePhone = c.whatsapp.replace(/\D/g, '');
       const searchPhone = phone.replace(/\D/g, '');
-      return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+      console.log(`🔍 [DEBUG] Comparando: ${candidatePhone} com ${searchPhone}`);
+      return candidatePhone === searchPhone;
     });
+    
+    if (candidate) {
+      console.log(`✅ [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
+    } else {
+      console.log(`❌ [DEBUG] Nenhum candidato encontrado para ${phone}`);
+    }
+    
+    return candidate;
   }
 
   private async sendMessage(to: string, message: string): Promise<void> {
