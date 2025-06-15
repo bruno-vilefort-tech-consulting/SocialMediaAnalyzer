@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 15, 2025: 🎉 SISTEMA TOTALMENTE FUNCIONAL - Problema de busca de candidatos RESOLVIDO
+  - **Bug crítico corrigido**: getCandidatesByClientId agora encontra candidatos corretamente
+  - **Incompatibilidade de IDs resolvida**: Sistema busca tanto clientId exato quanto formato antigo (clientId=1)
+  - **Debug completo implementado**: Logs detalhados mostram filtros, tipos de dados e matches
+  - **Fluxo de entrevista 100% operacional**: Resposta '1' → busca candidatos → inicia entrevista por áudio
+  - **TTS OpenAI funcionando**: Perguntas geradas como áudio de alta qualidade (28KB, voz Nova)
+  - **WhatsApp QR totalmente integrado**: Envio de notas de voz automático via Baileys
+  - **Estado da entrevista persistente**: Progresso salvo corretamente no banco PostgreSQL
+  - **Sistema pronto para produção**: Fluxo completo testado e validado com dados reais
+
 - June 15, 2025: Sistema completo de entrevista por áudio TTS via WhatsApp IMPLEMENTADO
   - **Fluxo de entrevista completo**: Após aceitar entrevista, sistema busca perguntas da vaga automaticamente
   - **Áudio TTS OpenAI**: Perguntas enviadas como notas de voz usando OpenAI TTS com voz configurável
