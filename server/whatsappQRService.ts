@@ -440,27 +440,39 @@ export class WhatsAppQRService {
       
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
-      formData.append('file', fs.createReadStream(audioPath));
+      formData.append('file', fs.createReadStream(audioPath), {
+        filename: 'audio.ogg',
+        contentType: 'audio/ogg'
+      });
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
       
-      const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.openaiApiKey}`,
-          ...formData.getHeaders()
-        },
-        body: formData
-      });
-      
-      let transcription = '';
-      if (transcriptionResponse.ok) {
-        const result = await transcriptionResponse.json();
-        transcription = result.text || '';
-        console.log(`📝 [DEBUG] Transcrição: "${transcription}"`);
-      } else {
-        console.log(`❌ [DEBUG] Erro na transcrição OpenAI`);
-        transcription = '[Áudio não transcrito]';
+      try {
+        console.log(`🌐 [DEBUG] Enviando para transcrição OpenAI...`);
+        const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${config.openaiApiKey}`,
+            ...formData.getHeaders()
+          },
+          body: formData
+        });
+        
+        console.log(`📡 [DEBUG] Status transcrição: ${transcriptionResponse.status}`);
+        
+        let transcription = '';
+        if (transcriptionResponse.ok) {
+          const result = await transcriptionResponse.json();
+          transcription = result.text || '';
+          console.log(`📝 [DEBUG] Transcrição: "${transcription}"`);
+        } else {
+          const errorText = await transcriptionResponse.text();
+          console.log(`❌ [DEBUG] Erro na transcrição OpenAI: ${errorText}`);
+          transcription = '[Áudio não transcrito]';
+        }
+      } catch (error) {
+        console.log(`❌ [DEBUG] Erro na requisição de transcrição:`, error);
+        transcription = '[Erro na transcrição]';
       }
       
       // Salvar resposta no banco de dados
