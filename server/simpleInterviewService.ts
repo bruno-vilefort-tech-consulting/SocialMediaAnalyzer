@@ -214,24 +214,29 @@ class SimpleInterviewService {
       });
       
       try {
+        console.log(`🔄 [AUDIO] Baixando áudio primeiro...`);
+        const audioBuffer = await this.audioDownloadService.downloadAudio(audioMessage, phone);
+        
         console.log(`🔄 [AUDIO] Chamando transcribeAudio...`);
         const transcription = await this.transcribeAudio(audioMessage, phone, text);
         
         if (transcription && transcription.length > 0) {
           responseText = transcription;
-          audioFile = `audio_${phone}_${Date.now()}.ogg`;
           console.log(`✅ [AUDIO] Transcrição bem-sucedida: "${responseText}"`);
-          console.log(`📁 [AUDIO] Nome do arquivo de áudio: ${audioFile}`);
           
-          // Salvar áudio localmente e no banco
-          try {
-            console.log(`💾 [AUDIO] Salvando áudio no sistema...`);
-            audioFile = await this.audioDownloadService.saveAudioFile(audioBuffer, phone);
-            
-            audioSavedToDB = true;
-            console.log(`✅ [AUDIO] Áudio salvo com sucesso: ${audioFile}`);
-          } catch (saveError: any) {
-            console.log(`❌ [AUDIO] Erro ao salvar áudio:`, saveError?.message || saveError);
+          // Salvar áudio localmente e no banco usando o buffer baixado
+          if (audioBuffer) {
+            try {
+              console.log(`💾 [AUDIO] Salvando áudio no sistema...`);
+              audioFile = await this.audioDownloadService.saveAudioFile(audioBuffer, phone);
+              
+              audioSavedToDB = true;
+              console.log(`✅ [AUDIO] Áudio salvo com sucesso: ${audioFile}`);
+            } catch (saveError: any) {
+              console.log(`❌ [AUDIO] Erro ao salvar áudio:`, saveError?.message || saveError);
+            }
+          } else {
+            console.log(`⚠️ [AUDIO] AudioBuffer vazio, não foi possível salvar arquivo`);
           }
           
         } else {
@@ -346,8 +351,8 @@ class SimpleInterviewService {
         throw new Error('Áudio vazio após download');
       }
 
-      // Salvar temporariamente
-      const tempFile = path.join('./uploads', `temp_${Date.now()}.ogg`);
+      // Salvar temporariamente como WAV (suportado pelo Whisper)
+      const tempFile = path.join('./uploads', `temp_${Date.now()}.wav`);
       fs.writeFileSync(tempFile, audioBuffer);
       console.log(`💾 [WHISPER] Arquivo temporário salvo: ${tempFile}`);
       console.log(`📊 [WHISPER] Tamanho do arquivo: ${fs.statSync(tempFile).size} bytes`);
