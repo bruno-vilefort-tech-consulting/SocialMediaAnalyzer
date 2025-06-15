@@ -29,7 +29,7 @@ const firebaseDb = getFirestore(app);
 
 export interface IStorage {
   // Users
-  getUserById(id: number): Promise<User | undefined>;
+  getUserById(id: string | number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
@@ -1205,8 +1205,8 @@ export class FirebaseStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUserById(id: number): Promise<User | undefined> {
-    const [user] = await pgDb.select().from(users).where(eq(users.id, id));
+  async getUserById(id: string | number): Promise<User | undefined> {
+    const [user] = await pgDb.select().from(users).where(eq(users.id, String(id)));
     return user || undefined;
   }
 
