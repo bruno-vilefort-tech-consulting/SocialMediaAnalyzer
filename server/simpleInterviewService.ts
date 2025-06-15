@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
 import FormData from 'form-data';
+import { AudioDownloadService } from './audioDownloadService';
 
 // Estado em memória das entrevistas ativas
 interface ActiveInterview {
@@ -27,6 +28,7 @@ class SimpleInterviewService {
   private activeInterviews: Map<string, ActiveInterview> = new Map();
   private openai: OpenAI;
   private whatsappService: any = null;
+  private audioDownloadService: AudioDownloadService | null = null;
 
   constructor() {
     this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -34,6 +36,7 @@ class SimpleInterviewService {
 
   setWhatsAppService(service: any) {
     this.whatsappService = service;
+    this.audioDownloadService = new AudioDownloadService(service);
   }
 
   async handleMessage(from: string, text: string, audioMessage?: any): Promise<void> {
@@ -238,10 +241,15 @@ class SimpleInterviewService {
               timestamp: new Date().toISOString()
             };
             
-            const storageModule = await import('./storage');
+            const { storage } = await import('./storage');
             const { doc, setDoc, collection } = await import('firebase/firestore');
-            const db = storageModule.storage.db || storageModule.firebaseDb;
-            await setDoc(doc(collection(db, 'audio_files'), audioData.id.toString()), audioData);
+            
+            // Usar o Firebase db do storage
+            if (storage.db) {
+              await setDoc(doc(collection(storage.db, 'audio_files'), audioData.id.toString()), audioData);
+            } else {
+              console.log(`⚠️ [AUDIO] Firebase db não disponível, dados salvos apenas localmente`);
+            }
             
             audioSavedToDB = true;
             console.log(`✅ [AUDIO] Áudio salvo localmente: ${tempAudioPath}`);
@@ -354,6 +362,7 @@ class SimpleInterviewService {
             'buffer',
             {},
             {
+              logger: console,
               reuploadRequest: this.whatsappService.socket.updateMediaMessage
             }
           );
@@ -361,18 +370,25 @@ class SimpleInterviewService {
         } else {
           throw new Error('Socket do WhatsApp não disponível');
         }
-      } catch (downloadError) {
-        console.log(`❌ [WHISPER] Erro no download:`, downloadError.message);
+      } catch (downloadError: any) {
+        console.log(`❌ [WHISPER] Erro no download:`, downloadError?.message || downloadError);
         
         // Tentar método alternativo com dados da mensagem original
         try {
           console.log(`🔄 [WHISPER] Tentando método alternativo de download...`);
           const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-          audioBuffer = await downloadMediaMessage(audioMessage, 'buffer');
+          audioBuffer = await downloadMediaMessage(
+            audioMessage,
+            'buffer',
+            {},
+            {
+              logger: console
+            }
+          );
           console.log(`✅ [WHISPER] Download alternativo realizado - Tamanho: ${audioBuffer?.length || 0} bytes`);
-        } catch (altError) {
-          console.log(`❌ [WHISPER] Download alternativo também falhou:`, altError.message);
-          throw new Error(`Falha no download de áudio: ${downloadError.message}`);
+        } catch (altError: any) {
+          console.log(`❌ [WHISPER] Download alternativo também falhou:`, altError?.message || altError);
+          throw new Error(`Falha no download de áudio: ${downloadError?.message || downloadError}`);
         }
       }
       
