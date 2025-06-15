@@ -37,6 +37,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize Firebase data
+  const { initializeFirebaseData } = await import("./initializeFirebaseData");
+  await initializeFirebaseData();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
