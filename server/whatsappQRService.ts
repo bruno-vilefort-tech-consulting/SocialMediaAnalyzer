@@ -335,16 +335,40 @@ export class WhatsAppQRService {
 
       // Gerar áudio da pergunta
       console.log(`🌐 [DEBUG] Fazendo requisição para OpenAI TTS...`);
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${config.openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(ttsData),
+      console.log(`🔑 [DEBUG] API Key configurada: ${config.openaiApiKey ? 'SIM' : 'NÃO'}`);
+      console.log(`📝 [DEBUG] Headers:`, {
+        "Authorization": `Bearer ${config.openaiApiKey?.substring(0, 10)}...`,
+        "Content-Type": "application/json"
       });
-
-      console.log(`📡 [DEBUG] Resposta OpenAI TTS - Status: ${response.status}`);
+      
+      let response;
+      try {
+        // Criar AbortController para timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+        
+        response = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${config.openaiApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(ttsData),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log(`📡 [DEBUG] Resposta OpenAI TTS recebida - Status: ${response.status}`);
+        
+      } catch (fetchError) {
+        console.error(`❌ [DEBUG] Erro na requisição TTS:`, fetchError.message);
+        if (fetchError.name === 'AbortError') {
+          console.log(`⏰ [DEBUG] Timeout na requisição TTS - enviando por texto`);
+        }
+        console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback...`);
+        await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
+        return;
+      }
 
       if (response.ok) {
         console.log(`✅ [DEBUG] Áudio gerado com sucesso, baixando buffer...`);
