@@ -408,15 +408,54 @@ class SimpleInterviewService {
   }
 
   private async saveInterviewResults(interview: ActiveInterview): Promise<void> {
-    // Implementar salvamento no Firebase/PostgreSQL se necessário
-    // Por enquanto, apenas log
-    console.log(`📊 Resultados da entrevista:`, {
-      candidato: interview.candidateName,
-      vaga: interview.jobName,
-      respostas: interview.responses.length,
-      inicio: interview.startTime,
-      fim: new Date().toISOString()
-    });
+    try {
+      console.log(`💾 [SAVE] Salvando entrevista no PostgreSQL...`);
+      
+      // Buscar candidato para obter o ID
+      const candidate = await this.findCandidate(interview.phone);
+      if (!candidate) {
+        console.log(`❌ [SAVE] Candidato não encontrado para ${interview.phone}`);
+        return;
+      }
+      
+      // Criar entrevista no banco PostgreSQL
+      const newInterview = await storage.createInterview({
+        candidateId: candidate.id,
+        selectionId: 1, // ID padrão por enquanto
+        token: `interview_${Date.now()}`,
+        status: 'completed',
+        startedAt: new Date(interview.startTime),
+        completedAt: new Date(),
+        category: 'whatsapp'
+      });
+      
+      console.log(`✅ [SAVE] Entrevista criada no BD com ID: ${newInterview.id}`);
+      
+      // Salvar cada resposta no banco
+      for (let i = 0; i < interview.responses.length; i++) {
+        const response = interview.responses[i];
+        
+        try {
+          const savedResponse = await storage.createResponse({
+            interviewId: newInterview.id,
+            questionId: response.questionId,
+            transcription: response.responseText || '',
+            audioUrl: response.audioFile || '',
+            score: 0,
+            recordingDuration: 0
+          });
+          
+          console.log(`✅ [SAVE] Resposta ${i + 1} salva com ID: ${savedResponse.id}`);
+        } catch (responseError) {
+          console.log(`❌ [SAVE] Erro ao salvar resposta ${i + 1}:`, responseError.message);
+        }
+      }
+      
+      console.log(`🎉 [SAVE] Entrevista completa salva no PostgreSQL`);
+      
+    } catch (error) {
+      console.log(`❌ [SAVE] Erro ao salvar entrevista:`, error.message);
+    }
   }
 
   private async findCandidate(phone: string) {
