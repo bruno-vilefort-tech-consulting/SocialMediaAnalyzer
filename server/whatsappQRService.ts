@@ -335,40 +335,16 @@ export class WhatsAppQRService {
 
       // Gerar áudio da pergunta
       console.log(`🌐 [DEBUG] Fazendo requisição para OpenAI TTS...`);
-      console.log(`🔑 [DEBUG] API Key configurada: ${config.openaiApiKey ? 'SIM' : 'NÃO'}`);
-      console.log(`📝 [DEBUG] Headers:`, {
-        "Authorization": `Bearer ${config.openaiApiKey?.substring(0, 10)}...`,
-        "Content-Type": "application/json"
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(ttsData),
       });
-      
-      let response;
-      try {
-        // Criar AbortController para timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
-        
-        response = await fetch("https://api.openai.com/v1/audio/speech", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${config.openaiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(ttsData),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        console.log(`📡 [DEBUG] Resposta OpenAI TTS recebida - Status: ${response.status}`);
-        
-      } catch (fetchError) {
-        console.error(`❌ [DEBUG] Erro na requisição TTS:`, fetchError.message);
-        if (fetchError.name === 'AbortError') {
-          console.log(`⏰ [DEBUG] Timeout na requisição TTS - enviando por texto`);
-        }
-        console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback...`);
-        await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
-        return;
-      }
+
+      console.log(`📡 [DEBUG] Resposta OpenAI TTS - Status: ${response.status}`);
 
       if (response.ok) {
         console.log(`✅ [DEBUG] Áudio gerado com sucesso, baixando buffer...`);
@@ -413,9 +389,7 @@ export class WhatsAppQRService {
 
   private async processAudioResponse(from: string, message: any) {
     try {
-      console.log(`🎵 [DEBUG] ===== PROCESSANDO RESPOSTA DE ÁUDIO =====`);
-      console.log(`📞 [DEBUG] De: ${from}`);
-      console.log(`📱 [DEBUG] Objeto mensagem:`, JSON.stringify(message?.message?.audioMessage || {}, null, 2));
+      console.log(`🎵 [DEBUG] Processando resposta de áudio de ${from}`);
       
       const { storage } = await import('./storage');
       const fs = await import('fs');
@@ -450,39 +424,18 @@ export class WhatsAppQRService {
       
       if (!currentInterview) {
         console.log(`❌ [DEBUG] Entrevista em andamento não encontrada para candidato ${candidate.id}`);
-        // Vamos tentar encontrar uma seleção ativa para este candidato e criar entrevista
-        console.log(`🔍 [DEBUG] Tentando encontrar seleção ativa para criar entrevista...`);
-        
-        const allSelections = await storage.getAllSelections();
-        const activeSelection = allSelections.find(s => s.status === 'enviado' && s.candidateListId);
-        
-        if (!activeSelection) {
-          await this.sendTextMessage(from, "Erro: nenhuma entrevista ativa encontrada. Responda '1' para iniciar.");
-          return;
-        }
-        
-        // Criar nova entrevista
-        console.log(`💾 [DEBUG] Criando nova entrevista para seleção ${activeSelection.id}...`);
-        currentInterview = await storage.createInterview({
-          selectionId: activeSelection.id,
-          candidateId: candidate.id,
-          token: `whatsapp_${Date.now()}`,
-          status: 'in_progress'
-        });
-        console.log(`✅ [DEBUG] Nova entrevista criada: ID ${currentInterview.id}`);
+        await this.sendTextMessage(from, "Erro: entrevista não encontrada. Tente responder '1' para iniciar novamente.");
+        return;
       }
       
-      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Status: ${currentInterview.status}`);
+      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Token: ${currentInterview.token}`);
       
       // Buscar seleção
       const selection = await storage.getSelectionById(currentInterview.selectionId);
       if (!selection) {
-        console.log(`❌ [DEBUG] Seleção não encontrada para entrevista ${currentInterview.id}`);
-        await this.sendTextMessage(from, "Erro: dados da entrevista não encontrados.");
+        console.log(`❌ [DEBUG] Seleção não encontrada`);
         return;
       }
-      
-      console.log(`✅ [DEBUG] Seleção encontrada: ID ${selection.id}, JobId: ${selection.jobId}`);
       
       // Baixar arquivo de áudio usando downloadMediaMessage do Baileys
       console.log(`📱 [DEBUG] Baixando áudio do WhatsApp...`);
@@ -491,8 +444,6 @@ export class WhatsAppQRService {
       try {
         // Baixar mídia usando a função correta do Baileys
         const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-        
-        console.log(`🔄 [DEBUG] Iniciando download com downloadMediaMessage...`);
         audioBuffer = await downloadMediaMessage(
           message,
           'buffer',
@@ -503,42 +454,30 @@ export class WhatsAppQRService {
           }
         );
         
-        if (!audioBuffer || audioBuffer.length === 0) {
-          console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio ou inválido`);
+        if (!audioBuffer) {
+          console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio`);
           await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
           return;
         }
         
         console.log(`✅ [DEBUG] Áudio baixado com sucesso - Tamanho: ${audioBuffer.length} bytes`);
-        console.log(`🔍 [DEBUG] Primeiros bytes do áudio:`, audioBuffer.subarray(0, 16).toString('hex'));
-        
-      } catch (downloadError) {
-        console.log(`❌ [DEBUG] Erro no downloadMediaMessage:`, downloadError);
-        await this.sendTextMessage(from, "Erro ao baixar áudio. Tente enviar novamente.");
+      } catch (error) {
+        console.log(`❌ [DEBUG] Erro ao baixar áudio:`, error);
+        await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
         return;
       }
       
-      // Criar diretório de uploads se não existir
-      const uploadsDir = './uploads';
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        console.log(`📁 [DEBUG] Diretório uploads criado`);
+      // Salvar arquivo temporário
+      const audioFileName = `audio_${Date.now()}.ogg`;
+      const audioPath = path.join('./uploads', audioFileName);
+      
+      // Criar diretório se não existir
+      if (!fs.existsSync('./uploads')) {
+        fs.mkdirSync('./uploads', { recursive: true });
       }
       
-      // Salvar arquivo temporário com timestamp único
-      const timestamp = Date.now();
-      const audioFileName = `whatsapp_audio_${timestamp}.ogg`;
-      const audioPath = path.join(uploadsDir, audioFileName);
-      
-      try {
-        fs.writeFileSync(audioPath, audioBuffer);
-        console.log(`💾 [DEBUG] Áudio salvo temporariamente em: ${audioPath}`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo salvo: ${fs.statSync(audioPath).size} bytes`);
-      } catch (saveError) {
-        console.log(`❌ [DEBUG] Erro ao salvar arquivo temporário:`, saveError);
-        await this.sendTextMessage(from, "Erro ao processar áudio. Tente novamente.");
-        return;
-      }
+      fs.writeFileSync(audioPath, audioBuffer);
+      console.log(`💾 [DEBUG] Áudio salvo em: ${audioPath}`);
       
       // Buscar job e perguntas
       const job = await storage.getJobById(selection.jobId);
@@ -566,35 +505,26 @@ export class WhatsAppQRService {
       const currentQuestion = job.perguntas[currentQuestionIndex];
       console.log(`❓ [DEBUG] Processando resposta para pergunta ${currentQuestionIndex + 1}: ${currentQuestion.pergunta}`);
       
-      // Buscar configuração OpenAI para transcrição
+      // Transcrever áudio usando OpenAI Whisper
       const config = await storage.getApiConfig();
       if (!config?.openaiApiKey) {
         console.log(`❌ [DEBUG] OpenAI API não configurada para transcrição`);
-        await this.sendTextMessage(from, "Erro: sistema de transcrição não configurado.");
+        await this.sendTextMessage(from, "Resposta recebida! Aguarde a próxima pergunta...");
         return;
       }
       
-      console.log(`🔧 [DEBUG] OpenAI configurado - iniciando transcrição...`);
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+      formData.append('file', fs.createReadStream(audioPath), {
+        filename: 'audio.ogg',
+        contentType: 'audio/ogg'
+      });
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'pt');
       
-      // Transcrever áudio usando OpenAI Whisper API
       let transcription = '';
       try {
-        const FormData = (await import('form-data')).default;
-        const formData = new FormData();
-        
-        // Anexar arquivo de áudio
-        formData.append('file', fs.createReadStream(audioPath), {
-          filename: audioFileName,
-          contentType: 'audio/ogg',
-          knownLength: fs.statSync(audioPath).size
-        });
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'pt');
-        formData.append('response_format', 'json');
-        
-        console.log(`🌐 [DEBUG] Enviando arquivo para OpenAI Whisper API...`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo: ${fs.statSync(audioPath).size} bytes`);
-        
+        console.log(`🌐 [DEBUG] Enviando para transcrição OpenAI...`);
         const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
           method: 'POST',
           headers: {
@@ -604,108 +534,56 @@ export class WhatsAppQRService {
           body: formData
         });
         
-        console.log(`📡 [DEBUG] Status da resposta Whisper: ${transcriptionResponse.status}`);
+        console.log(`📡 [DEBUG] Status transcrição: ${transcriptionResponse.status}`);
         
         if (transcriptionResponse.ok) {
           const result = await transcriptionResponse.json();
           transcription = result.text || '';
-          console.log(`📝 [DEBUG] Transcrição recebida: "${transcription}"`);
-          
-          if (!transcription.trim()) {
-            transcription = '[Áudio sem fala detectada]';
-            console.log(`⚠️ [DEBUG] Transcrição vazia - áudio pode não conter fala`);
-          }
+          console.log(`📝 [DEBUG] Transcrição: "${transcription}"`);
         } else {
           const errorText = await transcriptionResponse.text();
-          console.log(`❌ [DEBUG] Erro na API Whisper: ${transcriptionResponse.status} - ${errorText}`);
-          transcription = '[Erro na transcrição]';
+          console.log(`❌ [DEBUG] Erro na transcrição OpenAI: ${errorText}`);
+          transcription = '[Áudio não transcrito]';
         }
-        
-      } catch (transcriptionError) {
-        console.log(`❌ [DEBUG] Erro na requisição Whisper:`, transcriptionError);
+      } catch (error) {
+        console.log(`❌ [DEBUG] Erro na requisição de transcrição:`, error);
         transcription = '[Erro na transcrição]';
       }
       
-      console.log(`💾 [DEBUG] Preparando para salvar resposta no banco...`);
-      console.log(`📋 [DEBUG] Dados da resposta:`, {
+      // Salvar resposta no banco de dados
+      const response = await storage.createResponse({
         interviewId: currentInterview.id,
-        questionIndex: currentQuestionIndex,
-        transcription: transcription.substring(0, 100) + '...',
-        audioFileName
+        questionId: currentQuestion.id,
+        responseText: transcription,
+        audioUrl: audioFileName,
+        score: null,
+        feedback: null
       });
       
-      // Salvar resposta no banco de dados com a estrutura solicitada
-      try {
-        const response = await storage.createResponse({
-          interviewId: currentInterview.id,
-          questionId: currentQuestion.id,
-          responseText: transcription,
-          audioUrl: audioFileName,
-          score: null,
-          feedback: null
-        });
-        
-        console.log(`✅ [DEBUG] Resposta salva no banco com ID: ${response.id}`);
-        
-        // Salvar também no formato personalizado do Firebase para relatórios
-        const responseData = {
-          nome: candidate.name,
-          numero: phoneClean,
-          pergunta: currentQuestion.pergunta,
-          respostaAudioUrl: audioFileName,
-          respostaTexto: transcription,
-          numeroDaPergunta: currentQuestionIndex + 1,
-          interviewId: currentInterview.id,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log(`📊 [DEBUG] Dados da entrevista salvos para relatório`);
-        
-      } catch (saveError) {
-        console.log(`❌ [DEBUG] Erro ao salvar resposta:`, saveError);
-        await this.sendTextMessage(from, "Erro ao salvar resposta. Tente novamente.");
-        return;
-      }
+      console.log(`✅ [DEBUG] Resposta salva no banco: ID ${response.id} para pergunta ${currentQuestionIndex + 1}`);
       
-      // Determinar próximos passos da entrevista
+      // Verificar se há mais perguntas
       const nextQuestionIndex = currentQuestionIndex + 1;
-      const isLastQuestion = nextQuestionIndex >= job.perguntas.length;
-      
-      console.log(`🔄 [DEBUG] Avaliando continuação: pergunta ${currentQuestionIndex + 1}/${job.perguntas.length}`);
-      
-      if (!isLastQuestion) {
-        // Há mais perguntas - continuar entrevista
-        console.log(`➡️ [DEBUG] Continuando para pergunta ${nextQuestionIndex + 1}...`);
+      if (nextQuestionIndex < job.perguntas.length) {
+        // Há mais perguntas - enviar confirmação e próxima pergunta
+        await this.sendTextMessage(from, `✅ Resposta ${nextQuestionIndex} recebida! Próxima pergunta chegando...`);
         
-        await this.sendTextMessage(from, `✅ Resposta ${currentQuestionIndex + 1} recebida! Preparando próxima pergunta...`);
-        
-        // Aguardar um momento antes de enviar próxima pergunta
+        // Esperar um pouco e enviar próxima pergunta
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
         const nextQuestion = job.perguntas[nextQuestionIndex];
-        console.log(`📤 [DEBUG] Enviando pergunta ${nextQuestionIndex + 1}: "${nextQuestion.pergunta}"`);
-        
         await this.sendQuestionAudio(from, candidate.name, nextQuestion, currentInterview.id, nextQuestionIndex, job.perguntas.length);
         
-        console.log(`✅ [DEBUG] Pergunta ${nextQuestionIndex + 1}/${job.perguntas.length} enviada com sucesso`);
-        
+        console.log(`📨 [DEBUG] Próxima pergunta enviada: ${nextQuestionIndex + 1}/${job.perguntas.length}`);
       } else {
         // Última pergunta - finalizar entrevista
-        console.log(`🏁 [DEBUG] Finalizando entrevista - todas as ${job.perguntas.length} perguntas respondidas`);
+        await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você completou todas as ${job.perguntas.length} perguntas da entrevista. Nossa equipe analisará suas respostas e retornará em breve.`);
         
-        // Enviar mensagem de finalização personalizada
-        const finalizationMessage = `🎉 Parabéns, ${candidate.name}! Você completou sua entrevista com sucesso. Todas as ${job.perguntas.length} perguntas foram respondidas. Nossa equipe analisará suas respostas e retornará em breve. Obrigado pela participação!`;
-        
-        await this.sendTextMessage(from, finalizationMessage);
-        
-        // Atualizar status da entrevista no banco
         await storage.updateInterview(currentInterview.id, { 
           status: 'completed',
           completedAt: new Date()
         });
         
-        console.log(`✅ [DEBUG] Entrevista ${currentInterview.id} finalizada com sucesso`);
-        console.log(`📈 [DEBUG] Total de respostas coletadas: ${job.perguntas.length}`);
+        console.log(`🏁 [DEBUG] Entrevista finalizada - ${job.perguntas.length} perguntas respondidas`);
       }
       
       // Limpar arquivo temporário

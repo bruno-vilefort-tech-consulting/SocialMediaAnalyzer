@@ -115,17 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 15, 2025: 🎯 FLUXO SEQUENCIAL DE ENTREVISTA COMPLETAMENTE CORRIGIDO - Bug crítico resolvido
-  - **Problema de múltiplas entrevistas eliminado**: Sistema agora reutiliza entrevistas existentes em vez de criar novas a cada resposta
-  - **Fluxo sequencial implementado**: Busca entrevistas 'in_progress', conta respostas existentes e determina pergunta atual corretamente
-  - **Download de áudio robusto**: Implementação completa com downloadMediaMessage do Baileys e logs detalhados
-  - **Transcrição OpenAI Whisper otimizada**: Headers corretos, FormData adequado e tratamento completo de erros
-  - **Salvamento duplo de dados**: Respostas salvas no PostgreSQL e formato personalizado para relatórios
-  - **Continuação automática**: Sistema progride automaticamente para próxima pergunta após cada resposta
-  - **Finalização inteligente**: Detecta última pergunta e finaliza entrevista com mensagem personalizada
-  - **Velocidade TTS configurada**: Speed 0.75 para melhor compreensão em português brasileiro
-  - **Limpeza de arquivos**: Remoção automática de arquivos temporários após processamento
-  - **Sistema pronto para teste**: Fluxo completo implementado aguardando validação final
+- June 15, 2025: 🔊 SISTEMA DE ÁUDIO APRIMORADO - Correções implementadas para compatibilidade mobile
+  - **Download de áudio corrigido**: Implementada abordagem robusta com parâmetros adequados do Baileys
+  - **Velocidade de fala otimizada**: TTS configurado com speed 0.75 para melhor compreensão
+  - **Compatibilidade mobile melhorada**: Formato OGG/Opus para funcionamento em celulares
+  - **Transcrição aprimorada**: Headers e contentType adequados para OpenAI Whisper API
+  - **Logs detalhados**: Debug completo do processo de download e transcrição
+  - **Sistema aguardando validação**: Teste final pendente para confirmar funcionamento completo
 
 - June 15, 2025: 🎉 SISTEMA TOTALMENTE FUNCIONAL - Problema de busca de candidatos RESOLVIDO
   - **Bug crítico corrigido**: getCandidatesByClientId agora encontra candidatos corretamente
