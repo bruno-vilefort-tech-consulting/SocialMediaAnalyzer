@@ -156,27 +156,7 @@ export default function SelectionsPage() {
     }
   });
 
-  // Enviar campanha WhatsApp (Meta Cloud API)
-  const sendWhatsAppCampaignMutation = useMutation({
-    mutationFn: async (selectionId: number) => {
-      const response = await apiRequest('/api/whatsapp/send-campaign', 'POST', { selectionId });
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      toast({ 
-        title: "Campanha WhatsApp enviada!", 
-        description: `${data.sentCount} mensagens enviadas com sucesso. ${data.errorCount} erros.`
-      });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Erro ao enviar campanha WhatsApp", 
-        description: error?.message || "Verifique as configurações do WhatsApp",
-        variant: "destructive" 
-      });
-    }
-  });
+
 
   // Enviar campanha WhatsApp QR
   const sendWhatsAppQRCampaignMutation = useMutation({
@@ -649,31 +629,16 @@ export default function SelectionsPage() {
                         {(selection.status === 'draft' || selection.status === 'active') && (
                           <div className="flex gap-1">
                             {(selection.sendVia === 'whatsapp' || selection.sendVia === 'both') && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => sendWhatsAppCampaignMutation.mutate(selection.id)}
-                                  disabled={sendWhatsAppCampaignMutation.isPending}
-                                  title="Enviar via WhatsApp (Meta Cloud API)"
-                                  className="bg-green-50 hover:bg-green-100 border-green-200"
-                                >
-                                  <MessageCircle className="w-4 h-4 text-green-600" />
-                                </Button>
-                                
-                                {user?.role === 'master' && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => sendWhatsAppQRCampaignMutation.mutate(selection.id)}
-                                    disabled={sendWhatsAppQRCampaignMutation.isPending}
-                                    title="Enviar via WhatsApp QR (Para testes)"
-                                    className="bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
-                                  >
-                                    <QrCode className="w-4 h-4 text-emerald-600" />
-                                  </Button>
-                                )}
-                              </>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendWhatsAppQRCampaignMutation.mutate(selection.id)}
+                                disabled={sendWhatsAppQRCampaignMutation.isPending}
+                                title="Enviar via WhatsApp"
+                                className="bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
+                              >
+                                <MessageCircle className="w-4 h-4 text-emerald-600" />
+                              </Button>
                             )}
                             
                             {(selection.sendVia === 'email' || selection.sendVia === 'both') && (

@@ -115,15 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 15, 2025: Sistema WhatsApp QR COMPLETAMENTE FUNCIONAL - Conexão via Baileys implementada
-  - **WhatsApp QR totalmente operacional**: Conexão via QR Code funcionando com Baileys
-  - **Interface completa implementada**: WhatsAppQRPage.tsx com status em tempo real
-  - **Integração com campanhas**: Botões específicos QR (verde esmeralda) na página de seleções
-  - **Sistema duplo WhatsApp**: Meta Cloud API (produção) + WhatsApp QR (testes) funcionando em paralelo
-  - **Rotas backend completas**: /api/whatsapp-qr/ com status, teste, conexão e envio de campanhas
-  - **Importação dinâmica**: Baileys carregado corretamente com async import para resolver problemas ES modules
-  - **Teste validado**: Mensagem de teste enviada com sucesso via WhatsApp QR
-  - **Persistência no banco**: Conexão WhatsApp QR salva automaticamente em api_configs com status, telefone e timestamp
+- June 15, 2025: Sistema WhatsApp QR é agora o ÚNICO sistema de WhatsApp - Meta Cloud API removido
+  - **WhatsApp QR como sistema principal**: Removido botão Meta Cloud API, WhatsApp QR é agora o sistema único
+  - **Busca inteligente de jobs corrigida**: Erro 404 "vaga não encontrada" resolvido com busca por ID parcial
+  - **Firebase ID handling**: Sistema agora encontra jobs mesmo com sufixos extras do Firebase
+  - **Interface simplificada**: Apenas um botão WhatsApp (verde esmeralda) nas seleções
+  - **Logs detalhados**: Sistema mostra exatamente qual job foi encontrado ou por que falhou
+  - **Sistema totalmente funcional**: WhatsApp QR funcionando para campanhas de seleção
+  - **Conexão persistente**: Telefone 5511984316526 conectado e salvo no banco PostgreSQL
 
 - June 14, 2025: Sistema de entrevista natural COMPLETAMENTE FUNCIONAL - Problema "Preparando..." resolvido
   - **Processamento em tempo real corrigido**: Sistema não trava mais em "Preparando..." ao processar respostas
