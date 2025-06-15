@@ -393,8 +393,17 @@ export class WhatsAppQRService {
       let audioBuffer: Buffer;
       
       try {
-        // Usar o socket diretamente para baixar mídia
-        audioBuffer = await this.socket.downloadMediaMessage(message);
+        // Baixar mídia usando a função correta do Baileys
+        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+        audioBuffer = await downloadMediaMessage(
+          message,
+          'buffer',
+          {},
+          {
+            logger: console,
+            reuploadRequest: this.socket.updateMediaMessage
+          }
+        );
         
         if (!audioBuffer) {
           console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio`);
