@@ -2612,6 +2612,28 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Verificar respostas de entrevista no banco
+  app.get("/api/interview-responses", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { getDocs, collection } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./storage');
+      
+      const responsesSnapshot = await getDocs(collection(firebaseDb, 'interview_responses'));
+      const responses = responsesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      res.json({
+        total: responses.length,
+        responses: responses.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      });
+    } catch (error) {
+      console.error('Erro ao buscar respostas:', error);
+      res.status(500).json({ error: 'Erro ao buscar respostas' });
+    }
+  });
+
   app.post("/api/whatsapp-qr/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const { selectionId } = req.body;

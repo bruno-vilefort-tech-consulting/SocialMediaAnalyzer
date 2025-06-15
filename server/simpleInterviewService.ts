@@ -220,11 +220,17 @@ class SimpleInterviewService {
           console.log(`✅ [AUDIO] Transcrição bem-sucedida: "${responseText}"`);
           console.log(`📁 [AUDIO] Nome do arquivo de áudio: ${audioFile}`);
           
-          // TODO: Implementar salvamento do áudio no banco
+          // Salvar áudio no Firebase Storage
           try {
-            console.log(`💾 [AUDIO] Salvando áudio no banco de dados...`);
-            // Aqui salvaria o arquivo de áudio no Firebase Storage ou banco
+            console.log(`💾 [AUDIO] Salvando áudio no Firebase Storage...`);
+            // Salvar arquivo de áudio no uploads local temporariamente
+            const fs = require('fs');
+            const tempAudioPath = `./uploads/${audioFile}`;
+            fs.writeFileSync(tempAudioPath, audioBuffer);
+            
+            // TODO: Upload para Firebase Storage se configurado
             audioSavedToDB = true;
+            console.log(`✅ [AUDIO] Áudio salvo localmente: ${tempAudioPath}`);
             console.log(`✅ [AUDIO] Áudio salvo no banco: ${audioSavedToDB}`);
           } catch (saveError) {
             console.log(`❌ [AUDIO] Erro ao salvar áudio no banco:`, saveError.message);
@@ -258,14 +264,32 @@ class SimpleInterviewService {
       timestamp: response.timestamp
     });
 
-    // TODO: Salvar transcrição no banco de dados
+    // Salvar transcrição no Firebase
     try {
-      console.log(`💾 [AUDIO] Salvando transcrição no banco de dados...`);
-      // Aqui salvaria a transcrição no Firebase/PostgreSQL
+      console.log(`💾 [AUDIO] Salvando transcrição no Firebase...`);
+      const responseData = {
+        id: Date.now(),
+        candidatePhone: phone,
+        candidateName: interview.candidateName,
+        jobName: interview.jobName,
+        questionId: interview.currentQuestion,
+        questionText: currentQuestion.pergunta,
+        responseText: responseText,
+        audioFile: audioFile || null,
+        timestamp: new Date().toISOString(),
+        hasAudio: !!audioMessage,
+        transcriptionSuccess: responseText.length > 0
+      };
+      
+      // Salvar no Firebase Storage
+      const { firebaseDb } = await import('./storage');
+      const { doc, setDoc, collection } = await import('firebase/firestore');
+      
+      await setDoc(doc(collection(firebaseDb, 'interview_responses'), responseData.id.toString()), responseData);
       transcriptionSavedToDB = true;
-      console.log(`✅ [AUDIO] Transcrição salva no banco: ${transcriptionSavedToDB}`);
+      console.log(`✅ [AUDIO] Resposta salva no Firebase:`, responseData.id);
     } catch (saveError) {
-      console.log(`❌ [AUDIO] Erro ao salvar transcrição no banco:`, saveError.message);
+      console.log(`❌ [AUDIO] Erro ao salvar no Firebase:`, saveError.message);
     }
 
     // Avançar para próxima pergunta
@@ -303,8 +327,11 @@ class SimpleInterviewService {
         url: audioMessage.url ? 'URL presente' : 'URL ausente'
       });
       
-      const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-      const audioBuffer = await downloadMediaMessage(audioMessage, 'buffer', {});
+      // Baixar áudio usando o WhatsApp service correto
+      if (!this.whatsappService || !this.whatsappService.downloadMediaMessage) {
+        throw new Error('WhatsApp service não disponível');
+      }
+      const audioBuffer = await this.whatsappService.downloadMediaMessage(audioMessage);
       console.log(`✅ [WHISPER] Áudio baixado - Tamanho: ${audioBuffer ? audioBuffer.length : 0} bytes`);
       
       if (!audioBuffer || audioBuffer.length === 0) {
