@@ -406,15 +406,40 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between mb-3">
                       <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Resposta do Daniel</h5>
                       {response.audioFile && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => playAudio(response.audioFile!)}
-                          className="flex items-center space-x-2 bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-700"
-                        >
-                          <Play className="h-4 w-4" />
-                          <span>Reproduzir Áudio</span>
-                        </Button>
+                        <div className="flex items-center space-x-2">
+                          {!isPlaying || currentAudioUrl !== (response.audioFile.startsWith('/uploads/') ? response.audioFile : `/uploads/${response.audioFile}`) ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePlayAudio(response.audioFile!)}
+                              className="flex items-center space-x-2 bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-700"
+                            >
+                              <Play className="h-4 w-4" />
+                              <span>Play</span>
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={pauseAudio}
+                                className="flex items-center space-x-2 bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-700"
+                              >
+                                <Pause className="h-4 w-4" />
+                                <span>Pause</span>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={stopAudio}
+                                className="flex items-center space-x-2 bg-red-100 hover:bg-red-200 border-red-300 text-red-700"
+                              >
+                                <Square className="h-4 w-4" />
+                                <span>Stop</span>
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                     
