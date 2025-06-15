@@ -914,6 +914,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
 
               console.log(`✅ [AUTO] Envio automático via WhatsApp finalizado: ${sentCount} enviados, ${errorCount} erros`);
+              
+              // Atualizar status da seleção para "enviado" se pelo menos 1 mensagem foi enviada
+              if (sentCount > 0) {
+                await storage.updateSelection(selection.id, { status: 'enviado' });
+                console.log(`📊 [AUTO] Status da seleção atualizado para "enviado"`);
+              }
             }
           }
         } catch (autoSendError) {

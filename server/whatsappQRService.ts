@@ -480,28 +480,33 @@ Você gostaria de iniciar a entrevista?`;
       console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
       
       try {
-        // Tentar Quick Reply buttons primeiro (mais compatível)
-        const quickReplyMessage = {
-          text: finalMessage,
-          footer: 'Sistema de Entrevistas IA',
+        // Primeiro, tentar enviar apenas texto simples com instruções claras
+        const textWithInstructions = `${finalMessage}
+
+*Para participar, responda:*
+*1* - Sim, começar agora
+*2* - Não quero participar
+
+Ou clique nos botões abaixo se disponíveis.`;
+
+        console.log(`🔄 [DEBUG] Tentando texto simples primeiro...`);
+        const textResult = await this.socket.sendMessage(jid, { text: textWithInstructions });
+        console.log(`✅ [DEBUG] Texto simples enviado:`, textResult?.key || 'sem key');
+        
+        // Agora tentar enviar botões como mensagem separada
+        const simpleButtons = {
+          text: "Escolha uma opção:",
           buttons: [
-            {
-              buttonId: `start_${selectionId}_${Date.now()}`,
-              buttonText: { displayText: 'Sim, começar agora' },
-              type: 1
-            },
-            {
-              buttonId: `decline_${selectionId}_${Date.now()}`,
-              buttonText: { displayText: 'Não quero participar' },
-              type: 1
-            }
-          ],
-          headerType: 1
+            { buttonId: `start_${selectionId}`, buttonText: { displayText: '1 - Sim' }, type: 1 },
+            { buttonId: `decline_${selectionId}`, buttonText: { displayText: '2 - Não' }, type: 1 }
+          ]
         };
 
-        console.log(`🔄 [DEBUG] Tentando Quick Reply buttons...`);
-        const quickResult = await this.socket.sendMessage(jid, quickReplyMessage);
-        console.log(`✅ [DEBUG] Quick Reply buttons enviados:`, quickResult?.key || 'sem key');
+        console.log(`🔄 [DEBUG] Tentando botões separados...`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa entre mensagens
+        const buttonResult = await this.socket.sendMessage(jid, simpleButtons);
+        console.log(`✅ [DEBUG] Botões separados enviados:`, buttonResult?.key || 'sem key');
+        
         return true;
         
       } catch (quickError) {
