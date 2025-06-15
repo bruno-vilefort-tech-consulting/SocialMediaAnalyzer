@@ -1,7 +1,7 @@
-// Script para criar dados específicos do Daniel Moreira na seleção Faxineira Banco
+// Script para criar dados do Daniel do zero com debug completo
 import admin from 'firebase-admin';
 
-// Inicializar Firebase Admin
+// Inicializar Firebase Admin se não estiver inicializado
 if (!admin.apps.length) {
   admin.initializeApp();
 }
@@ -10,62 +10,146 @@ const db = admin.firestore();
 
 async function criarDadosDaniel() {
   try {
-    console.log('🔧 Criando dados específicos para Daniel Moreira...');
+    console.log('🧹 LIMPANDO DADOS ANTIGOS...');
     
-    // 1. Criar entrevista finalizada para Daniel na Faxineira Banco
-    const interviewId = Date.now().toString();
-    console.log(`📝 Criando entrevista ID: ${interviewId}`);
-    
-    await db.collection('interviews').doc(interviewId).set({
-      candidateId: '17498608963032', // ID do Daniel Moreira
-      candidateName: 'Daniel Moreira',
-      phone: '11984316526',
-      jobId: '174986729964277', // ID da vaga Faxineira GM
-      jobName: 'Faxineira Banco',
-      selectionId: '175001114365781', // ID da seleção faxina
-      status: 'completed',
-      startTime: new Date().toISOString(),
-      endTime: new Date().toISOString(),
-      createdAt: admin.firestore.Timestamp.now()
-    });
-    
-    // 2. Criar respostas para a entrevista
-    const respostas = [
-      {
-        questionText: 'Por que você quer trabalhar como faxineira?',
-        responseText: 'Eu gosto de manter ambientes limpos e organizados. Tenho experiência na área e sei a importância de um local bem cuidado.',
-        audioFile: 'daniel_resposta_1.ogg'
-      },
-      {
-        questionText: 'Qual sua experiência com limpeza?',
-        responseText: 'Trabalho há 5 anos na área de limpeza, tanto residencial quanto comercial. Conheço produtos e técnicas adequadas.',
-        audioFile: 'daniel_resposta_2.ogg'
+    // 1. Limpar todas as entrevistas antigas do Daniel
+    const interviewsSnapshot = await db.collection('interviews').get();
+    for (const doc of interviewsSnapshot.docs) {
+      const data = doc.data();
+      if (data.phone === '11984316526' || data.phone === '5511984316526') {
+        console.log(`🗑️ Removendo entrevista antiga: ${doc.id}`);
+        await doc.ref.delete();
       }
-    ];
-    
-    for (let i = 0; i < respostas.length; i++) {
-      const responseId = (Date.now() + i).toString();
-      console.log(`💬 Criando resposta ${i + 1}: ${responseId}`);
-      
-      await db.collection('responses').doc(responseId).set({
-        interviewId: interviewId,
-        questionId: i + 1,
-        questionText: respostas[i].questionText,
-        responseText: respostas[i].responseText,
-        audioFile: respostas[i].audioFile,
-        timestamp: admin.firestore.Timestamp.now(),
-        score: 8.5 + (i * 0.3), // Scores variados
-        createdAt: admin.firestore.Timestamp.now()
-      });
     }
     
-    console.log('✅ Dados do Daniel Moreira criados com sucesso!');
-    console.log(`📊 Entrevista: ${interviewId}`);
-    console.log(`📝 Respostas: ${respostas.length}`);
-    console.log('🎯 Status: completed na seleção Faxineira Banco');
+    // 2. Limpar todas as respostas antigas do Daniel
+    const responsesSnapshot = await db.collection('responses').get();
+    for (const doc of responsesSnapshot.docs) {
+      const data = doc.data();
+      if (data.candidateName?.toLowerCase().includes('daniel')) {
+        console.log(`🗑️ Removendo resposta antiga: ${doc.id}`);
+        await doc.ref.delete();
+      }
+    }
+    
+    // 3. Limpar candidatos antigos do Daniel
+    const candidatesSnapshot = await db.collection('candidates').get();
+    for (const doc of candidatesSnapshot.docs) {
+      const data = doc.data();
+      if (data.name?.toLowerCase().includes('daniel') || data.whatsapp === '11984316526' || data.whatsapp === '5511984316526') {
+        console.log(`🗑️ Removendo candidato antigo: ${doc.id} (${data.name})`);
+        await doc.ref.delete();
+      }
+    }
+    
+    // 4. Limpar listas de candidatos antigas
+    const listsSnapshot = await db.collection('candidateLists').get();
+    for (const doc of listsSnapshot.docs) {
+      const data = doc.data();
+      if (data.name?.toLowerCase().includes('daniel') || data.name?.includes('Novo')) {
+        console.log(`🗑️ Removendo lista antiga: ${doc.id} (${data.name})`);
+        await doc.ref.delete();
+      }
+    }
+    
+    // 5. Limpar seleções antigas
+    const selectionsSnapshot = await db.collection('selections').get();
+    for (const doc of selectionsSnapshot.docs) {
+      const data = doc.data();
+      if (data.name?.toLowerCase().includes('faxineira') || data.name?.includes('Teste')) {
+        console.log(`🗑️ Removendo seleção antiga: ${doc.id} (${data.name})`);
+        await doc.ref.delete();
+      }
+    }
+    
+    console.log('✅ LIMPEZA CONCLUÍDA - Sistema pronto para dados novos');
+    
+    // 6. Buscar cliente e vaga existentes
+    const clientsSnapshot = await db.collection('clients').get();
+    let grupoMaximus = null;
+    clientsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.companyName?.includes('Grupo Maximus')) {
+        grupoMaximus = { id: doc.id, ...data };
+        console.log(`👑 Cliente encontrado: ${data.companyName} (ID: ${doc.id})`);
+      }
+    });
+    
+    if (!grupoMaximus) {
+      console.log('❌ Cliente Grupo Maximus não encontrado');
+      return;
+    }
+    
+    const jobsSnapshot = await db.collection('jobs').get();
+    let faxineiraJob = null;
+    jobsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.nomeVaga?.includes('Faxineira') && data.clientId === parseInt(grupoMaximus.id)) {
+        faxineiraJob = { id: doc.id, ...data };
+        console.log(`💼 Vaga encontrada: ${data.nomeVaga} (ID: ${doc.id})`);
+      }
+    });
+    
+    if (!faxineiraJob) {
+      console.log('❌ Vaga de Faxineira não encontrada');
+      return;
+    }
+    
+    // 7. Criar nova lista de candidatos
+    const listaId = Date.now();
+    const novaLista = {
+      id: listaId,
+      name: 'Lista Teste Daniel - Nova',
+      clientId: parseInt(grupoMaximus.id),
+      createdAt: new Date()
+    };
+    
+    await db.collection('candidateLists').doc(listaId.toString()).set(novaLista);
+    console.log(`📋 Nova lista criada: ${novaLista.name} (ID: ${listaId})`);
+    
+    // 8. Criar novo candidato Daniel
+    const candidatoId = Date.now() + 1;
+    const novoCandidato = {
+      id: candidatoId,
+      name: 'Daniel Moreira Teste',
+      email: 'daniel.teste@email.com',
+      whatsapp: '11984316526',
+      clientId: parseInt(grupoMaximus.id),
+      listId: listaId,
+      createdAt: new Date()
+    };
+    
+    await db.collection('candidates').doc(candidatoId.toString()).set(novoCandidato);
+    console.log(`👤 Novo candidato criado: ${novoCandidato.name} (ID: ${candidatoId})`);
+    console.log(`📱 WhatsApp: ${novoCandidato.whatsapp}`);
+    
+    // 9. Criar nova seleção
+    const selecaoId = Date.now() + 2;
+    const novaSelecao = {
+      id: selecaoId,
+      name: 'Seleção Faxineira - Teste Daniel',
+      jobId: faxineiraJob.id,
+      candidateListId: listaId,
+      status: 'preparando',
+      whatsappTemplate: 'Olá [nome do candidato]! Você foi selecionado(a) para a vaga de [Nome da Vaga]. Deseja participar da entrevista?',
+      emailTemplate: 'Prezado(a) [nome do candidato], você foi convidado(a) para a vaga de [Nome da Vaga].',
+      createdAt: new Date()
+    };
+    
+    await db.collection('selections').doc(selecaoId.toString()).set(novaSelecao);
+    console.log(`🎯 Nova seleção criada: ${novaSelecao.name} (ID: ${selecaoId})`);
+    
+    console.log('\n🎉 DADOS CRIADOS COM SUCESSO!');
+    console.log('📊 RESUMO:');
+    console.log(`   Cliente: ${grupoMaximus.companyName} (${grupoMaximus.id})`);
+    console.log(`   Vaga: ${faxineiraJob.nomeVaga} (${faxineiraJob.id})`);
+    console.log(`   Lista: ${novaLista.name} (${listaId})`);
+    console.log(`   Candidato: ${novoCandidato.name} (${candidatoId})`);
+    console.log(`   Seleção: ${novaSelecao.name} (${selecaoId})`);
+    console.log(`   WhatsApp: ${novoCandidato.whatsapp}`);
     
   } catch (error) {
-    console.error('❌ Erro ao criar dados:', error);
+    console.error('❌ Erro:', error);
   }
 }
 
