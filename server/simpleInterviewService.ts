@@ -320,17 +320,71 @@ class SimpleInterviewService {
   private async transcribeAudio(audioMessage: any, phone: string, fallbackText = ''): Promise<string> {
     console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
-    // Para manter o fluxo funcionando, usar uma abordagem simplificada
-    // O áudio será salvo pelo AudioDownloadService e processado adequadamente
+    try {
+      // Tentar baixar o áudio primeiro
+      const audioBuffer = await this.audioDownloadService.downloadAudio(audioMessage, phone);
+      
+      if (audioBuffer && audioBuffer.length > 0) {
+        console.log(`🎧 [WHISPER] Áudio baixado com sucesso: ${audioBuffer.length} bytes`);
+        
+        // Salvar áudio temporariamente para OpenAI Whisper
+        const fs = await import('fs');
+        const path = await import('path');
+        const tempAudioPath = path.join('uploads', `temp_audio_${phone}_${Date.now()}.webm`);
+        
+        await fs.promises.writeFile(tempAudioPath, audioBuffer);
+        console.log(`💾 [WHISPER] Áudio salvo temporariamente: ${tempAudioPath}`);
+        
+        // Transcrever com OpenAI Whisper
+        const FormData = (await import('form-data')).default;
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(tempAudioPath));
+        formData.append('model', 'whisper-1');
+        formData.append('language', 'pt');
+        
+        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            ...formData.getHeaders()
+          },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const transcription = result.text?.trim();
+          
+          if (transcription && transcription.length > 0) {
+            console.log(`✅ [WHISPER] Transcrição real obtida: "${transcription}"`);
+            
+            // Limpar arquivo temporário
+            try {
+              await fs.promises.unlink(tempAudioPath);
+            } catch {}
+            
+            return transcription;
+          }
+        }
+        
+        // Limpar arquivo temporário em caso de erro
+        try {
+          await fs.promises.unlink(tempAudioPath);
+        } catch {}
+      }
+    } catch (error) {
+      console.log(`❌ [WHISPER] Erro na transcrição real:`, error.message);
+    }
     
+    // Fallback para texto se fornecido
     if (fallbackText && fallbackText.trim()) {
       console.log(`📝 [WHISPER] Usando texto fornecido: "${fallbackText}"`);
       return fallbackText;
     }
     
-    // Retornar resposta padrão que indica que o áudio foi recebido
-    const defaultResponse = `Resposta em áudio recebida às ${new Date().toLocaleTimeString('pt-BR')}`;
-    console.log(`📝 [WHISPER] Resposta processada: "${defaultResponse}"`);
+    // Último recurso
+    const defaultResponse = `Resposta de áudio processada`;
+    console.log(`📝 [WHISPER] Usando resposta padrão: "${defaultResponse}"`);
     return defaultResponse;
   }
 
