@@ -335,11 +335,62 @@ export class WhatsAppQRService {
         const phoneClean = from.replace('@s.whatsapp.net', '');
         console.log(`🔍 [DEBUG] Buscando seleção para telefone: ${phoneClean}`);
         
-        // Por agora vamos simular uma resposta positiva
-        await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
-        
-        // TODO: Buscar seleção real e iniciar entrevista
-        // await this.startInterviewProcess(from, selectionId, candidateName);
+        try {
+          const { storage } = await import('./storage');
+          
+          // Buscar todos os candidatos no Firebase
+          const { getDocs, collection } = await import('firebase/firestore');
+          const { firebaseDb } = await import('./storage');
+          const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+          const candidates = candidatesSnapshot.docs.map(doc => ({ 
+            id: parseInt(doc.id), 
+            ...doc.data() 
+          })) as any[];
+          const candidate = candidates.find(c => {
+            if (!c.phone) return false;
+            const candidatePhone = c.phone.replace(/\D/g, '');
+            const searchPhone = phoneClean.replace(/\D/g, '');
+            return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+          });
+          
+          if (candidate) {
+            console.log(`👤 [DEBUG] Candidato encontrado: ${candidate.name}`);
+            
+            // Buscar seleção mais recente que inclua este candidato
+            const allSelections = await storage.getAllSelections();
+            const candidateSelections = allSelections.filter(s => 
+              s.candidateListId && s.status === 'enviado'
+            );
+            
+            if (candidateSelections.length > 0) {
+              // Pegar a seleção mais recente
+              const selection = candidateSelections.sort((a, b) => 
+                new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+              )[0];
+              
+              console.log(`📋 [DEBUG] Seleção encontrada: ${selection.name} (ID: ${selection.id})`);
+              
+              // Buscar job e suas perguntas
+              const job = await storage.getJobById(selection.jobId);
+              if (job && job.perguntas && job.perguntas.length > 0) {
+                console.log(`❓ [DEBUG] Job encontrado com ${job.perguntas.length} perguntas`);
+                
+                // Iniciar processo de entrevista
+                await this.startInterviewProcess(from, selection.id, candidate.name);
+                return;
+              } else {
+                console.log(`❌ [DEBUG] Job não encontrado ou sem perguntas`);
+              }
+            }
+          }
+          
+          // Fallback se não encontrar dados
+          await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
+          
+        } catch (error) {
+          console.error(`❌ [DEBUG] Erro ao buscar dados para entrevista:`, error);
+          await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
+        }
         
       } 
       // Detectar respostas de recusar entrevista
@@ -480,32 +531,16 @@ Você gostaria de iniciar a entrevista?`;
       console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
       
       try {
-        // Primeiro, tentar enviar apenas texto simples com instruções claras
+        // Enviar apenas texto simples com instruções claras
         const textWithInstructions = `${finalMessage}
 
 *Para participar, responda:*
 *1* - Sim, começar agora
-*2* - Não quero participar
+*2* - Não quero participar`;
 
-Ou clique nos botões abaixo se disponíveis.`;
-
-        console.log(`🔄 [DEBUG] Tentando texto simples primeiro...`);
+        console.log(`🔄 [DEBUG] Enviando mensagem com instruções...`);
         const textResult = await this.socket.sendMessage(jid, { text: textWithInstructions });
-        console.log(`✅ [DEBUG] Texto simples enviado:`, textResult?.key || 'sem key');
-        
-        // Agora tentar enviar botões como mensagem separada
-        const simpleButtons = {
-          text: "Escolha uma opção:",
-          buttons: [
-            { buttonId: `start_${selectionId}`, buttonText: { displayText: '1 - Sim' }, type: 1 },
-            { buttonId: `decline_${selectionId}`, buttonText: { displayText: '2 - Não' }, type: 1 }
-          ]
-        };
-
-        console.log(`🔄 [DEBUG] Tentando botões separados...`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Pausa entre mensagens
-        const buttonResult = await this.socket.sendMessage(jid, simpleButtons);
-        console.log(`✅ [DEBUG] Botões separados enviados:`, buttonResult?.key || 'sem key');
+        console.log(`✅ [DEBUG] Mensagem enviada:`, textResult?.key || 'sem key');
         
         return true;
         

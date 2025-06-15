@@ -838,6 +838,19 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  async getAllSelections(): Promise<Selection[]> {
+    try {
+      const selectionsSnapshot = await getDocs(collection(firebaseDb, 'selections'));
+      return selectionsSnapshot.docs.map(doc => ({
+        id: parseInt(doc.id),
+        ...doc.data()
+      })) as Selection[];
+    } catch (error) {
+      console.error('Erro ao buscar todas as selections:', error);
+      return [];
+    }
+  }
+
   // Interviews
   async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
     try {
