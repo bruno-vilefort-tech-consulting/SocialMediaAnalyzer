@@ -8,7 +8,7 @@ import {
 } from "@shared/schema";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc } from "firebase/firestore";
-import { db as pgDb } from "./db";
+import { db as pgDb, pool } from "./db";
 import { eq } from "drizzle-orm";
 import {
   users, clients, jobs, questions, candidates, selections, interviews, responses, apiConfigs, messageLogs
@@ -1282,12 +1282,11 @@ export class DatabaseStorage implements IStorage {
     // Gerar ID único para a vaga
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Usar SQL direto para inserir com ID especificado
-    const result = await pgDb.execute(sql`
-      INSERT INTO vagas_preset (id, client_id, nome_vaga, descricao_vaga, status, created_at)
-      VALUES (${jobId}, ${insertJob.clientId}, ${insertJob.nomeVaga}, ${insertJob.descricaoVaga || ''}, ${insertJob.status || 'ativo'}, NOW())
-      RETURNING *
-    `);
+    // Usar pool PostgreSQL diretamente
+    const result = await pool.query(
+      "INSERT INTO vagas_preset (id, client_id, nome_vaga, descricao_vaga, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *",
+      [jobId, insertJob.clientId, insertJob.nomeVaga, insertJob.descricaoVaga || '', insertJob.status || 'ativo']
+    );
     
     return result.rows[0] as Job;
   }
