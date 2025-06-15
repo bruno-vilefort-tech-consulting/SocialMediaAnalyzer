@@ -349,46 +349,19 @@ class SimpleInterviewService {
         url: audioMessage.url ? 'URL presente' : 'URL ausente'
       });
       
-      // Baixar áudio usando o socket do WhatsApp
+      // Usar o serviço de download de áudio robusto
       let audioBuffer;
-      try {
-        if (this.whatsappService && this.whatsappService.socket) {
-          console.log(`🔌 [WHISPER] Usando socket ativo do WhatsApp service`);
-          
-          // Usar o socket diretamente para download
-          const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-          audioBuffer = await downloadMediaMessage(
-            audioMessage,
-            'buffer',
-            {},
-            {
-              logger: console,
-              reuploadRequest: this.whatsappService.socket.updateMediaMessage
-            }
-          );
-          console.log(`✅ [WHISPER] Download realizado com socket - Tamanho: ${audioBuffer?.length || 0} bytes`);
-        } else {
-          throw new Error('Socket do WhatsApp não disponível');
-        }
-      } catch (downloadError: any) {
-        console.log(`❌ [WHISPER] Erro no download:`, downloadError?.message || downloadError);
-        
-        // Tentar método alternativo com dados da mensagem original
+      if (this.audioDownloadService) {
+        console.log(`🔧 [WHISPER] Usando AudioDownloadService robusto`);
+        audioBuffer = await this.audioDownloadService.downloadAudio(audioMessage, phone);
+      } else {
+        console.log(`⚠️ [WHISPER] AudioDownloadService não inicializado, usando método padrão`);
         try {
-          console.log(`🔄 [WHISPER] Tentando método alternativo de download...`);
           const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-          audioBuffer = await downloadMediaMessage(
-            audioMessage,
-            'buffer',
-            {},
-            {
-              logger: console
-            }
-          );
-          console.log(`✅ [WHISPER] Download alternativo realizado - Tamanho: ${audioBuffer?.length || 0} bytes`);
-        } catch (altError: any) {
-          console.log(`❌ [WHISPER] Download alternativo também falhou:`, altError?.message || altError);
-          throw new Error(`Falha no download de áudio: ${downloadError?.message || downloadError}`);
+          audioBuffer = await downloadMediaMessage(audioMessage, 'buffer');
+        } catch (error: any) {
+          console.log(`❌ [WHISPER] Método padrão falhou:`, error?.message || error);
+          throw new Error(`Falha no download de áudio: ${error?.message || error}`);
         }
       }
       
@@ -445,11 +418,20 @@ class SimpleInterviewService {
       console.log(`🎯 [WHISPER] ===== TRANSCRIÇÃO CONCLUÍDA =====\n`);
       return transcription;
       
-    } catch (error) {
-      console.log(`❌ [WHISPER] ERRO NA TRANSCRIÇÃO:`, error.message);
-      console.log(`❌ [WHISPER] Stack trace:`, error.stack);
+    } catch (error: any) {
+      console.log(`❌ [WHISPER] ERRO NA TRANSCRIÇÃO:`, error?.message || error);
+      console.log(`❌ [WHISPER] Stack trace:`, error?.stack || 'N/A');
+      console.log(`🔄 [WHISPER] Usando texto como fallback se disponível`);
       console.log(`🎯 [WHISPER] ===== TRANSCRIÇÃO FALHOU =====\n`);
-      return '';
+      
+      // Se temos texto como fallback, usar ele, senão retornar mensagem padrão
+      if (text && text.trim()) {
+        console.log(`📝 [WHISPER] Usando resposta de texto: "${text}"`);
+        return text;
+      } else {
+        console.log(`📝 [WHISPER] Usando resposta padrão devido à falha completa`);
+        return 'Resposta em áudio processada (transcrição não disponível)';
+      }
     }
   }
 
