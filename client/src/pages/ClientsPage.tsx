@@ -618,9 +618,23 @@ export default function ClientsPage() {
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             <span>
-                              Contrato: {client.contractStart ? format(new Date(client.contractStart), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}
+                              Contrato: {client.contractStart ? (() => {
+                                try {
+                                  const date = (client.contractStart as any)?.toDate ? (client.contractStart as any).toDate() : new Date(client.contractStart);
+                                  return format(date, "dd/MM/yyyy", { locale: ptBR });
+                                } catch {
+                                  return "Data inválida";
+                                }
+                              })() : "N/A"}
                               {client.contractEnd 
-                                ? ` até ${format(new Date(client.contractEnd), "dd/MM/yyyy", { locale: ptBR })}` 
+                                ? (() => {
+                                  try {
+                                    const date = (client.contractEnd as any)?.toDate ? (client.contractEnd as any).toDate() : new Date(client.contractEnd);
+                                    return ` até ${format(date, "dd/MM/yyyy", { locale: ptBR })}`;
+                                  } catch {
+                                    return " até Data inválida";
+                                  }
+                                })()
                                 : " (indeterminado)"
                               }
                             </span>
