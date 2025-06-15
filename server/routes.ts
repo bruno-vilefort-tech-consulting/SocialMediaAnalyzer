@@ -2675,31 +2675,46 @@ Responda de forma natural aguardando a resposta do candidato.`;
       for (const interviewDoc of interviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
         
-        // Filtrar apenas a entrevista completada do Daniel Braga (ID 1750023641014)
-        if (interviewDoc.id !== '1750023641014') {
+        // Processar todas as entrevistas completadas
+        if (interviewData.status !== 'completed') {
           continue;
         }
         
-        console.log(`📝 Processando entrevista real do Daniel: ${interviewDoc.id}`);
+        console.log(`📝 Processando entrevista: ${interviewDoc.id} - ${interviewData.candidateName}`);
         
-        // Buscar respostas na coleção 'responses' (não 'interview_responses')
+        // Buscar respostas na coleção 'responses'
         const responsesQuery = query(
           collection(db, 'responses'),
-          where('interviewId', '==', 1750023641014)
+          where('interviewId', '==', interviewDoc.id)
         );
         const responsesSnapshot = await getDocs(responsesQuery);
+        
+        // Buscar perguntas da vaga no Firebase
+        let jobQuestions = [];
+        if (interviewData.jobId) {
+          try {
+            const jobDoc = await getDoc(doc(db, 'jobs', interviewData.jobId));
+            if (jobDoc.exists()) {
+              const jobData = jobDoc.data();
+              jobQuestions = jobData.perguntas || [];
+            }
+          } catch (err) {
+            console.log('Erro ao buscar perguntas da vaga:', err);
+          }
+        }
         
         const responses = responsesSnapshot.docs.map(doc => {
           const responseData = doc.data();
           const questionId = responseData.questionId || 0;
-          const questionTexts = [
-            'Por que você quer trabalhar como faxineira?',
-            'Qual sua experiência com limpeza?'
-          ];
+          
+          // Usar perguntas reais da vaga
+          const questionText = jobQuestions[questionId]?.pergunta || 
+                              jobQuestions[questionId]?.questionText ||
+                              `Pergunta ${questionId + 1}`;
           
           return {
             questionId: questionId,
-            questionText: questionTexts[questionId] || `Pergunta ${questionId + 1}`,
+            questionText: questionText,
             responseText: responseData.transcription || '',
             audioFile: responseData.audioUrl ? `/audio/${responseData.audioUrl.replace('uploads/', '')}` : '',
             timestamp: responseData.createdAt ? new Date(responseData.createdAt.seconds * 1000).toISOString() : new Date().toISOString()
