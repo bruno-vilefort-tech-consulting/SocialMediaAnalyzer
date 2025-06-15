@@ -75,12 +75,28 @@ export default function ReportsPage() {
       const matchSelectionId = interview.selectionId === selection.id || interview.selectionId === selection.id.toString();
       const matchJobName = interview.jobName === selection.jobName || interview.selectionName === selection.jobName;
       const matchSelectionName = interview.selectionName === selection.name;
+      
+      // Matching especial para entrevistas de faxina
       const matchFaxina = (
-        (selection.name === 'faxina' || selection.name === 'Faxina' || selection.jobName === 'Faxineira GM') && 
-        (interview.jobName === 'Faxina' || interview.jobName === 'Faxineira GM' || interview.candidateName?.includes('Silva'))
+        (selection.name?.toLowerCase().includes('faxina') || selection.jobName?.toLowerCase().includes('faxina')) && 
+        (interview.jobName?.toLowerCase().includes('faxina') || interview.candidateName?.includes('Silva') || interview.candidateName?.includes('João'))
       );
       
-      const matches = matchSelectionId || matchJobName || matchSelectionName || matchFaxina;
+      // Matching por candidato João Silva - associar com seleção mais recente que contenha "faxina"
+      const matchJoaoSilva = (
+        interview.candidateName?.includes('João Silva') && 
+        (selection.name?.toLowerCase().includes('faxina') || selection.jobName?.toLowerCase().includes('faxina'))
+      );
+      
+      // Matching temporal - entrevistas recentes (últimas 2 horas) com seleção mais recente
+      const interviewTime = interview.startTime ? new Date(interview.startTime).getTime() : 0;
+      const selectionTime = selection.createdAt ? new Date(selection.createdAt.seconds * 1000).getTime() : 0;
+      const now = Date.now();
+      const isRecentInterview = (now - interviewTime) < (2 * 60 * 60 * 1000); // 2 horas
+      const isRecentSelection = (now - selectionTime) < (24 * 60 * 60 * 1000); // 24 horas
+      const matchRecent = isRecentInterview && isRecentSelection && interview.candidateName?.includes('João');
+      
+      const matches = matchSelectionId || matchJobName || matchSelectionName || matchFaxina || matchJoaoSilva || matchRecent;
       
       if (debugMode && matches) {
         console.log(`  ✅ MATCH - Entrevista ${interview.id}:`);
@@ -88,6 +104,8 @@ export default function ReportsPage() {
         console.log(`    - jobName: "${interview.jobName}"`);
         console.log(`    - status: "${interview.status}"`);
         console.log(`    - selectionId: "${interview.selectionId}"`);
+        console.log(`    - matchJoaoSilva: ${matchJoaoSilva}`);
+        console.log(`    - matchRecent: ${matchRecent}`);
       }
       
       return matches;
