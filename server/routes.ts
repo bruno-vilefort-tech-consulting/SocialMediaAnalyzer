@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, firebaseDb } from "./storage";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
@@ -2647,7 +2648,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
       console.log('🔍 Buscando entrevistas do Firebase para relatórios...');
       
       const db = firebaseDb;
-      const interviewsSnapshot = await db.collection('interviews').get();
+      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
       
       console.log(`📊 Total de entrevistas encontradas: ${interviewsSnapshot.docs.length}`);
       
@@ -2663,10 +2664,11 @@ Responda de forma natural aguardando a resposta do candidato.`;
         });
         
         // Buscar respostas desta entrevista
-        const responsesSnapshot = await db
-          .collection('interview_responses')
-          .where('interviewId', '==', interviewDoc.id)
-          .get();
+        const responsesQuery = query(
+          collection(db, 'interview_responses'),
+          where('interviewId', '==', interviewDoc.id)
+        );
+        const responsesSnapshot = await getDocs(responsesQuery);
         
         const responses = responsesSnapshot.docs.map(doc => {
           const responseData = doc.data();
