@@ -364,10 +364,12 @@ export class WhatsAppQRService {
       const fs = await import('fs');
       const path = await import('path');
       
-      // Buscar entrevista em andamento para este telefone
+      // Buscar candidato
       const phoneClean = from.replace('@s.whatsapp.net', '');
-      const candidates = await storage.getCandidatesByClientId(1749849987543);
-      const candidate = candidates.find(c => {
+      console.log(`🔍 [DEBUG] Buscando candidato para telefone: ${phoneClean}`);
+      
+      const allCandidates = await storage.getAllCandidates();
+      const candidate = allCandidates.find(c => {
         if (!c.phone) return false;
         const candidatePhone = c.phone.replace(/\D/g, '');
         const searchPhone = phoneClean.replace(/\D/g, '');
@@ -376,15 +378,31 @@ export class WhatsAppQRService {
       
       if (!candidate) {
         console.log(`❌ [DEBUG] Candidato não encontrado para ${phoneClean}`);
+        await this.sendTextMessage(from, "Erro: candidato não encontrado.");
         return;
       }
       
-      // Buscar entrevista em andamento
-      const allSelections = await storage.getAllSelections();
-      const activeSelection = allSelections.find(s => s.status === 'enviado' && s.candidateListId);
+      console.log(`✅ [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
       
-      if (!activeSelection) {
-        console.log(`❌ [DEBUG] Seleção ativa não encontrada`);
+      // Buscar entrevista em andamento para este candidato
+      const allInterviews = await storage.getAllInterviews();
+      let currentInterview = allInterviews.find(i => 
+        i.candidateId === candidate.id && 
+        i.status === 'in_progress'
+      );
+      
+      if (!currentInterview) {
+        console.log(`❌ [DEBUG] Entrevista em andamento não encontrada para candidato ${candidate.id}`);
+        await this.sendTextMessage(from, "Erro: entrevista não encontrada. Tente responder '1' para iniciar novamente.");
+        return;
+      }
+      
+      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Token: ${currentInterview.token}`);
+      
+      // Buscar seleção
+      const selection = await storage.getSelectionById(currentInterview.selectionId);
+      if (!selection) {
+        console.log(`❌ [DEBUG] Seleção não encontrada`);
         return;
       }
       
@@ -430,6 +448,32 @@ export class WhatsAppQRService {
       fs.writeFileSync(audioPath, audioBuffer);
       console.log(`💾 [DEBUG] Áudio salvo em: ${audioPath}`);
       
+      // Buscar job e perguntas
+      const job = await storage.getJobById(selection.jobId);
+      if (!job || !job.perguntas || job.perguntas.length === 0) {
+        console.log(`❌ [DEBUG] Job sem perguntas válidas`);
+        await this.sendTextMessage(from, "Erro: vaga sem perguntas configuradas.");
+        return;
+      }
+      
+      console.log(`✅ [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+      
+      // Descobrir qual pergunta atual baseado nas respostas já dadas
+      const allResponses = await storage.getAllResponses();
+      const existingResponses = allResponses.filter(r => r.interviewId === currentInterview.id);
+      const currentQuestionIndex = existingResponses.length;
+      
+      console.log(`📊 [DEBUG] Respostas existentes: ${existingResponses.length}, Pergunta atual: ${currentQuestionIndex + 1}`);
+      
+      if (currentQuestionIndex >= job.perguntas.length) {
+        console.log(`✅ [DEBUG] Entrevista já completa - todas as perguntas respondidas`);
+        await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você já completou todas as perguntas da entrevista.`);
+        return;
+      }
+      
+      const currentQuestion = job.perguntas[currentQuestionIndex];
+      console.log(`❓ [DEBUG] Processando resposta para pergunta ${currentQuestionIndex + 1}: ${currentQuestion.pergunta}`);
+      
       // Transcrever áudio usando OpenAI Whisper
       const config = await storage.getApiConfig();
       if (!config?.openaiApiKey) {
@@ -447,6 +491,7 @@ export class WhatsAppQRService {
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
       
+      let transcription = '';
       try {
         console.log(`🌐 [DEBUG] Enviando para transcrição OpenAI...`);
         const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -460,7 +505,6 @@ export class WhatsAppQRService {
         
         console.log(`📡 [DEBUG] Status transcrição: ${transcriptionResponse.status}`);
         
-        let transcription = '';
         if (transcriptionResponse.ok) {
           const result = await transcriptionResponse.json();
           transcription = result.text || '';
@@ -476,47 +520,39 @@ export class WhatsAppQRService {
       }
       
       // Salvar resposta no banco de dados
-      const interview = await storage.createInterview({
-        selectionId: activeSelection.id,
-        candidateId: candidate.id,
-        token: `whatsapp_${Date.now()}`,
-        status: 'in_progress'
+      const response = await storage.createResponse({
+        interviewId: currentInterview.id,
+        questionId: currentQuestion.id,
+        responseText: transcription,
+        audioUrl: audioFileName,
+        score: null,
+        feedback: null
       });
       
-      // Buscar job e pergunta atual
-      const job = await storage.getJobById(activeSelection.jobId);
-      if (job && job.perguntas && job.perguntas.length > 0) {
-        // Por simplicidade, vamos assumir que é a primeira pergunta
-        // Em um sistema completo, você manteria o estado da entrevista
-        const currentQuestion = job.perguntas[0];
+      console.log(`✅ [DEBUG] Resposta salva no banco: ID ${response.id} para pergunta ${currentQuestionIndex + 1}`);
+      
+      // Verificar se há mais perguntas
+      const nextQuestionIndex = currentQuestionIndex + 1;
+      if (nextQuestionIndex < job.perguntas.length) {
+        // Há mais perguntas - enviar confirmação e próxima pergunta
+        await this.sendTextMessage(from, `✅ Resposta ${nextQuestionIndex} recebida! Próxima pergunta chegando...`);
         
-        // Salvar resposta
-        const response = await storage.createResponse({
-          interviewId: interview.id,
-          questionId: currentQuestion.id,
-          responseText: transcription,
-          audioUrl: audioFileName,
-          score: null,
-          feedback: null
+        // Esperar um pouco e enviar próxima pergunta
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const nextQuestion = job.perguntas[nextQuestionIndex];
+        await this.sendQuestionAudio(from, candidate.name, nextQuestion, currentInterview.id, nextQuestionIndex, job.perguntas.length);
+        
+        console.log(`📨 [DEBUG] Próxima pergunta enviada: ${nextQuestionIndex + 1}/${job.perguntas.length}`);
+      } else {
+        // Última pergunta - finalizar entrevista
+        await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você completou todas as ${job.perguntas.length} perguntas da entrevista. Nossa equipe analisará suas respostas e retornará em breve.`);
+        
+        await storage.updateInterview(currentInterview.id, { 
+          status: 'completed',
+          completedAt: new Date()
         });
         
-        console.log(`✅ [DEBUG] Resposta salva no banco: ID ${response.id}`);
-        
-        // Enviar confirmação e próxima pergunta
-        await this.sendTextMessage(from, "✅ Resposta recebida e processada!");
-        
-        // Se há mais perguntas, enviar a próxima
-        if (job.perguntas.length > 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          await this.sendQuestionAudio(from, candidate.name, job.perguntas[1], interview.id, 1, job.perguntas.length);
-        } else {
-          // Finalizar entrevista
-          await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você completou a entrevista. Nossa equipe analisará suas respostas e retornará em breve.`);
-          await storage.updateInterview(interview.id, { 
-            status: 'completed',
-            completedAt: new Date()
-          });
-        }
+        console.log(`🏁 [DEBUG] Entrevista finalizada - ${job.perguntas.length} perguntas respondidas`);
       }
       
       // Limpar arquivo temporário

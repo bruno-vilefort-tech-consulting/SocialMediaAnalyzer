@@ -97,6 +97,12 @@ export interface IStorage {
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
   getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]>;
 
+  // Global getters
+  getAllCandidates(): Promise<Candidate[]>;
+  getAllInterviews(): Promise<Interview[]>;
+  getAllResponses(): Promise<Response[]>;
+  getAllSelections(): Promise<Selection[]>;
+
   // Statistics
   getInterviewStats(): Promise<{
     totalClients: number;
