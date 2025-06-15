@@ -295,22 +295,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
+      console.log('🔍 Buscando vagas para usuário:', req.user!.role, 'ID:', req.user!.id);
       let jobs;
       if (req.user!.role === 'master') {
-        // Master pode ver todas as vagas
-        jobs = await storage.getJobs();
+        // Master pode ver todas as vagas - buscar de todos os clientes
+        console.log('👑 Master buscando todas as vagas...');
+        const allClients = await storage.getClients();
+        console.log('📊 Clientes encontrados:', allClients.length);
+        jobs = [];
+        for (const client of allClients) {
+          console.log(`🔍 Buscando vagas do cliente ID: ${client.id} (${client.companyName})`);
+          const clientJobs = await storage.getJobsByClientId(client.id);
+          console.log(`📝 Vagas encontradas para cliente ${client.id}:`, clientJobs.length);
+          jobs.push(...clientJobs);
+        }
       } else {
         // Cliente vê apenas suas vagas
         const clientId = req.user!.clientId!;
+        console.log('👤 Cliente buscando vagas próprias, clientId:', clientId);
         jobs = await storage.getJobsByClientId(clientId);
       }
-      console.log('📋 Jobs retornados pela API:');
+      console.log('📋 Total de vagas retornadas:', jobs.length);
       jobs.forEach(job => {
-        console.log(`  - ID: ${job.id} | Nome: ${job.nomeVaga}`);
+        console.log(`  - ID: ${job.id} | Nome: ${job.nomeVaga} | Cliente: ${job.clientId}`);
       });
       res.json(jobs);
     } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch jobs' });
+      console.error('❌ Erro detalhado na API de vagas:', error);
+      res.status(500).json({ message: 'Failed to fetch jobs', error: error.message });
     }
   });
 
