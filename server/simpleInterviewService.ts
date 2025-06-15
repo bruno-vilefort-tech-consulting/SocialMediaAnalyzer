@@ -336,7 +336,7 @@ class SimpleInterviewService {
     console.log(`🎯 [AUDIO] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
-  private async transcribeAudio(audioMessage: any, phone: string, text = ''): Promise<string> {
+  private async transcribeAudio(audioMessage: any, phone: string, fallbackText = ''): Promise<string> {
     console.log(`\n🎯 [WHISPER] ===== INICIANDO TRANSCRIÇÃO =====`);
     
     try {
@@ -425,9 +425,9 @@ class SimpleInterviewService {
       console.log(`🎯 [WHISPER] ===== TRANSCRIÇÃO FALHOU =====\n`);
       
       // Se temos texto como fallback, usar ele, senão retornar mensagem padrão
-      if (text && text.trim()) {
-        console.log(`📝 [WHISPER] Usando resposta de texto: "${text}"`);
-        return text;
+      if (fallbackText && fallbackText.trim()) {
+        console.log(`📝 [WHISPER] Usando resposta de texto: "${fallbackText}"`);
+        return fallbackText;
       } else {
         console.log(`📝 [WHISPER] Usando resposta padrão devido à falha completa`);
         return 'Resposta em áudio processada (transcrição não disponível)';
