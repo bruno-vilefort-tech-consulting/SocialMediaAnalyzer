@@ -387,10 +387,23 @@ export class WhatsAppQRService {
         return;
       }
       
-      // Baixar arquivo de áudio
-      const audioBuffer = await this.socket.downloadMediaMessage(audioMessage);
-      if (!audioBuffer) {
-        console.log(`❌ [DEBUG] Erro ao baixar áudio`);
+      // Baixar arquivo de áudio usando downloadMediaMessage do Baileys
+      console.log(`📱 [DEBUG] Baixando áudio do WhatsApp...`);
+      let audioBuffer: Buffer;
+      
+      try {
+        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+        audioBuffer = await downloadMediaMessage(audioMessage, 'buffer', {});
+        
+        if (!audioBuffer) {
+          console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio`);
+          await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
+          return;
+        }
+        
+        console.log(`✅ [DEBUG] Áudio baixado com sucesso - Tamanho: ${audioBuffer.length} bytes`);
+      } catch (error) {
+        console.log(`❌ [DEBUG] Erro ao baixar áudio:`, error);
         await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
         return;
       }
