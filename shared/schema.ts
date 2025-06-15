@@ -1,10 +1,10 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, bigint, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table for authentication
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(), // Changed to text to support large IDs
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull(), // 'master', 'client', 'candidate'
