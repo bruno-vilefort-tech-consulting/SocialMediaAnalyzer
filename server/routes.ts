@@ -1641,106 +1641,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let allInterviews: any[] = [];
       
-      // 1. Buscar todas as seleções baseado no papel do usuário
-      let selectionsSnapshot;
-      if (req.user?.role === 'master') {
-        // Master vê todas as seleções
-        selectionsSnapshot = await getDocs(collection(firebaseDb, 'selections'));
-      } else {
-        // Cliente vê apenas suas próprias seleções
-        const selectionsQuery = query(
-          collection(firebaseDb, 'selections'),
-          where('clientId', '==', req.user?.clientId || 0)
-        );
-        selectionsSnapshot = await getDocs(selectionsQuery);
-      }
+      // Buscar TODAS as entrevistas disponíveis
+      const allInterviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
+      console.log(`📋 Total de entrevistas encontradas: ${allInterviewsSnapshot.docs.length}`);
       
-      console.log(`📋 Seleções encontradas: ${selectionsSnapshot.docs.length}`);
-      
-      // 2. Para cada seleção, buscar entrevistas ESPECÍFICAS dessa seleção
-      for (const selectionDoc of selectionsSnapshot.docs) {
-        const selectionData = selectionDoc.data();
+      // Processar todas as entrevistas
+      for (const interviewDoc of allInterviewsSnapshot.docs) {
+        const interviewData = interviewDoc.data();
         
-        console.log(`🔍 Processando seleção: ${selectionData.name} (ID: ${selectionDoc.id})`);
-        
-        // Buscar entrevistas que pertencem EXCLUSIVAMENTE a esta seleção
-        const interviewsQuery = query(
-          collection(firebaseDb, 'interviews'),
-          where('selectionId', '==', selectionDoc.id)
-        );
-        const interviewsSnapshot = await getDocs(interviewsQuery);
-        
-        console.log(`📋 Entrevistas para seleção ${selectionData.name}: ${interviewsSnapshot.docs.length}`);
-        
-        // 3. Processar cada entrevista desta seleção específica
-        for (const interviewDoc of interviewsSnapshot.docs) {
-          const interviewData = interviewDoc.data();
-          
-          // Buscar candidato da entrevista
-          let candidateData = null;
-          try {
-            if (interviewData.candidateId) {
-              const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', interviewData.candidateId));
-              if (candidateDoc.exists()) {
-                candidateData = candidateDoc.data();
-              }
+        // Buscar candidato da entrevista
+        let candidateData = null;
+        try {
+          if (interviewData.candidateId) {
+            const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', interviewData.candidateId));
+            if (candidateDoc.exists()) {
+              candidateData = candidateDoc.data();
             }
-          } catch (err) {
-            console.log(`⚠️ Erro ao buscar candidato ${interviewData.candidateId}:`, err);
           }
-          
-          // Buscar respostas da entrevista
-          const responsesQuery = query(
-            collection(firebaseDb, 'responses'),
-            where('interviewId', '==', interviewDoc.id)
-          );
-          const responsesSnapshot = await getDocs(responsesQuery);
-          
-          const responses = responsesSnapshot.docs.map(responseDoc => {
-            const responseData = responseDoc.data();
-            return {
-              questionId: responseData.questionId || 1,
-              questionText: responseData.questionText || 'Pergunta não disponível',
-              responseText: responseData.transcription || responseData.responseText || 'Sem transcrição',
-              audioFile: responseData.audioUrl || responseData.audioFile || null,
-              timestamp: responseData.timestamp || responseData.createdAt
-            };
-          });
-          
-          // Buscar vaga relacionada
-          let jobData = null;
-          try {
-            if (selectionData.jobId) {
-              const jobDoc = await getDoc(doc(firebaseDb, 'jobs', selectionData.jobId));
-              if (jobDoc.exists()) {
-                jobData = jobDoc.data();
-              }
-            }
-          } catch (err) {
-            console.log(`⚠️ Erro ao buscar vaga ${selectionData.jobId}:`, err);
-          }
-          
-          // Criar registro de entrevista para relatórios
-          allInterviews.push({
-            id: interviewDoc.id,
-            selectionId: selectionDoc.id,
-            selectionName: selectionData.name,
-            candidateId: interviewData.candidateId,
-            candidateName: candidateData?.name || interviewData.candidateName || 'Candidato desconhecido',
-            candidatePhone: candidateData?.whatsapp || interviewData.phone || 'N/A',
-            jobName: jobData?.nomeVaga || selectionData.name || 'Vaga não identificada',
-            status: interviewData.status || 'completed',
-            startTime: interviewData.startTime || interviewData.createdAt || null,
-            endTime: interviewData.endTime || interviewData.completedAt || null,
-            responses: responses,
-            totalQuestions: responses.length,
-            answeredQuestions: responses.length
-          });
+        } catch (err) {
+          console.log(`⚠️ Erro ao buscar candidato ${interviewData.candidateId}:`, err);
         }
+        
+        // Buscar respostas da entrevista
+        const responsesQuery = query(
+          collection(firebaseDb, 'responses'),
+          where('interviewId', '==', interviewDoc.id)
+        );
+        const responsesSnapshot = await getDocs(responsesQuery);
+        
+        const responses = responsesSnapshot.docs.map(responseDoc => {
+          const responseData = responseDoc.data();
+          return {
+            questionId: responseData.questionId || 1,
+            questionText: responseData.questionText || 'Pergunta não disponível',
+            responseText: responseData.transcription || responseData.responseText || 'Sem transcrição',
+            audioFile: responseData.audioUrl || responseData.audioFile || null,
+            timestamp: responseData.timestamp || responseData.createdAt
+          };
+        });
+        
+        // Criar registro de entrevista para relatórios
+        allInterviews.push({
+          id: interviewDoc.id,
+          selectionId: interviewData.selectionId || 'N/A',
+          selectionName: `Entrevista ${interviewDoc.id}`,
+          candidateId: interviewData.candidateId,
+          candidateName: candidateData?.name || interviewData.candidateName || 'Candidato desconhecido',
+          candidatePhone: candidateData?.whatsapp || candidateData?.phone || interviewData.phone || 'N/A',
+          candidateEmail: candidateData?.email || 'N/A',
+          jobName: interviewData.jobName || 'Vaga não identificada',
+          status: interviewData.status || 'completed',
+          startTime: interviewData.startTime || interviewData.createdAt || null,
+          endTime: interviewData.endTime || interviewData.completedAt || null,
+          responses: responses,
+          totalQuestions: responses.length,
+          answeredQuestions: responses.length
+        });
+        
+        console.log(`✅ Entrevista processada: ${candidateData?.name || 'Candidato desconhecido'} (${responses.length} respostas)`);
       }
       
-      console.log(`✅ Total de entrevistas processadas (sem duplicação): ${allInterviews.length}`);
+      console.log(`✅ Total de entrevistas processadas: ${allInterviews.length}`);
       res.json(allInterviews);
+      
     } catch (error) {
       console.error('Erro ao buscar entrevistas:', error);
       res.status(500).json({ message: 'Erro ao buscar dados das entrevistas' });
