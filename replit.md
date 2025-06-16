@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ SISTEMA DE CANDIDATOS OBRIGATÓRIOS FINALIZADO - Campos listId e clientId implementados
+  - **Formulário frontend atualizado**: Seletores obrigatórios de cliente e lista implementados
+  - **Validação automática**: Campos não podem ficar vazios, reset inteligente baseado no contexto
+  - **Upload CSV corrigido**: Endpoint bulk agora exige clientId obrigatório do frontend
+  - **Backend atualizado**: Criação de candidatos com campos obrigatórios e associações automáticas
+  - **Candidatos existentes corrigidos**: Daniel Lima e Jacqueline de Souza associados à lista "Daniel Infantil"
+  - **Sistema de memberships funcional**: 7 associações candidato-lista-cliente operacionais
+  - **Regra de negócio garantida**: Todo candidato DEVE pertencer a uma lista e cliente específicos
+
 - June 16, 2025: 🔧 WHATSAPP SERVICE CORRIGIDO PARA NOVA ARQUITETURA - Conexão salva corretamente no banco
   - **WhatsApp Service atualizado**: Todas chamadas `getApiConfig()` corrigidas para usar `getApiConfig('master', '1749848502212')`
   - **Persistência funcionando**: Sistema agora salva status de conexão no documento correto do Firebase
