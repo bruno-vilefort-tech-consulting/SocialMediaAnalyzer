@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 16, 2025: ✅ FORMULÁRIO CONTEXTUAL DE CANDIDATOS FINALIZADO - Sistema reconhece automaticamente contexto da lista
-  - **Interface contextual implementada**: Formulário remove campos desnecessários quando dentro de lista específica
-  - **Reconhecimento automático**: Sistema pré-define clientId e listId baseado na lista selecionada
-  - **Validação corrigida**: Formulário funciona corretamente com logs de debug implementados
-  - **Campos básicos mantidos**: Nome, email, WhatsApp conforme especificação original
-  - **UX melhorada**: Mensagem visual mostra contexto (lista + cliente) quando aplicável
-  - **Sistema validado**: Candidato "Daniel Moreira Braga de Lima" criado com sucesso
-  - **Logs funcionais**: Console mostra dados corretos sendo enviados e processados
+- June 16, 2025: ✅ SISTEMA DE CANDIDATOS REFORMULADO COMPLETAMENTE - ClientId obrigatório implementado no esquema
+  - **Schema corrigido**: Campo clientId adicionado diretamente na tabela candidates conforme especificação
+  - **Storage atualizado**: Método createCandidate agora salva clientId diretamente no documento do candidato
+  - **Formulário recriado**: Interface limpa com seleção obrigatória de cliente e lista
+  - **Validação robusta**: Sistema garante que todos os candidatos tenham clientId obrigatório
+  - **Relacionamentos muitos-para-muitos**: Candidato pode estar em várias listas via candidate-list-memberships
+  - **Logs detalhados**: Sistema monitora criação de candidatos com clientId incluído
+  - **Arquitetura final**: Candidatos com clientId direto + associações flexíveis via memberships
 
 - June 16, 2025: ✅ CAMPO DE SELEÇÃO DE CLIENTE PARA LISTAS IMPLEMENTADO - Sistema obrigatório funcional
   - **Campo obrigatório adicionado**: Seleção de cliente (*) no formulário de criação de listas de candidatos

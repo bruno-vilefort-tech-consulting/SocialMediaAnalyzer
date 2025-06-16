@@ -613,17 +613,19 @@ export class FirebaseStorage implements IStorage {
     
     console.log('📋 Campos extraídos - listId:', listId, 'clientId:', clientId, 'fields:', candidateFields);
     
+    // IMPORTANTE: Incluir clientId diretamente no candidato conforme especificado
     const candidateData = {
       ...candidateFields,
+      clientId: clientId, // ClientId vai direto no candidato
       id: candidateId,
       createdAt: new Date()
     };
     
-    console.log('💾 Salvando candidato:', candidateData);
+    console.log('💾 Salvando candidato COM clientId:', candidateData);
     // Create candidate
     await setDoc(doc(firebaseDb, "candidates", String(candidateId)), candidateData);
     
-    // Create membership automatically
+    // Create membership automatically para relacionamento muitos-para-muitos
     if (listId && clientId) {
       const membershipId = `${candidateId}_${listId}`;
       const membershipData = {

@@ -84,12 +84,13 @@ export const candidateLists = pgTable("candidate_lists", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Candidates - agora sem clientId e listId diretos
+// Candidates - com clientId obrigatório conforme especificado
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   whatsapp: text("whatsapp").notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
