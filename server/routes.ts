@@ -2136,6 +2136,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Master Settings - Configurações OpenAI vinculadas ao usuário master
+  app.get("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const masterUserId = req.user!.id.toString();
+      const settings = await storage.getMasterSettings(masterUserId);
+      
+      if (!settings) {
+        return res.json({
+          openaiApiKey: null,
+          gptModel: 'gpt-4o'
+        });
+      }
+      
+      res.json({
+        openaiApiKey: settings.openaiApiKey ? '***KEY_SET***' : null,
+        gptModel: settings.gptModel || 'gpt-4o'
+      });
+    } catch (error) {
+      console.error("Error fetching master settings:", error);
+      res.status(500).json({ message: "Failed to fetch master settings" });
+    }
+  });
+
+  app.post("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const masterUserId = req.user!.id.toString();
+      const { openaiApiKey, gptModel } = req.body;
+      
+      if (!openaiApiKey || !gptModel) {
+        return res.status(400).json({ message: "OpenAI API key and GPT model are required" });
+      }
+      
+      const settings = await storage.upsertMasterSettings({
+        masterUserId,
+        openaiApiKey,
+        gptModel
+      });
+      
+      res.json({
+        openaiApiKey: '***KEY_SET***',
+        gptModel: settings.gptModel
+      });
+    } catch (error) {
+      console.error("Error saving master settings:", error);
+      res.status(500).json({ message: "Failed to save master settings" });
+    }
+  });
+
   // Preview TTS endpoint for client voice testing
   app.post("/api/preview-tts", authenticate, async (req: AuthRequest, res) => {
     try {

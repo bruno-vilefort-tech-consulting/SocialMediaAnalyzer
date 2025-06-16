@@ -156,7 +156,7 @@ export const masterSettings = pgTable("master_settings", {
   id: serial("id").primaryKey(),
   masterUserId: text("master_user_id").references(() => users.id).notNull(),
   openaiApiKey: text("openai_api_key"),
-  openaiModel: text("openai_model").default("gpt-4o"),
+  gptModel: text("gpt_model").default("gpt-4o"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

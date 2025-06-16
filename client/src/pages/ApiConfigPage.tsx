@@ -19,6 +19,11 @@ interface ApiConfig {
   updatedAt?: Date | null;
 }
 
+interface MasterSettings {
+  openaiApiKey?: string | null;
+  gptModel?: string;
+}
+
 interface ClientVoiceSetting {
   id?: number;
   clientId: number;
@@ -40,9 +45,9 @@ export default function ApiConfigPage() {
 
   const isMaster = user?.role === 'master';
 
-  // API Config para master
-  const { data: config, isLoading: configLoading } = useQuery<ApiConfig>({
-    queryKey: ["/api/config"],
+  // Master Settings para configurações OpenAI do usuário master
+  const { data: masterSettings, isLoading: configLoading } = useQuery<MasterSettings>({
+    queryKey: ["/api/master-settings"],
     enabled: isMaster,
   });
 
@@ -74,11 +79,11 @@ export default function ApiConfigPage() {
 
   // Carrega dados existentes
   useEffect(() => {
-    if (config) {
-      setOpenaiApiKey(config.openaiApiKey || "");
-      setOpenaiModel(config.openaiModel || "gpt-4o");
+    if (masterSettings) {
+      setOpenaiApiKey(masterSettings.openaiApiKey === '***KEY_SET***' ? '' : masterSettings.openaiApiKey || "");
+      setOpenaiModel(masterSettings.gptModel || "gpt-4o");
     }
-  }, [config]);
+  }, [masterSettings]);
 
   useEffect(() => {
     if (voiceSetting) {
@@ -89,13 +94,13 @@ export default function ApiConfigPage() {
   // Mutation para salvar configurações master
   const saveConfigMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/config", "POST", {
+      return await apiRequest("/api/master-settings", "POST", {
         openaiApiKey,
-        openaiModel,
+        gptModel: openaiModel,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/master-settings"] });
       toast({
         title: "Configurações salvas",
         description: "Chave API e modelo OpenAI salvos com sucesso",

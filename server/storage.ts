@@ -796,6 +796,23 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  // Master Settings - configurações OpenAI vinculadas ao usuário master
+  async getMasterSettings(masterUserId: string): Promise<MasterSettings | undefined> {
+    const docRef = doc(firebaseDb, "masterSettings", masterUserId);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { id: 1, ...docSnap.data() } as MasterSettings : undefined;
+  }
+
+  async upsertMasterSettings(settings: InsertMasterSettings): Promise<MasterSettings> {
+    const settingsData = { 
+      ...settings, 
+      id: 1, 
+      updatedAt: new Date() 
+    };
+    await setDoc(doc(firebaseDb, "masterSettings", settings.masterUserId), settingsData);
+    return settingsData as MasterSettings;
+  }
+
   // Message Logs
   async createMessageLog(insertLog: InsertMessageLog): Promise<MessageLog> {
     const logId = Date.now();
