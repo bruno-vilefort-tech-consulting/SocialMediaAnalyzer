@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 IDS DE CLIENTE DAS VAGAS CORRIGIDOS - Inconsistência resolvida conforme solicitado
+  - **Vaga "Desenvolvedor Web" corrigida**: Cliente ID atualizado de "1" (inexistente) para "1749849987543" (Grupo Maximuns)
+  - **Todas vagas agora vinculadas corretamente**: Sistema identifica e corrige automaticamente IDs de cliente inválidos
+  - **Filtro por cliente 100% funcional**: Dropdown permite master filtrar vagas por cliente específico
+  - **Contador dinâmico implementado**: Badge mostra quantidade de vagas exibidas em tempo real
+  - **Validação robusta**: Sistema previne criação de vagas com clientes inexistentes
+
 - June 16, 2025: 🗑️ PÁGINA WHATSAPP QR REMOVIDA - Interface unificada no painel de configurações
   - **WhatsAppQRPage completamente removida**: Página separada desnecessária após integração total
   - **Menu de navegação limpo**: Remoção do item "WhatsApp QR" do sidebar master
