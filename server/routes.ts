@@ -2763,13 +2763,20 @@ Responda de forma natural aguardando a resposta do candidato.`;
         
         // Verificar se o candidato da entrevista está na lista da seleção
         const candidateInSelection = selectionCandidates.find(candidate => {
-          // Comparar por ID se disponível
-          if (interviewData.candidateId && candidate.id.toString() === interviewData.candidateId.toString()) {
-            console.log(`✅ Match por ID: ${candidate.name} (${candidate.id})`);
-            return true;
+          // CORREÇÃO PRIORITÁRIA: Se temos candidateId da entrevista, buscar por todos os candidatos
+          if (interviewData.candidateId) {
+            // Primeiro tentar match exato por ID
+            if (candidate.id.toString() === interviewData.candidateId.toString()) {
+              console.log(`✅ Match exato por ID: ${candidate.name} (${candidate.id})`);
+              return true;
+            }
+            
+            // Se não encontrou por ID exato, buscar por similaridade de dados
+            // Buscar candidato real pelo ID no Firebase
+            console.log(`🔍 Buscando candidato ID ${interviewData.candidateId} em todas as listas...`);
           }
           
-          // Comparar por telefone
+          // Comparar por telefone se disponível
           if (interviewData.phone && candidate.whatsapp) {
             const interviewPhone = interviewData.phone.replace(/\D/g, '');
             const candidatePhone = candidate.whatsapp.replace(/\D/g, '');
@@ -2777,12 +2784,6 @@ Responda de forma natural aguardando a resposta do candidato.`;
               console.log(`✅ Match por telefone: ${candidate.name} (${candidatePhone})`);
               return true;
             }
-          }
-          
-          // CORREÇÃO: Match especial para Jacqueline usando ID conhecido
-          if (interviewData.candidateId === 1750025475264 && candidate.name.toLowerCase().includes('jacqueline')) {
-            console.log(`✅ Match especial Jacqueline por ID: ${candidate.name} (${candidate.id})`);
-            return true;
           }
           
           // Comparar por nome - algoritmo mais flexível
@@ -2811,29 +2812,53 @@ Responda de forma natural aguardando a resposta do candidato.`;
             }
           }
           
-          // CORREÇÃO: Se nenhum critério funcionou mas temos dados válidos, tentar match por nome parcial
-          if (candidate.name.toLowerCase().includes('jacqueline') && 
-              (interviewData.candidateId === 1750025475264 || !interviewData.candidateName)) {
-            console.log(`✅ Match de fallback para Jacqueline: ${candidate.name}`);
-            return true;
-          }
-          
           return false;
         });
         
-        // Se o candidato não está na lista da seleção, pular
-        if (!candidateInSelection) {
-          console.log(`🚫 Candidato ${interviewData.candidateName} não encontrado na lista da seleção ${selectionData.name}, pulando...`);
-          console.log(`📋 Candidatos disponíveis na seleção:`, selectionCandidates.map(c => c.name));
-          console.log(`🔍 Dados da entrevista:`, {
+        // NOVA LÓGICA: Se não encontrou na seleção atual, buscar candidato real pelo ID em todas as listas
+        let actualCandidate = candidateInSelection;
+        if (!candidateInSelection && interviewData.candidateId) {
+          console.log(`🔍 Candidato não encontrado na seleção atual, buscando por ID ${interviewData.candidateId} em todas as listas...`);
+          try {
+            const allCandidates = await storage.getAllCandidates();
+            const candidateById = allCandidates.find(c => c.id.toString() === interviewData.candidateId.toString());
+            
+            if (candidateById) {
+              console.log(`✅ Candidato encontrado por ID global: ${candidateById.name} (${candidateById.id})`);
+              actualCandidate = candidateById;
+              
+              // Verificar se este candidato deveria estar em alguma seleção ativa
+              const candidateSelections = allSelections.filter(s => s.candidateListId);
+              for (const selection of candidateSelections) {
+                try {
+                  const listCandidates = await storage.getCandidatesByListId(selection.candidateListId);
+                  if (listCandidates.find(c => c.id.toString() === candidateById.id.toString())) {
+                    console.log(`✅ Candidato ${candidateById.name} encontrado na seleção ${selection.name}`);
+                    selectionData = selection; // Usar a seleção correta
+                    break;
+                  }
+                } catch (err) {
+                  continue;
+                }
+              }
+            }
+          } catch (err) {
+            console.log('Erro ao buscar candidato por ID global:', err);
+          }
+        }
+        
+        // Se não encontrou candidato, pular esta entrevista
+        if (!actualCandidate) {
+          console.log(`🚫 Candidato não encontrado para entrevista ${interviewDoc.id}:`, {
             candidateName: interviewData.candidateName,
             phone: interviewData.phone,
             candidateId: interviewData.candidateId
           });
+          console.log(`📋 Candidatos disponíveis na seleção ${selectionData.name}:`, selectionCandidates.map(c => c.name));
           continue;
         }
         
-        console.log(`✅ Candidato ${candidateInSelection.name} confirmado na lista da seleção`);
+        console.log(`✅ Candidato ${actualCandidate.name} confirmado para entrevista`);
         
         // Buscar respostas na coleção 'responses'
         let responsesSnapshot;
@@ -2889,9 +2914,9 @@ Responda de forma natural aguardando a resposta do candidato.`;
 
         console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
 
-        // Usar dados do candidato confirmado da seleção
-        const candidateName = candidateInSelection.name;
-        const candidatePhone = candidateInSelection.whatsapp || candidateInSelection.phone || 'N/A';
+        // Usar dados do candidato confirmado (actualCandidate em vez de candidateInSelection)
+        const candidateName = actualCandidate.name;
+        const candidatePhone = actualCandidate.whatsapp || actualCandidate.phone || 'N/A';
         const jobName = selectionData.jobName || selectionData.name || 'Vaga não identificada';
         
         console.log(`✅ Usando dados do candidato confirmado: ${candidateName} (${candidatePhone}) para vaga ${jobName}`);
@@ -2900,7 +2925,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
           id: interviewDoc.id,
           selectionId: selectionData.id,
           selectionName: selectionData.jobName || selectionData.name,
-          candidateId: candidateInSelection.id,
+          candidateId: actualCandidate.id,
           candidateName: candidateName,
           candidatePhone: candidatePhone,
           jobName: jobName,
