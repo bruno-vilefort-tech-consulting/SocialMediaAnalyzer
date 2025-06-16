@@ -236,14 +236,29 @@ export default function SelectionsPage() {
   };
 
   // Formatar data e hora
-  const formatDateTime = (dateString: string | Date) => {
-    if (!dateString) return { date: 'N/A', time: 'N/A' };
-    const date = new Date(dateString);
+  const formatDateTime = (dateInput: any) => {
+    if (!dateInput) return { date: 'N/A', time: 'N/A' };
+    
+    let date: Date;
+    
+    // Verificar se é um timestamp do Firebase (objeto com seconds)
+    if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput) {
+      date = new Date(dateInput.seconds * 1000);
+    } else {
+      date = new Date(dateInput);
+    }
+    
+    // Verificar se a data é válida
+    if (isNaN(date.getTime())) {
+      return { date: 'Data inválida', time: 'N/A' };
+    }
+    
     const dateFormatted = date.toLocaleDateString('pt-BR');
     const timeFormatted = date.toLocaleTimeString('pt-BR', { 
       hour: '2-digit', 
       minute: '2-digit' 
     });
+    
     return { date: dateFormatted, time: timeFormatted };
   };
 

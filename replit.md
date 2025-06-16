@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ CONTADOR DE CANDIDATOS E DATAS CORRIGIDOS - Sistema de contagem e formatação funcional
+  - **Contador real implementado**: getCandidateCountForList() calcula via relacionamentos muitos-para-muitos
+  - **Endpoint /api/candidate-list-memberships**: Busca todos os relacionamentos candidato-lista no Firebase
+  - **Interface atualizada**: Tabela de listas mostra números reais em vez de sempre "0 candidatos"
+  - **Erro "invalid date" resolvido**: formatDateTime() processa timestamps Firebase e datas JavaScript
+  - **Validação robusta**: Verifica formato {seconds} do Firestore e previne datas inválidas
+  - **Sistema completo funcional**: Contadores dinâmicos + formatação de datas + entrevistas WhatsApp operacionais
+
 - June 16, 2025: ✅ SISTEMA DE CANDIDATOS OBRIGATÓRIOS FINALIZADO - Campos listId e clientId implementados
   - **Formulário frontend atualizado**: Seletores obrigatórios de cliente e lista implementados
   - **Validação automática**: Campos não podem ficar vazios, reset inteligente baseado no contexto
