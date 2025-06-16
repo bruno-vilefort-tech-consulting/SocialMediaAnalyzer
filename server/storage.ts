@@ -605,12 +605,31 @@ export class FirebaseStorage implements IStorage {
   async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
     // Generate unique candidate ID
     const candidateId = Date.now() + Math.floor(Math.random() * 1000);
+    
+    // Extract listId and clientId from insertCandidate
+    const { listId, clientId, ...candidateFields } = insertCandidate;
+    
     const candidateData = {
-      ...insertCandidate,
+      ...candidateFields,
       id: candidateId,
       createdAt: new Date()
     };
+    
+    // Create candidate
     await setDoc(doc(firebaseDb, "candidates", String(candidateId)), candidateData);
+    
+    // Create membership automatically
+    if (listId && clientId) {
+      const membershipId = `${candidateId}_${listId}`;
+      const membershipData = {
+        candidateId,
+        listId,
+        clientId,
+        createdAt: new Date()
+      };
+      await setDoc(doc(firebaseDb, "candidate-list-memberships", membershipId), membershipData);
+    }
+    
     return candidateData as Candidate;
   }
 
@@ -620,8 +639,12 @@ export class FirebaseStorage implements IStorage {
 
     for (const insertCandidate of insertCandidates) {
       const candidateId = Date.now() + Math.floor(Math.random() * 1000) + candidates.length;
+      
+      // Extract listId and clientId from insertCandidate
+      const { listId, clientId, ...candidateFields } = insertCandidate;
+      
       const candidateData = {
-        ...insertCandidate,
+        ...candidateFields,
         id: candidateId,
         createdAt: new Date()
       };
@@ -629,6 +652,19 @@ export class FirebaseStorage implements IStorage {
       const candidateRef = doc(firebaseDb, "candidates", String(candidateId));
       batch.set(candidateRef, candidateData);
       candidates.push(candidateData as Candidate);
+      
+      // Create membership automatically
+      if (listId && clientId) {
+        const membershipId = `${candidateId}_${listId}`;
+        const membershipData = {
+          candidateId,
+          listId,
+          clientId,
+          createdAt: new Date()
+        };
+        const membershipRef = doc(firebaseDb, "candidate-list-memberships", membershipId);
+        batch.set(membershipRef, membershipData);
+      }
     }
 
     await batch.commit();

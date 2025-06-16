@@ -311,9 +311,24 @@ export default function CandidatesPage() {
     const file = event.target.files?.[0];
     if (!file || !selectedListId) return;
 
+    // Determine clientId based on user role
+    const clientId = user?.role === 'master' ? 
+      (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : selectedList?.clientId) : 
+      user?.clientId;
+    
+    if (!clientId) {
+      toast({ 
+        title: "Erro", 
+        description: "Cliente não identificado. Selecione um cliente antes de importar.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('listId', selectedListId.toString());
+    formData.append('clientId', clientId.toString());
 
     try {
       // Para FormData, usar fetch diretamente com token de autorização
@@ -690,7 +705,13 @@ export default function CandidatesPage() {
         setShowCandidateForm(open);
         if (!open) {
           setEditingCandidate(null);
-          candidateForm.reset();
+          candidateForm.reset({
+            name: "",
+            email: "",
+            whatsapp: "",
+            listId: selectedListId || 0,
+            clientId: user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0
+          });
         }
       }}>
         <DialogContent>
@@ -740,6 +761,66 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
+              
+              {/* Seletor de Cliente (apenas para master) */}
+              {user?.role === 'master' && (
+                <FormField
+                  control={candidateForm.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cliente *</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o cliente" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {clients?.map((client) => (
+                            <SelectItem key={client.id} value={client.id.toString()}>
+                              {client.companyName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {/* Seletor de Lista */}
+              <FormField
+                control={candidateForm.control}
+                name="listId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lista de Candidatos *</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a lista" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {candidateLists
+                          ?.filter(list => user?.role === 'master' ? 
+                            (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
+                            list.clientId === user?.clientId
+                          )
+                          .map((list) => (
+                            <SelectItem key={list.id} value={list.id.toString()}>
+                              {list.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
                   Cancelar
