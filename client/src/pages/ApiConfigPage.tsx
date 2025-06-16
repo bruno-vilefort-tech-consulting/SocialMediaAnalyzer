@@ -12,16 +12,20 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
-interface ApiConfig {
-  id?: number;
-  openaiApiKey?: string;
-  openaiModel?: string;
-  updatedAt?: Date | null;
-}
-
 interface MasterSettings {
   openaiApiKey?: string | null;
   gptModel?: string;
+}
+
+interface ApiConfig {
+  id?: number;
+  entityType: string;
+  entityId: string;
+  openaiVoice?: string | null;
+  whatsappQrConnected?: boolean | null;
+  whatsappQrPhoneNumber?: string | null;
+  whatsappQrLastConnection?: Date | null;
+  updatedAt?: Date | null;
 }
 
 interface ClientVoiceSetting {
@@ -45,13 +49,22 @@ export default function ApiConfigPage() {
 
   const isMaster = user?.role === 'master';
 
-  // Master Settings para configurações OpenAI do usuário master
+  // Master Settings para configurações OpenAI globais
   const { data: masterSettings, isLoading: configLoading } = useQuery<MasterSettings>({
     queryKey: ["/api/master-settings"],
     enabled: isMaster,
   });
 
-  // Configurações de voz para cliente
+  // API Config específica por entidade (nova arquitetura)
+  const entityType = isMaster ? 'master' : 'client';
+  const entityId = isMaster ? user?.id?.toString() || '' : user?.clientId?.toString() || '';
+  
+  const { data: apiConfig, isLoading: apiConfigLoading } = useQuery<ApiConfig>({
+    queryKey: [`/api/api-config/${entityType}/${entityId}`],
+    enabled: !!entityId,
+  });
+
+  // Configurações de voz para cliente (DEPRECATED - mantido para compatibilidade)
   const { data: voiceSetting, isLoading: voiceLoading } = useQuery<ClientVoiceSetting>({
     queryKey: [`/api/client-voice-settings/${user?.clientId}`],
     enabled: !isMaster && !!user?.clientId,
@@ -86,10 +99,13 @@ export default function ApiConfigPage() {
   }, [masterSettings]);
 
   useEffect(() => {
-    if (voiceSetting) {
+    // Prioriza apiConfig (nova arquitetura) sobre voiceSetting (deprecated)
+    if (apiConfig?.openaiVoice) {
+      setSelectedVoice(apiConfig.openaiVoice);
+    } else if (voiceSetting) {
       setSelectedVoice(voiceSetting.voice || "nova");
     }
-  }, [voiceSetting]);
+  }, [apiConfig, voiceSetting]);
 
   // Mutation para salvar configurações master
   const saveConfigMutation = useMutation({
@@ -116,7 +132,7 @@ export default function ApiConfigPage() {
     },
   });
 
-  // Mutation para salvar configuração de voz
+  // Mutation para salvar configuração de voz (DEPRECATED - mantido para compatibilidade)
   const saveVoiceMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("/api/client-voice-settings", "POST", {
@@ -135,6 +151,31 @@ export default function ApiConfigPage() {
       toast({
         title: "Erro ao salvar",
         description: error.message || "Falha ao salvar configuração de voz",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation para salvar configuração de voz via nova arquitetura API Config
+  const saveApiConfigMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/api-config", "POST", {
+        entityType,
+        entityId,
+        openaiVoice: selectedVoice,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/api-config/${entityType}/${entityId}`] });
+      toast({
+        title: "Configurações salvas",
+        description: "Configuração de voz salva com sucesso",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Falha ao salvar configurações",
         variant: "destructive",
       });
     },
@@ -412,11 +453,11 @@ export default function ApiConfigPage() {
           </div>
 
           <Button
-            onClick={() => saveVoiceMutation.mutate()}
-            disabled={saveVoiceMutation.isPending}
+            onClick={() => saveApiConfigMutation.mutate()}
+            disabled={saveApiConfigMutation.isPending}
             className="w-full md:w-auto"
           >
-            {saveVoiceMutation.isPending ? (
+            {saveApiConfigMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <Save className="h-4 w-4 mr-2" />

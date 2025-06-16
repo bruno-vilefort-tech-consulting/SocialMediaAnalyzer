@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🏗️ REESTRUTURAÇÃO ARQUITETURAL COMPLETA - Sistema separado por usuário conforme solicitado
+  - **Nova arquitetura implementada**: masterSettings agora é global/compartilhada entre todos masters
+  - **API Configs reestruturadas**: Sistema específico por entidade (master/cliente) para TTS e WhatsApp QR
+  - **Storage atualizado**: Métodos getMasterSettings() sem parâmetro + getApiConfig(entityType, entityId)
+  - **Rotas modernizadas**: /api/master-settings global + /api/api-config/{entityType}/{entityId}
+  - **Migração executada**: Script migrou dados da estrutura antiga para nova sem perder informações
+  - **Schema atualizado**: masterSettings sem masterUserId + apiConfigs com entityType/entityId
+  - **Sistema validado**: Configurações OpenAI compartilhadas + TTS/WhatsApp específicos por usuário
+
 - June 16, 2025: 🔧 IDS DE CLIENTE DAS VAGAS CORRIGIDOS - Inconsistência resolvida conforme solicitado
   - **Vaga "Desenvolvedor Web" corrigida**: Cliente ID atualizado de "1" (inexistente) para "1749849987543" (Grupo Maximuns)
   - **Todas vagas agora vinculadas corretamente**: Sistema identifica e corrige automaticamente IDs de cliente inválidos
