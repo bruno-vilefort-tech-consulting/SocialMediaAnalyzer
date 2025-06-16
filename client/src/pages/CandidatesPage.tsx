@@ -158,10 +158,21 @@ export default function CandidatesPage() {
     enabled: !!selectedListId && viewMode === 'single'
   });
 
-  // Filtrar listas de candidatos por cliente (apenas para master)
-  const filteredCandidateLists = user?.role === 'master' && selectedClientFilter !== 'all'
-    ? candidateLists.filter(list => list.clientId?.toString() === selectedClientFilter)
-    : candidateLists;
+  // Filtrar listas de candidatos por cliente e termo de busca
+  const filteredCandidateLists = candidateLists
+    .filter(list => {
+      // Filtro por cliente (apenas para master)
+      if (user?.role === 'master' && selectedClientFilter !== 'all') {
+        return list.clientId?.toString() === selectedClientFilter;
+      }
+      return true;
+    })
+    .filter(list => {
+      // Filtro por termo de busca
+      if (searchTerm.trim() === '') return true;
+      return list.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             (list.description && list.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
 
   // Candidatos exibidos baseado no modo de visualização
   const filteredCandidates = viewMode === 'single' && selectedListId 
