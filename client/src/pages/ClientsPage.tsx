@@ -237,6 +237,16 @@ export default function ClientsPage() {
     });
   };
 
+  const startNewUser = () => {
+    setShowNewUserForm(true);
+    setEditingUser(null);
+    clientUserForm.reset({
+      name: "",
+      email: "",
+      password: "",
+    });
+  };
+
   const startNewClient = () => {
     setShowNewClientForm(true);
     setEditingClient(null);
