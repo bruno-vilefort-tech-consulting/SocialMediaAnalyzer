@@ -72,7 +72,7 @@ export default function ClientsPage() {
 
   // Mutation para criar cliente
   const createClientMutation = useMutation({
-    mutationFn: (clientData: InsertClient) => apiRequest("POST", "/api/clients", clientData),
+    mutationFn: (clientData: InsertClient) => apiRequest("/api/clients", "POST", clientData),
     onSuccess: () => {
       toast({
         title: "Sucesso!",
@@ -93,7 +93,7 @@ export default function ClientsPage() {
   // Mutation para atualizar cliente
   const updateClientMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Client> }) => 
-      apiRequest("PATCH", `/api/clients/${id}`, data),
+      apiRequest(`/api/clients/${id}`, "PATCH", data),
     onSuccess: () => {
       toast({
         title: "Sucesso!",
