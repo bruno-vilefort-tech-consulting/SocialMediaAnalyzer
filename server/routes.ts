@@ -3375,6 +3375,66 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Endpoint para corrigir lista da Jacqueline
+  app.post("/api/debug/fix-jacqueline-list", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔧 Iniciando correção da lista da Jacqueline...');
+      
+      // Buscar a Jacqueline
+      const allCandidates = await storage.getAllCandidates();
+      const jacqueline = allCandidates.find(c => 
+        c.name && c.name.toLowerCase().includes('jacqueline')
+      );
+      
+      if (!jacqueline) {
+        return res.status(404).json({ error: 'Jacqueline não encontrada' });
+      }
+      
+      console.log(`✅ Jacqueline encontrada: ${jacqueline.name} (ID: ${jacqueline.id}) - Lista atual: ${jacqueline.listId}`);
+      
+      // Buscar a seleção "Professora Infantil 2"
+      const allSelections = await storage.getAllSelections();
+      const targetSelection = allSelections.find(s => 
+        s.name && s.name.includes('Professora Infantil 2')
+      );
+      
+      if (!targetSelection) {
+        return res.status(404).json({ error: 'Seleção "Professora Infantil 2" não encontrada' });
+      }
+      
+      console.log(`✅ Seleção "Professora Infantil 2" encontrada: ID ${targetSelection.id} - candidateListId: ${targetSelection.candidateListId}`);
+      
+      // Atualizar a lista da Jacqueline
+      const newListId = targetSelection.candidateListId;
+      console.log(`🔄 Atualizando lista da Jacqueline de ${jacqueline.listId} para ${newListId}...`);
+      
+      await storage.updateCandidate(jacqueline.id, {
+        listId: newListId
+      });
+      
+      console.log(`✅ Jacqueline atualizada com sucesso! Lista: ${jacqueline.listId} → ${newListId}`);
+      
+      res.json({
+        success: true,
+        message: 'Lista da Jacqueline corrigida com sucesso',
+        details: {
+          candidateName: jacqueline.name,
+          candidateId: jacqueline.id,
+          oldListId: jacqueline.listId,
+          newListId: newListId,
+          targetSelection: targetSelection.name
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao corrigir lista da Jacqueline:', error);
+      res.status(500).json({ 
+        error: 'Erro interno do servidor',
+        details: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
