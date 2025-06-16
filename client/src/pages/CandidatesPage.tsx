@@ -284,17 +284,19 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      const response = await apiRequest('/api/candidates', 'POST', data);
-      return await response.json();
+      console.log('🚀 Enviando dados para API:', data);
+      return await apiRequest('/api/candidates', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
       queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
       setShowCandidateForm(false);
       candidateForm.reset();
       toast({ title: "Candidato adicionado com sucesso!" });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('❌ Erro na mutation:', error);
       toast({ title: "Erro ao adicionar candidato", variant: "destructive" });
     }
   });
