@@ -84,14 +84,21 @@ export const candidateLists = pgTable("candidate_lists", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Candidates
+// Candidates - agora sem clientId e listId diretos
 export const candidates = pgTable("candidates", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
-  listId: integer("list_id").references(() => candidateLists.id),
   name: text("name").notNull(),
   email: text("email").notNull(),
   whatsapp: text("whatsapp").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Tabela intermediária para relacionar candidatos com listas (muitos-para-muitos)
+export const candidateListMemberships = pgTable("candidate_list_memberships", {
+  id: serial("id").primaryKey(),
+  candidateId: integer("candidate_id").references(() => candidates.id).notNull(),
+  listId: integer("list_id").references(() => candidateLists.id).notNull(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -205,6 +212,7 @@ export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: t
   email: z.string().email("Email inválido"),
   whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)")
 });
+export const insertCandidateListMembershipSchema = createInsertSchema(candidateListMemberships).omit({ id: true, createdAt: true });
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });
 export const insertResponseSchema = createInsertSchema(responses).omit({ id: true, createdAt: true });
@@ -228,6 +236,8 @@ export type CandidateList = typeof candidateLists.$inferSelect;
 export type InsertCandidateList = z.infer<typeof insertCandidateListSchema>;
 export type Candidate = typeof candidates.$inferSelect;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
+export type CandidateListMembership = typeof candidateListMemberships.$inferSelect;
+export type InsertCandidateListMembership = z.infer<typeof insertCandidateListMembershipSchema>;
 export type Selection = typeof selections.$inferSelect;
 export type InsertSelection = z.infer<typeof insertSelectionSchema>;
 export type Interview = typeof interviews.$inferSelect;

@@ -78,6 +78,13 @@ export interface IStorage {
   updateCandidate(id: number, candidate: Partial<Candidate>): Promise<Candidate>;
   deleteCandidate(id: number): Promise<void>;
 
+  // Candidate List Memberships (muitos-para-muitos)
+  addCandidateToList(candidateId: number, listId: number, clientId: number): Promise<CandidateListMembership>;
+  removeCandidateFromList(candidateId: number, listId: number): Promise<void>;
+  getCandidateListMemberships(candidateId: number): Promise<CandidateListMembership[]>;
+  getCandidatesInList(listId: number): Promise<Candidate[]>;
+  getCandidatesByMultipleClients(clientIds: number[]): Promise<Candidate[]>;
+
   // Selections
   getSelectionsByClientId(clientId: number): Promise<Selection[]>;
   getSelectionById(id: number): Promise<Selection | undefined>;
@@ -573,10 +580,20 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidatesByListId(listId: number): Promise<Candidate[]> {
-    const snapshot = await getDocs(collection(firebaseDb, "candidates"));
-    return snapshot.docs
+    // Busca memberships da lista
+    const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    const memberships = membershipsSnapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateListMembership))
+      .filter(membership => membership.listId === listId);
+    
+    // Busca candidatos baseado nos IDs encontrados
+    const candidateIds = memberships.map(m => m.candidateId);
+    if (candidateIds.length === 0) return [];
+    
+    const candidatesSnapshot = await getDocs(collection(firebaseDb, "candidates"));
+    return candidatesSnapshot.docs
       .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
-      .filter(candidate => candidate.listId === listId);
+      .filter(candidate => candidateIds.includes(candidate.id));
   }
 
   async getCandidateById(id: number): Promise<Candidate | undefined> {
