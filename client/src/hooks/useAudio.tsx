@@ -8,8 +8,10 @@ interface UseAudioRecorderReturn {
   stopRecording: () => void;
   playAudio: (audioUrl: string) => void;
   pauseAudio: () => void;
+  resumeAudio: () => void;
   stopAudio: () => void;
   isPlaying: boolean;
+  isPaused: boolean;
   currentAudioUrl: string | null;
 }
 
@@ -18,6 +20,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
   const [duration, setDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -75,80 +78,84 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
   const playAudio = useCallback((audioUrl: string) => {
     try {
+      // Se já existe um áudio tocando, parar ele primeiro
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
       }
       
-      console.log('Tentando reproduzir áudio:', audioUrl);
+      console.log('🎵 Reproduzindo novo áudio:', audioUrl);
       
       audioRef.current = new Audio(audioUrl);
+      
+      // Event listeners
       audioRef.current.onended = () => {
-        console.log('Áudio finalizado naturalmente');
+        console.log('✅ Áudio finalizado');
         setIsPlaying(false);
+        setIsPaused(false);
         setCurrentAudioUrl(null);
       };
       
-      audioRef.current.ondurationchange = () => {
-        if (audioRef.current) {
-          console.log('Duração do áudio:', audioRef.current.duration);
-        }
-      };
       audioRef.current.onerror = (e) => {
-        console.error('Erro no áudio:', e);
-        console.log('URL que falhou:', audioUrl);
+        console.error('❌ Erro no áudio:', e);
         setIsPlaying(false);
+        setIsPaused(false);
         setCurrentAudioUrl(null);
       };
-      audioRef.current.onloadstart = () => {
-        console.log('Carregando áudio...');
-      };
-      audioRef.current.oncanplay = () => {
-        console.log('Áudio pronto para tocar');
-      };
       
+      // Definir estados
       setCurrentAudioUrl(audioUrl);
       setIsPlaying(true);
-      console.log('Estado atualizado - isPlaying:', true, 'currentAudioUrl:', audioUrl);
+      setIsPaused(false);
       
+      // Iniciar reprodução
       audioRef.current.play().then(() => {
-        console.log('Áudio iniciado com sucesso');
+        console.log('✅ Áudio iniciado com sucesso');
       }).catch((error) => {
-        console.error('Error playing audio:', error);
-        console.log('Detalhes do erro:', error.name, error.message);
+        console.error('❌ Erro ao iniciar áudio:', error);
         setIsPlaying(false);
+        setIsPaused(false);
         setCurrentAudioUrl(null);
       });
     } catch (error) {
-      console.error('Erro geral ao reproduzir áudio:', error);
+      console.error('❌ Erro geral:', error);
       setIsPlaying(false);
+      setIsPaused(false);
       setCurrentAudioUrl(null);
     }
   }, []);
 
   const pauseAudio = useCallback(() => {
-    if (audioRef.current && isPlaying) {
+    if (audioRef.current && isPlaying && !isPaused) {
+      console.log('⏸️ Pausando áudio');
       audioRef.current.pause();
       setIsPlaying(false);
-      // Não limpar currentAudioUrl para permitir retomar
+      setIsPaused(true);
+      // Manter currentAudioUrl para permitir resume
     }
-  }, [isPlaying]);
+  }, [isPlaying, isPaused]);
 
   const resumeAudio = useCallback(() => {
-    if (audioRef.current && !isPlaying && currentAudioUrl) {
+    if (audioRef.current && isPaused && currentAudioUrl) {
+      console.log('▶️ Retomando áudio');
       audioRef.current.play().then(() => {
         setIsPlaying(true);
+        setIsPaused(false);
       }).catch((error) => {
-        console.error('Error resuming audio:', error);
+        console.error('❌ Erro ao retomar áudio:', error);
         setIsPlaying(false);
+        setIsPaused(false);
       });
     }
-  }, [isPlaying, currentAudioUrl]);
+  }, [isPaused, currentAudioUrl]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
+      console.log('⏹️ Parando áudio');
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
+      setIsPaused(false);
       setCurrentAudioUrl(null);
     }
   }, []);
@@ -164,6 +171,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     resumeAudio,
     stopAudio,
     isPlaying,
+    isPaused,
     currentAudioUrl
   };
 };

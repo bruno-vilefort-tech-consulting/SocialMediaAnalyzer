@@ -40,7 +40,7 @@ interface Response {
 
 export default function ReportsPage() {
   const [selectedSelection, setSelectedSelection] = useState<number | null>(null);
-  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying, currentAudioUrl } = useAudioRecorder();
+  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying, isPaused, currentAudioUrl } = useAudioRecorder();
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
 
   const { data: selections = [] } = useQuery({
@@ -461,7 +461,7 @@ export default function ReportsPage() {
                                   <Pause className="h-4 w-4" />
                                   <span>Pause</span>
                                 </Button>
-                              ) : (
+                              ) : isPaused && currentAudioUrl ? (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -471,7 +471,7 @@ export default function ReportsPage() {
                                   <Play className="h-4 w-4" />
                                   <span>Resume</span>
                                 </Button>
-                              )}
+                              ) : null}
                               <Button
                                 variant="outline"
                                 size="sm"

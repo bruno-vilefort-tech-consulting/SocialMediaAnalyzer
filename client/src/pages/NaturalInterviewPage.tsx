@@ -109,7 +109,7 @@ interface Interview {
 export default function NaturalInterviewPage() {
   const { token } = useParams();
   const { toast } = useToast();
-  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying: isAudioPlaying, currentAudioUrl } = useAudioRecorder();
+  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying: isAudioPlaying, isPaused: isAudioPaused, currentAudioUrl } = useAudioRecorder();
   
   // Estados principais
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
@@ -644,28 +644,29 @@ export default function NaturalInterviewPage() {
                           <Pause className="h-4 w-4" />
                           <span>Pausar</span>
                         </Button>
-                      ) : (
-                        currentAudioUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={resumeAudio}
-                            className="flex items-center space-x-2 bg-green-100 hover:bg-green-200 border-green-300 text-green-700"
-                          >
-                            <Play className="h-4 w-4" />
-                            <span>Continuar</span>
-                          </Button>
-                        )
+                      ) : isAudioPaused && currentAudioUrl ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={resumeAudio}
+                          className="flex items-center space-x-2 bg-green-100 hover:bg-green-200 border-green-300 text-green-700"
+                        >
+                          <Play className="h-4 w-4" />
+                          <span>Continuar</span>
+                        </Button>
+                      ) : null}
+                      
+                      {(isAudioPlaying || isAudioPaused) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={stopAudio}
+                          className="flex items-center space-x-2 bg-red-100 hover:bg-red-200 border-red-300 text-red-700"
+                        >
+                          <Square className="h-4 w-4" />
+                          <span>Parar</span>
+                        </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={stopAudio}
-                        className="flex items-center space-x-2 bg-red-100 hover:bg-red-200 border-red-300 text-red-700"
-                      >
-                        <Square className="h-4 w-4" />
-                        <span>Parar</span>
-                      </Button>
                     </div>
                   </div>
                 )}
