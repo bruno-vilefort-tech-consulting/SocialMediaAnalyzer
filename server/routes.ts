@@ -3259,6 +3259,20 @@ Responda de forma natural aguardando a resposta do candidato.`;
             }
           }
           
+          // CORREÇÃO: Match por nome para resolver problema Daniel Moreira vs Daniel Lima
+          if (interviewData.candidateName && candidate.name) {
+            const interviewName = interviewData.candidateName.toLowerCase().trim();
+            const candidateName = candidate.name.toLowerCase().trim();
+            
+            // Match por primeiro nome (Daniel Moreira = Daniel Lima)
+            const interviewFirstName = interviewName.split(' ')[0];
+            const candidateFirstName = candidateName.split(' ')[0];
+            if (interviewFirstName === candidateFirstName && interviewFirstName.length >= 3) {
+              console.log(`✅ Match por primeiro nome na seleção correta: ${candidate.name} (primeiro nome: ${candidateFirstName})`);
+              return true;
+            }
+          }
+          
           return false;
         });
         
