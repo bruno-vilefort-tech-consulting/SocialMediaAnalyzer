@@ -34,7 +34,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/api-config", label: "Configurações API", icon: Settings },
-    { path: "/whatsapp-qr", label: "WhatsApp QR", icon: MessageCircle },
   ];
 
   const clientMenuItems = [

@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🗑️ PÁGINA WHATSAPP QR REMOVIDA - Interface unificada no painel de configurações
+  - **WhatsAppQRPage completamente removida**: Página separada desnecessária após integração total
+  - **Menu de navegação limpo**: Remoção do item "WhatsApp QR" do sidebar master
+  - **Rotas eliminadas**: /whatsapp-qr removida do sistema de roteamento
+  - **Funcionalidade preservada**: Toda funcionalidade WhatsApp mantida em "Configurações API"
+  - **Interface unificada**: QR Code, status, testes e controles centralizados em um só local
+  - **Arquitetura simplificada**: Menos páginas para manter, experiência mais fluida
+
 - June 16, 2025: 🎛️ PAINEL CONFIGURAÇÕES API REORGANIZADO - Sistema separado por usuário conforme solicitado
   - **Configurações OpenAI exclusivas para master**: Chave API e modelo GPT (GPT-4o padrão) com botão testar integrado
   - **Sistema de voz por cliente implementado**: Cada cliente configura voz TTS individualmente (Nova padrão)

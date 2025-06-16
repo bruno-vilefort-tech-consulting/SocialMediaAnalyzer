@@ -20,7 +20,7 @@ import ResultsPage from "@/pages/ResultsPage";
 import InterviewPage from "@/pages/InterviewPage";
 import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
-import WhatsAppQRPage from "@/pages/WhatsAppQRPage";
+
 import ReportsPage from "@/pages/ReportsPage";
 import InterviewDetailsPage from "@/pages/InterviewDetailsPage";
 import NotFound from "@/pages/not-found";
@@ -98,13 +98,7 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/whatsapp-qr">
-        <PrivateRoute allowedRoles={['master']}>
-          <Layout>
-            <WhatsAppQRPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
+
 
       <Route path="/relatorios">
         <PrivateRoute allowedRoles={['master', 'client']}>
