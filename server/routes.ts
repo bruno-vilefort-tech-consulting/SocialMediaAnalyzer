@@ -1624,12 +1624,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Audio file is required' });
       }
 
-      // Get API config for OpenAI
-      const apiConfig = await storage.getApiConfig();
+      // Get master settings for OpenAI
+      const masterSettings = await storage.getMasterSettings();
       let transcription = '';
       let score = 0;
       
-      if (apiConfig?.openaiApiKey) {
+      if (masterSettings?.openaiApiKey) {
         try {
           // Transcribe audio using OpenAI Whisper
           const formData = new FormData();
@@ -1988,10 +1988,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🎵 Natural TTS para entrevista:', interviewToken);
       
-      const config = await storage.getApiConfig();
-      if (!config?.openaiApiKey) {
+      const masterSettings = await storage.getMasterSettings();
+      if (!masterSettings?.openaiApiKey) {
         return res.status(400).json({ 
-          message: "OpenAI API not configured",
+          message: "OpenAI API not configured. Please configure OpenAI settings.",
           status: "error" 
         });
       }
@@ -1999,13 +1999,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: "tts-1",
           input: text,
-          voice: config.voiceSettings?.voice || "nova",
+          voice: voice || "nova",
           response_format: "mp3"
         }),
       });
@@ -2261,8 +2261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('🎵 Gerando preview TTS:', { voice, userType });
       
-      const config = await storage.getApiConfig();
-      if (!config?.openaiApiKey) {
+      const masterSettings = await storage.getMasterSettings();
+      if (!masterSettings?.openaiApiKey) {
         return res.status(400).json({ 
           message: "OpenAI API not configured. Please configure API key first.",
           status: "error" 
@@ -2272,7 +2272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
