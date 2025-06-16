@@ -197,6 +197,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const client = await storage.createClient(clientData);
       console.log("Cliente criado com sucesso:", client);
+      
+      // Criar configuração padrão de API para o novo cliente
+      try {
+        await storage.createDefaultClientApiConfig(String(client.id));
+        console.log(`✅ Configuração API padrão criada para cliente ${client.id}`);
+      } catch (apiError) {
+        console.warn(`⚠️ Erro ao criar configuração API para cliente ${client.id}:`, apiError);
+        // Não falhar a criação do cliente se a configuração API falhar
+      }
+      
       res.status(201).json(client);
     } catch (error) {
       console.error("Erro detalhado ao criar cliente:", error);

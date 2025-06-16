@@ -867,6 +867,26 @@ export class FirebaseStorage implements IStorage {
     return snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Selection));
   }
 
+  // Criar configuração padrão de API para novo cliente
+  async createDefaultClientApiConfig(clientId: string): Promise<void> {
+    const docId = `client_${clientId}`;
+    const apiConfigData = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      entityType: "client",
+      entityId: clientId,
+      openaiVoice: "nova", // Voz padrão brasileira
+      whatsappQrConnected: false,
+      whatsappQrPhoneNumber: null,
+      whatsappQrLastConnection: null,
+      firebaseProjectId: null,
+      firebaseServiceAccount: null,
+      updatedAt: new Date()
+    };
+
+    await setDoc(doc(firebaseDb, "apiConfigs", docId), apiConfigData);
+    console.log(`✅ Configuração padrão criada para cliente ${clientId}: ${docId}`);
+  }
+
   // Statistics
   async getInterviewStats(): Promise<{
     totalClients: number;
