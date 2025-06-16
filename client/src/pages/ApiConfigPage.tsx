@@ -225,18 +225,22 @@ export default function ApiConfigPage() {
   });
 
   const testWhatsAppMutation = useMutation({
-    mutationFn: (data: { phoneNumber: string; message: string }) => 
-      apiRequest("/api/whatsapp-qr/test", "POST", data),
-    onSuccess: () => {
+    mutationFn: (data: { phoneNumber: string; message: string }) => {
+      console.log('🧪 Iniciando teste WhatsApp com dados:', data);
+      return apiRequest("/api/whatsapp-qr/test", "POST", data);
+    },
+    onSuccess: (response) => {
+      console.log('✅ Teste WhatsApp bem-sucedido:', response);
       toast({
         title: "Mensagem enviada",
         description: "Teste do WhatsApp realizado com sucesso",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('❌ Erro no teste WhatsApp:', error);
       toast({
         title: "Erro no teste",
-        description: "Falha ao enviar mensagem de teste",
+        description: error instanceof Error ? error.message : "Falha ao enviar mensagem de teste",
         variant: "destructive",
       });
     },
@@ -548,7 +552,12 @@ export default function ApiConfigPage() {
                 </div>
                 <Button
                   onClick={() => {
+                    console.log('🔘 Botão de teste WhatsApp clicado');
+                    console.log('📱 testPhone:', testPhone);
+                    console.log('💬 testMessage:', testMessage);
+                    
                     if (!testPhone || !testMessage) {
+                      console.log('❌ Validação falhou - campos vazios');
                       toast({
                         title: "Campos obrigatórios",
                         description: "Preencha o telefone e a mensagem",
@@ -556,6 +565,8 @@ export default function ApiConfigPage() {
                       });
                       return;
                     }
+                    
+                    console.log('✅ Validação passou - iniciando mutation');
                     testWhatsAppMutation.mutate({
                       phoneNumber: testPhone,
                       message: testMessage,
