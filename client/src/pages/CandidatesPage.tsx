@@ -264,16 +264,24 @@ export default function CandidatesPage() {
   // Lista selecionada atual
   const selectedList = candidateLists.find(list => list.id === selectedListId);
 
-  // Função para contar candidatos por lista usando relacionamentos
+  // Função para contar candidatos REAIS por lista (não memberships órfãos)
   const getCandidateCountForList = (listId: number): number => {
     if (!candidateListMemberships || candidateListMemberships.length === 0) {
-      // Fallback: tentar contar dos candidatos diretos se não tiver memberships
-      const directCount = allCandidates.filter(candidate => candidate.listId === listId).length;
-      return directCount;
+      return 0;
     }
-    const count = candidateListMemberships.filter(membership => membership.listId === listId).length;
-    console.log(`📊 Contando candidatos para lista ${listId}: ${count} memberships encontrados`);
-    return count;
+    
+    // Buscar IDs de candidatos da lista nos memberships
+    const candidateIdsInList = candidateListMemberships
+      .filter(membership => membership.listId === listId)
+      .map(membership => membership.candidateId);
+    
+    // Contar apenas candidatos que REALMENTE existem no banco
+    const realCandidatesCount = allCandidates.filter(candidate => 
+      candidateIdsInList.includes(candidate.id)
+    ).length;
+    
+    console.log(`📊 Lista ${listId}: ${candidateIdsInList.length} memberships, ${realCandidatesCount} candidatos reais`);
+    return realCandidatesCount;
   };
 
   // Forms
@@ -635,9 +643,9 @@ export default function CandidatesPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredCandidateLists.map((list) => {
-                      // Contar candidatos nesta lista via relacionamentos - corrigido
-                      const candidatesCount = candidateListMemberships?.filter(m => m.listId === list.id).length || 0;
-                      console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Memberships encontrados:`, candidatesCount);
+                      // Contar apenas candidatos que realmente existem no banco
+                      const candidatesCount = getCandidateCountForList(list.id);
+                      console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Candidatos reais:`, candidatesCount);
                       const client = clients.find(c => c.id === list.clientId);
                       
                       return (
