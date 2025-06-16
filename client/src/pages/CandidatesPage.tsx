@@ -337,10 +337,12 @@ export default function CandidatesPage() {
 
   const handleCreateCandidate = (data: CandidateFormData) => {
     console.log('🚀 handleCreateCandidate chamado com:', data);
+    console.log('🔍 Estado atual - selectedListId:', selectedListId, 'user:', user?.role);
     
     // Se estivermos dentro de uma lista específica, usar seus dados
     if (selectedListId && candidateLists) {
       const selectedList = candidateLists.find(list => list.id === selectedListId);
+      console.log('🎯 Lista selecionada encontrada:', selectedList);
       if (selectedList) {
         data.listId = selectedListId;
         data.clientId = selectedList.clientId;
@@ -358,9 +360,24 @@ export default function CandidatesPage() {
       console.log('👤 Cliente usando próprio ID:', data.clientId);
     }
 
+    console.log('🔍 Dados antes da validação:', {
+      name: data.name,
+      email: data.email,
+      whatsapp: data.whatsapp,
+      listId: data.listId,
+      clientId: data.clientId
+    });
+
     // Validação básica
     if (!data.name || !data.email || !data.whatsapp || !data.listId || !data.clientId) {
       console.error('❌ Dados obrigatórios ausentes:', data);
+      console.error('❌ Campos faltando:', {
+        name: !data.name ? 'FALTANDO' : 'OK',
+        email: !data.email ? 'FALTANDO' : 'OK',
+        whatsapp: !data.whatsapp ? 'FALTANDO' : 'OK',
+        listId: !data.listId ? 'FALTANDO' : 'OK',
+        clientId: !data.clientId ? 'FALTANDO' : 'OK'
+      });
       toast({ 
         title: "Erro", 
         description: "Preencha todos os campos obrigatórios",
