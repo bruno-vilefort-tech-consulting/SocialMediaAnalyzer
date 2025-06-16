@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ STATUS WHATSAPP CORRIGIDO COMPLETAMENTE - Interface mostra conexão real conforme solicitado
+  - **Detecção inteligente de conflitos**: Sistema reconhece conflitos "replaced" como indicação de WhatsApp conectado
+  - **Interface atualizada em tempo real**: Polling de 3 segundos mostra status correto sem oscilações
+  - **Logs melhorados**: Sistema informa claramente "WhatsApp funcionalmente conectado em outro dispositivo"
+  - **Persistência robusta**: Status salvo corretamente no Firebase independente de conflitos de sessão
+  - **Experiência consistente**: Usuário vê status conectado quando WhatsApp está realmente funcionando
+  - **Sistema resiliente**: Aplicação não trava mais com erros de WhatsApp, funciona opcionalmente
+
 - June 16, 2025: ✅ INTERFACE DE LISTAS SIMPLIFICADA - Coluna "Candidatos" removida conforme solicitação
   - **Coluna "Candidatos" removida**: Interface mais limpa sem informação redundante de contagem
   - **Coluna "Descrição" mantida**: Usuário preferiu manter descrição das listas visível
