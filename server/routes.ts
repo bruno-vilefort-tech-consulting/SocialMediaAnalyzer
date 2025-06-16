@@ -1,10 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, firebaseDb } from "./storage";
-import { collection, getDocs, query, where, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { whatsappService } from "./whatsappService";
-import { whatsappQRService } from "./whatsappQRService";
-import { emailService } from "./emailService";
+import { storage } from "./storage";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
          insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
          insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
@@ -47,19 +43,14 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     
     // If not found in users table, try clients table
     if (!user) {
-      try {
-        const client = await storage.getClientById(decoded.id);
-        if (client) {
-          user = {
-            id: client.id,
-            email: client.email,
-            role: 'client',
-            createdAt: client.createdAt
-          };
-        }
-      } catch (error) {
-        // Skip if ID is too large or invalid
-        console.log('Cliente não encontrado para ID:', decoded.id);
+      const client = await storage.getClientById(decoded.id);
+      if (client) {
+        user = {
+          id: client.id,
+          email: client.email,
+          role: 'client',
+          createdAt: client.createdAt
+        };
       }
     }
     
@@ -92,7 +83,6 @@ const authorize = (roles: string[]) => {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -197,16 +187,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const client = await storage.createClient(clientData);
       console.log("Cliente criado com sucesso:", client);
-      
-      // Criar configuração padrão de API para o novo cliente
-      try {
-        await storage.createDefaultClientApiConfig(String(client.id));
-        console.log(`✅ Configuração API padrão criada para cliente ${client.id}`);
-      } catch (apiError) {
-        console.warn(`⚠️ Erro ao criar configuração API para cliente ${client.id}:`, apiError);
-        // Não falhar a criação do cliente se a configuração API falhar
-      }
-      
       res.status(201).json(client);
     } catch (error) {
       console.error("Erro detalhado ao criar cliente:", error);
@@ -268,107 +248,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", authenticate, authorize(['master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      console.log('🗑️ Backend: Recebida requisição DELETE para cliente ID:', id);
-      console.log('🔐 Backend: Usuário autenticado:', req.user?.email, 'Role:', req.user?.role);
-      
-      if (isNaN(id)) {
-        console.log('❌ Backend: ID inválido recebido:', req.params.id);
-        return res.status(400).json({ message: 'ID inválido fornecido' });
-      }
-      
-      console.log('📞 Backend: Chamando storage.deleteClient...');
       await storage.deleteClient(id);
-      console.log('✅ Backend: Cliente deletado com sucesso do storage');
       res.status(204).send();
     } catch (error) {
-      console.error('❌ Backend: Erro ao deletar cliente:', error);
-      res.status(400).json({ message: 'Failed to delete client', error: (error as Error).message });
-    }
-  });
-
-  // Client Users routes - Only accessible by master
-  app.get("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const clientId = parseInt(req.params.clientId);
-      const clientUsers = await storage.getClientUsersByClientId(clientId);
-      res.json(clientUsers);
-    } catch (error) {
-      console.error('Erro ao buscar usuários do cliente:', error);
-      res.status(500).json({ message: "Failed to fetch client users" });
-    }
-  });
-
-  app.post("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const clientId = parseInt(req.params.clientId);
-      
-      // Validar se a senha foi fornecida
-      if (!req.body.password) {
-        return res.status(400).json({ message: "Senha é obrigatória" });
-      }
-      
-      const clientUserData = {
-        ...req.body,
-        clientId,
-        password: await bcrypt.hash(req.body.password, 10) // Criptografar senha
-      };
-      
-      console.log('Criando usuário para cliente:', clientId, 'dados:', { 
-        name: clientUserData.name, 
-        email: clientUserData.email 
-      });
-      
-      // Check if email already exists
-      const existingUser = await storage.getClientUserByEmail(clientUserData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "Email já está em uso" });
-      }
-      
-      const clientUser = await storage.createClientUser(clientUserData);
-      console.log('Usuário criado com sucesso:', clientUser.id);
-      res.json(clientUser);
-    } catch (error) {
-      console.error('Erro ao criar usuário do cliente:', error);
-      res.status(500).json({ message: "Failed to create client user", error: error.message });
-    }
-  });
-
-  app.patch("/api/clients/:clientId/users/:userId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      
-      // Check if email already exists (if email is being updated)
-      if (req.body.email) {
-        const existingUser = await storage.getClientUserByEmail(req.body.email);
-        if (existingUser && existingUser.id !== userId) {
-          return res.status(400).json({ message: "Email já está em uso" });
-        }
-      }
-      
-      const clientUser = await storage.updateClientUser(userId, req.body);
-      res.json(clientUser);
-    } catch (error) {
-      console.error('Erro ao atualizar usuário do cliente:', error);
-      res.status(500).json({ message: "Failed to update client user" });
-    }
-  });
-
-  app.delete("/api/clients/:clientId/users/:userId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const userId = parseInt(req.params.userId);
-      await storage.deleteClientUser(userId);
-      res.status(204).send();
-    } catch (error) {
-      console.error('Erro ao deletar usuário do cliente:', error);
-      res.status(500).json({ message: "Failed to delete client user" });
+      res.status(400).json({ message: 'Failed to delete client' });
     }
   });
 
   // API Configuration routes
   app.get("/api/config", authenticate, authorize(['master']), async (req, res) => {
     try {
-      const masterSettings = await storage.getMasterSettings();
-      res.json(masterSettings || {});
+      const config = await storage.getApiConfig();
+      res.json(config || {});
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch config' });
     }
@@ -397,34 +288,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      console.log('🔍 Buscando vagas para usuário:', req.user!.role, 'ID:', req.user!.id);
       let jobs;
       if (req.user!.role === 'master') {
-        // Master pode ver todas as vagas - buscar de todos os clientes
-        console.log('👑 Master buscando todas as vagas...');
-        const allClients = await storage.getClients();
-        console.log('📊 Clientes encontrados:', allClients.length);
-        jobs = [];
-        for (const client of allClients) {
-          console.log(`🔍 Buscando vagas do cliente ID: ${client.id} (${client.companyName})`);
-          const clientJobs = await storage.getJobsByClientId(client.id);
-          console.log(`📝 Vagas encontradas para cliente ${client.id}:`, clientJobs.length);
-          jobs.push(...clientJobs);
-        }
+        // Master pode ver todas as vagas
+        jobs = await storage.getJobs();
       } else {
         // Cliente vê apenas suas vagas
         const clientId = req.user!.clientId!;
-        console.log('👤 Cliente buscando vagas próprias, clientId:', clientId);
         jobs = await storage.getJobsByClientId(clientId);
       }
-      console.log('📋 Total de vagas retornadas:', jobs.length);
-      jobs.forEach(job => {
-        console.log(`  - ID: ${job.id} | Nome: ${job.nomeVaga} | Cliente: ${job.clientId}`);
-      });
       res.json(jobs);
     } catch (error) {
-      console.error('❌ Erro detalhado na API de vagas:', error);
-      res.status(500).json({ message: 'Failed to fetch jobs', error: error.message });
+      res.status(500).json({ message: 'Failed to fetch jobs' });
     }
   });
 
@@ -433,11 +308,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Dados recebidos para criação de vaga:', req.body);
       
       // Garantir que clientId seja um número válido
-      let clientId;
+      let clientId = 1;
       if (req.user!.role === 'master') {
-        clientId = req.body.clientId || req.user!.clientId || 1749849987543;
+        clientId = req.body.clientId && Number.isInteger(req.body.clientId) && req.body.clientId < 2147483647 
+          ? req.body.clientId 
+          : 1;
       } else {
-        clientId = req.user!.clientId || 1749849987543;
+        clientId = req.user!.clientId && req.user!.clientId < 2147483647 
+          ? req.user!.clientId 
+          : 1;
       }
 
       // Validar dados básicos da vaga
@@ -455,19 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log('Criando vaga com dados:', vagaCompleta);
-      const job = await storage.createJob(jobData);
-      
-      // Criar perguntas se existirem
-      if (req.body.perguntas && req.body.perguntas.length > 0) {
-        for (const pergunta of req.body.perguntas) {
-          await storage.createQuestion({
-            vagaId: job.id,
-            perguntaCandidato: pergunta.pergunta,
-            respostaPerfeita: pergunta.respostaPerfeita,
-            numeroPergunta: pergunta.numero
-          });
-        }
-      }
+      const job = await storage.createJob(vagaCompleta);
       
       res.status(201).json(job);
     } catch (error) {
@@ -503,29 +370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = req.params.id;
       console.log('Tentando deletar vaga ID:', id, 'pelo usuário:', req.user?.email);
       
-      // Forçar exclusão múltipla para garantir remoção
-      try {
-        await storage.deleteJob(id);
-        console.log('✅ Primeira tentativa de exclusão concluída');
-        
-        // Aguardar um pouco e tentar novamente para garantir
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Verificar se ainda existe e tentar deletar novamente
-        const jobExists = await storage.getJobById(id);
-        if (jobExists) {
-          console.log('⚠️ Vaga ainda existe, tentando deletar novamente...');
-          await storage.deleteJob(id);
-          console.log('✅ Segunda tentativa de exclusão concluída');
-        } else {
-          console.log('✅ Vaga removida com sucesso na primeira tentativa');
-        }
-        
-      } catch (deleteError) {
-        console.error('❌ Erro durante exclusão:', deleteError);
-        throw deleteError;
-      }
-      
+      // Converter para string para ser compatível com Firebase
+      await storage.deleteJob(id);
       res.status(204).send();
     } catch (error) {
       console.error('Erro ao deletar vaga:', error);
@@ -698,17 +544,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Candidate Lists routes
   app.get("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      if (req.user!.role === 'master') {
-        // Master vê todas as listas de candidatos de todos os clientes
-        const lists = await storage.getAllCandidateLists();
-        res.json(lists);
-      } else {
-        // Cliente vê apenas suas próprias listas
-        const lists = await storage.getCandidateListsByClientId(req.user!.clientId!);
-        res.json(lists);
-      }
+      const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
+      const lists = await storage.getCandidateListsByClientId(clientId);
+      res.json(lists);
     } catch (error) {
-      console.error('Erro ao buscar listas de candidatos:', error);
       res.status(500).json({ message: 'Failed to fetch candidate lists' });
     }
   });
@@ -761,31 +600,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const listId = req.query.listId as string;
-      
       if (listId) {
-        // Buscar candidatos de uma lista específica
         const candidates = await storage.getCandidatesByListId(parseInt(listId));
         res.json(candidates);
       } else {
-        // Buscar candidatos do cliente através das listas
-        if (req.user!.role === 'master') {
-          // Master pode ver candidatos de múltiplos clientes
-          const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : null;
-          if (clientId) {
-            const candidates = await storage.getCandidatesByMultipleClients([clientId]);
-            res.json(candidates);
-          } else {
-            // Buscar todos os candidatos de todos os clientes
-            const clients = await storage.getClients();
-            const clientIds = clients.map(c => c.id);
-            const candidates = await storage.getCandidatesByMultipleClients(clientIds);
-            res.json(candidates);
-          }
-        } else {
-          // Cliente vê apenas seus candidatos
-          const candidates = await storage.getCandidatesByMultipleClients([req.user!.clientId!]);
-          res.json(candidates);
-        }
+        const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
+        const candidates = await storage.getCandidatesByClientId(clientId);
+        res.json(candidates);
       }
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch candidates' });
@@ -794,17 +615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const { listId, ...candidateData } = req.body;
       const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
-      
-      // Criar candidato sem clientId (não existe mais no schema)
+      const candidateData = { ...req.body, clientId };
       const candidate = await storage.createCandidate(candidateData);
-      
-      // Se listId foi fornecido, criar membership
-      if (listId) {
-        await storage.addCandidateToList(candidate.id, parseInt(listId), clientId);
-      }
-      
       res.status(201).json(candidate);
     } catch (error) {
       res.status(400).json({ message: 'Failed to create candidate' });
@@ -823,13 +636,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Arquivo inválido ou corrompido' });
       }
 
-      const { listId, clientId } = req.body;
+      const { listId } = req.body;
       if (!listId) {
         return res.status(400).json({ message: 'Lista de candidatos obrigatória' });
-      }
-      
-      if (!clientId) {
-        return res.status(400).json({ message: 'Cliente obrigatório' });
       }
 
       // Verificar se o arquivo tem conteúdo
@@ -883,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           if (!phone || !phone.toString().trim()) {
-            errors.push(`Linha ${index + 2}: WhatsApp é obrigatório`);
+            errors.push(`Linha ${index + 2}: Celular é obrigatório`);
             continue;
           }
 
@@ -899,7 +708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const phoneStr = String(phone);
           const phoneDigits = phoneStr.replace(/\D/g, '');
           if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-            errors.push(`Linha ${index + 2}: WhatsApp deve ter 10 ou 11 dígitos - ${phone}`);
+            errors.push(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
             continue;
           }
 
@@ -909,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const isDuplicate = existingCandidates.some(existing => 
             existing.name.toLowerCase() === nameStr.toLowerCase() ||
             existing.email.toLowerCase() === emailStr ||
-            existing.whatsapp === phoneDigits
+            existing.phone === phoneDigits
           );
 
           if (isDuplicate) {
@@ -918,20 +727,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: nameStr,
               email: emailStr,
               phone: phoneDigits,
-              reason: 'Candidato já existe na lista (nome, email ou WhatsApp duplicado)'
+              reason: 'Candidato já existe na lista (nome, email ou celular duplicado)'
             });
             continue;
           }
 
-          const clientIdNum = parseInt(clientId);
-          const listIdNum = parseInt(listId);
+          const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
 
           validCandidates.push({
             name: nameStr,
             email: emailStr,
-            whatsapp: phoneDigits, // Campo celular vai para whatsapp
-            clientId: clientIdNum,
-            listId: listIdNum
+            phone: phoneDigits,
+            clientId,
+            listId: parseInt(listId)
           });
         } catch (error) {
           errors.push(`Linha ${index + 2}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -950,14 +758,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedCandidates = [];
       if (validCandidates.length > 0) {
         importedCandidates = await storage.createCandidates(validCandidates);
-        
-        // Criar memberships para associar candidatos à lista e cliente
-        const clientIdNum = parseInt(clientId);
-        const listIdNum = parseInt(listId);
-        
-        for (const candidate of importedCandidates) {
-          await storage.addCandidateToList(candidate.id, listIdNum, clientIdNum);
-        }
       }
 
       // Preparar resposta
@@ -997,63 +797,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ message: 'Failed to delete candidate' });
-    }
-  });
-
-  // Candidate List Membership routes (muitos-para-muitos)
-  app.post("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const candidateId = parseInt(req.params.candidateId);
-      const listId = parseInt(req.params.listId);
-      const clientId = req.user!.role === 'master' ? req.body.clientId : req.user!.clientId!;
-      
-      const membership = await storage.addCandidateToList(candidateId, listId, clientId);
-      res.status(201).json(membership);
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to add candidate to list' });
-    }
-  });
-
-  app.delete("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['client', 'master']), async (req, res) => {
-    try {
-      const candidateId = parseInt(req.params.candidateId);
-      const listId = parseInt(req.params.listId);
-      
-      await storage.removeCandidateFromList(candidateId, listId);
-      res.status(204).send();
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to remove candidate from list' });
-    }
-  });
-
-  app.get("/api/candidates/:candidateId/memberships", authenticate, authorize(['client', 'master']), async (req, res) => {
-    try {
-      const candidateId = parseInt(req.params.candidateId);
-      const memberships = await storage.getCandidateListMemberships(candidateId);
-      res.json(memberships);
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to get candidate memberships' });
-    }
-  });
-
-  // Endpoint para buscar todos os relacionamentos candidato-lista
-  app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const memberships = await storage.getAllCandidateListMemberships();
-      res.json(memberships);
-    } catch (error) {
-      console.error('Erro ao buscar relacionamentos candidato-lista:', error);
-      res.status(400).json({ message: 'Failed to get candidate list memberships' });
-    }
-  });
-
-  app.get("/api/lists/:listId/candidates", authenticate, authorize(['client', 'master']), async (req, res) => {
-    try {
-      const listId = parseInt(req.params.listId);
-      const candidates = await storage.getCandidatesInList(listId);
-      res.json(candidates);
-    } catch (error) {
-      res.status(400).json({ message: 'Failed to get candidates in list' });
     }
   });
 
@@ -1101,111 +844,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const selection = await storage.createSelection(selectionData);
       
-      // Envio automático via WhatsApp
-      if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'whatsapp' || selection.sendVia === 'both')) {
-        console.log('🚀 [AUTO] Iniciando envio automático via WhatsApp');
-        
-        try {
-          const { whatsappQRService } = await import('./whatsappQRService');
-          
-          // Buscar job e candidatos
-          let job = await storage.getJobById(selection.jobId);
-          if (!job) {
-            const allJobs = await storage.getJobsByClientId(selection.clientId);
-            job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
-          }
-
-          if (job) {
-            const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-            
-            if (candidates.length > 0) {
-              let sentCount = 0;
-              let errorCount = 0;
-
-              console.log(`📱 [AUTO] Enviando para ${candidates.length} candidatos automaticamente`);
-
-              for (const candidate of candidates) {
-                try {
-                  if (!candidate.whatsapp) {
-                    console.log(`⚠️ [AUTO] Candidato ${candidate.name} sem telefone, pulando...`);
-                    errorCount++;
-                    continue;
-                  }
-
-                  // Formatar telefone
-                  let phone = candidate.whatsapp.replace(/\D/g, '');
-                  if (!phone.startsWith('55')) {
-                    phone = '55' + phone;
-                  }
-
-                  console.log(`📨 [AUTO] Enviando para ${candidate.name} (${phone})`);
-                  const success = await whatsappQRService.sendInterviewInvitation(
-                    phone,
-                    candidate.name,
-                    job.nomeVaga,
-                    selection.whatsappTemplate,
-                    selection.id
-                  );
-
-                  if (success) {
-                    sentCount++;
-                    console.log(`✅ [AUTO] Enviado para ${candidate.name}`);
-                  } else {
-                    errorCount++;
-                    console.log(`❌ [AUTO] Falha para ${candidate.name}`);
-                  }
-
-                  // Pequena pausa entre envios
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-
-                } catch (candidateError) {
-                  console.error(`❌ [AUTO] Erro ao enviar para ${candidate.name}:`, candidateError);
-                  errorCount++;
-                }
-              }
-
-              console.log(`✅ [AUTO] Envio automático via WhatsApp finalizado: ${sentCount} enviados, ${errorCount} erros`);
-              
-              // Atualizar status da seleção para "enviado" se pelo menos 1 mensagem foi enviada
-              if (sentCount > 0) {
-                await storage.updateSelection(selection.id, { status: 'enviado' });
-                console.log(`📊 [AUTO] Status da seleção atualizado para "enviado"`);
-              }
-            }
-          }
-        } catch (autoSendError) {
-          console.error('❌ [AUTO] Erro no envio automático via WhatsApp:', autoSendError);
-        }
-      }
-      
       // Enviar emails automaticamente se a seleção for criada como "active"
       if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'email' || selection.sendVia === 'both')) {
         console.log('🚀 INICIANDO ENVIO AUTOMÁTICO DE EMAILS - Selection ID:', selection.id);
         
         try {
-          // Buscar dados necessários - implementar busca robusta
-          console.log('🔍 Buscando job com ID:', selection.jobId, 'tipo:', typeof selection.jobId);
-          let job = await storage.getJobById(selection.jobId);
-          
-          // Se não encontrou com ID exato, tentar buscar por ID parcial
-          if (!job) {
-            console.log('🔍 Job não encontrado com ID exato, buscando por ID parcial...');
-            const allJobs = await storage.getJobsByClientId(selection.clientId);
-            job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
-            console.log('🔍 Job encontrado por busca parcial:', job);
-          }
-          
+          // Buscar dados necessários
+          const job = await storage.getJobById(selection.jobId);
           console.log('📝 Job encontrado para envio automático:', job);
           
-          // Buscar candidatos da lista específica selecionada
-          let candidates = [];
-          if (selection.candidateListId) {
-            console.log('🎯 Buscando candidatos da lista ID:', selection.candidateListId);
-            candidates = await storage.getCandidatesByListId(selection.candidateListId);
-          } else {
-            console.log('🎯 Nenhuma lista específica selecionada, buscando todos os candidatos do cliente');
-            candidates = await storage.getCandidatesByClientId(selection.clientId);
-          }
+          const candidates = await storage.getCandidatesByClientId(selection.clientId);
           console.log('👥 Candidatos encontrados para envio automático:', candidates.length, 'candidatos');
           
           if (!job) {
@@ -1220,7 +868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const client = await storage.getClientById(selection.clientId);
           const questions = await storage.getQuestionsByJobId(job.id);
-          const baseUrl = process.env.REPL_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+          const baseUrl = process.env.REPL_URL || 'http://localhost:5000';
           const { emailService } = await import('./emailService');
           let emailsSent = 0;
           
@@ -1523,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             channel: 'whatsapp',
             status: 'logged' // WhatsApp integration pending
           });
-          console.log(`📱 WhatsApp message logged for ${candidate.whatsapp}: ${whatsappMessage}`);
+          console.log(`📱 WhatsApp message logged for ${candidate.phone}: ${whatsappMessage}`);
         }
 
         interviews.push({
@@ -1555,38 +1203,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Text is required' });
       }
 
-      // Usar diretamente a chave da variável de ambiente para garantir funcionamento
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      
-      if (!openaiApiKey) {
-        console.log('❌ OPENAI_API_KEY não encontrada nas variáveis de ambiente');
+      // Get API config for OpenAI
+      const apiConfig = await storage.getApiConfig();
+      if (!apiConfig?.openaiApiKey) {
         return res.status(500).json({ message: 'OpenAI API key not configured' });
       }
-      
-      console.log('✅ OPENAI_API_KEY encontrada, configurando TTS...');
 
-      console.log('🎙️ Fazendo requisição TTS para:', text.substring(0, 50) + '...');
-      
       const response = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'tts-1',
-          voice: 'nova',
+          model: apiConfig.openaiModel || 'tts-1',
+          voice: apiConfig.openaiVoice || 'nova',
           input: text,
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.log('❌ OpenAI TTS Error:', response.status, errorText);
-        throw new Error(`OpenAI TTS request failed: ${response.status} - ${errorText}`);
+        throw new Error('OpenAI TTS request failed');
       }
-      
-      console.log('✅ TTS request successful');
 
       const audioBuffer = await response.arrayBuffer();
       
@@ -1606,15 +1244,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/interview/:token", async (req, res) => {
     try {
       const token = req.params.token;
-      console.log('🎤 API: Buscando entrevista com token:', token);
       const interview = await storage.getInterviewByToken(token);
       
       if (!interview) {
-        console.log('❌ API: Entrevista não encontrada com token:', token);
         return res.status(404).json({ message: 'Interview not found' });
       }
-      
-      console.log('✅ API: Entrevista encontrada:', interview.id, 'status:', interview.status);
 
       // Check if interview is already completed or expired
       if (interview.status === 'completed') {
@@ -1629,64 +1263,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get selection and job details
       const selection = await storage.getSelectionById(interview.selectionId);
-      let job = null;
-      
-      if (selection) {
-        // Implementar busca robusta de job como nas outras rotas
-        console.log('🔍 Buscando job no Firebase com ID:', selection.jobId);
-        job = await storage.getJobById(selection.jobId);
-        
-        if (!job) {
-          console.log('❌ Job não encontrado no Firebase com ID:', selection.jobId);
-          // Buscar por ID parcial se não encontrou exato
-          const allJobs = await storage.getJobsByClientId(selection.clientId);
-          console.log('📋 Jobs existentes no Firebase:');
-          allJobs.forEach(j => console.log('  - ID:', j.id, 'Data:', j.nomeVaga));
-          
-          job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
-          if (job) {
-            console.log('✅ Job encontrado por busca parcial:', job.id, job.nomeVaga);
-          } else {
-            console.log('❌ Job não encontrado nem por busca parcial');
-          }
-        } else {
-          console.log('✅ Job encontrado diretamente:', job.id);
-        }
-      }
-      
+      const job = selection ? await storage.getJobById(selection.jobId) : null;
       const candidate = await storage.getCandidateById(interview.candidateId);
-      
-      // Debug: verificar se job tem perguntas internas
-      console.log('🎯 Job encontrado:', job?.id, 'tem perguntas internas:', job?.perguntas?.length || 0);
-      if (job?.perguntas) {
-        console.log('📋 Perguntas no job:', JSON.stringify(job.perguntas, null, 2));
-      }
-      
-      let questions = [];
-      if (job) {
-        // Primeiro tenta buscar perguntas do storage
-        questions = await storage.getQuestionsByJobId(job.id);
-        console.log('📝 Perguntas do storage:', questions.length);
-        
-        // Se não encontrou no storage, usa as perguntas que estão no job
-        if (questions.length === 0 && job.perguntas && job.perguntas.length > 0) {
-          console.log('🔄 Usando perguntas do job interno, mapeando', job.perguntas.length, 'perguntas');
-          questions = job.perguntas.map((p: any, index: number) => {
-            const mappedQuestion = {
-              id: index + 1,
-              perguntaCandidato: p.pergunta,
-              numeroPergunta: p.numero,
-              vagaId: job.id,
-              respostaPerfeita: p.respostaPerfeita
-            };
-            console.log('🔄 Pergunta mapeada:', mappedQuestion);
-            return mappedQuestion;
-          });
-          console.log('✅ Total de perguntas mapeadas:', questions.length);
-        }
-      }
-      
-      console.log('📊 Questions array final:', questions.length, 'perguntas');
+      const questions = job ? await storage.getQuestionsByJobId(job.id) : [];
 
       const interviewData = {
         interview,
@@ -1737,12 +1316,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Audio file is required' });
       }
 
-      // Get master settings for OpenAI
-      const masterSettings = await storage.getMasterSettings();
+      // Get API config for OpenAI
+      const apiConfig = await storage.getApiConfig();
       let transcription = '';
       let score = 0;
       
-      if (masterSettings?.openaiApiKey) {
+      if (apiConfig?.openaiApiKey) {
         try {
           // Transcribe audio using OpenAI Whisper
           const formData = new FormData();
@@ -1753,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${masterSettings.openaiApiKey}`,
+              'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
             },
             body: formData,
           });
@@ -1771,7 +1350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${masterSettings.openaiApiKey}`,
+                  'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -1816,47 +1395,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Save response error:', error);
       res.status(500).json({ message: 'Failed to save response' });
-    }
-  });
-
-  // Endpoint para salvar sessão completa de áudio e transcrições
-  app.post("/api/interview/:token/save-session", upload.single('sessionAudio'), async (req, res) => {
-    try {
-      const { token } = req.params;
-      const { conversationHistory, duration } = req.body;
-      const audioFile = req.file;
-
-      const interview = await storage.getInterviewByToken(token);
-      if (!interview) {
-        return res.status(404).json({ error: "Entrevista não encontrada" });
-      }
-
-      // Salvar log da sessão completa para análises futuras
-      await storage.createMessageLog({
-        interviewId: interview.id,
-        type: 'session_complete',
-        content: JSON.stringify({
-          audioFile: audioFile?.filename,
-          audioPath: audioFile?.path,
-          transcript: conversationHistory,
-          duration: parseInt(duration) || 0,
-          totalMessages: JSON.parse(conversationHistory || '[]').length,
-          savedAt: new Date().toISOString()
-        }),
-        timestamp: new Date()
-      });
-
-      console.log('💾 Sessão completa salva:', {
-        audioFile: audioFile?.filename,
-        transcriptLength: conversationHistory?.length || 0,
-        duration: parseInt(duration) || 0,
-        interviewId: interview.id
-      });
-
-      res.json({ success: true, message: "Sessão salva com sucesso" });
-    } catch (error) {
-      console.error('❌ Erro ao salvar sessão:', error);
-      res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
@@ -1924,8 +1462,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Configuration routes
   app.get("/api/config", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
-      const masterSettings = await storage.getMasterSettings();
-      res.json(masterSettings || {});
+      const config = await storage.getApiConfig();
+      res.json(config || {});
     } catch (error) {
       console.error('Error fetching API config:', error);
       res.status(500).json({ error: 'Failed to fetch configuration' });
@@ -1947,17 +1485,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { apiKey } = req.body;
       
-      console.log('🧪 Testando OpenAI API key...');
-      
       if (!apiKey) {
-        return res.status(400).json({ success: false, error: 'Chave da API é obrigatória' });
-      }
-
-      if (!apiKey.startsWith('sk-')) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Formato de chave inválido. A chave deve começar com "sk-"' 
-        });
+        return res.status(400).json({ error: 'API key is required' });
       }
 
       // Test the API key with a simple request
@@ -1966,786 +1495,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 10000 // 10 second timeout
-      });
-
-      console.log('📊 Resposta da OpenAI:', response.status, response.statusText);
-
-      if (response.ok) {
-        const models = await response.json();
-        console.log('✅ OpenAI API key válida, modelos disponíveis:', models.data?.length || 0);
-        
-        res.json({ 
-          success: true, 
-          message: `Chave OpenAI válida! ${models.data?.length || 0} modelos disponíveis.`
-        });
-      } else {
-        const errorData = await response.text();
-        console.log('❌ Erro da OpenAI:', response.status, errorData);
-        
-        let errorMessage = 'Chave da API OpenAI inválida';
-        
-        try {
-          const parsedError = JSON.parse(errorData);
-          if (parsedError.error?.message) {
-            if (parsedError.error.code === 'invalid_api_key') {
-              errorMessage = 'Chave da API inválida. Verifique se foi copiada corretamente.';
-            } else if (parsedError.error.code === 'insufficient_quota') {
-              errorMessage = 'Quota excedida. Verifique seu plano e detalhes de faturamento na OpenAI.';
-            } else {
-              errorMessage = parsedError.error.message;
-            }
-          }
-        } catch (e) {
-          // Keep default error message if parsing fails
-        }
-        
-        res.status(400).json({ 
-          success: false, 
-          error: errorMessage,
-          details: response.status === 401 ? 'Unauthorized - verifique a chave' : `HTTP ${response.status}`
-        });
-      }
-    } catch (error) {
-      console.error('❌ Erro ao testar OpenAI API:', error);
-      
-      let errorMessage = 'Falha ao conectar com a OpenAI API';
-      if (error instanceof Error) {
-        if (error.message.includes('timeout')) {
-          errorMessage = 'Timeout ao conectar com a OpenAI. Verifique sua conexão.';
-        } else if (error.message.includes('network')) {
-          errorMessage = 'Erro de rede ao conectar com a OpenAI.';
-        }
-      }
-      
-      res.status(500).json({ 
-        success: false, 
-        error: errorMessage 
-      });
-    }
-  });
-
-  // TTS Preview endpoint - permite master e client
-  app.post("/api/tts-preview", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      const { apiKey, voice, text } = req.body;
-      
-      console.log('🎵 Gerando preview TTS:', voice, 'para usuário:', req.user?.role);
-      
-      if (!voice || !text) {
-        return res.status(400).json({ message: "Voice and text are required" });
-      }
-
-      // Para clientes, usar a chave da API configurada no sistema
-      let openaiApiKey = apiKey;
-      if (req.user?.role === 'client') {
-        const masterSettings = await storage.getMasterSettings();
-        if (!masterSettings?.openaiApiKey) {
-          return res.status(400).json({ 
-            message: "OpenAI API not configured. Contact system administrator.",
-            status: "error" 
-          });
-        }
-        openaiApiKey = masterSettings.openaiApiKey;
-      } else if (!apiKey) {
-        return res.status(400).json({ message: "API key is required for master users" });
-      }
-
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: voice,
-          response_format: "mp3"
-        }),
       });
 
       if (response.ok) {
-        console.log('✅ Preview TTS gerado com sucesso');
-        const audioBuffer = await response.arrayBuffer();
-        res.set({
-          'Content-Type': 'audio/mpeg',
-          'Content-Length': audioBuffer.byteLength.toString(),
-        });
-        res.send(Buffer.from(audioBuffer));
+        res.json({ success: true, message: 'OpenAI API key is valid' });
       } else {
-        const errorData = await response.json();
-        console.log('❌ Erro TTS:', errorData);
-        res.status(400).json({ 
-          message: errorData.error?.message || "Failed to generate voice preview",
-          status: "error" 
-        });
+        res.status(400).json({ success: false, error: 'Invalid OpenAI API key' });
       }
     } catch (error) {
-      console.error("❌ Erro gerando preview TTS:", error);
-      res.status(500).json({ 
-        message: "Failed to generate voice preview",
-        status: "error" 
-      });
-    }
-  });
-
-  // Natural TTS endpoint for interview
-  app.post("/api/natural-tts", async (req, res) => {
-    try {
-      const { text, interviewToken } = req.body;
-      
-      if (!text) {
-        return res.status(400).json({ message: "Text is required" });
-      }
-
-      console.log('🎵 Natural TTS para entrevista:', interviewToken);
-      
-      const masterSettings = await storage.getMasterSettings();
-      if (!masterSettings?.openaiApiKey) {
-        return res.status(400).json({ 
-          message: "OpenAI API not configured. Please configure OpenAI settings.",
-          status: "error" 
-        });
-      }
-
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: voice || "nova",
-          response_format: "mp3"
-        }),
-      });
-
-      if (response.ok) {
-        console.log('✅ Natural TTS gerado com sucesso');
-        const audioBuffer = await response.arrayBuffer();
-        res.set({
-          'Content-Type': 'audio/mpeg',
-          'Content-Length': audioBuffer.byteLength.toString(),
-        });
-        res.send(Buffer.from(audioBuffer));
-      } else {
-        const errorData = await response.json();
-        console.log('❌ Erro Natural TTS:', errorData);
-        res.status(400).json({ 
-          message: errorData.error?.message || "Failed to generate speech",
-          status: "error" 
-        });
-      }
-    } catch (error) {
-      console.error("❌ Erro gerando Natural TTS:", error);
-      res.status(500).json({ 
-        message: "Failed to generate speech",
-        status: "error" 
-      });
-    }
-  });
-
-  // Client Voice Settings endpoints
-  app.get("/api/client-voice-settings/:clientId", authenticate, async (req: AuthRequest, res) => {
-    try {
-      const clientId = parseInt(req.params.clientId);
-      const voiceSetting = await storage.getClientVoiceSetting(clientId);
-      
-      if (!voiceSetting) {
-        // Return default settings if none exist
-        return res.json({
-          clientId,
-          voice: "nova", // Default voice
-          updatedAt: null
-        });
-      }
-      
-      res.json(voiceSetting);
-    } catch (error) {
-      console.error("Error fetching client voice settings:", error);
-      res.status(500).json({ message: "Failed to fetch voice settings" });
-    }
-  });
-
-  app.post("/api/client-voice-settings", authenticate, async (req: AuthRequest, res) => {
-    try {
-      const { clientId, voice } = req.body;
-      
-      if (!clientId || !voice) {
-        return res.status(400).json({ message: "ClientId and voice are required" });
-      }
-      
-      const voiceSetting = await storage.upsertClientVoiceSetting({
-        clientId,
-        voice
-      });
-      
-      res.json(voiceSetting);
-    } catch (error) {
-      console.error("Error saving client voice settings:", error);
-      res.status(500).json({ message: "Failed to save voice settings" });
-    }
-  });
-
-  // API Config - Nova arquitetura para configurações específicas por entidade (master/cliente)
-  app.get("/api/api-config/:entityType/:entityId", authenticate, async (req: AuthRequest, res) => {
-    try {
-      const { entityType, entityId } = req.params;
-      
-      // Verificar autorização baseada no tipo de entidade
-      if (entityType === 'master' && req.user!.role !== 'master') {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
-      if (entityType === 'client' && req.user!.role === 'client' && req.user!.clientId?.toString() !== entityId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
-      const config = await storage.getApiConfig(entityType, entityId);
-      
-      if (!config) {
-        return res.json({
-          openaiVoice: 'nova',
-          whatsappQrConnected: false,
-          whatsappQrPhoneNumber: null,
-          whatsappQrLastConnection: null
-        });
-      }
-      
-      res.json(config);
-    } catch (error) {
-      console.error("Error fetching API config:", error);
-      res.status(500).json({ message: "Failed to fetch API config" });
-    }
-  });
-
-  app.post("/api/api-config", authenticate, async (req: AuthRequest, res) => {
-    try {
-      const { entityType, entityId, openaiVoice, whatsappQrConnected, whatsappQrPhoneNumber } = req.body;
-      
-      // Verificar autorização baseada no tipo de entidade
-      if (entityType === 'master' && req.user!.role !== 'master') {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
-      if (entityType === 'client' && req.user!.role === 'client' && req.user!.clientId?.toString() !== entityId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
-      if (!entityType || !entityId) {
-        return res.status(400).json({ message: "EntityType and entityId are required" });
-      }
-      
-      const configData: any = {
-        entityType,
-        entityId,
-      };
-      
-      // Adicionar apenas campos fornecidos
-      if (openaiVoice !== undefined) configData.openaiVoice = openaiVoice;
-      if (whatsappQrConnected !== undefined) configData.whatsappQrConnected = whatsappQrConnected;
-      if (whatsappQrPhoneNumber !== undefined) configData.whatsappQrPhoneNumber = whatsappQrPhoneNumber;
-      if (whatsappQrConnected) configData.whatsappQrLastConnection = new Date();
-      
-      const config = await storage.upsertApiConfig(configData);
-      
-      res.json(config);
-    } catch (error) {
-      console.error("Error saving API config:", error);
-      res.status(500).json({ message: "Failed to save API config" });
-    }
-  });
-
-  // Test OpenAI API endpoint
-  app.post("/api/test-openai", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const { apiKey } = req.body;
-      
-      if (!apiKey) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "API key is required" 
-        });
-      }
-      
-      console.log('🧪 Testando chave OpenAI...');
-      
-      // Test the API key with a simple request
-      const response = await fetch("https://api.openai.com/v1/models", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Chave OpenAI válida');
-        
-        res.json({
-          success: true,
-          message: "Chave da API OpenAI válida e funcionando",
-          modelsCount: data.data?.length || 0
-        });
-      } else {
-        const errorData = await response.json();
-        console.log('❌ Chave OpenAI inválida:', errorData);
-        
-        let errorMessage = "Chave da API inválida";
-        if (response.status === 401) {
-          errorMessage = "Chave da API inválida ou expirada";
-        } else if (response.status === 429) {
-          errorMessage = "Limite de uso excedido na chave da API";
-        } else if (errorData.error?.message) {
-          errorMessage = errorData.error.message;
-        }
-        
-        res.json({
-          success: false,
-          error: errorMessage
-        });
-      }
-    } catch (error) {
-      console.error("❌ Erro testando OpenAI:", error);
-      res.json({
-        success: false,
-        error: "Erro ao conectar com a API OpenAI"
-      });
-    }
-  });
-
-  // Master Settings - Configurações OpenAI vinculadas ao usuário master
-  app.get("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const settings = await storage.getMasterSettings();
-      
-      if (!settings) {
-        return res.json({
-          openaiApiKey: null,
-          gptModel: 'gpt-4o'
-        });
-      }
-      
-      res.json({
-        openaiApiKey: settings.openaiApiKey ? '***KEY_SET***' : null,
-        gptModel: settings.gptModel || 'gpt-4o'
-      });
-    } catch (error) {
-      console.error("Error fetching master settings:", error);
-      res.status(500).json({ message: "Failed to fetch master settings" });
-    }
-  });
-
-  app.post("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const { openaiApiKey, gptModel } = req.body;
-      
-      if (!openaiApiKey || !gptModel) {
-        return res.status(400).json({ message: "OpenAI API key and GPT model are required" });
-      }
-      
-      const settings = await storage.upsertMasterSettings({
-        openaiApiKey,
-        gptModel
-      });
-      
-      res.json({
-        openaiApiKey: '***KEY_SET***',
-        gptModel: settings.gptModel
-      });
-    } catch (error) {
-      console.error("Error saving master settings:", error);
-      res.status(500).json({ message: "Failed to save master settings" });
-    }
-  });
-
-  // Preview TTS endpoint for client voice testing
-  app.post("/api/preview-tts", authenticate, async (req: AuthRequest, res) => {
-    try {
-      const { text, voice, userType } = req.body;
-      
-      if (!text || !voice) {
-        return res.status(400).json({ message: "Text and voice are required" });
-      }
-      
-      console.log('🎵 Gerando preview TTS:', { voice, userType });
-      
-      const masterSettings = await storage.getMasterSettings();
-      if (!masterSettings?.openaiApiKey) {
-        return res.status(400).json({ 
-          message: "OpenAI API not configured. Please configure API key first.",
-          status: "error" 
-        });
-      }
-      
-      const response = await fetch("https://api.openai.com/v1/audio/speech", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: text,
-          voice: voice,
-          response_format: "mp3"
-        }),
-      });
-      
-      if (response.ok) {
-        console.log('✅ Preview TTS gerado com sucesso');
-        const audioBuffer = await response.arrayBuffer();
-        res.set({
-          'Content-Type': 'audio/mpeg',
-          'Content-Length': audioBuffer.byteLength.toString(),
-        });
-        res.send(Buffer.from(audioBuffer));
-      } else {
-        const errorData = await response.json();
-        console.log('❌ Erro TTS:', errorData);
-        res.status(400).json({ 
-          message: errorData.error?.message || "Failed to generate voice preview",
-          status: "error" 
-        });
-      }
-    } catch (error) {
-      console.error("❌ Erro gerando preview TTS:", error);
-      res.status(500).json({ 
-        message: "Failed to generate voice preview",
-        status: "error" 
-      });
-    }
-  });
-
-  // Natural conversation endpoint
-  app.post("/api/natural-conversation", async (req, res) => {
-    try {
-      const { interviewToken, candidateResponse, currentQuestionIndex, conversationHistory, hasStarted } = req.body;
-      
-      console.log('🤖 Processando conversa natural:', { 
-        interviewToken, 
-        currentQuestionIndex,
-        hasStarted,
-        responseLength: candidateResponse ? candidateResponse.length : 0
-      });
-      
-      // Buscar entrevista
-      const interview = await storage.getInterviewByToken(interviewToken);
-      if (!interview) {
-        return res.status(404).json({ message: "Interview not found" });
-      }
-
-      const masterSettings = await storage.getMasterSettings();
-      if (!masterSettings?.openaiApiKey) {
-        return res.status(400).json({ message: "OpenAI API not configured" });
-      }
-
-      // Buscar entrevista completa com dados relacionados
-      const selection = await storage.getSelectionById(interview.selectionId);
-      let job = null;
-      let questions = [];
-      
-      if (selection) {
-        // Buscar job com sistema robusto
-        job = await storage.getJobById(selection.jobId);
-        
-        if (!job) {
-          // Buscar por ID parcial se não encontrou exato
-          const allJobs = await storage.getJobsByClientId(selection.clientId);
-          job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
-        }
-        
-        if (job) {
-          // Primeiro tenta buscar perguntas do storage
-          questions = await storage.getQuestionsByJobId(job.id);
-          
-          // Se não encontrou no storage, usa as perguntas que estão no job
-          if (questions.length === 0 && job.perguntas && job.perguntas.length > 0) {
-            questions = job.perguntas.map((p: any, index: number) => ({
-              id: index + 1,
-              perguntaCandidato: p.pergunta,
-              numeroPergunta: p.numero,
-              vagaId: job.id,
-              respostaPerfeita: p.respostaPerfeita
-            }));
-          }
-        }
-      }
-      
-      // Buscar candidato
-      console.log(`🔍 Buscando candidato com ID: ${interview.candidateId}`);
-      const candidate = await storage.getCandidateById(interview.candidateId);
-      console.log('👤 Candidato encontrado:', candidate ? { id: candidate.id, name: candidate.name } : 'Não encontrado');
-      
-      console.log('📋 Conversa natural - Dados:', {
-        job: job?.nomeVaga,
-        candidate: candidate?.name,
-        questionsCount: questions.length,
-        currentQuestionIndex,
-        interviewCandidateId: interview.candidateId
-      });
-      
-      // Determinar o contexto da resposta e ação apropriada
-      let nextQuestionIndex = currentQuestionIndex;
-      let interviewCompleted = false;
-      let shouldAskNextQuestion = false;
-      let isOffTopicResponse = false;
-
-      // Se o candidato respondeu algo
-      if (candidateResponse && candidateResponse.trim().length > 0) {
-        console.log(`📝 Candidato disse: "${candidateResponse}"`);
-        
-        // Verificar se é uma resposta relacionada à pergunta atual ou conversa social
-        const currentQuestion = questions[currentQuestionIndex];
-        const lowerResponse = candidateResponse.toLowerCase();
-        
-        // Detectar apenas perguntas de volta à entrevistadora ou cumprimentos puros
-        const isQuestionBack = lowerResponse.includes('e você') || 
-                               lowerResponse.includes('como está') ||
-                               lowerResponse.includes('como vai') ||
-                               lowerResponse.includes('você está bem');
-        
-        // Lista restrita de respostas puramente sociais (sem informação substantiva)
-        const pureSocialPhrases = ['oi', 'olá', 'tudo bem', 'boa tarde', 'bom dia', 'boa noite'];
-        
-        // Só considerar social se for uma frase social exata OU pergunta de volta
-        const isPureSocialResponse = pureSocialPhrases.some(phrase => 
-          lowerResponse.trim() === phrase
-        ) || isQuestionBack;
-        
-        // Tratar como social apenas se for puramente social
-        if (isPureSocialResponse) {
-          isOffTopicResponse = true;
-          console.log(`🔄 Resposta social detectada, mantendo pergunta ${currentQuestionIndex + 1}: "${currentQuestion.perguntaCandidato}"`);
-        } else {
-          // Resposta substancial, avançar para próxima pergunta
-          nextQuestionIndex = currentQuestionIndex + 1;
-          shouldAskNextQuestion = true;
-          console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
-          
-          // Se passou do total de perguntas, finalizar entrevista
-          if (nextQuestionIndex >= questions.length) {
-            interviewCompleted = true;
-            shouldAskNextQuestion = false;
-            console.log('🏁 Entrevista completa - todas as perguntas respondidas');
-          } else {
-            console.log(`📈 Avançando para pergunta ${nextQuestionIndex + 1}/${questions.length}`);
-          }
-        }
-      }
-
-      // Construir contexto da conversa
-      let systemPrompt;
-      
-      if (interviewCompleted) {
-        systemPrompt = `Responda EXATAMENTE no formato solicitado para finalizar a entrevista de ${job?.nomeVaga || 'emprego'}:
-
-"Perfeito! Obrigada por participar da nossa entrevista para a vaga de ${job?.nomeVaga || 'emprego'}. Em breve nosso RH entrará em contato com o resultado. Tenha um ótimo dia!"
-
-REGRAS ABSOLUTAS:
-- Use EXATAMENTE essa frase
-- NÃO faça perguntas adicionais
-- NÃO prolongue a conversa
-- A entrevista termina aqui`;
-      } else if (shouldAskNextQuestion) {
-        const nextQuestion = questions[nextQuestionIndex];
-        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
-
-INSTRUÇÕES:
-- O candidato ${candidate?.name || 'Candidato'} acabou de responder: "${candidateResponse}"
-- Faça um comentário positivo confirmando que entendeu (ex: "Perfeito!", "Entendi!", "Que bom!")
-- Imediatamente após, faça a próxima pergunta: "${nextQuestion.perguntaCandidato}"
-- Seja natural e conversacional
-
-PRÓXIMA PERGUNTA OBRIGATÓRIA: ${nextQuestion.perguntaCandidato}
-
-Confirme a resposta anterior e faça a próxima pergunta.`;
-      } else if (isOffTopicResponse) {
-        // Resposta social/cortesia - retornar ao roteiro
-        const currentQuestion = questions[currentQuestionIndex];
-        systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
-
-SITUAÇÃO:
-- O candidato ${candidate?.name || 'Candidato'} fez uma resposta social: "${candidateResponse}"
-- Você deve responder educadamente e retornar ao roteiro da entrevista
-- A pergunta atual que precisa ser respondida é: "${currentQuestion.perguntaCandidato}"
-
-INSTRUÇÕES:
-- Responda brevemente à cortesia (ex: "Estou bem, obrigada!")
-- Imediatamente retorne ao foco da entrevista
-- Faça a pergunta atual: "${currentQuestion.perguntaCandidato}"
-
-PERGUNTA ATUAL: ${currentQuestion.perguntaCandidato}
-
-Responda à cortesia e faça a pergunta atual.`;
-      } else {
-        // Primeira pergunta ou pergunta inicial - verificar contexto
-        const currentQuestion = questions[currentQuestionIndex];
-        const isFirstCall = !hasStarted && (!candidateResponse || candidateResponse.trim().length === 0);
-        
-        if (isFirstCall) {
-          // Verdadeiramente primeira interação - pode cumprimentar e fazer primeira pergunta
-          systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
-
-INSTRUÇÕES:
-- Seja natural, empática e profissional
-- Cumprimente o candidato ${candidate?.name || 'Candidato'} pelo nome
-- Faça a primeira pergunta: "${currentQuestion.perguntaCandidato}"
-
-PRIMEIRA PERGUNTA: ${currentQuestion.perguntaCandidato}
-
-Cumprimente pelo nome e faça a primeira pergunta.`;
-        } else {
-          // Entrevista já iniciada - aguardar resposta sem repetir
-          systemPrompt = `Você é uma entrevistadora de RH conduzindo uma entrevista para a vaga de ${job?.nomeVaga || 'emprego'}.
-
-SITUAÇÃO ATUAL:
-- A entrevista já foi iniciada com ${candidate?.name || 'Candidato'}
-- Uma pergunta já foi feita e está aguardando resposta
-- O candidato disse: "${candidateResponse || 'não respondeu ainda'}"
-
-REGRAS OBRIGATÓRIAS:
-- JAMAIS repita perguntas já feitas
-- Se o candidato não respondeu ainda, aguarde silenciosamente
-- Se a resposta foi vaga, peça esclarecimento educadamente
-- Seja paciente e natural na conversa
-- Só repita uma pergunta se o candidato disser "não entendi" ou "pode repetir?"
-
-Responda de forma natural aguardando a resposta do candidato.`;
-        }
-      }
-
-      // Construir mensagens para OpenAI
-      const messages = [
-        { role: "system", content: systemPrompt }
-      ];
-
-      // Adicionar histórico se houver
-      if (conversationHistory && conversationHistory.length > 0) {
-        conversationHistory.forEach((msg: any) => {
-          messages.push({
-            role: msg.type === 'ai' ? 'assistant' : 'user',
-            content: msg.message
-          });
-        });
-      }
-
-      // Adicionar resposta do candidato se houver
-      if (candidateResponse && candidateResponse.trim().length > 0) {
-        messages.push({ role: "user", content: candidateResponse });
-      }
-
-      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: masterSettings.gptModel || "gpt-4o", // GPT-4o é muito melhor para seguir instruções contextuais
-          messages,
-          max_tokens: 300,
-          temperature: 0.7,
-        }),
-      });
-
-      const aiData = await openaiResponse.json();
-      const aiResponse = aiData.choices[0]?.message?.content;
-
-      if (!aiResponse) {
-        throw new Error('No AI response generated');
-      }
-
-      console.log('✅ Resposta da IA gerada:', aiResponse.substring(0, 100) + '...');
-
-      res.json({
-        aiResponse,
-        nextQuestionIndex,
-        interviewCompleted,
-        currentQuestion: questions[nextQuestionIndex]?.perguntaCandidato
-      });
-
-    } catch (error) {
-      console.error("❌ Erro na conversa natural:", error);
-      res.status(500).json({ 
-        message: "Failed to process conversation",
-        status: "error" 
-      });
-    }
-  });
-
-  // Save natural response
-  app.post("/api/interview/:token/natural-response", async (req, res) => {
-    try {
-      const { token } = req.params;
-      const { questionIndex, response, timestamp } = req.body;
-      
-      console.log('💾 Salvando resposta natural:', { token, questionIndex });
-      
-      const interview = await storage.getInterviewByToken(token);
-      if (!interview) {
-        return res.status(404).json({ message: "Interview not found" });
-      }
-
-      // Salvar resposta no formato natural
-      const savedResponse = await storage.createResponse({
-        interviewId: interview.id,
-        questionId: questionIndex + 1, // Simular ID baseado no índice
-        audioPath: '', // Não há arquivo de áudio na conversa natural
-        transcription: response,
-        score: 0, // Será calculado depois
-        feedback: '',
-        createdAt: new Date(timestamp),
-      });
-
-      console.log('✅ Resposta natural salva:', savedResponse.id);
-      
-      res.status(201).json({ id: savedResponse.id, message: "Response saved" });
-      
-    } catch (error) {
-      console.error("❌ Erro salvando resposta natural:", error);
-      res.status(500).json({ message: "Failed to save response" });
-    }
-  });
-
-  // Complete natural interview
-  app.post("/api/interview/:token/complete", async (req, res) => {
-    try {
-      const { token } = req.params;
-      const { conversationHistory, completedAt } = req.body;
-      
-      console.log('🏁 Finalizando entrevista natural:', token);
-      
-      const interview = await storage.getInterviewByToken(token);
-      if (!interview) {
-        return res.status(404).json({ message: "Interview not found" });
-      }
-
-      // Atualizar status da entrevista
-      await storage.updateInterview(interview.id, {
-        status: 'completed',
-        updatedAt: new Date(completedAt)
-      });
-
-      // Salvar log da conversa completa
-      await storage.createMessageLog({
-        interviewId: interview.id,
-        messageType: 'conversation_history',
-        content: JSON.stringify(conversationHistory),
-        timestamp: new Date(completedAt)
-      });
-
-      console.log('✅ Entrevista natural finalizada');
-      
-      res.json({ message: "Interview completed successfully" });
-      
-    } catch (error) {
-      console.error("❌ Erro finalizando entrevista:", error);
-      res.status(500).json({ message: "Failed to complete interview" });
+      console.error('Error testing OpenAI API:', error);
+      res.status(500).json({ success: false, error: 'Failed to test OpenAI API' });
     }
   });
 
@@ -2806,8 +1565,8 @@ Responda de forma natural aguardando a resposta do candidato.`;
         return res.status(400).json({ message: 'Audio URL is required' });
       }
 
-      const masterSettings = await storage.getMasterSettings();
-      if (!masterSettings?.openaiApiKey) {
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
         return res.status(500).json({ message: 'OpenAI API key not configured' });
       }
 
@@ -2872,407 +1631,71 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
-  // WhatsApp Webhook Routes
-  app.get("/webhook/whatsapp", (req, res) => {
-    try {
-      const mode = req.query['hub.mode'];
-      const token = req.query['hub.verify_token'];
-      const challenge = req.query['hub.challenge'];
-      
-      console.log('🔍 Verificação webhook WhatsApp:', { mode, token });
-      
-      const verificationChallenge = whatsappService.verifyWebhook(
-        mode as string,
-        token as string,
-        challenge as string
-      );
-      
-      if (verificationChallenge) {
-        res.status(200).send(verificationChallenge);
-      } else {
-        res.status(403).send('Forbidden');
-      }
-    } catch (error) {
-      console.error('❌ Erro na verificação do webhook:', error);
-      res.status(500).send('Error');
-    }
-  });
-
-  app.post("/webhook/whatsapp", async (req, res) => {
-    try {
-      console.log('📱 Webhook WhatsApp recebido');
-      await whatsappService.handleWebhook(req.body);
-      res.status(200).send('OK');
-    } catch (error) {
-      console.error('❌ Erro no webhook WhatsApp:', error);
-      res.status(500).send('Error');
-    }
-  });
-
-  // WhatsApp Manual Send Route - para teste e envio manual de campanhas
-  app.post("/api/whatsapp/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const { selectionId } = req.body;
-      
-      if (!selectionId) {
-        return res.status(400).json({ error: "Selection ID é obrigatório" });
-      }
-
-      console.log(`📤 Iniciando envio WhatsApp para seleção ${selectionId}`);
-
-      // Buscar seleção
-      const selection = await storage.getSelectionById(selectionId);
-      if (!selection) {
-        return res.status(404).json({ error: "Seleção não encontrada" });
-      }
-
-      // Buscar job
-      const job = await storage.getJobById(selection.jobId);
-      if (!job) {
-        return res.status(404).json({ error: "Vaga não encontrada" });
-      }
-
-      // Buscar candidatos da lista
-      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-      if (!candidates || candidates.length === 0) {
-        return res.status(400).json({ error: "Nenhum candidato encontrado na lista" });
-      }
-
-      let sentCount = 0;
-      let errorCount = 0;
-      const results = [];
-
-      // Enviar para cada candidato
-      for (const candidate of candidates) {
-        try {
-          if (!candidate.whatsapp) {
-            console.log(`⚠️ Candidato ${candidate.name} sem telefone`);
-            errorCount++;
-            continue;
-          }
-
-          // Formatar telefone (garantir formato internacional)
-          let phone = candidate.whatsapp.replace(/\D/g, '');
-          if (!phone.startsWith('55')) {
-            phone = '55' + phone;
-          }
-
-          console.log(`📞 Enviando para ${candidate.name} (${phone})`);
-
-          const success = await whatsappService.sendInterviewInvitation(
-            candidate.name,
-            phone,
-            job.nomeVaga,
-            selection.whatsappTemplate,
-            selection.id
-          );
-
-          if (success) {
-            sentCount++;
-            results.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              phone: phone,
-              status: 'sent'
-            });
-          } else {
-            errorCount++;
-            results.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              phone: phone,
-              status: 'failed'
-            });
-          }
-
-          // Aguardar um pouco entre envios para evitar rate limit
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-        } catch (error) {
-          console.error(`❌ Erro enviando para ${candidate.name}:`, error);
-          errorCount++;
-          results.push({
-            candidateId: candidate.id,
-            candidateName: candidate.name,
-            phone: candidate.whatsapp,
-            status: 'error',
-            error: error instanceof Error ? error.message : 'Erro desconhecido'
-          });
-        }
-      }
-
-      // Atualizar status da seleção
-      await storage.updateSelection(selection.id, {
-        status: 'enviado',
-        updatedAt: new Date()
-      });
-
-      console.log(`✅ Campanha WhatsApp finalizada: ${sentCount} enviados, ${errorCount} erros`);
-
-      res.json({
-        success: true,
-        sentCount,
-        errorCount,
-        totalCandidates: candidates.length,
-        results,
-        message: `${sentCount} mensagens enviadas com sucesso. ${errorCount} erros.`
-      });
-
-    } catch (error) {
-      console.error('❌ Erro no envio da campanha WhatsApp:', error);
-      res.status(500).json({ 
-        error: "Erro interno no envio da campanha",
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      });
-    }
-  });
-
-  // WhatsApp Configuration Test Route
-  app.post("/api/whatsapp/test", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const { phoneNumber, message } = req.body;
-      
-      if (!phoneNumber || !message) {
-        return res.status(400).json({ error: "Telefone e mensagem são obrigatórios" });
-      }
-
-      // Formatar telefone
-      let phone = phoneNumber.replace(/\D/g, '');
-      if (!phone.startsWith('55')) {
-        phone = '55' + phone;
-      }
-
-      console.log(`🧪 Teste WhatsApp para ${phone}: ${message}`);
-
-      const success = await whatsappService.sendTextMessage(phone, message);
-
-      if (success) {
-        res.json({ 
-          success: true, 
-          message: "Mensagem de teste enviada com sucesso!" 
-        });
-      } else {
-        res.status(400).json({ 
-          success: false, 
-          error: "Falha ao enviar mensagem de teste" 
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Erro no teste WhatsApp:', error);
-      res.status(500).json({ 
-        error: "Erro interno no teste",
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      });
-    }
-  });
-
-  // WhatsApp QR Code Routes
-  app.get("/api/whatsapp-qr/status", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const status = whatsappQRService.getConnectionStatus();
-      res.json(status);
-    } catch (error) {
-      console.error('❌ Erro ao obter status WhatsApp QR:', error);
-      res.status(500).json({ error: "Erro ao obter status da conexão" });
-    }
-  });
-
-  app.post("/api/whatsapp-qr/disconnect", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      await whatsappQRService.disconnect();
-      res.json({ success: true, message: "WhatsApp desconectado com sucesso" });
-    } catch (error) {
-      console.error('❌ Erro ao desconectar WhatsApp QR:', error);
-      res.status(500).json({ error: "Erro ao desconectar" });
-    }
-  });
-
-  app.post("/api/whatsapp-qr/reconnect", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      await whatsappQRService.reconnect();
-      res.json({ success: true, message: "Reconnectando WhatsApp..." });
-    } catch (error) {
-      console.error('❌ Erro ao reconectar WhatsApp QR:', error);
-      res.status(500).json({ error: "Erro ao reconectar" });
-    }
-  });
-
-  app.post("/api/whatsapp-qr/test", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const { phoneNumber, message } = req.body;
-      
-      if (!phoneNumber || !message) {
-        return res.status(400).json({ error: "Telefone e mensagem são obrigatórios" });
-      }
-
-      let phone = phoneNumber.replace(/\D/g, '');
-      if (!phone.startsWith('55')) {
-        phone = '55' + phone;
-      }
-
-      console.log(`🧪 Teste WhatsApp QR para ${phone}: ${message}`);
-
-      const success = await whatsappQRService.sendTextMessage(phone, message);
-
-      if (success) {
-        res.json({ 
-          success: true, 
-          message: "Mensagem de teste enviada com sucesso via QR" 
-        });
-      } else {
-        res.status(500).json({ 
-          error: "Falha ao enviar mensagem de teste",
-          details: "Verifique se o WhatsApp está conectado via QR Code"
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Erro no teste WhatsApp QR:', error);
-      res.status(500).json({ 
-        error: "Erro interno no teste",
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      });
-    }
-  });
-
-  // Buscar entrevistas realizadas no Firebase para relatórios
+  // Get interview responses for reports page
   app.get("/api/interview-responses", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
-      console.log('🔍 Buscando entrevistas do Firebase para relatórios...');
+      console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id})`);
       
-      const db = firebaseDb;
-      const { selectionId } = req.query;
+      const { firebaseDb } = await import('./db');
+      const { collection, getDocs, query, where, doc, getDoc } = await import('firebase/firestore');
       
-      console.log(`🎯 Filtro aplicado - Seleção ID: ${selectionId || 'TODAS'}`);
+      let allInterviews: any[] = [];
       
-      // Buscar seleções
-      const selectionsSnapshot = await getDocs(collection(db, 'selections'));
-      let targetSelections = selectionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      
-      // Filtrar por seleção específica se fornecida
-      if (selectionId) {
-        targetSelections = targetSelections.filter(s => s.id.toString() === selectionId.toString());
-        console.log(`🔍 Processando apenas seleção: ${targetSelections[0]?.name} (${selectionId})`);
+      // 1. Buscar todas as seleções baseado no papel do usuário
+      let selectionsSnapshot;
+      if (req.user?.role === 'master') {
+        // Master vê todas as seleções
+        selectionsSnapshot = await getDocs(collection(firebaseDb, 'selections'));
       } else {
-        console.log(`📋 Processando todas as ${targetSelections.length} seleções`);
+        // Cliente vê apenas suas próprias seleções
+        const selectionsQuery = query(
+          collection(firebaseDb, 'selections'),
+          where('clientId', '==', req.user?.clientId || 0)
+        );
+        selectionsSnapshot = await getDocs(selectionsQuery);
       }
       
-      const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
-      console.log(`📊 Total de entrevistas encontradas: ${interviewsSnapshot.docs.length}`);
+      console.log(`📋 Seleções encontradas: ${selectionsSnapshot.docs.length}`);
       
-      const allInterviews: any[] = [];
-      const processedInterviews = new Set(); // Evitar duplicatas
-      
-      // Processar cada seleção alvo separadamente
-      for (const targetSelection of targetSelections) {
-        console.log(`\n🎯 Processando seleção: ${targetSelection.name} (ID: ${targetSelection.id})`);
+      // 2. Para cada seleção, buscar entrevistas ESPECÍFICAS dessa seleção
+      for (const selectionDoc of selectionsSnapshot.docs) {
+        const selectionData = selectionDoc.data();
         
-        // Buscar candidatos desta seleção específica
-        if (!targetSelection.candidateListId) {
-          console.log(`⚠️ Seleção ${targetSelection.name} sem lista de candidatos, pulando...`);
-          continue;
-        }
+        console.log(`🔍 Processando seleção: ${selectionData.name} (ID: ${selectionDoc.id})`);
         
-        const selectionCandidates = await storage.getCandidatesByListId(targetSelection.candidateListId);
-        console.log(`👥 Candidatos na seleção ${targetSelection.name}: ${selectionCandidates.length}`);
+        // Buscar entrevistas que pertencem EXCLUSIVAMENTE a esta seleção
+        const interviewsQuery = query(
+          collection(firebaseDb, 'interviews'),
+          where('selectionId', '==', selectionDoc.id)
+        );
+        const interviewsSnapshot = await getDocs(interviewsQuery);
         
-        // Processar entrevistas desta seleção específica
+        console.log(`📋 Entrevistas para seleção ${selectionData.name}: ${interviewsSnapshot.docs.length}`);
+        
+        // 3. Processar cada entrevista desta seleção específica
         for (const interviewDoc of interviewsSnapshot.docs) {
           const interviewData = interviewDoc.data();
           
-          // Pular entrevistas não completadas
-          if (interviewData.status !== 'completed') {
-            continue;
-          }
-          
-          // Evitar duplicação - verificar se já foi processada
-          const interviewKey = `${interviewDoc.id}-${targetSelection.id}`;
-          if (processedInterviews.has(interviewKey)) {
-            continue;
-          }
-          
-          console.log(`📝 Verificando entrevista ${interviewDoc.id} para seleção ${targetSelection.name}`);
-          
-          // Verificar se a entrevista pertence a esta seleção específica
-          let belongsToSelection = false;
-          let candidateInSelection = null;
-          
-          // Método 1: Match direto por selectionId
-          if (interviewData.selectionId && 
-              interviewData.selectionId.toString() === targetSelection.id.toString()) {
-            belongsToSelection = true;
-            console.log(`✅ Match direto por selectionId`);
-          }
-          
-          // Método 2: Match por candidato na lista da seleção
-          if (!belongsToSelection) {
-            candidateInSelection = selectionCandidates.find(candidate => {
-              // Match por ID
-              if (interviewData.candidateId && candidate.id.toString() === interviewData.candidateId.toString()) {
-                console.log(`✅ Match por candidateId: ${candidate.name}`);
-                return true;
-              }
-              
-              // Match por telefone
-              if (interviewData.phone && candidate.whatsapp) {
-                const interviewPhone = interviewData.phone.replace(/\D/g, '');
-                const candidatePhone = candidate.whatsapp.replace(/\D/g, '');
-                if (interviewPhone === candidatePhone) {
-                  console.log(`✅ Match por telefone: ${candidate.name}`);
-                  return true;
-                }
-              }
-              
-              // Match por nome (primeiro nome)
-              if (interviewData.candidateName && candidate.name) {
-                const interviewFirstName = interviewData.candidateName.toLowerCase().split(' ')[0];
-                const candidateFirstName = candidate.name.toLowerCase().split(' ')[0];
-                if (interviewFirstName === candidateFirstName && interviewFirstName.length >= 3) {
-                  console.log(`✅ Match por primeiro nome: ${candidate.name}`);
-                  return true;
-                }
-              }
-              
-              return false;
-            });
-            
-            if (candidateInSelection) {
-              belongsToSelection = true;
-            }
-          }
-          
-          // Se não pertence a esta seleção, pular
-          if (!belongsToSelection) {
-            console.log(`🚫 Entrevista ${interviewDoc.id} não pertence à seleção ${targetSelection.name}`);
-            continue;
-          }
-          
-          // Marcar como processada
-          processedInterviews.add(interviewKey);
-          
-          // Buscar respostas da entrevista
-          let responsesSnapshot;
+          // Buscar candidato da entrevista
+          let candidateData = null;
           try {
-            const responsesQuery1 = query(
-              collection(db, 'responses'),
-              where('interviewId', '==', interviewDoc.id)
-            );
-            responsesSnapshot = await getDocs(responsesQuery1);
-            
-            if (responsesSnapshot.empty) {
-              const responsesQuery2 = query(
-                collection(db, 'responses'),
-                where('interviewId', '==', parseInt(interviewDoc.id))
-              );
-              responsesSnapshot = await getDocs(responsesQuery2);
+            if (interviewData.candidateId) {
+              const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', interviewData.candidateId));
+              if (candidateDoc.exists()) {
+                candidateData = candidateDoc.data();
+              }
             }
           } catch (err) {
-            console.log(`⚠️ Erro ao buscar respostas para entrevista ${interviewDoc.id}:`, err);
-            responsesSnapshot = { docs: [] };
+            console.log(`⚠️ Erro ao buscar candidato ${interviewData.candidateId}:`, err);
           }
           
-          // Mapear respostas
+          // Buscar respostas da entrevista
+          const responsesQuery = query(
+            collection(firebaseDb, 'responses'),
+            where('interviewId', '==', interviewDoc.id)
+          );
+          const responsesSnapshot = await getDocs(responsesQuery);
+          
           const responses = responsesSnapshot.docs.map(responseDoc => {
             const responseData = responseDoc.data();
             return {
@@ -3287,29 +1710,26 @@ Responda de forma natural aguardando a resposta do candidato.`;
           // Buscar vaga relacionada
           let jobData = null;
           try {
-            if (targetSelection.jobId) {
-              jobData = await storage.getJob(targetSelection.jobId);
+            if (selectionData.jobId) {
+              const jobDoc = await getDoc(doc(firebaseDb, 'jobs', selectionData.jobId));
+              if (jobDoc.exists()) {
+                jobData = jobDoc.data();
+              }
             }
           } catch (err) {
-            console.log(`⚠️ Erro ao buscar vaga para seleção ${targetSelection.id}:`, err);
+            console.log(`⚠️ Erro ao buscar vaga ${selectionData.jobId}:`, err);
           }
-          
-          // Usar candidato encontrado ou dados da entrevista como fallback
-          const finalCandidate = candidateInSelection || {
-            name: interviewData.candidateName || 'Candidato',
-            whatsapp: interviewData.phone || 'N/A'
-          };
-          
-          console.log(`✅ Adicionando entrevista ${interviewDoc.id}: ${finalCandidate.name} para ${targetSelection.name}`);
           
           // Criar registro de entrevista para relatórios
           allInterviews.push({
             id: interviewDoc.id,
-            selection: targetSelection.name,
-            candidateName: finalCandidate.name,
-            candidatePhone: finalCandidate.whatsapp || 'N/A',
-            jobName: jobData?.nomeVaga || targetSelection.name,
-            status: 'completed',
+            selectionId: selectionDoc.id,
+            selectionName: selectionData.name,
+            candidateId: interviewData.candidateId,
+            candidateName: candidateData?.name || interviewData.candidateName || 'Candidato desconhecido',
+            candidatePhone: candidateData?.whatsapp || interviewData.phone || 'N/A',
+            jobName: jobData?.nomeVaga || selectionData.name || 'Vaga não identificada',
+            status: interviewData.status || 'completed',
             startTime: interviewData.startTime || interviewData.createdAt || null,
             endTime: interviewData.endTime || interviewData.completedAt || null,
             responses: responses,
@@ -3317,947 +1737,16 @@ Responda de forma natural aguardando a resposta do candidato.`;
             answeredQuestions: responses.length
           });
         }
-        
-        // Adicionar candidatos pendentes (sem entrevista) desta seleção
-        for (const candidate of selectionCandidates) {
-          const hasInterview = allInterviews.some(interview => 
-            interview.candidateName === candidate.name ||
-            (interview.candidatePhone && candidate.whatsapp && 
-             interview.candidatePhone.replace(/\D/g, '') === candidate.whatsapp.replace(/\D/g, ''))
-          );
-          
-          if (!hasInterview) {
-            console.log(`➕ Adicionando candidato pendente: ${candidate.name} da seleção ${targetSelection.name}`);
-            
-            // Buscar vaga relacionada
-            let jobData = null;
-            try {
-              if (targetSelection.jobId) {
-                jobData = await storage.getJob(targetSelection.jobId);
-              }
-            } catch (err) {
-              console.log(`⚠️ Erro ao buscar vaga:`, err);
-            }
-            
-            allInterviews.push({
-              id: `pending-${candidate.id}-${targetSelection.id}`,
-              selection: targetSelection.name,
-              candidateName: candidate.name,
-              candidatePhone: candidate.whatsapp || 'N/A',
-              jobName: jobData?.nomeVaga || targetSelection.name,
-              status: 'pending',
-              startTime: null,
-              endTime: null,
-              responses: [],
-              totalQuestions: 0,
-              answeredQuestions: 0
-            });
-          } else {
-            console.log(`✅ Candidato ${candidate.name} já tem entrevista registrada`);
-          }
-        }
       }
       
-      console.log(`✅ Retornando ${allInterviews.length} registros para relatórios`);
+      console.log(`✅ Total de entrevistas processadas (sem duplicação): ${allInterviews.length}`);
       res.json(allInterviews);
     } catch (error) {
       console.error('Erro ao buscar entrevistas:', error);
       res.status(500).json({ message: 'Erro ao buscar dados das entrevistas' });
     }
   });
-          
-          const questionText = jobQuestions[questionId]?.pergunta || 
-                              jobQuestions[questionId]?.questionText ||
-                              `Pergunta ${questionId + 1}`;
-          
-          return {
-            questionId: questionId,
-            questionText: questionText,
-            responseText: responseData.transcription || '',
-            audioFile: responseData.audioUrl ? `/audio/${responseData.audioUrl.replace('uploads/', '')}` : '',
-            timestamp: responseData.createdAt ? new Date(responseData.createdAt.seconds * 1000).toISOString() : new Date().toISOString()
-          };
-        });
-
-        console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
-
-        // Usar dados do candidato e seleção confirmados
-        const candidateName = candidateInSelection.name;
-        const candidatePhone = candidateInSelection.whatsapp || 'N/A';
-        const jobName = selectionData.name || 'Vaga não identificada';
-        
-        console.log(`✅ Usando dados do candidato confirmado: ${candidateName} (${candidatePhone}) para vaga ${jobName}`);
-
-        allInterviews.push({
-          id: interviewDoc.id,
-          selectionId: selectionData.id,
-          selectionName: selectionData.name,
-          candidateId: candidateInSelection.id,
-          candidateName: candidateName,
-          candidatePhone: candidatePhone,
-          jobName: jobName,
-          status: interviewData.status || 'completed',
-          startTime: interviewData.startTime,
-          endTime: interviewData.endTime,
-          responses,
-          totalQuestions: interviewData.totalQuestions || responses.length,
-          answeredQuestions: responses.length
-        });
-      }
-      
-      // Adicionar candidatos da lista que ainda não fizeram entrevista
-      console.log(`📊 Verificando candidatos sem entrevista...`);
-      for (const selection of allSelections) {
-        if (selection.candidateListId) {
-          try {
-            const listCandidates = await storage.getCandidatesByListId(selection.candidateListId);
-            console.log(`📋 Lista ${selection.candidateListId} da seleção "${selection.name}": ${listCandidates.length} candidatos`);
-            
-            for (const candidate of listCandidates) {
-              // Verificar se este candidato já tem entrevista no array - busca mais rigorosa
-              const hasInterview = allInterviews.some(interview => {
-                // Busca por nome exato ou similar
-                const nameMatch = interview.candidateName?.toLowerCase().trim() === candidate.name.toLowerCase().trim() ||
-                                 interview.candidateName?.toLowerCase().includes(candidate.name.toLowerCase().split(' ')[0]) ||
-                                 candidate.name.toLowerCase().includes(interview.candidateName?.toLowerCase().split(' ')[0] || '');
-                
-                // Busca por telefone
-                const phoneMatch = interview.candidatePhone && candidate.whatsapp &&
-                                  interview.candidatePhone.replace(/\D/g, '') === candidate.whatsapp.replace(/\D/g, '');
-                
-                // Busca por ID
-                const idMatch = interview.candidateId?.toString() === candidate.id.toString();
-                
-                return nameMatch || phoneMatch || idMatch;
-              });
-              
-              if (!hasInterview) {
-                console.log(`➕ Adicionando candidato sem entrevista: ${candidate.name} da seleção ${selection.name}`);
-                allInterviews.push({
-                  id: `pending_${selection.id}_${candidate.id}`,
-                  selectionId: selection.id,
-                  selectionName: selection.name,
-                  candidateId: candidate.id,
-                  candidateName: candidate.name,
-                  candidatePhone: candidate.whatsapp || 'N/A',
-                  jobName: selection.jobName || selection.name,
-                  status: 'pending',
-                  startTime: null,
-                  endTime: null,
-                  responses: [],
-                  totalQuestions: 0,
-                  answeredQuestions: 0
-                });
-              } else {
-                console.log(`✅ Candidato ${candidate.name} já tem entrevista registrada, não será adicionado como pendente`);
-              }
-            }
-          } catch (err) {
-            console.log(`⚠️ Erro ao buscar candidatos da lista ${selection.candidateListId}:`, err);
-          }
-        }
-      }
-      
-      console.log(`✅ Retornando ${allInterviews.length} registros para relatórios (entrevistas + candidatos pendentes)`);
-      res.json(allInterviews);
-      
-    } catch (error) {
-      console.error('❌ Erro ao buscar entrevistas:', error);
-      res.status(500).json({ error: 'Erro ao buscar entrevistas' });
-    }
-  });
-
-  // Endpoint para deletar todos os usuários de um cliente
-  app.delete("/api/clients/:clientId/users/all", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const clientId = parseInt(req.params.clientId);
-      
-      console.log(`🗑️ Deletando todos os usuários do cliente ID: ${clientId}`);
-      
-      const deletedUsers = await storage.deleteAllClientUsers(clientId);
-      
-      console.log(`✅ ${deletedUsers.length} usuário(s) deletado(s) com sucesso!`);
-      
-      res.json({ 
-        success: true, 
-        message: `${deletedUsers.length} usuário(s) deletado(s) com sucesso`,
-        deletedUsers 
-      });
-    } catch (error) {
-      console.error("❌ Erro ao deletar usuários do cliente:", error);
-      res.status(500).json({ message: "Erro ao deletar usuários do cliente" });
-    }
-  });
-
-  // Endpoint para limpeza do Firebase
-  app.post("/api/firebase/clean", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      const { cleanFirebaseData } = await import('./cleanFirebaseData');
-      await cleanFirebaseData();
-      res.json({ success: true, message: 'Limpeza do Firebase concluída' });
-    } catch (error) {
-      console.error('Erro na limpeza do Firebase:', error);
-      res.status(500).json({ error: 'Erro na limpeza do Firebase' });
-    }
-  });
-
-  // Endpoint para criar dados de teste do Daniel Moreira
-  app.post("/api/debug/create-daniel-interview", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🔧 Criando entrevista finalizada para Daniel Moreira...');
-      
-      // Criar entrevista finalizada diretamente no Firebase
-      const interviewId = Date.now();
-      const interviewData = {
-        candidateId: '17498608963032', // ID como string
-        candidateName: 'Daniel Moreira',
-        phone: '11984316526',
-        jobId: '174986729964277',
-        jobName: 'Faxineira Banco',
-        selectionId: '175001114365781',
-        status: 'completed',
-        startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
-        token: `daniel-${interviewId}`,
-        createdAt: new Date()
-      };
-      
-      // Salvar no Firebase diretamente
-      await setDoc(doc(firebaseDb, "interviews", String(interviewId)), interviewData);
-      console.log(`📝 Entrevista ${interviewId} salva no Firebase`);
-      
-      // Criar respostas
-      const respostas = [
-        {
-          questionText: 'Por que você quer trabalhar como faxineira?',
-          responseText: 'Eu gosto de manter ambientes limpos e organizados. Tenho experiência na área e sei a importância de um local bem cuidado.',
-          audioFile: 'daniel_resposta_1.ogg'
-        },
-        {
-          questionText: 'Qual sua experiência com limpeza?',
-          responseText: 'Trabalho há 5 anos na área de limpeza, tanto residencial quanto comercial. Conheço produtos e técnicas adequadas.',
-          audioFile: 'daniel_resposta_2.ogg'
-        }
-      ];
-      
-      for (let i = 0; i < respostas.length; i++) {
-        const responseId = Date.now() + i;
-        const responseData = {
-          interviewId: String(interviewId), // Salvar como string
-          questionId: i + 1,
-          questionText: respostas[i].questionText,
-          responseText: respostas[i].responseText,
-          audioFile: respostas[i].audioFile,
-          score: 8.5 + (i * 0.3),
-          timestamp: new Date().toISOString(),
-          createdAt: new Date()
-        };
-        
-        await setDoc(doc(firebaseDb, "responses", String(responseId)), responseData);
-        console.log(`💬 Resposta ${responseId} salva para entrevista ${interviewId}`);
-      }
-      
-      console.log(`✅ Entrevista ${interviewId} criada com ${respostas.length} respostas no Firebase`);
-      
-      res.json({
-        success: true,
-        interview: {
-          id: String(interviewId),
-          candidateName: 'Daniel Moreira',
-          phone: '11984316526',
-          jobName: 'Faxineira Banco',
-          status: 'completed',
-          responses: respostas.length
-        }
-      });
-      
-    } catch (error) {
-      console.error('Erro ao criar entrevista do Daniel:', error);
-      res.status(500).json({ error: 'Erro ao criar entrevista' });
-    }
-  });
-
-  // Endpoint para verificar todas as vagas no Firebase
-  app.get("/api/debug/firebase-jobs", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🔍 Verificando todas as vagas diretamente no Firebase...');
-      
-      // Usar Firebase diretamente
-      const { getDocs, collection } = await import('firebase/firestore');
-      const { firebaseDb } = await import('../server/db');
-      
-      const snapshot = await getDocs(collection(firebaseDb, "jobs"));
-      const allJobs = [];
-      
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        allJobs.push({
-          id: doc.id,
-          ...data
-        });
-        console.log(`📄 Vaga Firebase: ID=${doc.id}, cliente=${data.clientId}, nome=${data.nomeVaga}`);
-      });
-      
-      console.log(`📊 Total de vagas no Firebase: ${allJobs.length}`);
-      
-      res.json({
-        success: true,
-        totalJobs: allJobs.length,
-        jobs: allJobs
-      });
-      
-    } catch (error) {
-      console.error('❌ Erro verificando vagas:', error);
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  // Endpoint para verificar dados específicos do Daniel Moreira
-  app.get("/api/debug/daniel-data", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🔍 Verificando dados do Daniel Moreira no Firebase...');
-      
-      // 1. Buscar candidatos Daniel
-      const allCandidates = await storage.getAllCandidates();
-      const danielCandidates = allCandidates.filter(c => 
-        c.name?.toLowerCase().includes('daniel') || 
-        c.whatsapp?.includes('11984316526')
-      );
-      
-      // 2. Buscar seleção Faxineira
-      const allSelections = await storage.getAllSelections();
-      const faxineiraSelections = allSelections.filter(s => 
-        s.name?.toLowerCase().includes('faxineira') ||
-        s.jobName?.toLowerCase().includes('faxineira')
-      );
-      
-      // 3. Buscar entrevistas do Daniel
-      const allInterviews = await storage.getAllInterviews();
-      const danielInterviews = allInterviews.filter(i => 
-        i.candidateName?.toLowerCase().includes('daniel') ||
-        i.phone?.includes('11984316526')
-      );
-      
-      // 4. Buscar respostas das entrevistas do Daniel
-      const danielResponses = [];
-      for (const interview of danielInterviews) {
-        const responses = await storage.getResponsesByInterviewId(parseInt(interview.id));
-        if (responses.length > 0) {
-          danielResponses.push({
-            interviewId: interview.id,
-            status: interview.status,
-            responses: responses.map(r => ({
-              questionText: r.questionText,
-              responseText: r.responseText?.substring(0, 100) + '...',
-              hasAudio: !!r.audioFile
-            }))
-          });
-        }
-      }
-      
-      const summary = {
-        candidatos: danielCandidates.map(c => ({
-          id: c.id,
-          name: c.name,
-          whatsapp: c.whatsapp,
-          clientId: c.clientId
-        })),
-        selecoes_faxineira: faxineiraSelections.map(s => ({
-          id: s.id,
-          name: s.name || s.jobName,
-          status: s.status
-        })),
-        entrevistas_daniel: danielInterviews.map(i => ({
-          id: i.id,
-          status: i.status,
-          candidateName: i.candidateName,
-          phone: i.phone,
-          selectionId: i.selectionId
-        })),
-        respostas_daniel: danielResponses,
-        resumo: {
-          total_candidatos_daniel: danielCandidates.length,
-          total_selecoes_faxineira: faxineiraSelections.length,
-          total_entrevistas_daniel: danielInterviews.length,
-          entrevistas_finalizadas: danielInterviews.filter(i => i.status === 'completed').length,
-          total_respostas: danielResponses.reduce((acc, r) => acc + r.responses.length, 0)
-        }
-      };
-      
-      res.json(summary);
-    } catch (error) {
-      console.error('Erro ao verificar dados do Daniel:', error);
-      res.status(500).json({ error: 'Erro ao verificar dados' });
-    }
-  });
-
-  app.post("/api/whatsapp-qr/send-campaign", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const { selectionId } = req.body;
-      
-      if (!selectionId) {
-        return res.status(400).json({ error: "ID da seleção é obrigatório" });
-      }
-
-      const status = whatsappQRService.getConnectionStatus();
-      if (!status.isConnected) {
-        return res.status(400).json({ 
-          error: "WhatsApp não está conectado",
-          details: "Conecte o WhatsApp via QR Code primeiro"
-        });
-      }
-
-      const selection = await storage.getSelectionById(selectionId);
-      if (!selection) {
-        return res.status(404).json({ error: "Seleção não encontrada" });
-      }
-
-      if (req.user?.role === 'client' && selection.clientId !== req.user.clientId) {
-        return res.status(403).json({ error: "Acesso negado" });
-      }
-
-      const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-      
-      console.log(`🔍 Buscando job no Firebase com ID: ${selection.jobId}`);
-      let job = await storage.getJobById(selection.jobId);
-
-      // Se não encontrou, buscar por ID parcial (Firebase pode ter sufixos)
-      if (!job) {
-        console.log(`❌ Job não encontrado com ID exato, buscando por ID parcial...`);
-        const allJobs = await storage.getJobsByClientId(selection.clientId);
-        job = allJobs.find(j => j.id.toString().startsWith(selection.jobId.toString()));
-        
-        if (job) {
-          console.log(`✅ Job encontrado com ID parcial: ${job.id} -> ${job.nomeVaga}`);
-        } else {
-          console.log(`❌ Job não encontrado mesmo com busca parcial. Jobs disponíveis:`, 
-            allJobs.map(j => `ID: ${j.id} | Nome: ${j.nomeVaga}`));
-        }
-      } else {
-        console.log(`✅ Job encontrado: ${job.nomeVaga}`);
-      }
-
-      if (!job) {
-        return res.status(404).json({ error: "Vaga não encontrada" });
-      }
-
-      let sentCount = 0;
-      let errorCount = 0;
-      const results = [];
-
-      console.log(`📱 [DEBUG] Iniciando campanha WhatsApp QR para ${candidates.length} candidatos`);
-      console.log(`📋 [DEBUG] Job encontrado: ${job.nomeVaga}`);
-      console.log(`📞 [DEBUG] Lista de candidatos:`, candidates.map(c => ({ id: c.id, name: c.name, phone: c.phone })));
-
-      for (const candidate of candidates) {
-        try {
-          console.log(`\n🚀 [DEBUG] Processando candidato: ${candidate.name} (${candidate.whatsapp})`);
-          
-          if (!candidate.whatsapp) {
-            console.log(`⚠️ [DEBUG] Candidato ${candidate.name} sem telefone, pulando...`);
-            errorCount++;
-            results.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              phone: 'N/A',
-              status: 'error',
-              error: 'Telefone não informado'
-            });
-            continue;
-          }
-
-          // Formatar telefone
-          let phone = candidate.whatsapp.replace(/\D/g, '');
-          if (!phone.startsWith('55')) {
-            phone = '55' + phone;
-          }
-          console.log(`📞 [DEBUG] Telefone formatado: ${candidate.whatsapp} → ${phone}`);
-
-          console.log(`📨 [DEBUG] Enviando convite para ${candidate.name}...`);
-          const success = await whatsappQRService.sendInterviewInvitation(
-            phone,
-            candidate.name,
-            job.nomeVaga,
-            selection.whatsappTemplate || selection.mensagemWhatsApp,
-            selection.id
-          );
-
-          console.log(`📤 [DEBUG] Resultado do envio para ${candidate.name}: ${success ? 'SUCESSO' : 'FALHA'}`);
-
-          if (success) {
-            sentCount++;
-            results.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              phone: phone,
-              status: 'sent'
-            });
-          } else {
-            errorCount++;
-            results.push({
-              candidateId: candidate.id,
-              candidateName: candidate.name,
-              phone: phone,
-              status: 'error',
-              error: 'Falha no envio'
-            });
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-        } catch (error) {
-          errorCount++;
-          results.push({
-            candidateId: candidate.id,
-            candidateName: candidate.name,
-            phone: candidate.whatsapp,
-            status: 'error',
-            error: error instanceof Error ? error.message : 'Erro desconhecido'
-          });
-        }
-      }
-
-      await storage.updateSelection(selection.id, {
-        status: 'enviado',
-        updatedAt: new Date()
-      });
-
-      console.log(`✅ Campanha WhatsApp QR finalizada: ${sentCount} enviados, ${errorCount} erros`);
-
-      res.json({
-        success: true,
-        sentCount,
-        errorCount,
-        totalCandidates: candidates.length,
-        results,
-        message: `${sentCount} mensagens enviadas com sucesso via WhatsApp QR. ${errorCount} erros.`
-      });
-
-    } catch (error) {
-      console.error('❌ Erro no envio da campanha WhatsApp QR:', error);
-      res.status(500).json({ 
-        error: "Erro interno no envio da campanha",
-        details: error instanceof Error ? error.message : 'Erro desconhecido'
-      });
-    }
-  });
-
-  // Endpoint para corrigir lista da Jacqueline
-  app.post("/api/debug/fix-jacqueline-list", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🔧 Iniciando correção da lista da Jacqueline...');
-      
-      // Buscar a Jacqueline
-      const allCandidates = await storage.getAllCandidates();
-      const jacqueline = allCandidates.find(c => 
-        c.name && c.name.toLowerCase().includes('jacqueline')
-      );
-      
-      if (!jacqueline) {
-        return res.status(404).json({ error: 'Jacqueline não encontrada' });
-      }
-      
-      console.log(`✅ Jacqueline encontrada: ${jacqueline.name} (ID: ${jacqueline.id}) - Lista atual: ${jacqueline.listId}`);
-      
-      // Buscar a seleção "Professora Infantil 2"
-      const allSelections = await storage.getAllSelections();
-      const targetSelection = allSelections.find(s => 
-        s.name && s.name.includes('Professora Infantil 2')
-      );
-      
-      if (!targetSelection) {
-        return res.status(404).json({ error: 'Seleção "Professora Infantil 2" não encontrada' });
-      }
-      
-      console.log(`✅ Seleção "Professora Infantil 2" encontrada: ID ${targetSelection.id} - candidateListId: ${targetSelection.candidateListId}`);
-      
-      // Atualizar a lista da Jacqueline
-      const newListId = targetSelection.candidateListId;
-      console.log(`🔄 Atualizando lista da Jacqueline de ${jacqueline.listId} para ${newListId}...`);
-      
-      await storage.updateCandidate(jacqueline.id, {
-        listId: newListId
-      });
-      
-      console.log(`✅ Jacqueline atualizada com sucesso! Lista: ${jacqueline.listId} → ${newListId}`);
-      
-      res.json({
-        success: true,
-        message: 'Lista da Jacqueline corrigida com sucesso',
-        details: {
-          candidateName: jacqueline.name,
-          candidateId: jacqueline.id,
-          oldListId: jacqueline.listId,
-          newListId: newListId,
-          targetSelection: targetSelection.name
-        }
-      });
-      
-    } catch (error) {
-      console.error('❌ Erro ao corrigir lista da Jacqueline:', error);
-      res.status(500).json({ 
-        error: 'Erro interno do servidor',
-        details: error.message 
-      });
-    }
-  });
-
-  // Password reset routes
-  app.post("/api/password-reset/request", async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ message: "Email é obrigatório" });
-      }
-      
-      // Find user by email
-      const user = await storage.findUserByEmail(email);
-      if (!user) {
-        // Return success even if user not found (security best practice)
-        return res.json({ 
-          message: "Se o email estiver cadastrado, você receberá instruções de recuperação." 
-        });
-      }
-      
-      // Create reset token
-      const token = await storage.createPasswordResetToken(email, user.userType);
-      
-      // Send reset email
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
-      
-      await emailService.sendEmail({
-        to: email,
-        subject: "Recuperação de Senha - Sistema de Entrevista IA",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #333;">Recuperação de Senha</h2>
-            <p>Olá ${user.name},</p>
-            <p>Você solicitou a recuperação de senha para sua conta no Sistema de Entrevista IA.</p>
-            <p>Clique no link abaixo para criar uma nova senha:</p>
-            <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">
-              Redefinir Senha
-            </a>
-            <p style="color: #666; font-size: 14px;">
-              Este link é válido por 1 hora. Se você não solicitou esta recuperação, ignore este email.
-            </p>
-          </div>
-        `,
-      });
-      
-      res.json({ 
-        message: "Se o email estiver cadastrado, você receberá instruções de recuperação." 
-      });
-    } catch (error) {
-      console.error("Erro ao solicitar reset de senha:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/password-reset/verify", async (req, res) => {
-    try {
-      const { token } = req.body;
-      
-      if (!token) {
-        return res.status(400).json({ message: "Token é obrigatório" });
-      }
-      
-      const validation = await storage.validatePasswordResetToken(token);
-      if (!validation) {
-        return res.status(400).json({ message: "Token inválido ou expirado" });
-      }
-      
-      res.json({ 
-        valid: true,
-        email: validation.email,
-        userType: validation.userType 
-      });
-    } catch (error) {
-      console.error("Erro ao verificar token:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/password-reset/confirm", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-      
-      if (!token || !newPassword) {
-        return res.status(400).json({ message: "Token e nova senha são obrigatórios" });
-      }
-      
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres" });
-      }
-      
-      const validation = await storage.validatePasswordResetToken(token);
-      if (!validation) {
-        return res.status(400).json({ message: "Token inválido ou expirado" });
-      }
-      
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      
-      // Update password
-      const success = await storage.updateUserPassword(
-        validation.email, 
-        validation.userType, 
-        hashedPassword
-      );
-      
-      if (!success) {
-        return res.status(500).json({ message: "Erro ao atualizar senha" });
-      }
-      
-      res.json({ message: "Senha atualizada com sucesso" });
-    } catch (error) {
-      console.error("Erro ao confirmar reset de senha:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  // Password reset routes
-  app.post("/api/password-reset/request", async (req, res) => {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        return res.status(400).json({ message: "Email é obrigatório" });
-      }
-
-      // Check if user exists
-      const userInfo = await storage.findUserByEmail(email);
-      if (!userInfo) {
-        // Don't reveal if user exists or not for security
-        return res.json({ message: "Se o email estiver cadastrado, você receberá instruções" });
-      }
-
-      // Generate reset token
-      const token = require('crypto').randomBytes(32).toString('hex');
-      
-      // Save token with 1 hour expiration
-      await storage.createResetToken(email, token);
-
-      // Send email with reset link
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
-      
-      try {
-        const { emailService } = await import('./emailService');
-        await emailService.sendEmail({
-          to: email,
-          subject: "Recuperação de Senha - Sistema de Entrevistas",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #2563eb;">Recuperação de Senha</h2>
-              <p>Olá, ${userInfo.name}!</p>
-              <p>Você solicitou a recuperação de sua senha. Clique no link abaixo para criar uma nova senha:</p>
-              <p style="margin: 20px 0;">
-                <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  Redefinir Senha
-                </a>
-              </p>
-              <p>Se você não solicitou esta recuperação, ignore este email.</p>
-              <p style="color: #666; font-size: 14px;">
-                Este link expira em 1 hora por segurança.
-              </p>
-            </div>
-          `
-        });
-
-        res.json({ message: "Se o email estiver cadastrado, você receberá instruções" });
-      } catch (emailError) {
-        console.error("Erro ao enviar email:", emailError);
-        res.status(500).json({ message: "Erro ao enviar email de recuperação" });
-      }
-
-    } catch (error) {
-      console.error("Erro na solicitação de reset:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/password-reset/verify", async (req, res) => {
-    try {
-      const { token } = req.body;
-
-      if (!token) {
-        return res.status(400).json({ message: "Token é obrigatório" });
-      }
-
-      const resetData = await storage.getResetToken(token);
-      if (!resetData) {
-        return res.status(400).json({ message: "Token inválido ou expirado" });
-      }
-
-      // Check if token is expired (1 hour)
-      const now = new Date();
-      const tokenAge = now.getTime() - resetData.createdAt.getTime();
-      const oneHour = 60 * 60 * 1000;
-
-      if (tokenAge > oneHour) {
-        await storage.deleteResetToken(token);
-        return res.status(400).json({ message: "Token expirado" });
-      }
-
-      res.json({ email: resetData.email });
-    } catch (error) {
-      console.error("Erro ao verificar token:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/password-reset/confirm", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-
-      if (!token || !newPassword) {
-        return res.status(400).json({ message: "Token e nova senha são obrigatórios" });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres" });
-      }
-
-      const resetData = await storage.getResetToken(token);
-      if (!resetData) {
-        return res.status(400).json({ message: "Token inválido ou expirado" });
-      }
-
-      // Check if token is expired (1 hour)
-      const now = new Date();
-      const tokenAge = now.getTime() - resetData.createdAt.getTime();
-      const oneHour = 60 * 60 * 1000;
-
-      if (tokenAge > oneHour) {
-        await storage.deleteResetToken(token);
-        return res.status(400).json({ message: "Token expirado" });
-      }
-
-      // Hash new password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-      // Update password
-      await storage.updateUserPassword(resetData.email, hashedPassword);
-
-      // Delete used token
-      await storage.deleteResetToken(token);
-
-      res.json({ message: "Senha atualizada com sucesso" });
-    } catch (error) {
-      console.error("Erro ao confirmar reset de senha:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
 
   const httpServer = createServer(app);
-  // Client Voice Settings endpoints
-  app.get("/api/client-voice-settings/:clientId", async (req, res) => {
-    try {
-      const clientId = parseInt(req.params.clientId);
-      const voiceSetting = await storage.getClientVoiceSetting(clientId);
-      
-      // Se não existe configuração, retorna configuração padrão
-      if (!voiceSetting) {
-        const defaultSetting = {
-          clientId,
-          voice: "nova",
-          id: 0,
-          updatedAt: null
-        };
-        res.json(defaultSetting);
-      } else {
-        res.json(voiceSetting);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar configuração de voz:", error);
-      res.status(500).json({ message: "Erro ao buscar configuração de voz" });
-    }
-  });
-
-  app.post("/api/client-voice-settings", async (req, res) => {
-    try {
-      const voiceSetting = req.body;
-      const saved = await storage.upsertClientVoiceSetting(voiceSetting);
-      res.json(saved);
-    } catch (error) {
-      console.error("Erro ao salvar configuração de voz:", error);
-      res.status(500).json({ message: "Erro ao salvar configuração de voz" });
-    }
-  });
-
-  // Test OpenAI API endpoint
-  app.post("/api/test-openai", async (req, res) => {
-    try {
-      const { apiKey } = req.body;
-      
-      if (!apiKey) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Chave da API é obrigatória" 
-        });
-      }
-
-      console.log('🧪 Testando chave OpenAI API...');
-      
-      // Test the API key with a simple request
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        }
-      });
-
-      console.log('📊 Resposta da OpenAI:', response.status, response.statusText);
-
-      if (response.ok) {
-        const models = await response.json();
-        console.log('✅ OpenAI API key válida, modelos disponíveis:', models.data?.length || 0);
-        
-        res.json({ 
-          success: true, 
-          message: `Chave OpenAI válida! ${models.data?.length || 0} modelos disponíveis.`
-        });
-      } else {
-        const errorData = await response.text();
-        console.log('❌ Erro da OpenAI:', response.status, errorData);
-        
-        let errorMessage = 'Chave da API OpenAI inválida';
-        
-        try {
-          const parsedError = JSON.parse(errorData);
-          if (parsedError.error?.message) {
-            if (parsedError.error.code === 'invalid_api_key') {
-              errorMessage = 'Chave da API inválida. Verifique se foi copiada corretamente.';
-            } else if (parsedError.error.code === 'insufficient_quota') {
-              errorMessage = 'Quota excedida. Verifique seu plano e detalhes de faturamento na OpenAI.';
-            } else {
-              errorMessage = parsedError.error.message;
-            }
-          }
-        } catch (e) {
-          // Keep default error message if parsing fails
-        }
-        
-        res.status(400).json({ 
-          success: false, 
-          error: errorMessage,
-          details: response.status === 401 ? 'Unauthorized - verifique a chave' : `HTTP ${response.status}`
-        });
-      }
-    } catch (error) {
-      console.error('❌ Erro ao testar OpenAI API:', error);
-      
-      let errorMessage = 'Falha ao conectar com a OpenAI API';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      res.status(500).json({ 
-        success: false, 
-        error: errorMessage
-      });
-    }
-  });
-
   return httpServer;
 }
