@@ -170,7 +170,7 @@ export default function ClientsPage() {
         title: "Sucesso!",
         description: "Usuário criado com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
       resetUserForm();
     },
     onError: (error: any) => {
@@ -190,7 +190,7 @@ export default function ClientsPage() {
         title: "Sucesso!",
         description: "Usuário atualizado com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
       resetUserForm();
     },
     onError: (error: any) => {
@@ -210,7 +210,7 @@ export default function ClientsPage() {
         title: "Usuário removido",
         description: "Usuário foi removido com sucesso",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
     },
     onError: () => {
       toast({
@@ -341,47 +341,34 @@ export default function ClientsPage() {
   };
 
   const onSubmitUser = (data: ClientUserFormData) => {
-    if (!selectedClientForUsers) return;
+    if (!editingClient) return;
 
     if (editingUser) {
       // Atualizar usuário existente
       const userData = data.password ? data : { name: data.name, email: data.email };
       updateClientUserMutation.mutate({
-        clientId: selectedClientForUsers.id,
+        clientId: editingClient.id,
         userId: editingUser.id,
         userData,
       });
     } else {
       // Criar novo usuário
       createClientUserMutation.mutate({
-        clientId: selectedClientForUsers.id,
+        clientId: editingClient.id,
         userData: data,
       });
     }
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!selectedClientForUsers) return;
+    if (!editingClient) return;
     
     if (window.confirm("Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.")) {
       deleteClientUserMutation.mutate({
-        clientId: selectedClientForUsers.id,
+        clientId: editingClient.id,
         userId,
       });
     }
-  };
-
-  const openClientUsers = (client: Client) => {
-    setSelectedClientForUsers(client);
-    setShowNewClientForm(false);
-    setShowNewUserForm(false);
-    setEditingUser(null);
-  };
-
-  const closeClientUsers = () => {
-    setSelectedClientForUsers(null);
-    setShowNewUserForm(false);
-    setEditingUser(null);
   };
 
   const filteredClients = clients.filter(client =>
