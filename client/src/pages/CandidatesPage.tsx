@@ -665,7 +665,6 @@ export default function CandidatesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome da Lista</TableHead>
-                      <TableHead>Descrição</TableHead>
                       {user?.role === 'master' && <TableHead>Cliente</TableHead>}
                       <TableHead>Candidatos</TableHead>
                       <TableHead>Data de Criação</TableHead>
@@ -682,9 +681,6 @@ export default function CandidatesPage() {
                       return (
                         <TableRow key={list.id}>
                           <TableCell className="font-medium">{list.name}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {list.description || "Sem descrição"}
-                          </TableCell>
                           {user?.role === 'master' && (
                             <TableCell>
                               {client ? client.companyName : "Cliente não encontrado"}
