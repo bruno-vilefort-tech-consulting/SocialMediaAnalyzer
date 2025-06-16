@@ -235,8 +235,8 @@ export default function CandidatesPage() {
       name: "", 
       email: "", 
       whatsapp: "",
-      listId: 0,
-      clientId: 0
+      listId: selectedListId || 0,
+      clientId: user?.role === 'client' ? user?.clientId || 0 : (selectedListId ? selectedList?.clientId || 0 : 0)
     }
   });
 
@@ -929,8 +929,8 @@ export default function CandidatesPage() {
                 )}
               />
 
-              {/* Seleção de cliente (master only) */}
-              {user?.role === 'master' && (
+              {/* Seleção de cliente (master only) - apenas quando não estiver dentro de lista específica */}
+              {user?.role === 'master' && !selectedListId && (
                 <FormField
                   control={candidateForm.control}
                   name="clientId"
@@ -957,36 +957,38 @@ export default function CandidatesPage() {
                 />
               )}
 
-              {/* Seleção de lista */}
-              <FormField
-                control={candidateForm.control}
-                name="listId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lista de Candidatos *</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a lista" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {candidateLists
-                          ?.filter(list => user?.role === 'master' ? 
-                            (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
-                            list.clientId === user?.clientId
-                          )
-                          .map((list) => (
-                            <SelectItem key={list.id} value={list.id.toString()}>
-                              {list.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Seleção de lista - apenas quando não estiver dentro de lista específica */}
+              {!selectedListId && (
+                <FormField
+                  control={candidateForm.control}
+                  name="listId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lista de Candidatos *</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a lista" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {candidateLists
+                            ?.filter(list => user?.role === 'master' ? 
+                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
+                              list.clientId === user?.clientId
+                            )
+                            .map((list) => (
+                              <SelectItem key={list.id} value={list.id.toString()}>
+                                {list.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Contexto visual quando dentro de lista específica */}
               {selectedListId && (
