@@ -149,6 +149,8 @@ export default function CandidatesPage() {
       }
       
       const data = await response.json();
+      console.log('🔍 Memberships recebidos do backend:', data);
+      console.log('🔍 Total de memberships no frontend:', data?.length || 0);
       return Array.isArray(data) ? data : [];
     }
   });
