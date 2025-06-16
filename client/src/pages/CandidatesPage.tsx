@@ -334,6 +334,20 @@ export default function CandidatesPage() {
   };
 
   const handleCreateCandidate = (data: CandidateFormData) => {
+    console.log('🔍 Dados recebidos no formulário:', data);
+    console.log('🔍 Lista selecionada:', selectedListId);
+    console.log('🔍 Listas disponíveis:', candidateLists);
+    
+    // Garantir que listId e clientId estão corretos quando dentro de uma lista específica
+    if (selectedListId && candidateLists) {
+      const selectedList = candidateLists.find(list => list.id === selectedListId);
+      if (selectedList) {
+        data.listId = selectedListId;
+        data.clientId = selectedList.clientId;
+        console.log('🔄 Corrigindo dados para lista específica:', data);
+      }
+    }
+
     if (editingCandidate) {
       updateCandidateMutation.mutate(data);
     } else {
