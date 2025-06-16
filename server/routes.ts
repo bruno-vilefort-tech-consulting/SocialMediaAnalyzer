@@ -3532,6 +3532,120 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Password reset routes
+  app.post("/api/password-reset/request", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+      
+      // Find user by email
+      const user = await storage.findUserByEmail(email);
+      if (!user) {
+        // Return success even if user not found (security best practice)
+        return res.json({ 
+          message: "Se o email estiver cadastrado, você receberá instruções de recuperação." 
+        });
+      }
+      
+      // Create reset token
+      const token = await storage.createPasswordResetToken(email, user.userType);
+      
+      // Send reset email
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
+      
+      await emailService.sendEmail({
+        to: email,
+        subject: "Recuperação de Senha - Sistema de Entrevista IA",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Recuperação de Senha</h2>
+            <p>Olá ${user.name},</p>
+            <p>Você solicitou a recuperação de senha para sua conta no Sistema de Entrevista IA.</p>
+            <p>Clique no link abaixo para criar uma nova senha:</p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">
+              Redefinir Senha
+            </a>
+            <p style="color: #666; font-size: 14px;">
+              Este link é válido por 1 hora. Se você não solicitou esta recuperação, ignore este email.
+            </p>
+          </div>
+        `,
+      });
+      
+      res.json({ 
+        message: "Se o email estiver cadastrado, você receberá instruções de recuperação." 
+      });
+    } catch (error) {
+      console.error("Erro ao solicitar reset de senha:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/password-reset/verify", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token é obrigatório" });
+      }
+      
+      const validation = await storage.validatePasswordResetToken(token);
+      if (!validation) {
+        return res.status(400).json({ message: "Token inválido ou expirado" });
+      }
+      
+      res.json({ 
+        valid: true,
+        email: validation.email,
+        userType: validation.userType 
+      });
+    } catch (error) {
+      console.error("Erro ao verificar token:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/password-reset/confirm", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token e nova senha são obrigatórios" });
+      }
+      
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres" });
+      }
+      
+      const validation = await storage.validatePasswordResetToken(token);
+      if (!validation) {
+        return res.status(400).json({ message: "Token inválido ou expirado" });
+      }
+      
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Update password
+      const success = await storage.updateUserPassword(
+        validation.email, 
+        validation.userType, 
+        hashedPassword
+      );
+      
+      if (!success) {
+        return res.status(500).json({ message: "Erro ao atualizar senha" });
+      }
+      
+      res.json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+      console.error("Erro ao confirmar reset de senha:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

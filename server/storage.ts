@@ -842,6 +842,126 @@ export class FirebaseStorage implements IStorage {
       currentUsage: Math.round((monthlyInterviews / (client?.monthlyLimit || 100)) * 100)
     };
   }
+
+  // Password reset operations
+  async createPasswordResetToken(email: string, userType: string): Promise<string> {
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    
+    const tokenData = {
+      email,
+      token,
+      userType,
+      expiresAt,
+      used: false,
+      createdAt: new Date(),
+    };
+    
+    await this.firestore.collection('passwordResetTokens').add(tokenData);
+    return token;
+  }
+
+  async validatePasswordResetToken(token: string): Promise<{ email: string; userType: string } | null> {
+    const snapshot = await this.firestore
+      .collection('passwordResetTokens')
+      .where('token', '==', token)
+      .where('used', '==', false)
+      .where('expiresAt', '>', new Date())
+      .get();
+    
+    if (snapshot.empty) return null;
+    
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    
+    // Mark token as used
+    await doc.ref.update({ used: true });
+    
+    return {
+      email: data.email,
+      userType: data.userType,
+    };
+  }
+
+  async updateUserPassword(email: string, userType: string, newPasswordHash: string): Promise<boolean> {
+    try {
+      if (userType === 'master') {
+        const snapshot = await this.firestore
+          .collection('users')
+          .where('email', '==', email)
+          .where('role', '==', 'master')
+          .get();
+        
+        if (!snapshot.empty) {
+          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          return true;
+        }
+      } else if (userType === 'client') {
+        const snapshot = await this.firestore
+          .collection('clients')
+          .where('email', '==', email)
+          .get();
+        
+        if (!snapshot.empty) {
+          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          return true;
+        }
+      } else if (userType === 'client_user') {
+        const snapshot = await this.firestore
+          .collection('clientUsers')
+          .where('email', '==', email)
+          .get();
+        
+        if (!snapshot.empty) {
+          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error updating password:', error);
+      return false;
+    }
+  }
+
+  async findUserByEmail(email: string): Promise<{ userType: string; name: string } | null> {
+    // Check master users
+    const masterSnapshot = await this.firestore
+      .collection('users')
+      .where('email', '==', email)
+      .where('role', '==', 'master')
+      .get();
+    
+    if (!masterSnapshot.empty) {
+      const data = masterSnapshot.docs[0].data();
+      return { userType: 'master', name: data.name };
+    }
+    
+    // Check clients
+    const clientSnapshot = await this.firestore
+      .collection('clients')
+      .where('email', '==', email)
+      .get();
+    
+    if (!clientSnapshot.empty) {
+      const data = clientSnapshot.docs[0].data();
+      return { userType: 'client', name: data.companyName };
+    }
+    
+    // Check client users
+    const userSnapshot = await this.firestore
+      .collection('clientUsers')
+      .where('email', '==', email)
+      .get();
+    
+    if (!userSnapshot.empty) {
+      const data = userSnapshot.docs[0].data();
+      return { userType: 'client_user', name: data.name };
+    }
+    
+    return null;
+  }
 }
 
 export const storage = new FirebaseStorage();

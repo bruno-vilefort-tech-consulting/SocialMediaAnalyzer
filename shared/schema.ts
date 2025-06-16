@@ -44,6 +44,17 @@ export const clientUsers = pgTable("client_users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Password reset tokens
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  userType: text("user_type").notNull(), // 'master', 'client', 'client_user'
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Vagas de emprego (presets para entrevistas)
 export const jobs = pgTable("vagas_preset", {
   id: text("id").primaryKey(),
