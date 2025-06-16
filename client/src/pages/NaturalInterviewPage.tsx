@@ -4,8 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Volume2, VolumeX, MessageCircle, CheckCircle, Loader2, Play, Square } from "lucide-react";
+import { Mic, MicOff, Volume2, VolumeX, MessageCircle, CheckCircle, Loader2, Play, Square, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAudioRecorder } from "@/hooks/useAudio";
 
 // Componente de ondas sonoras para quando a IA está falando
 const SpeakingWaves = () => {
@@ -108,6 +109,7 @@ interface Interview {
 export default function NaturalInterviewPage() {
   const { token } = useParams();
   const { toast } = useToast();
+  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying: isAudioPlaying, currentAudioUrl } = useAudioRecorder();
   
   // Estados principais
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
@@ -133,7 +135,6 @@ export default function NaturalInterviewPage() {
   const sessionRecorderRef = useRef<MediaRecorder | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Query para buscar dados da entrevista
@@ -248,22 +249,9 @@ export default function NaturalInterviewPage() {
       if (response.ok) {
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
         
-        currentAudioRef.current = audio;
-        
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          // Iniciar escuta após falar
-          if (!interviewCompleted) {
-            setTimeout(() => {
-              startListening();
-            }, 500); // Pequena pausa antes de começar a escutar
-          }
-        };
-        
-        await audio.play();
+        // Usar o hook para reproduzir áudio
+        playAudioHook(audioUrl);
         
         // Adicionar à conversa
         setConversationHistory(prev => [...prev, {
@@ -271,6 +259,21 @@ export default function NaturalInterviewPage() {
           message: text,
           timestamp: new Date()
         }]);
+        
+        // Aguardar o áudio terminar usando um listener
+        const checkAudioEnd = setInterval(() => {
+          if (!isAudioPlaying && currentAudioUrl === null) {
+            clearInterval(checkAudioEnd);
+            setIsSpeaking(false);
+            URL.revokeObjectURL(audioUrl);
+            // Iniciar escuta após falar
+            if (!interviewCompleted) {
+              setTimeout(() => {
+                startListening();
+              }, 500); // Pequena pausa antes de começar a escutar
+            }
+          }
+        }, 200);
         
       } else {
         throw new Error('Falha ao gerar áudio');
@@ -628,6 +631,42 @@ export default function NaturalInterviewPage() {
                     </div>
                     <p className="text-gray-600">Assistente falando...</p>
                     <SpeakingWaves />
+                    
+                    {/* Controles de áudio */}
+                    <div className="flex items-center justify-center space-x-2 mt-4">
+                      {isAudioPlaying ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={pauseAudio}
+                          className="flex items-center space-x-2 bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-700"
+                        >
+                          <Pause className="h-4 w-4" />
+                          <span>Pausar</span>
+                        </Button>
+                      ) : (
+                        currentAudioUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={resumeAudio}
+                            className="flex items-center space-x-2 bg-green-100 hover:bg-green-200 border-green-300 text-green-700"
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>Continuar</span>
+                          </Button>
+                        )
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={stopAudio}
+                        className="flex items-center space-x-2 bg-red-100 hover:bg-red-200 border-red-300 text-red-700"
+                      >
+                        <Square className="h-4 w-4" />
+                        <span>Parar</span>
+                      </Button>
+                    </div>
                   </div>
                 )}
                 
