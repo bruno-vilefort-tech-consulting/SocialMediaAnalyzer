@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 SISTEMA APICONFIGS AUTOMÁTICO IMPLEMENTADO - Configurações padrão para novos clientes
+  - **Configurações criadas para clientes existentes**: Grupo Maximuns (1749849987543) e Universidade dos Campeões (1749852235275)
+  - **Sistema automático implementado**: Novos clientes têm apiConfig criada automaticamente no cadastro
+  - **Configuração padrão**: Voz "nova" (brasileira) e WhatsApp desconectado para novos clientes
+  - **Método createDefaultClientApiConfig()**: Adicionado ao storage para criação automática
+  - **Endpoint modificado**: POST /api/clients agora cria configuração API automaticamente
+  - **Validação completa**: Teste confirma que todos os clientes têm suas configurações funcionais
+
 - June 16, 2025: 🔧 SISTEMA OPENAI TOTALMENTE CORRIGIDO - Arquitetura unificada operacional conforme solicitado
   - **Todas referências OpenAI corrigidas**: 5 endpoints sistemáticamente atualizados para usar getMasterSettings() global
   - **Estrutura Firebase limpa**: Configurações duplicadas removidas - apenas 1 masterSettings e 1 apiConfig válida

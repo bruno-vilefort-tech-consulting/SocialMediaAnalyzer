@@ -37,7 +37,7 @@ async function testarCriacaoAutomatica() {
       const apiConfigQuery = query(
         collection(db, "apiConfigs"),
         where("entityType", "==", "client"),
-        where("entityId", "==", cliente.id)
+        where("entityId", "==", String(cliente.id))
       );
       
       const apiConfigSnapshot = await getDocs(apiConfigQuery);
