@@ -57,7 +57,14 @@ export default function ReportsPage() {
   ) : [];
 
   const validInterviews = Array.isArray(interviews) ? interviews.filter((interview: Interview) => 
-    interview && interview.candidateName && interview.candidatePhone
+    interview && 
+    interview.candidateName && 
+    interview.candidateName !== 'Candidato não identificado' && 
+    interview.candidateName !== 'undefined' &&
+    interview.candidatePhone && 
+    interview.candidatePhone !== 'undefined' &&
+    interview.jobName &&
+    interview.jobName !== 'Vaga não identificada'
   ) : [];
 
   const getSelectionStats = (selectionId: number) => {
@@ -73,15 +80,18 @@ export default function ReportsPage() {
   };
 
   const getSelectionCandidates = (selectionId: number) => {
-    // Filtrar apenas entrevistas da seleção específica e do Daniel Braga/Moreira
+    // Filtrar todas as entrevistas da seleção específica
     return validInterviews.filter(interview => {
       const isCorrectSelection = interview.selectionId === selectionId;
-      const isDanielCandidate = interview.candidateName && 
-        (interview.candidateName.includes('Daniel') || 
-         interview.candidatePhone === '11984316526' ||
-         interview.candidatePhone === '5511984316526');
       
-      return isCorrectSelection && isDanielCandidate;
+      // Aceitar candidatos com dados válidos
+      const hasValidData = interview.candidateName && 
+                          interview.candidateName !== 'Candidato não identificado' && 
+                          interview.candidateName !== 'undefined' &&
+                          interview.candidatePhone &&
+                          interview.candidatePhone !== 'undefined';
+      
+      return isCorrectSelection && hasValidData;
     });
   };
 
