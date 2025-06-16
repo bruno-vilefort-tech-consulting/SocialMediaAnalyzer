@@ -16,9 +16,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { Client, InsertClient } from "@shared/schema";
+import type { Client, InsertClient, ClientUser, InsertClientUser } from "@shared/schema";
 
-// Schema de validação
+// Schema de validação para clientes
 const clientFormSchema = z.object({
   companyName: z.string().min(1, "Nome da empresa é obrigatório"),
   cnpj: z.string().min(14, "CNPJ deve ter pelo menos 14 caracteres"),
@@ -38,12 +38,23 @@ const clientFormSchema = z.object({
   responsibleEmail: z.string().email("Email do responsável inválido"),
 });
 
+// Schema de validação para usuários dos clientes
+const clientUserFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+});
+
 type ClientFormData = z.infer<typeof clientFormSchema>;
+type ClientUserFormData = z.infer<typeof clientUserFormSchema>;
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [selectedClientForUsers, setSelectedClientForUsers] = useState<Client | null>(null);
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<ClientUser | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -68,6 +79,22 @@ export default function ClientsPage() {
 
   const { data: clients = [], isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+  });
+
+  // Query para buscar usuários de um cliente específico
+  const { data: clientUsers = [], isLoading: isLoadingUsers } = useQuery<ClientUser[]>({
+    queryKey: ["/api/clients", selectedClientForUsers?.id, "users"],
+    enabled: !!selectedClientForUsers,
+  });
+
+  // Form para usuário do cliente
+  const clientUserForm = useForm<ClientUserFormData>({
+    resolver: zodResolver(clientUserFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
   });
 
   // Mutation para criar cliente
