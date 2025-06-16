@@ -2529,11 +2529,11 @@ Responda de forma natural aguardando a resposta do candidato.`;
       const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Authorization": `Bearer ${masterSettings.openaiApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: config.gptModel || "gpt-4o", // GPT-4o é muito melhor para seguir instruções contextuais
+          model: masterSettings.gptModel || "gpt-4o", // GPT-4o é muito melhor para seguir instruções contextuais
           messages,
           max_tokens: 300,
           temperature: 0.7,

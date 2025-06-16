@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 SISTEMA OPENAI TOTALMENTE CORRIGIDO - Arquitetura unificada operacional conforme solicitado
+  - **Todas referências OpenAI corrigidas**: 5 endpoints sistemáticamente atualizados para usar getMasterSettings() global
+  - **Estrutura Firebase limpa**: Configurações duplicadas removidas - apenas 1 masterSettings e 1 apiConfig válida
+  - **Endpoints funcionais**: /api/config, /api/preview-tts, /api/natural-conversation usando configuração global
+  - **Preview TTS validado**: Sistema busca chave OpenAI da configuração compartilhada corretamente
+  - **Limpeza automática**: Script detecta e remove configurações malformadas (entityType/entityId undefined)
+  - **Sistema unificado**: OpenAI compartilhado globalmente + TTS/WhatsApp específicos por usuário
+  - **Root cause identificado**: Sistema cria configurações duplicadas ao reinicializar - necessita investigação
+
 - June 16, 2025: 🏗️ REESTRUTURAÇÃO ARQUITETURAL COMPLETA - Sistema separado por usuário conforme solicitado
   - **Nova arquitetura implementada**: masterSettings agora é global/compartilhada entre todos masters
   - **API Configs reestruturadas**: Sistema específico por entidade (master/cliente) para TTS e WhatsApp QR
