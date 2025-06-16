@@ -1167,8 +1167,20 @@ Você gostaria de iniciar a entrevista?`;
   }
 
   public async reconnect() {
+    console.log('🔄 Iniciando processo de reconexão...');
     await this.disconnect();
-    setTimeout(() => this.initializeConnection(), 2000);
+    
+    // Limpa o estado atual
+    this.config.isConnected = false;
+    this.config.qrCode = null;
+    this.config.phoneNumber = null;
+    this.config.lastConnection = null;
+    
+    // Força uma nova inicialização
+    setTimeout(() => {
+      console.log('🔗 Reinicializando conexão WhatsApp para gerar novo QR...');
+      this.initializeConnection();
+    }, 3000);
   }
 }
 

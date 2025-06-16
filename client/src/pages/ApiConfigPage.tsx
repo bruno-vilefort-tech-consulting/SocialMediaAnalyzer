@@ -55,6 +55,8 @@ export default function ApiConfigPage() {
   // Status WhatsApp QR
   const { data: whatsappStatus, isLoading: whatsappLoading } = useQuery<WhatsAppStatus>({
     queryKey: ["/api/whatsapp-qr/status"],
+    refetchInterval: 2000, // Atualiza a cada 2 segundos para capturar QR Code
+    refetchOnWindowFocus: true,
   });
 
   // Estados para configurações master
@@ -139,14 +141,19 @@ export default function ApiConfigPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
       toast({
-        title: "Reconnectando...",
-        description: "Aguarde um novo QR Code",
+        title: "Gerando QR Code...",
+        description: "Aguarde alguns segundos para o QR Code aparecer",
       });
+      
+      // Atualiza status após um delay para permitir geração do QR
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+      }, 3000);
     },
     onError: () => {
       toast({
-        title: "Erro",
-        description: "Falha ao reconectar WhatsApp",
+        title: "Erro ao conectar",
+        description: "Falha ao inicializar conexão WhatsApp",
         variant: "destructive",
       });
     },
