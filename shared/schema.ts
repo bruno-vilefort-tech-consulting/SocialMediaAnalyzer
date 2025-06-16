@@ -236,5 +236,7 @@ export type ApiConfig = typeof apiConfigs.$inferSelect;
 export type InsertApiConfig = z.infer<typeof insertApiConfigSchema>;
 export type ClientVoiceSetting = typeof clientVoiceSettings.$inferSelect;
 export type InsertClientVoiceSetting = z.infer<typeof insertClientVoiceSettingSchema>;
+export type MasterSettings = typeof masterSettings.$inferSelect;
+export type InsertMasterSettings = z.infer<typeof insertMasterSettingsSchema>;
 export type MessageLog = typeof messageLogs.$inferSelect;
 export type InsertMessageLog = z.infer<typeof insertMessageLogSchema>;

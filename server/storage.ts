@@ -6,13 +6,9 @@ import {
   type Selection, type InsertSelection, type Interview, type InsertInterview, 
   type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
   type ClientVoiceSetting, type InsertClientVoiceSetting,
-  type MessageLog, type InsertMessageLog,
-  masterSettings, type InsertMasterSettingsSchema
+  type MasterSettings, type InsertMasterSettings,
+  type MessageLog, type InsertMessageLog
 } from "@shared/schema";
-
-// Definindo o tipo MasterSettings baseado na tabela
-type MasterSettings = typeof masterSettings.$inferSelect;
-type InsertMasterSettings = typeof masterSettings.$inferInsert;
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
 import bcrypt from "bcrypt";
