@@ -545,12 +545,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       if (req.user!.role === 'master') {
-        // Master vê todas as listas de todos os clientes
-        const lists = await storage.getAllCandidateLists();
-        console.log('🔍 Master buscando todas as listas:', lists.length);
-        res.json(lists);
+        // Master pode ver listas de todos os clientes OU filtrar por cliente específico
+        const clientIdFilter = req.query.clientId as string;
+        if (clientIdFilter) {
+          const lists = await storage.getCandidateListsByClientId(parseInt(clientIdFilter));
+          console.log('🔍 Master buscando listas do cliente:', clientIdFilter, '- encontradas:', lists.length);
+          res.json(lists);
+        } else {
+          const lists = await storage.getAllCandidateLists();
+          console.log('🔍 Master buscando todas as listas:', lists.length);
+          res.json(lists);
+        }
       } else {
-        // Cliente vê apenas suas próprias listas
+        // Cliente vê APENAS suas próprias listas - ISOLAMENTO TOTAL
         const lists = await storage.getCandidateListsByClientId(req.user!.clientId!);
         console.log('🔍 Cliente buscando listas do clientId:', req.user!.clientId, '- encontradas:', lists.length);
         res.json(lists);
@@ -628,13 +635,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Candidates routes
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const listId = req.query.listId as string;
-      if (listId) {
-        const candidates = await storage.getCandidatesByListId(parseInt(listId));
-        res.json(candidates);
+      const clientIdFilter = req.query.clientId as string;
+      
+      if (req.user!.role === 'master') {
+        // Master pode ver candidatos de todos os clientes OU filtrar por cliente específico
+        if (clientIdFilter) {
+          const candidates = await storage.getCandidatesByClientId(parseInt(clientIdFilter));
+          res.json(candidates);
+        } else {
+          // Se não especificar cliente, retornar vazio para evitar confusão
+          res.json([]);
+        }
       } else {
-        const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
-        const candidates = await storage.getCandidatesByClientId(clientId);
+        // Cliente só vê seus próprios candidatos - ISOLAMENTO TOTAL
+        const candidates = await storage.getCandidatesByClientId(req.user!.clientId!);
         res.json(candidates);
       }
     } catch (error) {
@@ -857,10 +871,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let selections = [];
       
       if (req.user!.role === 'master') {
-        // Master pode ver todas as seleções ou filtrar por client
-        const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : null;
-        if (clientId) {
-          selections = await storage.getSelectionsByClientId(clientId);
+        // Master pode ver seleções de todos os clientes OU filtrar por cliente específico
+        const clientIdFilter = req.query.clientId ? parseInt(req.query.clientId as string) : null;
+        if (clientIdFilter) {
+          selections = await storage.getSelectionsByClientId(clientIdFilter);
+          console.log(`Master buscando seleções do cliente ${clientIdFilter}: ${selections.length} encontradas`);
         } else {
           // Para master sem filtro, buscar todas as seleções de todos os clientes
           const clients = await storage.getClients();
@@ -868,13 +883,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const clientSelections = await storage.getSelectionsByClientId(client.id);
             selections.push(...clientSelections);
           }
+          console.log(`Master buscando todas as seleções: ${selections.length} encontradas`);
         }
       } else {
-        // Cliente só vê suas próprias seleções
+        // Cliente só vê suas próprias seleções - ISOLAMENTO TOTAL
         selections = await storage.getSelectionsByClientId(req.user!.clientId!);
+        console.log(`Cliente ${req.user!.email} buscando suas seleções: ${selections.length} encontradas`);
       }
       
-      console.log(`Retornando ${selections.length} seleções para usuário ${req.user!.email}`);
       res.json(selections);
     } catch (error) {
       console.error('Erro ao buscar selections:', error);
@@ -1682,7 +1698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get interview responses for reports page
+  // Get interview responses for reports page with client isolation
   app.get("/api/interview-responses", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id})`);
@@ -1692,26 +1708,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let allInterviews: any[] = [];
       
-      // Buscar TODAS as entrevistas disponíveis
+      // Buscar entrevistas com isolamento por cliente
       const allInterviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
       console.log(`📋 Total de entrevistas encontradas: ${allInterviewsSnapshot.docs.length}`);
       
-      // Processar todas as entrevistas
+      // Processar entrevistas com filtro por cliente
       for (const interviewDoc of allInterviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
         
-        // Buscar candidato da entrevista
+        // Buscar candidato da entrevista para verificar o clientId
         let candidateData = null;
         try {
           if (interviewData.candidateId) {
             const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', interviewData.candidateId));
             if (candidateDoc.exists()) {
               candidateData = candidateDoc.data();
+              
+              // ISOLAMENTO POR CLIENTE: Pular se não for do cliente correto
+              if (req.user?.role === 'client' && candidateData.clientId !== req.user.clientId) {
+                continue; // Pular esta entrevista
+              }
             }
           }
         } catch (err) {
           console.log(`⚠️ Erro ao buscar candidato ${interviewData.candidateId}:`, err);
+          continue; // Pular em caso de erro
         }
+        
+        // Se não achou candidato ou não é do cliente, pular
+        if (!candidateData) continue;
         
         // Buscar respostas da entrevista
         const responsesQuery = query(
@@ -1737,22 +1762,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectionId: interviewData.selectionId || 'N/A',
           selectionName: `Entrevista ${interviewDoc.id}`,
           candidateId: interviewData.candidateId,
-          candidateName: candidateData?.name || interviewData.candidateName || 'Candidato desconhecido',
-          candidatePhone: candidateData?.whatsapp || candidateData?.phone || interviewData.phone || 'N/A',
-          candidateEmail: candidateData?.email || 'N/A',
+          candidateName: candidateData.name || 'Candidato desconhecido',
+          candidatePhone: candidateData.whatsapp || candidateData.phone || 'N/A',
+          candidateEmail: candidateData.email || 'N/A',
           jobName: interviewData.jobName || 'Vaga não identificada',
           status: interviewData.status || 'completed',
           startTime: interviewData.startTime || interviewData.createdAt || null,
           endTime: interviewData.endTime || interviewData.completedAt || null,
           responses: responses,
           totalQuestions: responses.length,
-          answeredQuestions: responses.length
+          answeredQuestions: responses.length,
+          clientId: candidateData.clientId // Adicionar para auditoria
         });
         
-        console.log(`✅ Entrevista processada: ${candidateData?.name || 'Candidato desconhecido'} (${responses.length} respostas)`);
+        console.log(`✅ Entrevista processada: ${candidateData.name} (Cliente: ${candidateData.clientId}) - ${responses.length} respostas`);
       }
       
-      console.log(`✅ Total de entrevistas processadas: ${allInterviews.length}`);
+      console.log(`✅ Total de entrevistas processadas para usuário ${req.user?.role}: ${allInterviews.length}`);
       res.json(allInterviews);
       
     } catch (error) {

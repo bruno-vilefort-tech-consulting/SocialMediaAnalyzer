@@ -85,7 +85,41 @@ export default function CandidatesPage() {
 
 
   const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
-    queryKey: ['/api/candidate-lists']
+    queryKey: user?.role === 'master' && selectedClientFilter !== 'all' 
+      ? ['/api/candidate-lists', { clientId: selectedClientFilter }]
+      : ['/api/candidate-lists'],
+    queryFn: async () => {
+      let params = '';
+      
+      if (user?.role === 'master' && selectedClientFilter !== 'all') {
+        params = `?clientId=${selectedClientFilter}`;
+      }
+      
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/candidate-lists${params}`, {
+        headers,
+        credentials: "include"
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_data");
+          window.location.href = "/login";
+          return [];
+        }
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    }
   });
 
   // Query para buscar os relacionamentos candidato-lista para contagem
@@ -119,17 +153,31 @@ export default function CandidatesPage() {
     }
   });
 
-  // Query para buscar candidatos baseado no filtro de cliente selecionado
+  // Query para buscar candidatos com isolamento total por cliente
   const candidatesQueryKey = user?.role === 'master' && selectedClientFilter !== 'all'
     ? ['/api/candidates', { clientId: selectedClientFilter }]
-    : ['/api/candidates'];
+    : user?.role === 'client' 
+      ? ['/api/candidates', { clientId: user.clientId }]
+      : ['/api/candidates', { clientId: 'none' }]; // Master sem filtro = vazio
 
   const { data: allCandidates = [], isLoading: candidatesLoading } = useQuery<Candidate[]>({
     queryKey: candidatesQueryKey,
     queryFn: async () => {
-      const params = user?.role === 'master' && selectedClientFilter !== 'all'
-        ? `?clientId=${selectedClientFilter}`
-        : '';
+      let params = '';
+      
+      if (user?.role === 'master') {
+        // Master deve especificar um cliente para ver candidatos
+        if (selectedClientFilter !== 'all') {
+          params = `?clientId=${selectedClientFilter}`;
+        } else {
+          // Se master não selecionou cliente, retornar vazio
+          return [];
+        }
+      } else if (user?.role === 'client') {
+        // Cliente automaticamente filtra por seu próprio ID
+        params = `?clientId=${user.clientId}`;
+      }
+      
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
       
@@ -488,10 +536,9 @@ export default function CandidatesPage() {
                 <div className="flex items-center gap-2">
                   <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
                     <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Filtrar por cliente" />
+                      <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os clientes</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.companyName}
@@ -500,8 +547,13 @@ export default function CandidatesPage() {
                     </SelectContent>
                   </Select>
                   <Badge variant="secondary">
-                    {filteredCandidateLists.length} listas
+                    {selectedClientFilter === 'all' ? '0' : filteredCandidateLists.length} listas
                   </Badge>
+                  {selectedClientFilter === 'all' && (
+                    <Badge variant="outline" className="text-orange-600 border-orange-200">
+                      Selecione um cliente para ver dados
+                    </Badge>
+                  )}
                 </div>
               )}
               <Button onClick={() => setShowCreateForm(true)}>
