@@ -633,8 +633,8 @@ export default function CandidatesPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredCandidateLists.map((list) => {
-                      // Contar candidatos nesta lista via relacionamentos
-                      const candidatesCount = getCandidateCountForList(list.id);
+                      // Contar candidatos nesta lista via relacionamentos - corrigido
+                      const candidatesCount = candidateListMemberships.filter(m => m.listId === list.id).length;
                       const client = clients.find(c => c.id === list.clientId);
                       
                       return (
