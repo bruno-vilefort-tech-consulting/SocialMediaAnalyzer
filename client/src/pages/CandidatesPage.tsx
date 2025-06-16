@@ -455,11 +455,17 @@ export default function CandidatesPage() {
 
   const handleEditCandidate = (candidate: Candidate) => {
     setEditingCandidate(candidate);
-    candidateForm.reset({
+    
+    // Preencher todos os campos necessários para edição
+    const formData = {
       name: candidate.name,
       email: candidate.email,
-      whatsapp: candidate.whatsapp
-    });
+      whatsapp: candidate.whatsapp,
+      listId: selectedListId || 0, // Usar lista atual se disponível
+      clientId: candidate.clientId || (user?.role === 'client' ? user.clientId : 0)
+    };
+    
+    candidateForm.reset(formData);
     setShowCandidateForm(true);
   };
 

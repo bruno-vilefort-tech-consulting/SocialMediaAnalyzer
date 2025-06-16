@@ -702,10 +702,35 @@ export class FirebaseStorage implements IStorage {
   }
 
   async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
-    const docRef = doc(firebaseDb, "candidates", String(id));
-    await updateDoc(docRef, candidateUpdate);
-    const updatedDoc = await getDoc(docRef);
-    return { id, ...updatedDoc.data() } as Candidate;
+    try {
+      console.log(`🔧 Atualizando candidato ${id} com dados:`, candidateUpdate);
+      
+      const docRef = doc(firebaseDb, "candidates", String(id));
+      
+      // Verificar se o candidato existe
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        throw new Error(`Candidato com ID ${id} não encontrado`);
+      }
+      
+      // Atualizar com timestamp
+      const updateData = {
+        ...candidateUpdate,
+        updatedAt: new Date()
+      };
+      
+      await updateDoc(docRef, updateData);
+      
+      // Buscar dados atualizados
+      const updatedDoc = await getDoc(docRef);
+      const candidate = { id, ...updatedDoc.data() } as Candidate;
+      
+      console.log(`✅ Candidato ${id} atualizado com sucesso:`, candidate);
+      return candidate;
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar candidato ${id}:`, error);
+      throw new Error(`Falha ao atualizar candidato: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async deleteCandidate(id: number): Promise<void> {
