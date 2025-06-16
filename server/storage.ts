@@ -863,17 +863,18 @@ export class FirebaseStorage implements IStorage {
       createdAt: new Date(),
     };
     
-    await this.firestore.collection('passwordResetTokens').add(tokenData);
+    await addDoc(collection(firebaseDb, 'passwordResetTokens'), tokenData);
     return token;
   }
 
   async validatePasswordResetToken(token: string): Promise<{ email: string; userType: string } | null> {
-    const snapshot = await this.firestore
-      .collection('passwordResetTokens')
-      .where('token', '==', token)
-      .where('used', '==', false)
-      .where('expiresAt', '>', new Date())
-      .get();
+    const q = query(
+      collection(firebaseDb, 'passwordResetTokens'),
+      where('token', '==', token),
+      where('used', '==', false),
+      where('expiresAt', '>', new Date())
+    );
+    const snapshot = await getDocs(q);
     
     if (snapshot.empty) return null;
     
@@ -892,31 +893,34 @@ export class FirebaseStorage implements IStorage {
   async updateUserPassword(email: string, userType: string, newPasswordHash: string): Promise<boolean> {
     try {
       if (userType === 'master') {
-        const snapshot = await this.firestore
-          .collection('users')
-          .where('email', '==', email)
-          .where('role', '==', 'master')
-          .get();
+        const q = query(
+          collection(firebaseDb, 'users'),
+          where('email', '==', email),
+          where('role', '==', 'master')
+        );
+        const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
-          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          await updateDoc(snapshot.docs[0].ref, { password: newPasswordHash });
           return true;
         }
       } else if (userType === 'client') {
-        const snapshot = await this.firestore
-          .collection('clients')
-          .where('email', '==', email)
-          .get();
+        const q = query(
+          collection(firebaseDb, 'clients'),
+          where('email', '==', email)
+        );
+        const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
-          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          await updateDoc(snapshot.docs[0].ref, { password: newPasswordHash });
           return true;
         }
       } else if (userType === 'client_user') {
-        const snapshot = await this.firestore
-          .collection('clientUsers')
-          .where('email', '==', email)
-          .get();
+        const q = query(
+          collection(firebaseDb, 'clientUsers'),
+          where('email', '==', email)
+        );
+        const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
           await snapshot.docs[0].ref.update({ password: newPasswordHash });
@@ -933,7 +937,7 @@ export class FirebaseStorage implements IStorage {
 
   async findUserByEmail(email: string): Promise<{ userType: string; name: string } | null> {
     // Check master users
-    const masterSnapshot = await this.firestore
+    const masterSnapshot = await firebaseDb
       .collection('users')
       .where('email', '==', email)
       .where('role', '==', 'master')
@@ -945,7 +949,7 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check clients
-    const clientSnapshot = await this.firestore
+    const clientSnapshot = await firebaseDb
       .collection('clients')
       .where('email', '==', email)
       .get();
@@ -956,7 +960,7 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check client users
-    const userSnapshot = await this.firestore
+    const userSnapshot = await firebaseDb
       .collection('clientUsers')
       .where('email', '==', email)
       .get();
