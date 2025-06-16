@@ -90,7 +90,7 @@ export default function ClientsPage() {
   });
 
   // Debug: Log dos dados dos usuários
-  React.useEffect(() => {
+  useEffect(() => {
     if (editingClient && clientUsers.length > 0) {
       console.log('🔍 DEBUG - Usuários retornados para cliente ID:', editingClient.id);
       console.log('📋 Dados dos usuários:', clientUsers);
