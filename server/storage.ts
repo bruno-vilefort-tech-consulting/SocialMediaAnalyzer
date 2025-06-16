@@ -603,11 +603,15 @@ export class FirebaseStorage implements IStorage {
   }
 
   async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
+    console.log('🔍 createCandidate chamado com dados:', insertCandidate);
+    
     // Generate unique candidate ID
     const candidateId = Date.now() + Math.floor(Math.random() * 1000);
     
     // Extract listId and clientId from insertCandidate
     const { listId, clientId, ...candidateFields } = insertCandidate;
+    
+    console.log('📋 Campos extraídos - listId:', listId, 'clientId:', clientId, 'fields:', candidateFields);
     
     const candidateData = {
       ...candidateFields,
@@ -615,6 +619,7 @@ export class FirebaseStorage implements IStorage {
       createdAt: new Date()
     };
     
+    console.log('💾 Salvando candidato:', candidateData);
     // Create candidate
     await setDoc(doc(firebaseDb, "candidates", String(candidateId)), candidateData);
     
@@ -627,7 +632,11 @@ export class FirebaseStorage implements IStorage {
         clientId,
         createdAt: new Date()
       };
+      console.log('🔗 Criando membership:', membershipData, 'com ID:', membershipId);
       await setDoc(doc(firebaseDb, "candidate-list-memberships", membershipId), membershipData);
+      console.log('✅ Membership criada com sucesso');
+    } else {
+      console.log('❌ Membership não criada - listId:', listId, 'clientId:', clientId);
     }
     
     return candidateData as Candidate;
