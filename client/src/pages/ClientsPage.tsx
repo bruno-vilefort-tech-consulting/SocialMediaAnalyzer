@@ -790,31 +790,32 @@ export default function ClientsPage() {
                         </div>
                       </div>
                       
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => openClientUsers(client)}
-                          title="Gerenciar usuários"
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
-                          <Users className="w-4 h-4" />
+                          <Users className="w-4 h-4 mr-1" />
+                          Usuários
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => startEditClient(client)}
-                          title="Editar cliente"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4 mr-1" />
+                          Editar
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => handleDeleteClient(client.id)}
-                          className="text-red-600 hover:text-red-700"
-                          title="Remover cliente"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Excluir
                         </Button>
                       </div>
                     </div>
