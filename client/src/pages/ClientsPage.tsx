@@ -216,7 +216,12 @@ export default function ClientsPage() {
         title: "Usuário removido",
         description: "Usuário foi removido com sucesso",
       });
+      // Apenas atualizar a lista de usuários, sem resetar o formulário
       queryClient.invalidateQueries({ queryKey: [`/api/clients/${editingClient?.id}/users`] });
+      // Se estava editando um usuário, apenas limpar o formulário de usuário
+      if (editingUser) {
+        resetUserForm();
+      }
     },
     onError: () => {
       toast({
