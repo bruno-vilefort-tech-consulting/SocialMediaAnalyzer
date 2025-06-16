@@ -87,6 +87,37 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidate-lists']
   });
 
+  // Query para buscar os relacionamentos candidato-lista para contagem
+  const { data: candidateListMemberships = [] } = useQuery<any[]>({
+    queryKey: ['/api/candidate-list-memberships'],
+    queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/candidate-list-memberships', {
+        headers,
+        credentials: "include"
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_data");
+          window.location.href = "/login";
+          return [];
+        }
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    }
+  });
+
   // Query para buscar candidatos baseado no filtro de cliente selecionado
   const candidatesQueryKey = user?.role === 'master' && selectedClientFilter !== 'all'
     ? ['/api/candidates', { clientId: selectedClientFilter }]
@@ -496,8 +527,10 @@ export default function CandidatesPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredCandidateLists.map((list) => {
-                      // Com a nova arquitetura muitos-para-muitos, contamos via memberships
-                      const candidatesCount = 0; // TODO: implementar contagem via memberships
+                      // Contar candidatos nesta lista via relacionamentos
+                      const candidatesCount = candidateListMemberships.filter(
+                        membership => membership.candidateListId === list.id
+                      ).length;
                       const client = clients.find(c => c.id === list.clientId);
                       
                       return (
