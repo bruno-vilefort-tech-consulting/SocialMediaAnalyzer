@@ -25,23 +25,26 @@ export class WhatsAppQRService {
   private baileys: any = null;
 
   constructor() {
-    // Inicializar de forma assíncrona e não bloqueante
-    this.safeInitialize().catch(error => {
-      console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
-      // Garantir que o sistema funcione mesmo sem WhatsApp
-      this.config.isConnected = false;
-      this.config.qrCode = null;
-      this.config.phoneNumber = null;
+    // Inicializar de forma completamente assíncrona em background
+    // Não deve bloquear a inicialização do servidor
+    setImmediate(() => {
+      this.safeInitialize().catch(error => {
+        console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
+        // Garantir que o sistema funcione mesmo sem WhatsApp
+        this.config.isConnected = false;
+        this.config.qrCode = null;
+        this.config.phoneNumber = null;
+      });
     });
   }
 
   private async safeInitialize() {
     try {
-      // Timeout para inicialização completa - 30 segundos máximo
+      // Timeout mais curto para não atrasar o servidor - 10 segundos máximo
       await Promise.race([
         this.initializeWithTimeout(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout na inicialização WhatsApp')), 30000)
+          setTimeout(() => reject(new Error('Timeout na inicialização WhatsApp')), 10000)
         )
       ]);
       
@@ -70,11 +73,11 @@ export class WhatsAppQRService {
         console.log('⚠️ Erro ao carregar dados do banco - continuando sem dados salvos');
       }
       
-      // Timeout menor para conexão inicial
+      // Timeout muito curto para conexão inicial - 5 segundos
       await Promise.race([
         this.initializeConnection(),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout na conexão WhatsApp')), 15000)
+          setTimeout(() => reject(new Error('Timeout na conexão WhatsApp')), 5000)
         )
       ]);
       
@@ -155,9 +158,9 @@ export class WhatsAppQRService {
       this.socket = this.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        connectTimeoutMs: 30000, // 30 segundos timeout
-        defaultQueryTimeoutMs: 15000, // 15 segundos para queries
-        keepAliveIntervalMs: 60000, // Keep alive a cada 60 segundos
+        connectTimeoutMs: 10000, // 10 segundos timeout
+        defaultQueryTimeoutMs: 5000, // 5 segundos para queries
+        keepAliveIntervalMs: 30000, // Keep alive a cada 30 segundos
         retryRequestDelayMs: 250,
         maxMsgRetryCount: 3,
       });
