@@ -161,10 +161,76 @@ export default function ClientsPage() {
     },
   });
 
+  // Mutations para usuários dos clientes
+  const createClientUserMutation = useMutation({
+    mutationFn: ({ clientId, userData }: { clientId: number; userData: ClientUserFormData }) =>
+      apiRequest(`/api/clients/${clientId}/users`, "POST", userData),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso!",
+        description: "Usuário criado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+      resetUserForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao criar usuário.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateClientUserMutation = useMutation({
+    mutationFn: ({ clientId, userId, userData }: { clientId: number; userId: number; userData: Partial<ClientUserFormData> }) =>
+      apiRequest(`/api/clients/${clientId}/users/${userId}`, "PATCH", userData),
+    onSuccess: () => {
+      toast({
+        title: "Sucesso!",
+        description: "Usuário atualizado com sucesso.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+      resetUserForm();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao atualizar usuário.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteClientUserMutation = useMutation({
+    mutationFn: ({ clientId, userId }: { clientId: number; userId: number }) =>
+      apiRequest(`/api/clients/${clientId}/users/${userId}`, "DELETE"),
+    onSuccess: () => {
+      toast({
+        title: "Usuário removido",
+        description: "Usuário foi removido com sucesso",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", selectedClientForUsers?.id, "users"] });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao remover usuário",
+        description: "Ocorreu um erro ao tentar remover o usuário",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setShowNewClientForm(false);
     setEditingClient(null);
     clientForm.reset();
+  };
+
+  const resetUserForm = () => {
+    setShowNewUserForm(false);
+    setEditingUser(null);
+    clientUserForm.reset();
   };
 
   const startNewClient = () => {
@@ -251,6 +317,71 @@ export default function ClientsPage() {
         });
       }
     }
+  };
+
+  // Handlers para usuários dos clientes
+  const startNewUser = () => {
+    setShowNewUserForm(true);
+    setEditingUser(null);
+    clientUserForm.reset({
+      name: "",
+      email: "",
+      password: "",
+    });
+  };
+
+  const startEditUser = (user: ClientUser) => {
+    setEditingUser(user);
+    setShowNewUserForm(true);
+    clientUserForm.reset({
+      name: user.name,
+      email: user.email,
+      password: "", // Não mostrar senha atual
+    });
+  };
+
+  const onSubmitUser = (data: ClientUserFormData) => {
+    if (!selectedClientForUsers) return;
+
+    if (editingUser) {
+      // Atualizar usuário existente
+      const userData = data.password ? data : { name: data.name, email: data.email };
+      updateClientUserMutation.mutate({
+        clientId: selectedClientForUsers.id,
+        userId: editingUser.id,
+        userData,
+      });
+    } else {
+      // Criar novo usuário
+      createClientUserMutation.mutate({
+        clientId: selectedClientForUsers.id,
+        userData: data,
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!selectedClientForUsers) return;
+    
+    if (window.confirm("Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.")) {
+      deleteClientUserMutation.mutate({
+        clientId: selectedClientForUsers.id,
+        userId,
+      });
+    }
+  };
+
+  const openClientUsers = (client: Client) => {
+    setSelectedClientForUsers(client);
+    setShowNewClientForm(false);
+    setShowNewUserForm(false);
+    setEditingUser(null);
+  };
+
+  const closeClientUsers = () => {
+    setSelectedClientForUsers(null);
+    setShowNewUserForm(false);
+    setEditingUser(null);
   };
 
   const filteredClients = clients.filter(client =>
@@ -663,7 +794,16 @@ export default function ClientsPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
+                          onClick={() => openClientUsers(client)}
+                          title="Gerenciar usuários"
+                        >
+                          <Users className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
                           onClick={() => startEditClient(client)}
+                          title="Editar cliente"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -672,6 +812,7 @@ export default function ClientsPage() {
                           size="sm" 
                           onClick={() => handleDeleteClient(client.id)}
                           className="text-red-600 hover:text-red-700"
+                          title="Remover cliente"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -683,6 +824,206 @@ export default function ClientsPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Modal de Gerenciamento de Usuários */}
+      {selectedClientForUsers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+            {/* Header do Modal */}
+            <div className="border-b border-slate-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    Usuários do Cliente: {selectedClientForUsers.companyName}
+                  </h2>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Gerencie os usuários que podem acessar o sistema para este cliente
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={closeClientUsers}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Formulário de Novo/Editar Usuário */}
+              {showNewUserForm && (
+                <Card className="border-2 border-primary/20 mb-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-primary">
+                        {editingUser ? "Editar Usuário" : "Cadastrar Novo Usuário"}
+                      </CardTitle>
+                      <Button variant="ghost" size="sm" onClick={resetUserForm}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Form {...clientUserForm}>
+                      <form onSubmit={clientUserForm.handleSubmit(onSubmitUser)} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={clientUserForm.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nome Completo</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Nome do usuário" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={clientUserForm.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                  <Input type="email" placeholder="usuario@empresa.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={clientUserForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {editingUser ? "Nova Senha (deixe em branco para manter atual)" : "Senha"}
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="password" 
+                                  placeholder={editingUser ? "Digite nova senha ou deixe em branco" : "Digite a senha"}
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            type="submit" 
+                            disabled={createClientUserMutation.isPending || updateClientUserMutation.isPending}
+                          >
+                            {editingUser ? "Atualizar Usuário" : "Criar Usuário"}
+                          </Button>
+                          <Button type="button" variant="outline" onClick={resetUserForm}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Header da Lista de Usuários */}
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Lista de Usuários</h3>
+                  <p className="text-sm text-slate-600">
+                    {clientUsers.length} usuário{clientUsers.length !== 1 ? 's' : ''} cadastrado{clientUsers.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                
+                {!showNewUserForm && (
+                  <Button onClick={startNewUser} className="bg-primary hover:bg-primary/90">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Usuário
+                  </Button>
+                )}
+              </div>
+
+              {/* Lista de Usuários */}
+              {isLoadingUsers ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-slate-600">Carregando usuários...</div>
+                </div>
+              ) : clientUsers.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center">
+                      <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-slate-900 mb-2">
+                        Nenhum usuário cadastrado
+                      </h3>
+                      <p className="text-slate-600 mb-6">
+                        Comece criando o primeiro usuário para este cliente.
+                      </p>
+                      {!showNewUserForm && (
+                        <Button onClick={startNewUser}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Criar Primeiro Usuário
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {clientUsers.map((user: ClientUser) => (
+                    <Card key={user.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Users className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-slate-900">{user.name}</h4>
+                                <p className="text-sm text-slate-600">{user.email}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="text-xs text-slate-500">
+                              Criado em: {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : "Data não disponível"}
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => startEditUser(user)}
+                              title="Editar usuário"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Remover usuário"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
