@@ -1,115 +1,42 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export interface EmailData {
+interface EmailData {
   to: string;
   subject: string;
   html: string;
-  candidateName?: string;
-  jobTitle?: string;
 }
 
-export class EmailService {
-  async sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    try {
-      console.log('🔧 Verificando RESEND_API_KEY...');
-      if (!process.env.RESEND_API_KEY) {
-        console.log('❌ RESEND_API_KEY não configurada');
-        throw new Error('RESEND_API_KEY não configurada');
-      }
-      console.log('✅ RESEND_API_KEY encontrada');
+class EmailService {
+  private resend: Resend | null = null;
 
-      console.log('📧 Preparando envio de email:', {
-        to: emailData.to,
-        subject: emailData.subject,
-        htmlLength: emailData.html.length
-      });
-
-      const result = await resend.emails.send({
-        from: 'Sistema de Entrevistas <noreply@resend.dev>', // Usar domínio padrão do Resend para testes
-        to: emailData.to,
-        subject: emailData.subject,
-        html: emailData.html,
-      });
-
-      console.log('📧 Resposta do Resend:', result);
-      console.log(`✅ Email enviado com sucesso para ${emailData.to}:`, result.data?.id);
-      
-      return {
-        success: true,
-        messageId: result.data?.id
-      };
-
-    } catch (error: any) {
-      console.error('❌ Erro completo ao enviar email:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        response: error.response?.data || 'Sem resposta'
-      });
-      
-      return {
-        success: false,
-        error: error.message || 'Erro desconhecido ao enviar email'
-      };
+  constructor() {
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
     }
   }
 
-  async sendInterviewInvite(data: {
-    candidateEmail: string;
-    candidateName: string;
-    jobTitle: string;
-    interviewLink: string;
-    customMessage?: string;
-  }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    
-    const defaultMessage = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Convite para Entrevista</h2>
-        
-        <p>Olá <strong>${data.candidateName}</strong>,</p>
-        
-        <p>Você foi selecionado(a) para participar do processo seletivo para a vaga de <strong>${data.jobTitle}</strong>.</p>
-        
-        <p>Para realizar sua entrevista por voz, clique no link abaixo:</p>
-        
-        <div style="margin: 30px 0; text-align: center;">
-          <a href="${data.interviewLink}" 
-             style="background-color: #0079F2; color: white; padding: 15px 30px; 
-                    text-decoration: none; border-radius: 5px; display: inline-block;">
-            Iniciar Entrevista
-          </a>
-        </div>
-        
-        <p><strong>Instruções importantes:</strong></p>
-        <ul>
-          <li>A entrevista é realizada por voz através do navegador</li>
-          <li>Certifique-se de estar em um ambiente silencioso</li>
-          <li>Teste seu microfone antes de começar</li>
-          <li>A entrevista tem duração aproximada de 15 minutos</li>
-        </ul>
-        
-        <p>Link direto: <a href="${data.interviewLink}">${data.interviewLink}</a></p>
-        
-        <p>Boa sorte!</p>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-        <p style="color: #666; font-size: 12px;">
-          Este é um email automático do Sistema de Entrevistas por Voz.
-        </p>
-      </div>
-    `;
+  async sendEmail(data: EmailData): Promise<void> {
+    if (!this.resend) {
+      throw new Error('Serviço de email não configurado. Verifique a chave RESEND_API_KEY.');
+    }
 
-    const htmlContent = data.customMessage || defaultMessage;
+    try {
+      const result = await this.resend.emails.send({
+        from: 'Sistema de Entrevistas <noreply@grupomaximuns.com.br>',
+        to: data.to,
+        subject: data.subject,
+        html: data.html,
+      });
 
-    return await this.sendEmail({
-      to: data.candidateEmail,
-      subject: `Convite para Entrevista - ${data.jobTitle}`,
-      html: htmlContent,
-      candidateName: data.candidateName,
-      jobTitle: data.jobTitle
-    });
+      if (result.error) {
+        throw new Error(`Erro ao enviar email: ${result.error.message}`);
+      }
+
+      console.log(`✅ Email enviado para ${data.to} - ID: ${result.data?.id}`);
+    } catch (error) {
+      console.error('❌ Erro no serviço de email:', error);
+      throw error;
+    }
   }
 }
 

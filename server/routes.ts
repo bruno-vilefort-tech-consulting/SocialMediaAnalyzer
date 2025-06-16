@@ -3646,6 +3646,139 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Password reset routes
+  app.post("/api/password-reset/request", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email é obrigatório" });
+      }
+
+      // Check if user exists
+      const userInfo = await storage.findUserByEmail(email);
+      if (!userInfo) {
+        // Don't reveal if user exists or not for security
+        return res.json({ message: "Se o email estiver cadastrado, você receberá instruções" });
+      }
+
+      // Generate reset token
+      const token = require('crypto').randomBytes(32).toString('hex');
+      
+      // Save token with 1 hour expiration
+      await storage.createResetToken(email, token);
+
+      // Send email with reset link
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${token}`;
+      
+      try {
+        const { emailService } = await import('./emailService');
+        await emailService.sendEmail({
+          to: email,
+          subject: "Recuperação de Senha - Sistema de Entrevistas",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2563eb;">Recuperação de Senha</h2>
+              <p>Olá, ${userInfo.name}!</p>
+              <p>Você solicitou a recuperação de sua senha. Clique no link abaixo para criar uma nova senha:</p>
+              <p style="margin: 20px 0;">
+                <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                  Redefinir Senha
+                </a>
+              </p>
+              <p>Se você não solicitou esta recuperação, ignore este email.</p>
+              <p style="color: #666; font-size: 14px;">
+                Este link expira em 1 hora por segurança.
+              </p>
+            </div>
+          `
+        });
+
+        res.json({ message: "Se o email estiver cadastrado, você receberá instruções" });
+      } catch (emailError) {
+        console.error("Erro ao enviar email:", emailError);
+        res.status(500).json({ message: "Erro ao enviar email de recuperação" });
+      }
+
+    } catch (error) {
+      console.error("Erro na solicitação de reset:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/password-reset/verify", async (req, res) => {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        return res.status(400).json({ message: "Token é obrigatório" });
+      }
+
+      const resetData = await storage.getResetToken(token);
+      if (!resetData) {
+        return res.status(400).json({ message: "Token inválido ou expirado" });
+      }
+
+      // Check if token is expired (1 hour)
+      const now = new Date();
+      const tokenAge = now.getTime() - resetData.createdAt.getTime();
+      const oneHour = 60 * 60 * 1000;
+
+      if (tokenAge > oneHour) {
+        await storage.deleteResetToken(token);
+        return res.status(400).json({ message: "Token expirado" });
+      }
+
+      res.json({ email: resetData.email });
+    } catch (error) {
+      console.error("Erro ao verificar token:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/password-reset/confirm", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token e nova senha são obrigatórios" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "A senha deve ter pelo menos 6 caracteres" });
+      }
+
+      const resetData = await storage.getResetToken(token);
+      if (!resetData) {
+        return res.status(400).json({ message: "Token inválido ou expirado" });
+      }
+
+      // Check if token is expired (1 hour)
+      const now = new Date();
+      const tokenAge = now.getTime() - resetData.createdAt.getTime();
+      const oneHour = 60 * 60 * 1000;
+
+      if (tokenAge > oneHour) {
+        await storage.deleteResetToken(token);
+        return res.status(400).json({ message: "Token expirado" });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await storage.updateUserPassword(resetData.email, hashedPassword);
+
+      // Delete used token
+      await storage.deleteResetToken(token);
+
+      res.json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+      console.error("Erro ao confirmar reset de senha:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

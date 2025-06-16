@@ -968,6 +968,73 @@ export class FirebaseStorage implements IStorage {
     
     return null;
   }
+
+  // Password reset tokens
+  async createResetToken(email: string, token: string): Promise<void> {
+    await setDoc(doc(firebaseDb, 'resetTokens', token), {
+      email,
+      createdAt: new Date(),
+    });
+  }
+
+  async getResetToken(token: string): Promise<{ email: string; createdAt: Date } | undefined> {
+    const docRef = doc(firebaseDb, 'resetTokens', token);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        email: data.email,
+        createdAt: data.createdAt.toDate()
+      };
+    }
+    
+    return undefined;
+  }
+
+  async deleteResetToken(token: string): Promise<void> {
+    await deleteDoc(doc(firebaseDb, 'resetTokens', token));
+  }
+
+  async updateUserPassword(email: string, hashedPassword: string): Promise<void> {
+    // Check if it's a master user
+    const masterSnapshot = await firebaseDb
+      .collection('users')
+      .where('email', '==', email)
+      .get();
+    
+    if (!masterSnapshot.empty) {
+      const userDoc = masterSnapshot.docs[0];
+      await updateDoc(userDoc.ref, { password: hashedPassword });
+      return;
+    }
+    
+    // Check if it's a client
+    const clientSnapshot = await firebaseDb
+      .collection('clients')
+      .where('email', '==', email)
+      .get();
+    
+    if (!clientSnapshot.empty) {
+      const clientDoc = clientSnapshot.docs[0];
+      await updateDoc(clientDoc.ref, { password: hashedPassword });
+      return;
+    }
+    
+    // Check if it's a client user
+    const userSnapshot = await firebaseDb
+      .collection('clientUsers')
+      .where('email', '==', email)
+      .get();
+    
+    if (!userSnapshot.empty) {
+      const userDoc = userSnapshot.docs[0];
+      await updateDoc(userDoc.ref, { password: hashedPassword });
+      return;
+    }
+    
+    throw new Error('Usuário não encontrado');
+  }
 }
 
 export const storage = new FirebaseStorage();
