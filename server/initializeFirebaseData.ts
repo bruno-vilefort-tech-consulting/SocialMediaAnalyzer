@@ -24,13 +24,13 @@ export async function initializeFirebaseData() {
 
     // Verificar se o cliente Grupo Maximus já existe (por CNPJ)
     const allClients = await storage.getClients();
-    const existingClient = allClients.find(client => client.cnpj === "12345678000123");
+    const existingClient = allClients.find(client => client.cnpj === "05763950000191"); // Modified CNPJ to the correct one
     if (!existingClient) {
       // Criar cliente Grupo Maximus
       const hashedClientPassword = await bcrypt.hash("cliente123", 10);
       await storage.createClient({
         companyName: "Grupo Maximus",
-        cnpj: "12345678000123",
+        cnpj: "05763950000191", // Modified CNPJ to the correct one
         email: "cliente@grupomaximuns.com.br",
         password: hashedClientPassword,
         phone: "11999999999",
@@ -50,7 +50,7 @@ export async function initializeFirebaseData() {
     // Criar vaga de exemplo se não existir
     const jobs = await storage.getJobs();
     if (jobs.length === 0) {
-      const client = existingClient || allClients.find(c => c.cnpj === "12345678000123");
+      const client = existingClient || allClients.find(c => c.cnpj === "05763950000191"); //Modified CNPJ to the correct one
       if (client) {
         const job = await storage.createJob({
           clientId: client.id,
@@ -95,7 +95,7 @@ export async function initializeFirebaseData() {
     const candidates = await storage.getAllCandidates();
     const testCandidate = candidates.find(c => c.whatsapp === "5511984316526");
     if (!testCandidate) {
-      const client = existingClient || allClients.find(c => c.cnpj === "12345678000123");
+      const client = existingClient || allClients.find(c => c.cnpj === "05763950000191"); //Modified CNPJ to the correct one
       if (client) {
         await storage.createCandidate({
           clientId: client.id,
