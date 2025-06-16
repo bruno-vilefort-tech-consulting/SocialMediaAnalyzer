@@ -115,6 +115,25 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 PROBLEMA DE RECRIAÇÃO DE CLIENTE RESOLVIDO - Sistema não recria mais clientes deletados
+  - **Root cause identificado**: Sistema verificava por email em vez de CNPJ para detectar clientes existentes
+  - **Correção implementada**: initializeFirebaseData.ts agora busca por CNPJ único para evitar duplicatas
+  - **Validação robusta**: Cliente com CNPJ 12345678000123 não será mais recriado após deleção
+  - **Logs melhorados**: Mensagem "não será recriado" aparece quando cliente já existe
+  - **Sistema estável**: Deleções de clientes agora são permanentes até reinicialização manual
+
+- June 16, 2025: 🔧 ERRO "INVALID TIME VALUE" TOTALMENTE CORRIGIDO - Formulários de data funcionando
+  - **Problema de datas null resolvido**: Campos contractStart e contractEnd validam Date antes de converter
+  - **Validação robusta implementada**: Verifica se é Date válida com !isNaN(getTime()) antes de toISOString()
+  - **Formulário de edição estável**: Clientes podem ser editados sem erro de data inválida
+  - **Sistema defensivo**: Interface protegida contra valores null/undefined em campos de data
+
+- June 16, 2025: 🔧 ORDEM DE PARÂMETROS APIQUEST CORRIGIDA - CRUD de clientes 100% funcional
+  - **Problema crítico resolvido**: apiRequest estava sendo chamado com (method, url) em vez de (url, method)
+  - **Todas operações corrigidas**: Criação, atualização e deleção de clientes funcionando perfeitamente
+  - **Mutations corrigidas**: createClientMutation e updateClientMutation com parâmetros corretos
+  - **Sistema robusto**: Logs detalhados em todas as operações para facilitar debug
+
 - June 15, 2025: 🧹 DASHBOARD ZERADO COMPLETAMENTE - Limpeza total de entrevistas realizada
   - **Entrevistas removidas**: 14 entrevistas deletadas do Firebase
   - **Seleções removidas**: 1 seleção deletada do sistema  

@@ -22,8 +22,9 @@ export async function initializeFirebaseData() {
       console.log("✅ Usuário master já existe no Firebase");
     }
 
-    // Verificar se o cliente Grupo Maximus já existe
-    const existingClient = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+    // Verificar se o cliente Grupo Maximus já existe (por CNPJ)
+    const allClients = await storage.getClients();
+    const existingClient = allClients.find(client => client.cnpj === "12345678000123");
     if (!existingClient) {
       // Criar cliente Grupo Maximus
       const hashedClientPassword = await bcrypt.hash("cliente123", 10);
@@ -43,13 +44,13 @@ export async function initializeFirebaseData() {
       });
       console.log("✅ Cliente Grupo Maximus criado no Firebase");
     } else {
-      console.log("✅ Cliente Grupo Maximus já existe no Firebase");
+      console.log("✅ Cliente Grupo Maximus já existe no Firebase - não será recriado");
     }
 
     // Criar vaga de exemplo se não existir
     const jobs = await storage.getJobs();
     if (jobs.length === 0) {
-      const client = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+      const client = existingClient || allClients.find(c => c.cnpj === "12345678000123");
       if (client) {
         const job = await storage.createJob({
           clientId: client.id,
@@ -94,7 +95,7 @@ export async function initializeFirebaseData() {
     const candidates = await storage.getAllCandidates();
     const testCandidate = candidates.find(c => c.whatsapp === "5511984316526");
     if (!testCandidate) {
-      const client = await storage.getClientByEmail("cliente@grupomaximuns.com.br");
+      const client = existingClient || allClients.find(c => c.cnpj === "12345678000123");
       if (client) {
         await storage.createCandidate({
           clientId: client.id,
