@@ -2077,6 +2077,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API Config - Nova arquitetura para configurações específicas por entidade (master/cliente)
+  app.get("/api/api-config/:entityType/:entityId", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      
+      // Verificar autorização baseada no tipo de entidade
+      if (entityType === 'master' && req.user!.role !== 'master') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (entityType === 'client' && req.user!.role === 'client' && req.user!.clientId?.toString() !== entityId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const config = await storage.getApiConfig(entityType, entityId);
+      
+      if (!config) {
+        return res.json({
+          openaiVoice: 'nova',
+          whatsappQrConnected: false,
+          whatsappQrPhoneNumber: null,
+          whatsappQrLastConnection: null
+        });
+      }
+      
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching API config:", error);
+      res.status(500).json({ message: "Failed to fetch API config" });
+    }
+  });
+
+  app.post("/api/api-config", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { entityType, entityId, openaiVoice, whatsappQrConnected, whatsappQrPhoneNumber } = req.body;
+      
+      // Verificar autorização baseada no tipo de entidade
+      if (entityType === 'master' && req.user!.role !== 'master') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (entityType === 'client' && req.user!.role === 'client' && req.user!.clientId?.toString() !== entityId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      if (!entityType || !entityId) {
+        return res.status(400).json({ message: "EntityType and entityId are required" });
+      }
+      
+      const configData: any = {
+        entityType,
+        entityId,
+      };
+      
+      // Adicionar apenas campos fornecidos
+      if (openaiVoice !== undefined) configData.openaiVoice = openaiVoice;
+      if (whatsappQrConnected !== undefined) configData.whatsappQrConnected = whatsappQrConnected;
+      if (whatsappQrPhoneNumber !== undefined) configData.whatsappQrPhoneNumber = whatsappQrPhoneNumber;
+      if (whatsappQrConnected) configData.whatsappQrLastConnection = new Date();
+      
+      const config = await storage.upsertApiConfig(configData);
+      
+      res.json(config);
+    } catch (error) {
+      console.error("Error saving API config:", error);
+      res.status(500).json({ message: "Failed to save API config" });
+    }
+  });
+
   // Test OpenAI API endpoint
   app.post("/api/test-openai", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
@@ -2139,8 +2208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Master Settings - Configurações OpenAI vinculadas ao usuário master
   app.get("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
-      const masterUserId = req.user!.id.toString();
-      const settings = await storage.getMasterSettings(masterUserId);
+      const settings = await storage.getMasterSettings();
       
       if (!settings) {
         return res.json({
@@ -2161,7 +2229,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/master-settings", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
-      const masterUserId = req.user!.id.toString();
       const { openaiApiKey, gptModel } = req.body;
       
       if (!openaiApiKey || !gptModel) {
@@ -2169,7 +2236,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const settings = await storage.upsertMasterSettings({
-        masterUserId,
         openaiApiKey,
         gptModel
       });
