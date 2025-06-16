@@ -2730,6 +2730,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
         const candidateInSelection = selectionCandidates.find(candidate => {
           // Comparar por ID se disponível
           if (interviewData.candidateId && candidate.id.toString() === interviewData.candidateId.toString()) {
+            console.log(`✅ Match por ID: ${candidate.name} (${candidate.id})`);
             return true;
           }
           
@@ -2738,18 +2739,33 @@ Responda de forma natural aguardando a resposta do candidato.`;
             const interviewPhone = interviewData.phone.replace(/\D/g, '');
             const candidatePhone = candidate.whatsapp.replace(/\D/g, '');
             if (interviewPhone.includes(candidatePhone) || candidatePhone.includes(interviewPhone)) {
+              console.log(`✅ Match por telefone: ${candidate.name} (${candidatePhone})`);
               return true;
             }
           }
           
-          // Comparar por nome (busca mais flexível para nomes como Jacqueline)
+          // Comparar por nome - algoritmo mais flexível
           if (interviewData.candidateName && candidate.name) {
             const interviewName = interviewData.candidateName.toLowerCase().trim();
             const candidateName = candidate.name.toLowerCase().trim();
-            // Busca exata ou por similaridade (primeiros nomes)
-            if (interviewName === candidateName || 
-                interviewName.includes(candidateName.split(' ')[0]) ||
-                candidateName.includes(interviewName.split(' ')[0])) {
+            
+            // Busca exata
+            if (interviewName === candidateName) {
+              console.log(`✅ Match exato por nome: ${candidate.name}`);
+              return true;
+            }
+            
+            // Busca por primeiro nome
+            const interviewFirstName = interviewName.split(' ')[0];
+            const candidateFirstName = candidateName.split(' ')[0];
+            if (interviewFirstName === candidateFirstName && interviewFirstName.length >= 3) {
+              console.log(`✅ Match por primeiro nome: ${candidate.name} (${candidateFirstName})`);
+              return true;
+            }
+            
+            // Busca por similaridade (contém)
+            if (interviewName.includes(candidateFirstName) || candidateName.includes(interviewFirstName)) {
+              console.log(`✅ Match por similaridade: ${candidate.name}`);
               return true;
             }
           }
@@ -2761,6 +2777,11 @@ Responda de forma natural aguardando a resposta do candidato.`;
         if (!candidateInSelection) {
           console.log(`🚫 Candidato ${interviewData.candidateName} não encontrado na lista da seleção ${selectionData.name}, pulando...`);
           console.log(`📋 Candidatos disponíveis na seleção:`, selectionCandidates.map(c => c.name));
+          console.log(`🔍 Dados da entrevista:`, {
+            candidateName: interviewData.candidateName,
+            phone: interviewData.phone,
+            candidateId: interviewData.candidateId
+          });
           continue;
         }
         
@@ -2842,7 +2863,47 @@ Responda de forma natural aguardando a resposta do candidato.`;
         });
       }
       
-      console.log(`✅ Retornando ${allInterviews.length} entrevistas válidas para relatórios (apenas candidatos da seleção)`);
+      // Adicionar candidatos da lista que ainda não fizeram entrevista
+      console.log(`📊 Verificando candidatos sem entrevista...`);
+      for (const selection of allSelections) {
+        if (selection.candidateListId) {
+          try {
+            const listCandidates = await storage.getCandidatesByListId(selection.candidateListId);
+            console.log(`📋 Lista ${selection.candidateListId} da seleção "${selection.name}": ${listCandidates.length} candidatos`);
+            
+            for (const candidate of listCandidates) {
+              // Verificar se este candidato já tem entrevista no array
+              const hasInterview = allInterviews.some(interview => 
+                interview.candidateName?.toLowerCase().includes(candidate.name.toLowerCase()) ||
+                interview.candidatePhone?.replace(/\D/g, '').includes(candidate.whatsapp?.replace(/\D/g, '') || '')
+              );
+              
+              if (!hasInterview) {
+                console.log(`➕ Adicionando candidato sem entrevista: ${candidate.name} da seleção ${selection.name}`);
+                allInterviews.push({
+                  id: `pending_${selection.id}_${candidate.id}`,
+                  selectionId: selection.id,
+                  selectionName: selection.name,
+                  candidateId: candidate.id,
+                  candidateName: candidate.name,
+                  candidatePhone: candidate.whatsapp || 'N/A',
+                  jobName: selection.jobName || selection.name,
+                  status: 'pending',
+                  startTime: null,
+                  endTime: null,
+                  responses: [],
+                  totalQuestions: 0,
+                  answeredQuestions: 0
+                });
+              }
+            }
+          } catch (err) {
+            console.log(`⚠️ Erro ao buscar candidatos da lista ${selection.candidateListId}:`, err);
+          }
+        }
+      }
+      
+      console.log(`✅ Retornando ${allInterviews.length} registros para relatórios (entrevistas + candidatos pendentes)`);
       res.json(allInterviews);
       
     } catch (error) {
