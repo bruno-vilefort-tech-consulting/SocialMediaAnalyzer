@@ -235,8 +235,8 @@ export default function CandidatesPage() {
       name: "", 
       email: "", 
       whatsapp: "",
-      listId: selectedListId || 0,
-      clientId: user?.role === 'client' ? user?.clientId || 0 : (selectedListId ? selectedList?.clientId || 0 : 0)
+      listId: 0,
+      clientId: 0
     }
   });
 
@@ -337,50 +337,23 @@ export default function CandidatesPage() {
 
   const handleCreateCandidate = (data: CandidateFormData) => {
     console.log('🚀 handleCreateCandidate chamado com:', data);
-    console.log('🔍 Estado atual - selectedListId:', selectedListId, 'user:', user?.role);
     
-    // Se estivermos dentro de uma lista específica, usar seus dados
-    if (selectedListId && candidateLists) {
-      const selectedList = candidateLists.find(list => list.id === selectedListId);
-      console.log('🎯 Lista selecionada encontrada:', selectedList);
-      if (selectedList) {
-        data.listId = selectedListId;
-        data.clientId = selectedList.clientId;
-        console.log('🎯 Corrigindo para lista específica:', {
-          listId: data.listId,
-          clientId: data.clientId,
-          listName: selectedList.name
-        });
-      }
-    }
-
-    // Para usuários client, sempre usar seu próprio clientId se não foi definido
-    if (user?.role === 'client' && !data.clientId) {
-      data.clientId = user.clientId || 0;
-      console.log('👤 Cliente usando próprio ID:', data.clientId);
-    }
-
-    console.log('🔍 Dados antes da validação:', {
-      name: data.name,
-      email: data.email,
-      whatsapp: data.whatsapp,
-      listId: data.listId,
-      clientId: data.clientId
-    });
-
-    // Validação básica
-    if (!data.name || !data.email || !data.whatsapp || !data.listId || !data.clientId) {
-      console.error('❌ Dados obrigatórios ausentes:', data);
-      console.error('❌ Campos faltando:', {
-        name: !data.name ? 'FALTANDO' : 'OK',
-        email: !data.email ? 'FALTANDO' : 'OK',
-        whatsapp: !data.whatsapp ? 'FALTANDO' : 'OK',
-        listId: !data.listId ? 'FALTANDO' : 'OK',
-        clientId: !data.clientId ? 'FALTANDO' : 'OK'
-      });
+    // Validação básica primeiro
+    if (!data.name || !data.email || !data.whatsapp) {
       toast({ 
         title: "Erro", 
-        description: "Preencha todos os campos obrigatórios",
+        description: "Preencha todos os campos obrigatórios (nome, email e WhatsApp)",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Garantir que listId e clientId estão corretos
+    if (!data.listId || !data.clientId) {
+      console.error('❌ IDs ausentes - listId:', data.listId, 'clientId:', data.clientId);
+      toast({ 
+        title: "Erro", 
+        description: "Erro interno: IDs da lista ou cliente não definidos",
         variant: "destructive" 
       });
       return;
@@ -714,7 +687,17 @@ export default function CandidatesPage() {
                 <Upload className="h-4 w-4 mr-2" />
                 Importar Excel
               </Button>
-              <Button onClick={() => setShowCandidateForm(true)}>
+              <Button onClick={() => {
+                // Resetar e preencher formulário com dados corretos
+                candidateForm.reset({
+                  name: "",
+                  email: "",
+                  whatsapp: "",
+                  listId: selectedListId || 0,
+                  clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
+                });
+                setShowCandidateForm(true);
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Candidato
               </Button>
@@ -744,7 +727,17 @@ export default function CandidatesPage() {
                       <Upload className="h-4 w-4 mr-2" />
                       Importar Excel
                     </Button>
-                    <Button onClick={() => setShowCandidateForm(true)}>
+                    <Button onClick={() => {
+                      // Resetar e preencher formulário com dados corretos
+                      candidateForm.reset({
+                        name: "",
+                        email: "",
+                        whatsapp: "",
+                        listId: selectedListId || 0,
+                        clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
+                      });
+                      setShowCandidateForm(true);
+                    }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Adicionar Candidato
                     </Button>
@@ -891,7 +884,13 @@ export default function CandidatesPage() {
         setShowCandidateForm(open);
         if (!open) {
           setEditingCandidate(null);
-          candidateForm.reset();
+          candidateForm.reset({
+            name: "",
+            email: "",
+            whatsapp: "",
+            listId: 0,
+            clientId: 0
+          });
         }
       }}>
         <DialogContent>
