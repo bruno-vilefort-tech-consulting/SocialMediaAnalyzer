@@ -27,11 +27,40 @@ export class WhatsAppQRService {
   constructor() {
     // Inicializar de forma assíncrona e não bloqueante
     this.safeInitialize().catch(error => {
-      console.error('❌ Falha completa na inicialização WhatsApp:', error.message);
+      console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
+      // Garantir que o sistema funcione mesmo sem WhatsApp
+      this.config.isConnected = false;
+      this.config.qrCode = null;
+      this.config.phoneNumber = null;
     });
   }
 
   private async safeInitialize() {
+    try {
+      // Timeout para inicialização completa - 30 segundos máximo
+      await Promise.race([
+        this.initializeWithTimeout(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout na inicialização WhatsApp')), 30000)
+        )
+      ]);
+      
+    } catch (error) {
+      console.log('⚠️ WhatsApp não inicializado - aplicação funcionará sem WhatsApp:', error.message);
+      this.config.isConnected = false;
+      this.config.qrCode = null;
+      this.config.phoneNumber = null;
+    }
+    
+    // Sempre conectar ao sistema simplificado, mesmo se WhatsApp falhar
+    try {
+      simpleInterviewService.setWhatsAppService(this);
+    } catch (serviceError) {
+      console.log('⚠️ Erro ao conectar com simpleInterviewService - continuando sem notificações WhatsApp');
+    }
+  }
+
+  private async initializeWithTimeout() {
     try {
       await this.initializeBaileys();
       
@@ -41,21 +70,17 @@ export class WhatsAppQRService {
         console.log('⚠️ Erro ao carregar dados do banco - continuando sem dados salvos');
       }
       
-      try {
-        await this.initializeConnection();
-      } catch (connectionError) {
-        console.log('⚠️ Erro na conexão WhatsApp - continuando sem conexão ativa');
-      }
+      // Timeout menor para conexão inicial
+      await Promise.race([
+        this.initializeConnection(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout na conexão WhatsApp')), 15000)
+        )
+      ]);
       
-    } catch (baileysError) {
-      console.log('⚠️ Baileys não disponível - WhatsApp desabilitado');
-    }
-    
-    // Sempre conectar ao sistema simplificado, mesmo se WhatsApp falhar
-    try {
-      simpleInterviewService.setWhatsAppService(this);
-    } catch (serviceError) {
-      console.error('❌ Erro ao conectar com simpleInterviewService:', serviceError.message);
+    } catch (error) {
+      console.log('⚠️ Falha na inicialização - WhatsApp não disponível');
+      throw error;
     }
   }
 
@@ -129,7 +154,12 @@ export class WhatsAppQRService {
       
       this.socket = this.makeWASocket({
         auth: state,
-        printQRInTerminal: false, // Desabilitar QR no terminal para evitar conflitos
+        printQRInTerminal: false,
+        connectTimeoutMs: 30000, // 30 segundos timeout
+        defaultQueryTimeoutMs: 15000, // 15 segundos para queries
+        keepAliveIntervalMs: 60000, // Keep alive a cada 60 segundos
+        retryRequestDelayMs: 250,
+        maxMsgRetryCount: 3,
       });
 
       this.socket.ev.on('connection.update', async (update: any) => {
