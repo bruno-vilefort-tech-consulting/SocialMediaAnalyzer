@@ -102,6 +102,12 @@ export interface IStorage {
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
   getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]>;
 
+  // Password reset tokens
+  createResetToken(email: string, token: string): Promise<void>;
+  getResetToken(token: string): Promise<{ email: string; createdAt: Date } | undefined>;
+  deleteResetToken(token: string): Promise<void>;
+  updateUserPassword(email: string, hashedPassword: string): Promise<void>;
+
   // Global getters
   getAllCandidates(): Promise<Candidate[]>;
   getAllInterviews(): Promise<Interview[]>;

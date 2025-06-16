@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import MasterDashboard from "@/pages/MasterDashboard";
 import ClientsPage from "@/pages/ClientsPage";
 import ApiConfigPage from "@/pages/ApiConfigPage";
@@ -49,6 +51,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/interview/:token?" component={InterviewPage} />
       <Route path="/natural-interview/:token" component={NaturalInterviewPage} />
       <Route path="/demo-entrevista" component={InterviewDemoPage} />

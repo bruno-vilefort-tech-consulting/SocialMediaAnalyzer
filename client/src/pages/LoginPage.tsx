@@ -85,7 +85,11 @@ export default function LoginPage() {
                   <Checkbox id="remember" />
                   <Label htmlFor="remember" className="text-sm">Lembrar-me</Label>
                 </div>
-                <Button variant="link" className="text-sm">
+                <Button 
+                  variant="link" 
+                  className="text-sm"
+                  onClick={() => setLocation("/forgot-password")}
+                >
                   Esqueceu a senha?
                 </Button>
               </div>
