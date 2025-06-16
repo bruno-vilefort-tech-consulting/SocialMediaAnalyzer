@@ -1867,9 +1867,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WhatsApp QR endpoints - completely optional and non-blocking
   let whatsappQRService: any = null;
+  let whatsappInitPromise: Promise<void> | null = null;
   
   // Initialize WhatsApp in background without blocking server startup
-  setImmediate(async () => {
+  whatsappInitPromise = (async () => {
     try {
       const { WhatsAppQRService } = await import('./whatsappQRService');
       whatsappQRService = new WhatsAppQRService();
@@ -1878,11 +1879,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('⚠️ WhatsApp QR Service não disponível - aplicação funcionando sem WhatsApp');
       console.log('Detalhes:', error instanceof Error ? error.message : String(error));
     }
-  });
+  })();
+  
+  // Helper function to ensure WhatsApp is initialized
+  const ensureWhatsAppReady = async () => {
+    if (whatsappInitPromise) {
+      await whatsappInitPromise;
+      whatsappInitPromise = null;
+    }
+    return whatsappQRService;
+  };
 
-  app.get("/api/whatsapp-qr/status", (req, res) => {
+  app.get("/api/whatsapp-qr/status", async (req, res) => {
     try {
-      if (!whatsappQRService) {
+      const service = await ensureWhatsAppReady();
+      if (!service) {
         return res.status(500).json({ 
           error: 'WhatsApp QR Service não disponível',
           isConnected: false,
@@ -1890,7 +1901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const status = whatsappQRService.getConnectionStatus();
+      const status = service.getConnectionStatus();
       res.json({
         isConnected: status.isConnected,
         qrCode: status.qrCode,
@@ -1946,6 +1957,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Erro ao desconectar WhatsApp QR:', error);
       res.status(500).json({ 
         error: 'Falha na desconexão',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/test", async (req, res) => {
+    try {
+      const service = await ensureWhatsAppReady();
+      if (!service) {
+        return res.status(500).json({ 
+          success: false,
+          error: 'WhatsApp QR Service não disponível' 
+        });
+      }
+      
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Telefone e mensagem são obrigatórios' 
+        });
+      }
+      
+      console.log(`🧪 Testando envio WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
+      
+      const result = await service.sendTextMessage(phoneNumber, message);
+      
+      if (result) {
+        res.json({ 
+          success: true, 
+          message: 'Mensagem de teste enviada com sucesso' 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false,
+          error: 'Falha ao enviar mensagem de teste' 
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro no teste WhatsApp:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Erro interno no teste',
         details: error instanceof Error ? error.message : String(error)
       });
     }
