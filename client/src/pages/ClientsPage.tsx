@@ -114,7 +114,7 @@ export default function ClientsPage() {
   const deleteClientMutation = useMutation({
     mutationFn: (id: number) => {
       console.log('🔥 Frontend: Enviando DELETE para /api/clients/' + id);
-      return apiRequest("DELETE", `/api/clients/${id}`);
+      return apiRequest(`/api/clients/${id}`, "DELETE");
     },
     onSuccess: (data, variables) => {
       console.log('✅ Frontend: Cliente deletado com sucesso', variables);
