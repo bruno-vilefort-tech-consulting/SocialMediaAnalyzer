@@ -42,7 +42,7 @@ const clientFormSchema = z.object({
 const clientUserFormSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional(),
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;

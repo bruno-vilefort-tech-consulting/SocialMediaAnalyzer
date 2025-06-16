@@ -290,10 +290,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
       const clientId = parseInt(req.params.clientId);
+      
+      // Validar se a senha foi fornecida
+      if (!req.body.password) {
+        return res.status(400).json({ message: "Senha é obrigatória" });
+      }
+      
       const clientUserData = {
         ...req.body,
-        clientId
+        clientId,
+        password: await bcrypt.hash(req.body.password, 10) // Criptografar senha
       };
+      
+      console.log('Criando usuário para cliente:', clientId, 'dados:', { 
+        name: clientUserData.name, 
+        email: clientUserData.email 
+      });
       
       // Check if email already exists
       const existingUser = await storage.getClientUserByEmail(clientUserData.email);
@@ -302,10 +314,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const clientUser = await storage.createClientUser(clientUserData);
+      console.log('Usuário criado com sucesso:', clientUser.id);
       res.json(clientUser);
     } catch (error) {
       console.error('Erro ao criar usuário do cliente:', error);
-      res.status(500).json({ message: "Failed to create client user" });
+      res.status(500).json({ message: "Failed to create client user", error: error.message });
     }
   });
 
