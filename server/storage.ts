@@ -62,6 +62,7 @@ export interface IStorage {
   deleteQuestion(id: number): Promise<void>;
 
   // Candidate Lists
+  getAllCandidateLists(): Promise<CandidateList[]>;
   getCandidateListsByClientId(clientId: number): Promise<CandidateList[]>;
   getCandidateListById(id: number): Promise<CandidateList | undefined>;
   createCandidateList(list: InsertCandidateList): Promise<CandidateList>;
@@ -513,6 +514,12 @@ export class FirebaseStorage implements IStorage {
   }
 
   // Candidate Lists
+  async getAllCandidateLists(): Promise<CandidateList[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "candidateLists"));
+    return snapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateList));
+  }
+
   async getCandidateListsByClientId(clientId: number): Promise<CandidateList[]> {
     const snapshot = await getDocs(collection(firebaseDb, "candidateLists"));
     return snapshot.docs
