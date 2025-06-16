@@ -140,27 +140,29 @@ export const responses = pgTable("responses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// API configurations (sem OpenAI - agora vinculado ao master)
-export const apiConfigs = pgTable("api_configs", {
-  id: serial("id").primaryKey(),
-  firebaseProjectId: text("firebase_project_id"),
-  firebaseServiceAccount: jsonb("firebase_service_account"),
-  whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
-  whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
-  whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Master settings - configurações OpenAI vinculadas ao usuário master
+// Master settings - configurações OpenAI globais compartilhadas entre todos os masters
 export const masterSettings = pgTable("master_settings", {
   id: serial("id").primaryKey(),
-  masterUserId: text("master_user_id").references(() => users.id).notNull(),
   openaiApiKey: text("openai_api_key"),
   gptModel: text("gpt_model").default("gpt-4o"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Client voice settings - cada cliente tem sua própria configuração de voz
+// API configurations - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
+export const apiConfigs = pgTable("api_configs", {
+  id: serial("id").primaryKey(),
+  entityType: text("entity_type").notNull(), // 'master' ou 'client'
+  entityId: text("entity_id").notNull(), // ID do master ou cliente
+  openaiVoice: text("openai_voice").default("nova"), // Voz TTS
+  whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
+  whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
+  whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
+  firebaseProjectId: text("firebase_project_id"),
+  firebaseServiceAccount: jsonb("firebase_service_account"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Client voice settings - DEPRECATED - substituído por apiConfigs
 export const clientVoiceSettings = pgTable("client_voice_settings", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clients.id).notNull(),

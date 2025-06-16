@@ -96,17 +96,17 @@ export interface IStorage {
   createResponse(response: InsertResponse): Promise<Response>;
   updateResponse(id: number, response: Partial<Response>): Promise<Response>;
 
-  // API Config
-  getApiConfig(): Promise<ApiConfig | undefined>;
+  // Master Settings - configurações OpenAI globais compartilhadas entre todos os masters
+  getMasterSettings(): Promise<MasterSettings | undefined>;
+  upsertMasterSettings(settings: InsertMasterSettings): Promise<MasterSettings>;
+
+  // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
+  getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined>;
   upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
 
-  // Client Voice Settings
+  // Client Voice Settings - DEPRECATED - mantido para compatibilidade
   getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined>;
   upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting>;
-
-  // Master Settings - configurações OpenAI vinculadas ao usuário master
-  getMasterSettings(masterUserId: string): Promise<MasterSettings | undefined>;
-  upsertMasterSettings(settings: InsertMasterSettings): Promise<MasterSettings>;
 
   // Message Logs
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
@@ -744,16 +744,34 @@ export class FirebaseStorage implements IStorage {
     return { id, ...updatedDoc.data() } as Response;
   }
 
-  // API Config
-  async getApiConfig(): Promise<ApiConfig | undefined> {
-    const docRef = doc(firebaseDb, "config", "api");
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: 1, ...docSnap.data() } as ApiConfig : undefined;
+  // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
+  async getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined> {
+    const configsSnapshot = await getDocs(collection(firebaseDb, "apiConfigs"));
+    for (const configDoc of configsSnapshot.docs) {
+      const data = configDoc.data();
+      if (data.entityType === entityType && data.entityId === entityId) {
+        return { id: parseInt(configDoc.id) || Date.now(), ...data } as ApiConfig;
+      }
+    }
+    return undefined;
   }
 
   async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
-    const configData = { ...config, id: 1, updatedAt: new Date() };
-    await setDoc(doc(firebaseDb, "config", "api"), configData);
+    // Busca configuração existente
+    const existingConfig = await this.getApiConfig(config.entityType, config.entityId);
+    
+    const configData = { 
+      ...config, 
+      id: existingConfig?.id || Date.now(), 
+      updatedAt: new Date() 
+    };
+    
+    // Se existe, usa mesmo documento. Se não existe, cria novo
+    const docId = existingConfig ? 
+      `${config.entityType}_${config.entityId}` : 
+      `${config.entityType}_${config.entityId}_${Date.now()}`;
+    
+    await setDoc(doc(firebaseDb, "apiConfigs", docId), configData);
     return configData as ApiConfig;
   }
 
@@ -792,9 +810,9 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  // Master Settings - configurações OpenAI vinculadas ao usuário master
-  async getMasterSettings(masterUserId: string): Promise<MasterSettings | undefined> {
-    const docRef = doc(firebaseDb, "masterSettings", masterUserId);
+  // Master Settings - configurações OpenAI globais compartilhadas entre todos os masters
+  async getMasterSettings(): Promise<MasterSettings | undefined> {
+    const docRef = doc(firebaseDb, "masterSettings", "global");
     const docSnap = await getDoc(docRef);
     return docSnap.exists() ? { id: 1, ...docSnap.data() } as MasterSettings : undefined;
   }
@@ -805,7 +823,7 @@ export class FirebaseStorage implements IStorage {
       id: 1, 
       updatedAt: new Date() 
     };
-    await setDoc(doc(firebaseDb, "masterSettings", settings.masterUserId), settingsData);
+    await setDoc(doc(firebaseDb, "masterSettings", "global"), settingsData);
     return settingsData as MasterSettings;
   }
 
