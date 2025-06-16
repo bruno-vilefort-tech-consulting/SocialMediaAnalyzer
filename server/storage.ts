@@ -157,13 +157,43 @@ export class FirebaseStorage implements IStorage {
   // Clients
   async getClients(): Promise<Client[]> {
     const snapshot = await getDocs(collection(firebaseDb, "clients"));
-    return snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Client));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // Converter Firebase Timestamps para Date objects
+      if (data.contractStart && typeof data.contractStart === 'object' && data.contractStart.seconds) {
+        data.contractStart = new Date(data.contractStart.seconds * 1000);
+      }
+      if (data.contractEnd && typeof data.contractEnd === 'object' && data.contractEnd.seconds) {
+        data.contractEnd = new Date(data.contractEnd.seconds * 1000);
+      }
+      if (data.createdAt && typeof data.createdAt === 'object' && data.createdAt.seconds) {
+        data.createdAt = new Date(data.createdAt.seconds * 1000);
+      }
+      
+      return { id: parseInt(doc.id), ...data } as Client;
+    });
   }
 
   async getClientById(id: number): Promise<Client | undefined> {
     const docRef = doc(firebaseDb, "clients", String(id));
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: parseInt(docSnap.id), ...docSnap.data() } as Client : undefined;
+    if (!docSnap.exists()) return undefined;
+    
+    const data = docSnap.data();
+    
+    // Converter Firebase Timestamps para Date objects
+    if (data.contractStart && typeof data.contractStart === 'object' && data.contractStart.seconds) {
+      data.contractStart = new Date(data.contractStart.seconds * 1000);
+    }
+    if (data.contractEnd && typeof data.contractEnd === 'object' && data.contractEnd.seconds) {
+      data.contractEnd = new Date(data.contractEnd.seconds * 1000);
+    }
+    if (data.createdAt && typeof data.createdAt === 'object' && data.createdAt.seconds) {
+      data.createdAt = new Date(data.createdAt.seconds * 1000);
+    }
+    
+    return { id: parseInt(docSnap.id), ...data } as Client;
   }
 
   async getClientByEmail(email: string): Promise<Client | undefined> {
@@ -186,10 +216,42 @@ export class FirebaseStorage implements IStorage {
   }
 
   async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
+    console.log(`🔄 FirebaseStorage.updateClient - ID: ${id}`);
+    console.log(`📝 Dados para atualização:`, JSON.stringify(clientUpdate, null, 2));
+    
     const docRef = doc(firebaseDb, "clients", String(id));
-    await updateDoc(docRef, clientUpdate);
-    const updatedDoc = await getDoc(docRef);
-    return { id, ...updatedDoc.data() } as Client;
+    
+    try {
+      await updateDoc(docRef, clientUpdate);
+      console.log(`✅ UpdateDoc executado com sucesso no Firebase`);
+      
+      const updatedDoc = await getDoc(docRef);
+      const data = updatedDoc.data();
+      
+      // Converter Firebase Timestamps para Date objects
+      if (data && data.contractStart && typeof data.contractStart === 'object' && data.contractStart.seconds) {
+        data.contractStart = new Date(data.contractStart.seconds * 1000);
+      }
+      if (data && data.contractEnd && typeof data.contractEnd === 'object' && data.contractEnd.seconds) {
+        data.contractEnd = new Date(data.contractEnd.seconds * 1000);
+      }
+      if (data && data.createdAt && typeof data.createdAt === 'object' && data.createdAt.seconds) {
+        data.createdAt = new Date(data.createdAt.seconds * 1000);
+      }
+      
+      const finalData = { id, ...data } as Client;
+      
+      console.log(`📋 Dados finais com timestamps convertidos:`, JSON.stringify({
+        contractStart: finalData.contractStart,
+        contractEnd: finalData.contractEnd,
+        isIndefiniteContract: finalData.isIndefiniteContract
+      }, null, 2));
+      
+      return finalData;
+    } catch (error) {
+      console.error(`❌ Erro ao atualizar cliente no Firebase:`, error);
+      throw error;
+    }
   }
 
   async deleteClient(id: number): Promise<void> {
