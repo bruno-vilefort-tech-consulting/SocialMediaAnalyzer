@@ -98,6 +98,10 @@ export interface IStorage {
   getApiConfig(): Promise<ApiConfig | undefined>;
   upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
 
+  // Client Voice Settings
+  getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined>;
+  upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting>;
+
   // Message Logs
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
   getMessageLogsByInterviewId(interviewId: number): Promise<MessageLog[]>;
@@ -742,9 +746,44 @@ export class FirebaseStorage implements IStorage {
   }
 
   async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
-    const configData = { ...config, id: 1 };
+    const configData = { ...config, id: 1, updatedAt: new Date() };
     await setDoc(doc(firebaseDb, "config", "api"), configData);
     return configData as ApiConfig;
+  }
+
+  // Client Voice Settings
+  async getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined> {
+    const snapshot = await getDocs(collection(firebaseDb, "clientVoiceSettings"));
+    const setting = snapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as ClientVoiceSetting))
+      .find(setting => setting.clientId === clientId);
+    return setting;
+  }
+
+  async upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting> {
+    // Buscar configuração existente
+    const existing = await this.getClientVoiceSetting(setting.clientId);
+    
+    if (existing) {
+      // Atualizar existente
+      const updatedData = {
+        ...existing,
+        ...setting,
+        updatedAt: new Date()
+      };
+      await setDoc(doc(firebaseDb, "clientVoiceSettings", String(existing.id)), updatedData);
+      return updatedData as ClientVoiceSetting;
+    } else {
+      // Criar novo
+      const settingId = Date.now();
+      const settingData = {
+        ...setting,
+        id: settingId,
+        updatedAt: new Date()
+      };
+      await setDoc(doc(firebaseDb, "clientVoiceSettings", String(settingId)), settingData);
+      return settingData as ClientVoiceSetting;
+    }
   }
 
   // Message Logs

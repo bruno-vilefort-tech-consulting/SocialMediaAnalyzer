@@ -144,18 +144,20 @@ export const responses = pgTable("responses", {
 export const apiConfigs = pgTable("api_configs", {
   id: serial("id").primaryKey(),
   openaiApiKey: text("openai_api_key"),
-  openaiModel: text("openai_model").default("tts-1"),
-  openaiVoice: text("openai_voice").default("nova"),
+  openaiModel: text("openai_model").default("gpt-4o"),
   firebaseProjectId: text("firebase_project_id"),
   firebaseServiceAccount: jsonb("firebase_service_account"),
-  whatsappToken: text("whatsapp_token"),
-  whatsappPhoneId: text("whatsapp_phone_id"),
   whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
   whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
   whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
-  globalMonthlyLimit: integer("global_monthly_limit").default(10000),
-  maxInterviewTime: integer("max_interview_time").default(1800), // seconds
-  maxFileSize: integer("max_file_size").default(52428800), // bytes (50MB)
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Client voice settings - cada cliente tem sua própria configuração de voz
+export const clientVoiceSettings = pgTable("client_voice_settings", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  openaiVoice: text("openai_voice").default("nova"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -198,6 +200,7 @@ export const insertSelectionSchema = createInsertSchema(selections).omit({ id: t
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });
 export const insertResponseSchema = createInsertSchema(responses).omit({ id: true, createdAt: true });
 export const insertApiConfigSchema = createInsertSchema(apiConfigs).omit({ id: true, updatedAt: true });
+export const insertClientVoiceSettingSchema = createInsertSchema(clientVoiceSettings).omit({ id: true, updatedAt: true });
 export const insertMessageLogSchema = createInsertSchema(messageLogs).omit({ id: true, sentAt: true });
 
 // Types
@@ -223,5 +226,7 @@ export type Response = typeof responses.$inferSelect;
 export type InsertResponse = z.infer<typeof insertResponseSchema>;
 export type ApiConfig = typeof apiConfigs.$inferSelect;
 export type InsertApiConfig = z.infer<typeof insertApiConfigSchema>;
+export type ClientVoiceSetting = typeof clientVoiceSettings.$inferSelect;
+export type InsertClientVoiceSetting = z.infer<typeof insertClientVoiceSettingSchema>;
 export type MessageLog = typeof messageLogs.$inferSelect;
 export type InsertMessageLog = z.infer<typeof insertMessageLogSchema>;
