@@ -25,15 +25,38 @@ export class WhatsAppQRService {
   private baileys: any = null;
 
   constructor() {
-    this.initializeBaileys().then(() => {
-      this.loadConnectionFromDB().then(() => {
-        this.initializeConnection();
-        // Conectar ao sistema simplificado
-        simpleInterviewService.setWhatsAppService(this);
-      });
-    }).catch(error => {
-      console.error('❌ Erro ao inicializar WhatsApp QR:', error.message);
+    // Inicializar de forma assíncrona e não bloqueante
+    this.safeInitialize().catch(error => {
+      console.error('❌ Falha completa na inicialização WhatsApp:', error.message);
     });
+  }
+
+  private async safeInitialize() {
+    try {
+      await this.initializeBaileys();
+      
+      try {
+        await this.loadConnectionFromDB();
+      } catch (dbError) {
+        console.log('⚠️ Erro ao carregar dados do banco - continuando sem dados salvos');
+      }
+      
+      try {
+        await this.initializeConnection();
+      } catch (connectionError) {
+        console.log('⚠️ Erro na conexão WhatsApp - continuando sem conexão ativa');
+      }
+      
+    } catch (baileysError) {
+      console.log('⚠️ Baileys não disponível - WhatsApp desabilitado');
+    }
+    
+    // Sempre conectar ao sistema simplificado, mesmo se WhatsApp falhar
+    try {
+      simpleInterviewService.setWhatsAppService(this);
+    } catch (serviceError) {
+      console.error('❌ Erro ao conectar com simpleInterviewService:', serviceError.message);
+    }
   }
 
   private async initializeBaileys() {
@@ -92,7 +115,8 @@ export class WhatsAppQRService {
   private async initializeConnection() {
     try {
       if (!this.makeWASocket || !this.useMultiFileAuthState) {
-        throw new Error('Baileys não foi inicializado corretamente');
+        console.log('⚠️ Baileys não foi inicializado corretamente - funcionando sem WhatsApp');
+        return;
       }
 
       console.log('🔗 Inicializando conexão WhatsApp QR...');
@@ -101,53 +125,93 @@ export class WhatsAppQRService {
       
       this.socket = this.makeWASocket({
         auth: state,
-        printQRInTerminal: true,
+        printQRInTerminal: false, // Desabilitar QR no terminal para evitar conflitos
       });
 
-      this.socket.ev.on('connection.update', (update: any) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-          this.generateQRCode(qr);
-        }
-        
-        if (connection === 'close') {
-          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
-          console.log('🔌 Conexão fechada devido a:', lastDisconnect?.error?.message);
+      this.socket.ev.on('connection.update', async (update: any) => {
+        try {
+          const { connection, lastDisconnect, qr } = update;
           
-          this.config.isConnected = false;
-          this.config.phoneNumber = null;
-          this.config.lastConnection = null;
-          this.notifyConnectionListeners(false);
-          
-          // Salvar desconexão no banco de dados
-          this.saveConnectionToDB();
-          
-          if (shouldReconnect) {
-            console.log('🔄 Reconectando...');
-            setTimeout(() => this.initializeConnection(), 5000);
+          if (qr) {
+            await this.generateQRCode(qr);
           }
-        } else if (connection === 'open') {
-          console.log('✅ WhatsApp QR conectado com sucesso!');
-          this.config.isConnected = true;
-          this.config.qrCode = null;
-          this.config.phoneNumber = this.socket.user?.id?.split(':')[0] || 'Conectado';
-          this.config.lastConnection = new Date();
-          this.notifyQRListeners(null);
-          this.notifyConnectionListeners(true);
           
-          // Salvar conexão no banco de dados
-          this.saveConnectionToDB();
+          if (connection === 'close') {
+            const errorCode = lastDisconnect?.error?.output?.statusCode;
+            const errorMessage = lastDisconnect?.error?.message || 'Desconhecido';
+            
+            console.log(`🔌 Conexão fechada devido a: ${errorMessage} (código: ${errorCode})`);
+            
+            this.config.isConnected = false;
+            this.config.phoneNumber = null;
+            this.config.lastConnection = null;
+            this.notifyConnectionListeners(false);
+            
+            // Salvar desconexão no banco de dados
+            await this.saveConnectionToDB().catch(err => 
+              console.error('Erro ao salvar desconexão:', err.message)
+            );
+            
+            // Só reconectar se não for erro de autenticação ou dispositivo removido
+            const shouldReconnect = errorCode !== 401 && errorCode !== 403 && !errorMessage.includes('device_removed');
+            
+            if (shouldReconnect) {
+              console.log('🔄 Tentando reconectar em 10 segundos...');
+              setTimeout(() => {
+                this.initializeConnection().catch(err => 
+                  console.error('Erro na reconexão:', err.message)
+                );
+              }, 10000);
+            } else {
+              console.log('❌ Não reconectando devido ao tipo de erro');
+            }
+          } else if (connection === 'open') {
+            console.log('✅ WhatsApp QR conectado com sucesso!');
+            this.config.isConnected = true;
+            this.config.qrCode = null;
+            this.config.phoneNumber = this.socket.user?.id?.split(':')[0] || 'Conectado';
+            this.config.lastConnection = new Date();
+            this.notifyQRListeners(null);
+            this.notifyConnectionListeners(true);
+            
+            // Salvar conexão no banco de dados
+            await this.saveConnectionToDB().catch(err => 
+              console.error('Erro ao salvar conexão:', err.message)
+            );
+          }
+        } catch (updateError) {
+          console.error('❌ Erro no handler de conexão:', updateError.message);
         }
       });
 
-      this.socket.ev.on('creds.update', saveCreds);
-      this.socket.ev.on('messages.upsert', this.handleIncomingMessages.bind(this));
+      this.socket.ev.on('creds.update', (creds: any) => {
+        try {
+          saveCreds();
+        } catch (credsError) {
+          console.error('❌ Erro ao salvar credenciais:', credsError.message);
+        }
+      });
+      
+      this.socket.ev.on('messages.upsert', (data: any) => {
+        try {
+          this.handleIncomingMessages(data);
+        } catch (messageError) {
+          console.error('❌ Erro ao processar mensagem:', messageError.message);
+        }
+      });
 
     } catch (error) {
-      console.error('❌ Erro ao inicializar conexão WhatsApp QR:', error);
+      console.error('❌ Erro ao inicializar conexão WhatsApp QR:', error.message);
       this.config.isConnected = false;
       this.notifyConnectionListeners(false);
+      
+      // Tentar novamente em 30 segundos
+      setTimeout(() => {
+        console.log('🔄 Tentando reinicializar WhatsApp após erro...');
+        this.initializeConnection().catch(err => 
+          console.error('Erro na reinicialização:', err.message)
+        );
+      }, 30000);
     }
   }
 
@@ -165,25 +229,33 @@ export class WhatsAppQRService {
   }
 
   private async handleIncomingMessages({ messages }: any) {
-    for (const message of messages) {
-      if (!message.key.fromMe && message.message) {
-        const from = message.key.remoteJid;
-        const text = message.message.conversation || 
-                    message.message.extendedTextMessage?.text || '';
-        const audioMessage = message.message?.audioMessage;
-        
-        console.log(`📨 Nova mensagem de ${from.replace('@s.whatsapp.net', '')}`);
-        console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
-        
-        // Se é áudio, passar a mensagem completa para transcrição real
-        if (audioMessage) {
-          console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
-          await simpleInterviewService.handleMessage(from, text, message);
-        } else {
-          // Para mensagens de texto, usar o fluxo normal
-          await simpleInterviewService.handleMessage(from, text, null);
+    try {
+      for (const message of messages) {
+        if (!message.key.fromMe && message.message) {
+          const from = message.key.remoteJid;
+          const text = message.message.conversation || 
+                      message.message.extendedTextMessage?.text || '';
+          const audioMessage = message.message?.audioMessage;
+          
+          console.log(`📨 Nova mensagem de ${from.replace('@s.whatsapp.net', '')}`);
+          console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
+          
+          try {
+            // Se é áudio, passar a mensagem completa para transcrição real
+            if (audioMessage) {
+              console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
+              await simpleInterviewService.handleMessage(from, text, message);
+            } else {
+              // Para mensagens de texto, usar o fluxo normal
+              await simpleInterviewService.handleMessage(from, text, null);
+            }
+          } catch (messageError) {
+            console.error(`❌ Erro ao processar mensagem individual:`, messageError.message);
+          }
         }
       }
+    } catch (error) {
+      console.error('❌ Erro ao processar mensagens:', error.message);
     }
   }
 
