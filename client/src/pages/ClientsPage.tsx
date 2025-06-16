@@ -89,6 +89,14 @@ export default function ClientsPage() {
     enabled: !!editingClient,
   });
 
+  // Debug: Log dos dados dos usuários
+  React.useEffect(() => {
+    if (editingClient && clientUsers.length > 0) {
+      console.log('🔍 DEBUG - Usuários retornados para cliente ID:', editingClient.id);
+      console.log('📋 Dados dos usuários:', clientUsers);
+    }
+  }, [editingClient, clientUsers]);
+
   // Form para usuário do cliente
   const clientUserForm = useForm<ClientUserFormData>({
     resolver: zodResolver(clientUserFormSchema),
