@@ -44,6 +44,7 @@ export interface IStorage {
   createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
   updateClientUser(id: number, clientUser: Partial<ClientUser>): Promise<ClientUser>;
   deleteClientUser(id: number): Promise<void>;
+  deleteAllClientUsers(clientId: number): Promise<ClientUser[]>;
 
   // Jobs
   getJobsByClientId(clientId: number): Promise<Job[]>;
@@ -265,6 +266,44 @@ export class FirebaseStorage implements IStorage {
 
   async deleteClientUser(id: number): Promise<void> {
     await deleteDoc(doc(firebaseDb, "clientUsers", String(id)));
+  }
+
+  async deleteAllClientUsers(clientId: number): Promise<ClientUser[]> {
+    console.log(`🔍 Buscando todos os usuários do cliente ID: ${clientId}`);
+    
+    // Buscar todos os usuários do cliente
+    const clientUsersQuery = query(collection(firebaseDb, "clientUsers"), where("clientId", "==", clientId));
+    const querySnapshot = await getDocs(clientUsersQuery);
+    
+    if (querySnapshot.empty) {
+      console.log(`✅ Nenhum usuário encontrado para o cliente ${clientId}`);
+      return [];
+    }
+    
+    console.log(`📋 Encontrados ${querySnapshot.size} usuário(s) para deletar:`);
+    
+    const deletedUsers: ClientUser[] = [];
+    const batch = writeBatch(firebaseDb);
+    
+    querySnapshot.docs.forEach((docSnapshot) => {
+      const userData = docSnapshot.data();
+      console.log(`- Usuário: ${userData.name} (${userData.email}) - ID: ${docSnapshot.id}`);
+      
+      // Adicionar ao batch para deleção
+      batch.delete(docSnapshot.ref);
+      
+      // Salvar dados do usuário deletado
+      deletedUsers.push({
+        id: parseInt(docSnapshot.id),
+        ...userData
+      } as ClientUser);
+    });
+    
+    // Executar deleção em batch
+    await batch.commit();
+    console.log(`✅ ${deletedUsers.length} usuário(s) deletado(s) com sucesso do cliente ${clientId}!`);
+    
+    return deletedUsers;
   }
 
   // Jobs

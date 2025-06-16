@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🗑️ USUÁRIOS DO CLIENTE DELETADOS COM SUCESSO - Limpeza conforme solicitado
+  - **Endpoint implementado**: DELETE /api/clients/:clientId/users/all para deleção em massa
+  - **Método adicionado**: deleteAllClientUsers() no FirebaseStorage com busca por clientId
+  - **Usuários removidos**: Todos os usuários administrativos do cliente "Grupo Maximus" (ID: 1749849987543)
+  - **Verificação confirmada**: Endpoint GET retorna array vazio [] confirmando deleção completa
+  - **Sistema limpo**: Cliente mantido, apenas usuários administrativos removidos conforme solicitado
+  - **Funcionalidade master**: ID do cliente (#1749849987543) aparece na interface para usuários master
+
 - June 16, 2025: 🔧 PROBLEMA DE RECRIAÇÃO DE CLIENTE RESOLVIDO - Sistema não recria mais clientes deletados
   - **Root cause identificado**: Sistema verificava por email em vez de CNPJ para detectar clientes existentes
   - **Correção implementada**: initializeFirebaseData.ts agora busca por CNPJ único para evitar duplicatas
