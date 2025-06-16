@@ -1,5 +1,5 @@
 // Teste direto do sistema de entrevista
-const { simpleInterviewService } = require('./server/simpleInterviewService');
+import { simpleInterviewService } from './server/simpleInterviewService.js';
 
 async function testInterview() {
   console.log('🧪 Iniciando teste direto do sistema de entrevista...');

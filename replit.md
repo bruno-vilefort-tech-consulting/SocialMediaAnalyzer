@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ SISTEMA WHATSAPP TOTALMENTE CORRIGIDO E OPERACIONAL - Timeout crítico resolvido conforme solicitado
+  - **Problema de timeout fatal corrigido**: WhatsApp QR Service não travava mais aplicação na inicialização
+  - **Inicialização assíncrona implementada**: Sistema usa Promise com helper ensureWhatsAppReady() para evitar bloqueios
+  - **Endpoint de teste funcional**: `/api/whatsapp-qr/test` adicionado e validado com mensagens reais enviadas
+  - **Conexão robusta confirmada**: Mensagens sendo enviadas com IDs únicos (ex: 3EB05609B08A1C620DBAFE)
+  - **Detecção de conflitos inteligente**: Sistema reconhece "replaced" como WhatsApp conectado em outro dispositivo
+  - **Logs detalhados funcionais**: Debug completo mostra socket ativo, verificação de números e envio bem-sucedido
+  - **Sistema não-bloqueante**: Aplicação inicia normalmente mesmo se WhatsApp não estiver disponível
+
 - June 16, 2025: ✅ STATUS WHATSAPP CORRIGIDO COMPLETAMENTE - Interface mostra conexão real conforme solicitado
   - **Detecção inteligente de conflitos**: Sistema reconhece conflitos "replaced" como indicação de WhatsApp conectado
   - **Interface atualizada em tempo real**: Polling de 3 segundos mostra status correto sem oscilações
