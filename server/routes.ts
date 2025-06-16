@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, firebaseDb } from "./storage";
-import { collection, getDocs, query, where, doc, setDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
 import { emailService } from "./emailService";
@@ -3142,15 +3142,30 @@ Responda de forma natural aguardando a resposta do candidato.`;
       console.log('🔍 Buscando entrevistas do Firebase para relatórios...');
       
       const db = firebaseDb;
+      
+      // DEBUG: Investigar Daniel Moreira especificamente
+      console.log('🔍 DEBUG: Investigando Daniel Moreira...');
+      const candidatesSnapshot = await getDocs(collection(db, 'candidates'));
+      const allCandidates = candidatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      const danielCandidates = allCandidates.filter(c => c.name && c.name.toLowerCase().includes('daniel'));
+      console.log('👤 Candidatos Daniel encontrados:');
+      danielCandidates.forEach(c => {
+        console.log(`  - ${c.name} (ID: ${c.id}) - Lista: ${c.listId}, WhatsApp: ${c.whatsapp}`);
+      });
+      
+      // DEBUG: Verificar todas as seleções
+      const selectionsSnapshot = await getDocs(collection(db, 'selections'));
+      const allSelections = selectionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      console.log('📋 Todas as seleções:');
+      allSelections.forEach(s => {
+        console.log(`  - ${s.name} (ID: ${s.id}) - Lista: ${s.candidateListId}`);
+      });
+      
       const interviewsSnapshot = await getDocs(collection(db, 'interviews'));
       
       console.log(`📊 Total de entrevistas encontradas: ${interviewsSnapshot.docs.length}`);
       
       const allInterviews: any[] = [];
-      
-      // Buscar todas as seleções para filtrar candidatos corretos
-      const allSelections = await storage.getAllSelections();
-      console.log(`📋 Total de seleções encontradas: ${allSelections.length}`);
       
       for (const interviewDoc of interviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
