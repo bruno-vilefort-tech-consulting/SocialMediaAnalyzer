@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 SISTEMA DE RECUPERAÇÃO DE SENHA TOTALMENTE FUNCIONAL - Todas as correções Firebase aplicadas
+  - **Sintaxe Firebase v9+ implementada**: Todas as chamadas `firebaseDb.collection()` corrigidas para `collection(firebaseDb, ...)`
+  - **EmailService importado corretamente**: Import adicionado no routes.ts para funcionamento completo
+  - **Sistema de tokens funcionando**: Reset tokens salvos no Firebase com expiração de 1 hora
+  - **Integração Resend operacional**: Emails enviados com sucesso (necessita verificar domínio corporativo)
+  - **Fluxo completo testado**: Solicitar reset → gerar token → enviar email → resetar senha funcionando
+
 - June 16, 2025: 🔧 ERRO "INVALID TIME VALUE" TOTALMENTE CORRIGIDO - Formulários de data funcionando
   - **Problema de datas null resolvido**: Campos contractStart e contractEnd validam Date antes de converter
   - **Validação robusta implementada**: Verifica se é Date válida com !isNaN(getTime()) antes de toISOString()

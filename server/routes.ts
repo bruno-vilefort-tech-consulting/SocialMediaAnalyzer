@@ -4,6 +4,7 @@ import { storage, firebaseDb } from "./storage";
 import { collection, getDocs, query, where, doc, setDoc, getDoc } from "firebase/firestore";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
+import { emailService } from "./emailService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
          insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
          insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
