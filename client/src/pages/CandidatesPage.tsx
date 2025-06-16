@@ -235,8 +235,8 @@ export default function CandidatesPage() {
       name: "", 
       email: "", 
       whatsapp: "",
-      listId: selectedListId || 0,
-      clientId: user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0
+      listId: 0,
+      clientId: 0
     }
   });
 
@@ -336,19 +336,40 @@ export default function CandidatesPage() {
   };
 
   const handleCreateCandidate = (data: CandidateFormData) => {
-    console.log('🔍 Dados recebidos no formulário:', data);
-    console.log('🔍 Lista selecionada:', selectedListId);
-    console.log('🔍 Listas disponíveis:', candidateLists);
+    console.log('🚀 handleCreateCandidate chamado com:', data);
     
-    // Garantir que listId e clientId estão corretos quando dentro de uma lista específica
+    // Se estivermos dentro de uma lista específica, usar seus dados
     if (selectedListId && candidateLists) {
       const selectedList = candidateLists.find(list => list.id === selectedListId);
       if (selectedList) {
         data.listId = selectedListId;
         data.clientId = selectedList.clientId;
-        console.log('🔄 Corrigindo dados para lista específica:', data);
+        console.log('🎯 Corrigindo para lista específica:', {
+          listId: data.listId,
+          clientId: data.clientId,
+          listName: selectedList.name
+        });
       }
     }
+
+    // Para usuários client, sempre usar seu próprio clientId se não foi definido
+    if (user?.role === 'client' && !data.clientId) {
+      data.clientId = user.clientId || 0;
+      console.log('👤 Cliente usando próprio ID:', data.clientId);
+    }
+
+    // Validação básica
+    if (!data.name || !data.email || !data.whatsapp || !data.listId || !data.clientId) {
+      console.error('❌ Dados obrigatórios ausentes:', data);
+      toast({ 
+        title: "Erro", 
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    console.log('✅ Enviando dados finais:', data);
 
     if (editingCandidate) {
       updateCandidateMutation.mutate(data);
@@ -853,37 +874,25 @@ export default function CandidatesPage() {
         setShowCandidateForm(open);
         if (!open) {
           setEditingCandidate(null);
-          candidateForm.reset({
-            name: "",
-            email: "",
-            whatsapp: "",
-            listId: selectedListId || 0,
-            clientId: selectedListId && candidateLists?.find(list => list.id === selectedListId)?.clientId || 
-                     (user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0)
-          });
+          candidateForm.reset();
         }
       }}>
-        <DialogContent aria-describedby="candidate-form-description">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {editingCandidate ? "Editar Candidato" : "Novo Candidato"}
             </DialogTitle>
           </DialogHeader>
-          <div id="candidate-form-description" className="sr-only">
-            {selectedListId ? `Formulário para adicionar candidato à lista selecionada` : `Formulário para adicionar novo candidato`}
-          </div>
+          
           <Form {...candidateForm}>
-            <form onSubmit={candidateForm.handleSubmit((data) => {
-              console.log('📝 Formulário submetido com dados:', data);
-              console.log('🔍 Erros do formulário:', candidateForm.formState.errors);
-              handleCreateCandidate(data);
-            })} className="space-y-4">
+            <form onSubmit={candidateForm.handleSubmit(handleCreateCandidate)} className="space-y-4">
+              {/* Campos básicos do candidato */}
               <FormField
                 control={candidateForm.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
+                    <FormLabel>Nome Completo *</FormLabel>
                     <FormControl>
                       <Input placeholder="Ex: João Silva" {...field} />
                     </FormControl>
@@ -891,12 +900,13 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={candidateForm.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email *</FormLabel>
                     <FormControl>
                       <Input placeholder="joao@email.com" type="email" {...field} />
                     </FormControl>
@@ -904,12 +914,13 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={candidateForm.control}
                 name="whatsapp"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>WhatsApp</FormLabel>
+                    <FormLabel>WhatsApp *</FormLabel>
                     <FormControl>
                       <Input placeholder="11987654321" {...field} />
                     </FormControl>
@@ -917,24 +928,9 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
-              
-              {/* Exibir contexto quando lista específica está selecionada */}
-              {selectedListId && candidateLists?.find(list => list.id === selectedListId) && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <div className="font-medium">Adicionando candidato à lista:</div>
-                    <div className="mt-1">
-                      <span className="font-semibold">{candidateLists.find(list => list.id === selectedListId)?.name}</span>
-                      {user?.role === 'master' && clients && (
-                        <span className="text-blue-600 dark:text-blue-300"> - {clients.find(c => c.id === candidateLists.find(list => list.id === selectedListId)?.clientId)?.companyName}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Seletor de Cliente (apenas para master quando não há lista selecionada) */}
-              {user?.role === 'master' && !selectedListId && (
+              {/* Seleção de cliente (master only) */}
+              {user?.role === 'master' && (
                 <FormField
                   control={candidateForm.control}
                   name="clientId"
@@ -960,45 +956,55 @@ export default function CandidatesPage() {
                   )}
                 />
               )}
-              
-              {/* Seletor de Lista (apenas quando não há lista específica selecionada) */}
-              {!selectedListId && (
-                <FormField
-                  control={candidateForm.control}
-                  name="listId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Lista de Candidatos *</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a lista" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {candidateLists
-                            ?.filter(list => user?.role === 'master' ? 
-                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
-                              list.clientId === user?.clientId
-                            )
-                            .map((list) => (
-                              <SelectItem key={list.id} value={list.id.toString()}>
-                                {list.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+              {/* Seleção de lista */}
+              <FormField
+                control={candidateForm.control}
+                name="listId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lista de Candidatos *</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a lista" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {candidateLists
+                          ?.filter(list => user?.role === 'master' ? 
+                            (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
+                            list.clientId === user?.clientId
+                          )
+                          .map((list) => (
+                            <SelectItem key={list.id} value={list.id.toString()}>
+                              {list.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Contexto visual quando dentro de lista específica */}
+              {selectedListId && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <div className="font-medium">Adicionando à lista atual:</div>
+                    <div className="mt-1 font-semibold">
+                      {candidateLists?.find(list => list.id === selectedListId)?.name}
+                    </div>
+                  </div>
+                </div>
               )}
               
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createCandidateMutation.isPending || updateCandidateMutation.isPending}>
+                <Button type="submit" disabled={createCandidateMutation.isPending}>
                   {editingCandidate ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
