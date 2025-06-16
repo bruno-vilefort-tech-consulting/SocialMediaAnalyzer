@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 ERRO "INVALID TIME VALUE" TOTALMENTE CORRIGIDO - Formulários de data funcionando
+  - **Problema de datas null resolvido**: Campos contractStart e contractEnd validam Date antes de converter
+  - **Validação robusta implementada**: Verifica se é Date válida com !isNaN(getTime()) antes de toISOString()
+  - **Formulário de edição estável**: Clientes podem ser editados sem erro de data inválida
+  - **Sistema defensivo**: Interface protegida contra valores null/undefined em campos de data
+
 - June 16, 2025: 🗑️ USUÁRIOS DO CLIENTE DELETADOS COM SUCESSO - Limpeza conforme solicitado
   - **Endpoint implementado**: DELETE /api/clients/:clientId/users/all para deleção em massa
   - **Método adicionado**: deleteAllClientUsers() no FirebaseStorage com busca por clientId
