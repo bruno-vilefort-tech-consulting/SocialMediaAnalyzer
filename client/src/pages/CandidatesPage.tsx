@@ -83,8 +83,30 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidate-lists']
   });
 
+  // Query para buscar candidatos baseado no filtro de cliente selecionado
+  const candidatesQueryKey = user?.role === 'master' && selectedClientFilter !== 'all'
+    ? ['/api/candidates', { clientId: selectedClientFilter }]
+    : ['/api/candidates'];
+
   const { data: allCandidates = [], isLoading: candidatesLoading } = useQuery<Candidate[]>({
-    queryKey: ['/api/candidates']
+    queryKey: candidatesQueryKey,
+    queryFn: async () => {
+      const params = user?.role === 'master' && selectedClientFilter !== 'all'
+        ? `?clientId=${selectedClientFilter}`
+        : '';
+      const response = await fetch(`/api/candidates${params}`);
+      return response.json();
+    }
+  });
+
+  // Query específica para candidatos de uma lista quando visualizando lista única
+  const { data: listCandidates = [], isLoading: listCandidatesLoading } = useQuery<Candidate[]>({
+    queryKey: ['/api/lists', selectedListId, 'candidates'],
+    queryFn: async () => {
+      const response = await fetch(`/api/lists/${selectedListId}/candidates`);
+      return response.json();
+    },
+    enabled: !!selectedListId && viewMode === 'single'
   });
 
   // Filtrar listas de candidatos por cliente (apenas para master)
@@ -92,10 +114,10 @@ export default function CandidatesPage() {
     ? candidateLists.filter(list => list.clientId?.toString() === selectedClientFilter)
     : candidateLists;
 
-  // Filtrar candidatos pela lista selecionada
-  const filteredCandidates = selectedListId 
-    ? allCandidates.filter(candidate => candidate.listId === selectedListId)
-    : [];
+  // Candidatos exibidos baseado no modo de visualização
+  const filteredCandidates = viewMode === 'single' && selectedListId 
+    ? listCandidates
+    : allCandidates;
 
   // Lista selecionada atual
   const selectedList = candidateLists.find(list => list.id === selectedListId);

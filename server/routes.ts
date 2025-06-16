@@ -761,13 +761,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const listId = req.query.listId as string;
+      
       if (listId) {
+        // Buscar candidatos de uma lista específica
         const candidates = await storage.getCandidatesByListId(parseInt(listId));
         res.json(candidates);
       } else {
-        const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
-        const candidates = await storage.getCandidatesByClientId(clientId);
-        res.json(candidates);
+        // Buscar candidatos do cliente através das listas
+        if (req.user!.role === 'master') {
+          // Master pode ver candidatos de múltiplos clientes
+          const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : null;
+          if (clientId) {
+            const candidates = await storage.getCandidatesByMultipleClients([clientId]);
+            res.json(candidates);
+          } else {
+            // Buscar todos os candidatos de todos os clientes
+            const clients = await storage.getClients();
+            const clientIds = clients.map(c => c.id);
+            const candidates = await storage.getCandidatesByMultipleClients(clientIds);
+            res.json(candidates);
+          }
+        } else {
+          // Cliente vê apenas seus candidatos
+          const candidates = await storage.getCandidatesByMultipleClients([req.user!.clientId!]);
+          res.json(candidates);
+        }
       }
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch candidates' });
@@ -776,9 +794,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
+      const { listId, ...candidateData } = req.body;
       const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
-      const candidateData = { ...req.body, clientId };
+      
+      // Criar candidato sem clientId (não existe mais no schema)
       const candidate = await storage.createCandidate(candidateData);
+      
+      // Se listId foi fornecido, criar membership
+      if (listId) {
+        await storage.addCandidateToList(candidate.id, parseInt(listId), clientId);
+      }
+      
       res.status(201).json(candidate);
     } catch (error) {
       res.status(400).json({ message: 'Failed to create candidate' });
@@ -899,8 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: nameStr,
             email: emailStr,
             whatsapp: phoneDigits, // Campo celular vai para whatsapp
-            clientId,
-            listId: parseInt(listId)
+            // Não incluir clientId e listId no candidato - será tratado via membership
           });
         } catch (error) {
           errors.push(`Linha ${index + 2}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -919,6 +944,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let importedCandidates = [];
       if (validCandidates.length > 0) {
         importedCandidates = await storage.createCandidates(validCandidates);
+        
+        // Criar memberships para associar candidatos à lista e cliente
+        const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+        const listIdNum = parseInt(listId);
+        
+        for (const candidate of importedCandidates) {
+          await storage.addCandidateToList(candidate.id, listIdNum, clientId);
+        }
       }
 
       // Preparar resposta
@@ -958,6 +991,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(400).json({ message: 'Failed to delete candidate' });
+    }
+  });
+
+  // Candidate List Membership routes (muitos-para-muitos)
+  app.post("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const listId = parseInt(req.params.listId);
+      const clientId = req.user!.role === 'master' ? req.body.clientId : req.user!.clientId!;
+      
+      const membership = await storage.addCandidateToList(candidateId, listId, clientId);
+      res.status(201).json(membership);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to add candidate to list' });
+    }
+  });
+
+  app.delete("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const listId = parseInt(req.params.listId);
+      
+      await storage.removeCandidateFromList(candidateId, listId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to remove candidate from list' });
+    }
+  });
+
+  app.get("/api/candidates/:candidateId/memberships", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const memberships = await storage.getCandidateListMemberships(candidateId);
+      res.json(memberships);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to get candidate memberships' });
+    }
+  });
+
+  app.get("/api/lists/:listId/candidates", authenticate, authorize(['client', 'master']), async (req, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      const candidates = await storage.getCandidatesInList(listId);
+      res.json(candidates);
+    } catch (error) {
+      res.status(400).json({ message: 'Failed to get candidates in list' });
     }
   });
 
