@@ -77,8 +77,7 @@ export default function CandidatesPage() {
     enabled: user?.role === 'master'
   });
 
-  // Debug: log dos clientes carregados
-  console.log('🔍 Dados dos clientes:', { clients, clientsLoading, userRole: user?.role });
+
 
   const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
     queryKey: ['/api/candidate-lists']
@@ -328,7 +327,7 @@ export default function CandidatesPage() {
                       <SelectItem value="all">Todos os clientes</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.name}
+                          {client.companyName}
                         </SelectItem>
                       ))}
                     </SelectContent>
