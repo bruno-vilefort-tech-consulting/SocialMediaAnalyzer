@@ -257,12 +257,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", authenticate, authorize(['master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      console.log('🗑️ Tentando deletar cliente com ID:', id);
+      console.log('🗑️ Backend: Recebida requisição DELETE para cliente ID:', id);
+      console.log('🔐 Backend: Usuário autenticado:', req.user?.email, 'Role:', req.user?.role);
+      
+      if (isNaN(id)) {
+        console.log('❌ Backend: ID inválido recebido:', req.params.id);
+        return res.status(400).json({ message: 'ID inválido fornecido' });
+      }
+      
+      console.log('📞 Backend: Chamando storage.deleteClient...');
       await storage.deleteClient(id);
-      console.log('✅ Cliente deletado com sucesso');
+      console.log('✅ Backend: Cliente deletado com sucesso do storage');
       res.status(204).send();
     } catch (error) {
-      console.error('❌ Erro ao deletar cliente:', error);
+      console.error('❌ Backend: Erro ao deletar cliente:', error);
       res.status(400).json({ message: 'Failed to delete client', error: (error as Error).message });
     }
   });

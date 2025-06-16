@@ -112,18 +112,23 @@ export default function ClientsPage() {
   });
 
   const deleteClientMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/clients/${id}`),
-    onSuccess: () => {
+    mutationFn: (id: number) => {
+      console.log('🔥 Frontend: Enviando DELETE para /api/clients/' + id);
+      return apiRequest("DELETE", `/api/clients/${id}`);
+    },
+    onSuccess: (data, variables) => {
+      console.log('✅ Frontend: Cliente deletado com sucesso', variables);
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
         title: "Cliente removido",
         description: "Cliente foi removido com sucesso",
       });
     },
-    onError: () => {
+    onError: (error, variables) => {
+      console.error('❌ Frontend: Erro ao deletar cliente', variables, error);
       toast({
         title: "Erro",
-        description: "Falha ao remover cliente",
+        description: `Falha ao remover cliente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
         variant: "destructive",
       });
     },

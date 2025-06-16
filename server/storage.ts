@@ -183,7 +183,19 @@ export class FirebaseStorage implements IStorage {
   }
 
   async deleteClient(id: number): Promise<void> {
-    await deleteDoc(doc(firebaseDb, "clients", String(id)));
+    console.log(`🗑️ Storage: Deletando cliente ID ${id} do Firebase`);
+    const docRef = doc(firebaseDb, "clients", String(id));
+    
+    // Verificar se o documento existe antes de deletar
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      console.log(`❌ Cliente ID ${id} não encontrado no Firebase`);
+      throw new Error(`Cliente com ID ${id} não encontrado`);
+    }
+    
+    console.log(`✅ Cliente encontrado, deletando: ${JSON.stringify(docSnap.data())}`);
+    await deleteDoc(docRef);
+    console.log(`✅ Cliente ID ${id} deletado com sucesso do Firebase`);
   }
 
   // Jobs
