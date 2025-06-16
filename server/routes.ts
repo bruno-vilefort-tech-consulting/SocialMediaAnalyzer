@@ -823,9 +823,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Arquivo inválido ou corrompido' });
       }
 
-      const { listId } = req.body;
+      const { listId, clientId } = req.body;
       if (!listId) {
         return res.status(400).json({ message: 'Lista de candidatos obrigatória' });
+      }
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Cliente obrigatório' });
       }
 
       // Verificar se o arquivo tem conteúdo
@@ -919,13 +923,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+          const clientIdNum = parseInt(clientId);
+          const listIdNum = parseInt(listId);
 
           validCandidates.push({
             name: nameStr,
             email: emailStr,
             whatsapp: phoneDigits, // Campo celular vai para whatsapp
-            // Não incluir clientId e listId no candidato - será tratado via membership
+            clientId: clientIdNum,
+            listId: listIdNum
           });
         } catch (error) {
           errors.push(`Linha ${index + 2}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -946,11 +952,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         importedCandidates = await storage.createCandidates(validCandidates);
         
         // Criar memberships para associar candidatos à lista e cliente
-        const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+        const clientIdNum = parseInt(clientId);
         const listIdNum = parseInt(listId);
         
         for (const candidate of importedCandidates) {
-          await storage.addCandidateToList(candidate.id, listIdNum, clientId);
+          await storage.addCandidateToList(candidate.id, listIdNum, clientIdNum);
         }
       }
 
