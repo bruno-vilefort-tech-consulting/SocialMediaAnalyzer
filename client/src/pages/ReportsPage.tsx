@@ -40,7 +40,7 @@ interface Response {
 
 export default function ReportsPage() {
   const [selectedSelection, setSelectedSelection] = useState<number | null>(null);
-  const { playAudio: playAudioHook, pauseAudio, stopAudio, isPlaying, currentAudioUrl } = useAudioRecorder();
+  const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying, currentAudioUrl } = useAudioRecorder();
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
 
   const { data: selections = [] } = useQuery({
@@ -451,15 +451,27 @@ export default function ReportsPage() {
                             </Button>
                           ) : (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={pauseAudio}
-                                className="flex items-center space-x-2 bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-700"
-                              >
-                                <Pause className="h-4 w-4" />
-                                <span>Pause</span>
-                              </Button>
+                              {isPlaying ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={pauseAudio}
+                                  className="flex items-center space-x-2 bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-700"
+                                >
+                                  <Pause className="h-4 w-4" />
+                                  <span>Pause</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={resumeAudio}
+                                  className="flex items-center space-x-2 bg-green-100 hover:bg-green-200 border-green-300 text-green-700"
+                                >
+                                  <Play className="h-4 w-4" />
+                                  <span>Resume</span>
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"

@@ -129,8 +129,20 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     if (audioRef.current && isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
+      // Não limpar currentAudioUrl para permitir retomar
     }
   }, [isPlaying]);
+
+  const resumeAudio = useCallback(() => {
+    if (audioRef.current && !isPlaying && currentAudioUrl) {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
+        console.error('Error resuming audio:', error);
+        setIsPlaying(false);
+      });
+    }
+  }, [isPlaying, currentAudioUrl]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -149,6 +161,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
     stopRecording,
     playAudio,
     pauseAudio,
+    resumeAudio,
     stopAudio,
     isPlaying,
     currentAudioUrl
