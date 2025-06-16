@@ -2035,6 +2035,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client Voice Settings endpoints
+  app.get("/api/client-voice-settings/:clientId", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const voiceSetting = await storage.getClientVoiceSetting(clientId);
+      
+      if (!voiceSetting) {
+        // Return default settings if none exist
+        return res.json({
+          clientId,
+          voice: "nova", // Default voice
+          updatedAt: null
+        });
+      }
+      
+      res.json(voiceSetting);
+    } catch (error) {
+      console.error("Error fetching client voice settings:", error);
+      res.status(500).json({ message: "Failed to fetch voice settings" });
+    }
+  });
+
+  app.post("/api/client-voice-settings", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { clientId, voice } = req.body;
+      
+      if (!clientId || !voice) {
+        return res.status(400).json({ message: "ClientId and voice are required" });
+      }
+      
+      const voiceSetting = await storage.upsertClientVoiceSetting({
+        clientId,
+        voice
+      });
+      
+      res.json(voiceSetting);
+    } catch (error) {
+      console.error("Error saving client voice settings:", error);
+      res.status(500).json({ message: "Failed to save voice settings" });
+    }
+  });
+
+  // Test OpenAI API endpoint
+  app.post("/api/test-openai", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "API key is required" 
+        });
+      }
+      
+      console.log('🧪 Testando chave OpenAI...');
+      
+      // Test the API key with a simple request
+      const response = await fetch("https://api.openai.com/v1/models", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Chave OpenAI válida');
+        
+        res.json({
+          success: true,
+          message: "Chave da API OpenAI válida e funcionando",
+          modelsCount: data.data?.length || 0
+        });
+      } else {
+        const errorData = await response.json();
+        console.log('❌ Chave OpenAI inválida:', errorData);
+        
+        let errorMessage = "Chave da API inválida";
+        if (response.status === 401) {
+          errorMessage = "Chave da API inválida ou expirada";
+        } else if (response.status === 429) {
+          errorMessage = "Limite de uso excedido na chave da API";
+        } else if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        }
+        
+        res.json({
+          success: false,
+          error: errorMessage
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro testando OpenAI:", error);
+      res.json({
+        success: false,
+        error: "Erro ao conectar com a API OpenAI"
+      });
+    }
+  });
+
+  // Preview TTS endpoint for client voice testing
+  app.post("/api/preview-tts", authenticate, async (req: AuthRequest, res) => {
+    try {
+      const { text, voice, userType } = req.body;
+      
+      if (!text || !voice) {
+        return res.status(400).json({ message: "Text and voice are required" });
+      }
+      
+      console.log('🎵 Gerando preview TTS:', { voice, userType });
+      
+      const config = await storage.getApiConfig();
+      if (!config?.openaiApiKey) {
+        return res.status(400).json({ 
+          message: "OpenAI API not configured. Please configure API key first.",
+          status: "error" 
+        });
+      }
+      
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: text,
+          voice: voice,
+          response_format: "mp3"
+        }),
+      });
+      
+      if (response.ok) {
+        console.log('✅ Preview TTS gerado com sucesso');
+        const audioBuffer = await response.arrayBuffer();
+        res.set({
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': audioBuffer.byteLength.toString(),
+        });
+        res.send(Buffer.from(audioBuffer));
+      } else {
+        const errorData = await response.json();
+        console.log('❌ Erro TTS:', errorData);
+        res.status(400).json({ 
+          message: errorData.error?.message || "Failed to generate voice preview",
+          status: "error" 
+        });
+      }
+    } catch (error) {
+      console.error("❌ Erro gerando preview TTS:", error);
+      res.status(500).json({ 
+        message: "Failed to generate voice preview",
+        status: "error" 
+      });
+    }
+  });
+
   // Natural conversation endpoint
   app.post("/api/natural-conversation", async (req, res) => {
     try {
