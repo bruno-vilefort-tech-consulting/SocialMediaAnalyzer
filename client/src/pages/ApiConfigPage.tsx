@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone } from "lucide-react";
+import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,7 @@ export default function ApiConfigPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
   const isMaster = user?.role === 'master';
 
   // API Config para master
@@ -61,31 +62,15 @@ export default function ApiConfigPage() {
   const [openaiModel, setOpenaiModel] = useState("gpt-4o");
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
-  // Estados para configurações cliente
-  const [selectedVoice, setSelectedVoice] = useState("nova");
+  // Estado para configuração de voz (cliente)
+  const [selectedVoice, setSelectedVoice] = useState<string>("nova");
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
 
-  // Estados para WhatsApp
+  // Estados para teste WhatsApp
   const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState("Teste de conexão WhatsApp QR - Sistema de Entrevistas");
+  const [testMessage, setTestMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
 
-  // Vozes disponíveis otimizadas para português brasileiro
-  const voices = [
-    { value: "nova", label: "Nova (Feminina, Natural)" },
-    { value: "shimmer", label: "Shimmer (Feminina, Suave)" },
-    { value: "alloy", label: "Alloy (Neutro, Claro)" },
-    { value: "onyx", label: "Onyx (Masculino, Profundo)" }
-  ];
-
-  // Modelos GPT disponíveis
-  const gptModels = [
-    { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo (Rápido)" },
-    { value: "gpt-4", label: "GPT-4 (Equilibrado)" },
-    { value: "gpt-4-turbo", label: "GPT-4 Turbo (Avançado)" },
-    { value: "gpt-4o", label: "GPT-4o (Mais Recente)" }
-  ];
-
-  // Carregar dados existentes
+  // Carrega dados existentes
   useEffect(() => {
     if (config) {
       setOpenaiApiKey(config.openaiApiKey || "");
@@ -99,31 +84,38 @@ export default function ApiConfigPage() {
     }
   }, [voiceSetting]);
 
-  // Mutation para salvar configuração master
+  // Mutation para salvar configurações master
   const saveConfigMutation = useMutation({
-    mutationFn: async (data: Partial<ApiConfig>) => {
-      return await apiRequest("/api/config", "POST", data);
+    mutationFn: async () => {
+      return await apiRequest("/api/config", "POST", {
+        openaiApiKey,
+        openaiModel,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/config"] });
       toast({
-        title: "Configuração salva",
-        description: "Configurações OpenAI salvas com sucesso",
+        title: "Configurações salvas",
+        description: "Chave API e modelo OpenAI salvos com sucesso",
       });
+      setTestStatus('idle');
     },
     onError: (error) => {
       toast({
         title: "Erro ao salvar",
-        description: error.message || "Erro ao salvar configurações",
+        description: error.message || "Falha ao salvar configurações",
         variant: "destructive",
       });
     },
   });
 
-  // Mutation para salvar configuração de voz cliente
+  // Mutation para salvar configuração de voz
   const saveVoiceMutation = useMutation({
-    mutationFn: async (data: Partial<ClientVoiceSetting>) => {
-      return await apiRequest("/api/client-voice-settings", "POST", data);
+    mutationFn: async () => {
+      return await apiRequest("/api/client-voice-settings", "POST", {
+        clientId: user?.clientId,
+        voice: selectedVoice,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/client-voice-settings/${user?.clientId}`] });
@@ -134,8 +126,8 @@ export default function ApiConfigPage() {
     },
     onError: (error) => {
       toast({
-        title: "Erro ao salvar voz",
-        description: error.message || "Erro ao salvar configuração de voz",
+        title: "Erro ao salvar",
+        description: error.message || "Falha ao salvar configuração de voz",
         variant: "destructive",
       });
     },
@@ -183,14 +175,14 @@ export default function ApiConfigPage() {
       apiRequest("/api/whatsapp-qr/test", "POST", data),
     onSuccess: () => {
       toast({
-        title: "Teste enviado!",
-        description: "Mensagem de teste enviada com sucesso",
+        title: "Mensagem enviada",
+        description: "Teste do WhatsApp realizado com sucesso",
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: "Erro no teste",
-        description: error?.message || "Falha ao enviar mensagem de teste",
+        description: "Falha ao enviar mensagem de teste",
         variant: "destructive",
       });
     },
@@ -222,7 +214,7 @@ export default function ApiConfigPage() {
         setTestStatus('error');
         toast({
           title: "Chave inválida",
-          description: data.error,
+          description: data.message || "Falha na validação da chave API",
           variant: "destructive",
         });
       }
@@ -230,7 +222,7 @@ export default function ApiConfigPage() {
       setTestStatus('error');
       toast({
         title: "Erro no teste",
-        description: error.message || "Erro ao testar chave OpenAI",
+        description: error.message || "Falha ao testar chave API",
         variant: "destructive",
       });
     }
@@ -238,20 +230,15 @@ export default function ApiConfigPage() {
 
   // Preview de voz
   const playVoicePreview = async () => {
-    if (!selectedVoice) return;
+    if (isPlayingVoice) return;
     
     setIsPlayingVoice(true);
     try {
-      const response = await fetch('/api/preview-tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: "Olá! Esta é uma demonstração da voz selecionada para as entrevistas.",
-          voice: selectedVoice,
-          userType: isMaster ? 'master' : 'client'
-        }),
+      const response = await apiRequest("/api/preview-tts", "POST", {
+        text: "Esta é uma prévia da voz selecionada para as entrevistas.",
+        voice: selectedVoice,
       });
-
+      
       if (response.ok) {
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -263,8 +250,6 @@ export default function ApiConfigPage() {
         };
         
         await audio.play();
-      } else {
-        throw new Error('Erro ao gerar preview');
       }
     } catch (error) {
       setIsPlayingVoice(false);
@@ -275,27 +260,6 @@ export default function ApiConfigPage() {
       });
     }
   };
-
-  // Conectar WhatsApp QR
-  const connectWhatsAppMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("/api/whatsapp-qr/connect", "POST");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
-      toast({
-        title: "WhatsApp conectado",
-        description: "Conexão WhatsApp QR estabelecida com sucesso",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erro na conexão",
-        description: error.message || "Erro ao conectar WhatsApp",
-        variant: "destructive",
-      });
-    },
-  });
 
   if (configLoading || voiceLoading || whatsappLoading) {
     return (
@@ -308,38 +272,45 @@ export default function ApiConfigPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Configurações da API</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <Settings className="h-8 w-8 text-blue-600" />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            Configurações da API
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            {isMaster ? "Configure as APIs do sistema" : "Configure sua voz para entrevistas"}
+          </p>
+        </div>
       </div>
 
-      {/* Configurações OpenAI - Apenas Master */}
+      {/* Configurações Master - OpenAI */}
       {isMaster && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
-              Configurações OpenAI (Master)
+              Configurações OpenAI
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="openai-key">Chave da API OpenAI</Label>
+                <Label htmlFor="openaiKey">Chave da API OpenAI</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="openai-key"
+                    id="openaiKey"
                     type="password"
-                    placeholder="sk-..."
                     value={openaiApiKey}
                     onChange={(e) => setOpenaiApiKey(e.target.value)}
+                    placeholder="sk-..."
                     className="flex-1"
                   />
                   <Button
                     onClick={testOpenAI}
-                    disabled={testStatus === 'testing'}
-                    variant="outline"
+                    disabled={testStatus === 'testing' || !openaiApiKey.trim()}
                     size="sm"
+                    variant="outline"
                   >
                     {testStatus === 'testing' ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -355,29 +326,25 @@ export default function ApiConfigPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="openai-model">Modelo GPT</Label>
+                <Label htmlFor="openaiModel">Modelo GPT</Label>
                 <Select value={openaiModel} onValueChange={setOpenaiModel}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {gptModels.map((model) => (
-                      <SelectItem key={model.value} value={model.value}>
-                        {model.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
+                    <SelectItem value="gpt-4">GPT-4</SelectItem>
+                    <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                    <SelectItem value="gpt-4o">GPT-4o (Recomendado)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <Button
-              onClick={() => saveConfigMutation.mutate({
-                openaiApiKey,
-                openaiModel,
-              })}
+              onClick={() => saveConfigMutation.mutate()}
               disabled={saveConfigMutation.isPending}
-              className="w-full lg:w-auto"
+              className="w-full md:w-auto"
             >
               {saveConfigMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -390,34 +357,32 @@ export default function ApiConfigPage() {
         </Card>
       )}
 
-      {/* Configurações de Voz - Cliente ou Master */}
+      {/* Configurações de Voz (Master e Cliente) */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Volume2 className="h-5 w-5" />
-            Configurações de Voz {isMaster ? "(Master)" : "(Cliente)"}
+            Configuração de Voz TTS
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="voice-select">Voz para Entrevistas</Label>
+              <Label htmlFor="voice">Voz para Entrevistas</Label>
               <Select value={selectedVoice} onValueChange={setSelectedVoice}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {voices.map((voice) => (
-                    <SelectItem key={voice.value} value={voice.value}>
-                      {voice.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="nova">Nova (Feminina - Recomendada)</SelectItem>
+                  <SelectItem value="shimmer">Shimmer (Feminina)</SelectItem>
+                  <SelectItem value="alloy">Alloy (Neutro)</SelectItem>
+                  <SelectItem value="onyx">Onyx (Masculina)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Preview da Voz</Label>
+            <div className="flex items-end">
               <Button
                 onClick={playVoicePreview}
                 disabled={isPlayingVoice}
@@ -425,27 +390,19 @@ export default function ApiConfigPage() {
                 className="w-full"
               >
                 {isPlayingVoice ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Reproduzindo...
-                  </>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <>
-                    <Volume2 className="h-4 w-4 mr-2" />
-                    Testar Voz
-                  </>
+                  <Volume2 className="h-4 w-4 mr-2" />
                 )}
+                {isPlayingVoice ? "Reproduzindo..." : "Preview da Voz"}
               </Button>
             </div>
           </div>
 
           <Button
-            onClick={() => saveVoiceMutation.mutate({
-              clientId: user?.clientId || 0,
-              voice: selectedVoice,
-            })}
+            onClick={() => saveVoiceMutation.mutate()}
             disabled={saveVoiceMutation.isPending}
-            className="w-full lg:w-auto"
+            className="w-full md:w-auto"
           >
             {saveVoiceMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
