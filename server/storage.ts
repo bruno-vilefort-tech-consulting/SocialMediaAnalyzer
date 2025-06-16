@@ -1274,6 +1274,17 @@ export class FirebaseStorage implements IStorage {
       .filter(membership => membership.candidateId === candidateId);
   }
 
+  async getAllCandidateListMemberships(): Promise<CandidateListMembership[]> {
+    console.log('🔍 Buscando TODOS os candidate-list-memberships no Firebase...');
+    const snapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
+    const memberships = snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    } as CandidateListMembership));
+    console.log(`📋 Total de memberships encontrados: ${memberships.length}`);
+    return memberships;
+  }
+
   async getCandidatesInList(listId: number): Promise<Candidate[]> {
     return this.getCandidatesByListId(listId);
   }

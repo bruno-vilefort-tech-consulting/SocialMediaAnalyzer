@@ -632,6 +632,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para buscar todos os relacionamentos candidato-lista-memberships
+  app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔍 Buscando todos os candidate-list-memberships');
+      const memberships = await storage.getAllCandidateListMemberships();
+      console.log(`📋 Retornando ${memberships.length} memberships para o frontend`);
+      res.json(memberships);
+    } catch (error) {
+      console.error('Erro ao buscar candidate-list-memberships:', error);
+      res.status(500).json({ message: 'Failed to fetch candidate list memberships' });
+    }
+  });
+
   // Candidates routes
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
