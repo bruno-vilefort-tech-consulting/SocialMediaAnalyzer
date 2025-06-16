@@ -737,9 +737,12 @@ export default function CandidatesPage() {
               <div>
                 <h1 className="text-3xl font-bold">{selectedList?.name}</h1>
                 <p className="text-muted-foreground">
-                  {viewMode === 'single' && selectedListId 
-                    ? listCandidates.length 
-                    : filteredCandidates.length} candidatos nesta lista
+                  {(() => {
+                    const count = viewMode === 'single' && selectedListId 
+                      ? listCandidates.length 
+                      : filteredCandidates.length;
+                    return `${count} ${count === 1 ? 'candidato' : 'candidatos'} nesta lista`;
+                  })()}
                 </p>
               </div>
             </div>
