@@ -140,16 +140,23 @@ export const responses = pgTable("responses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// API configurations
+// API configurations (sem OpenAI - agora vinculado ao master)
 export const apiConfigs = pgTable("api_configs", {
   id: serial("id").primaryKey(),
-  openaiApiKey: text("openai_api_key"),
-  openaiModel: text("openai_model").default("gpt-4o"),
   firebaseProjectId: text("firebase_project_id"),
   firebaseServiceAccount: jsonb("firebase_service_account"),
   whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
   whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
   whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Master settings - configurações OpenAI vinculadas ao usuário master
+export const masterSettings = pgTable("master_settings", {
+  id: serial("id").primaryKey(),
+  masterUserId: text("master_user_id").references(() => users.id).notNull(),
+  openaiApiKey: text("openai_api_key"),
+  openaiModel: text("openai_model").default("gpt-4o"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -199,6 +206,7 @@ export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: t
 export const insertSelectionSchema = createInsertSchema(selections).omit({ id: true, createdAt: true });
 export const insertInterviewSchema = createInsertSchema(interviews).omit({ id: true, createdAt: true });
 export const insertResponseSchema = createInsertSchema(responses).omit({ id: true, createdAt: true });
+export const insertMasterSettingsSchema = createInsertSchema(masterSettings).omit({ id: true, updatedAt: true });
 export const insertApiConfigSchema = createInsertSchema(apiConfigs).omit({ id: true, updatedAt: true });
 export const insertClientVoiceSettingSchema = createInsertSchema(clientVoiceSettings).omit({ id: true, updatedAt: true });
 export const insertMessageLogSchema = createInsertSchema(messageLogs).omit({ id: true, sentAt: true });

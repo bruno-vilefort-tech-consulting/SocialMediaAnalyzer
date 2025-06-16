@@ -6,8 +6,13 @@ import {
   type Selection, type InsertSelection, type Interview, type InsertInterview, 
   type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
   type ClientVoiceSetting, type InsertClientVoiceSetting,
-  type MessageLog, type InsertMessageLog
+  type MessageLog, type InsertMessageLog,
+  masterSettings, type InsertMasterSettingsSchema
 } from "@shared/schema";
+
+// Definindo o tipo MasterSettings baseado na tabela
+type MasterSettings = typeof masterSettings.$inferSelect;
+type InsertMasterSettings = typeof masterSettings.$inferInsert;
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
 import bcrypt from "bcrypt";
@@ -102,6 +107,10 @@ export interface IStorage {
   // Client Voice Settings
   getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined>;
   upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting>;
+
+  // Master Settings - configurações OpenAI vinculadas ao usuário master
+  getMasterSettings(masterUserId: string): Promise<MasterSettings | undefined>;
+  upsertMasterSettings(settings: InsertMasterSettings): Promise<MasterSettings>;
 
   // Message Logs
   createMessageLog(log: InsertMessageLog): Promise<MessageLog>;
