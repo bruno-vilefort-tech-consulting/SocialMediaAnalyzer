@@ -924,9 +924,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const selection = await storage.createSelection(selectionData);
       
-      // Enviar emails automaticamente se a seleção for criada como "active"
-      if (selection.status === 'active' && selection.sendVia && (selection.sendVia === 'email' || selection.sendVia === 'both')) {
-        console.log('🚀 INICIANDO ENVIO AUTOMÁTICO DE EMAILS - Selection ID:', selection.id);
+      // Enviar convites automaticamente se a seleção for criada como "active"
+      if (selection.status === 'active' && selection.sendVia) {
+        console.log('🚀 INICIANDO ENVIO AUTOMÁTICO - Selection ID:', selection.id, 'Via:', selection.sendVia);
         
         try {
           // Buscar dados necessários
@@ -949,16 +949,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const client = await storage.getClientById(selection.clientId);
           const questions = await storage.getQuestionsByJobId(job.id);
           const baseUrl = process.env.REPL_URL || 'http://localhost:5000';
-          const { emailService } = await import('./emailService');
-          let emailsSent = 0;
+          let messagesSent = 0;
           
-          for (const candidate of candidates) {
-            if (!candidate.email) {
-              console.log('⚠️ Candidato sem email:', candidate.name);
-              continue;
-            }
-            
-            console.log('📧 Processando candidato:', candidate.name, candidate.email);
+          // Buscar candidatos da lista específica
+          const listCandidates = await storage.getCandidatesByListId(selection.candidateListId!);
+          console.log('👥 Candidatos da lista encontrados:', listCandidates.length, 'candidatos');
+          
+          for (const candidate of listCandidates) {
+            console.log('📱 Processando candidato:', candidate.name, candidate.whatsapp || candidate.email);
             
             // Gerar token único para cada candidato
             const token = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -972,87 +970,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             console.log('🎤 Entrevista criada:', interview.id, 'Token:', token);
             
-            // Criar link da entrevista
-            const interviewLink = `${baseUrl}/interview/${token}`;
-            
-            // Preparar mensagens com placeholders corretos
-            let emailMessage = selection.emailTemplate || '';
-            let emailSubject = selection.emailSubject || 'Convite para Entrevista';
+            // Enviar via WhatsApp se configurado
+            if (selection.sendVia === 'whatsapp' || selection.sendVia === 'both') {
+              if (candidate.whatsapp) {
+                console.log('📱 Enviando convite WhatsApp para:', candidate.whatsapp);
+                
+                // Preparar mensagem WhatsApp com placeholders
+                let whatsappMessage = selection.whatsappTemplate || '';
+                whatsappMessage = whatsappMessage
+                  .replace(/\[nome do candidato\]/g, candidate.name)
+                  .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
+                  .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+                  .replace(/\[número de perguntas\]/g, questions.length.toString());
 
-            // Substituir placeholders
-            emailMessage = emailMessage
-              .replace(/\[nome do candidato\]/g, candidate.name)
-              .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
-              .replace(/\[Nome do Colaborador da Empresa\]/g, 'Equipe de RH')
-              .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
-              .replace(/\[número de perguntas\]/g, questions.length.toString())
-              .replace(/\{nome\}/g, candidate.name)
-              .replace(/\{vaga\}/g, job.nomeVaga)
-              .replace(/\{link\}/g, interviewLink);
-
-            emailSubject = emailSubject
-              .replace(/\{vaga\}/g, job.nomeVaga)
-              .replace(/\[Nome da Vaga\]/g, job.nomeVaga);
-
-            // Adicionar link da entrevista se não estiver presente
-            if (!emailMessage.includes(interviewLink)) {
-              emailMessage += `\n\nPara iniciar sua entrevista, clique no link abaixo:\n${interviewLink}`;
+                // Importar e usar WhatsApp QR Service
+                const { whatsappQRService } = await import('./whatsappQRService');
+                
+                try {
+                  const whatsappResult = await whatsappQRService.sendTextMessage(
+                    candidate.whatsapp.includes('@') ? candidate.whatsapp : `${candidate.whatsapp}@s.whatsapp.net`,
+                    whatsappMessage
+                  );
+                  
+                  await storage.createMessageLog({
+                    interviewId: interview.id,
+                    type: 'whatsapp',
+                    channel: 'whatsapp',
+                    status: whatsappResult ? 'sent' : 'failed'
+                  });
+                  
+                  if (whatsappResult) {
+                    messagesSent++;
+                    console.log(`✅ WhatsApp enviado para ${candidate.whatsapp}`);
+                  } else {
+                    console.error(`❌ Falha ao enviar WhatsApp para ${candidate.whatsapp}`);
+                  }
+                } catch (whatsappError) {
+                  console.error('❌ Erro no envio WhatsApp:', whatsappError);
+                  await storage.createMessageLog({
+                    interviewId: interview.id,
+                    type: 'whatsapp',
+                    channel: 'whatsapp',
+                    status: 'failed'
+                  });
+                }
+              } else {
+                console.log('⚠️ Candidato sem WhatsApp:', candidate.name);
+              }
             }
             
-            console.log('📧 Tentando enviar email automático para:', candidate.email);
-            console.log('📧 Subject:', emailSubject);
-            console.log('📧 Message preview:', emailMessage.substring(0, 100) + '...');
-            console.log('📧 Interview link:', interviewLink);
-            
-            const emailResult = await emailService.sendEmail({
-              to: candidate.email,
-              subject: emailSubject,
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #2563eb;">${emailSubject}</h2>
-                  <div style="line-height: 1.6; white-space: pre-line;">
-                    ${emailMessage}
-                  </div>
-                  <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
-                    <h3 style="color: #1f2937; margin-top: 0;">Link da Entrevista:</h3>
-                    <a href="${interviewLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                      INICIAR ENTREVISTA
-                    </a>
-                    <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
-                      Ou copie e cole este link no seu navegador:<br>
-                      <span style="word-break: break-all;">${interviewLink}</span>
-                    </p>
-                  </div>
-                  <div style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
-                    Este email foi enviado automaticamente pelo Sistema de Entrevistas AI.
-                  </div>
-                </div>
-              `,
-              candidateName: candidate.name,
-              jobTitle: job.nomeVaga
-            });
-            
-            console.log('📧 Resultado do envio automático:', emailResult);
-            
-            await storage.createMessageLog({
-              interviewId: interview.id,
-              type: 'email',
-              channel: 'email',
-              status: emailResult.success ? 'sent' : 'failed'
-            });
-            
-            if (emailResult.success) {
-              emailsSent++;
-              console.log(`✅ Email enviado para ${candidate.email} - Message ID: ${emailResult.messageId}`);
-            } else {
-              console.error(`❌ Falha ao enviar email para ${candidate.email}: ${emailResult.error}`);
+            // Enviar via Email se configurado
+            if (selection.sendVia === 'email' || selection.sendVia === 'both') {
+              if (candidate.email) {
+                console.log('📧 Enviando convite email para:', candidate.email);
+                
+                const interviewLink = `${baseUrl}/interview/${token}`;
+                const { emailService } = await import('./emailService');
+                
+                // Preparar mensagens email com placeholders
+                let emailMessage = selection.emailTemplate || '';
+                let emailSubject = selection.emailSubject || 'Convite para Entrevista';
+
+                emailMessage = emailMessage
+                  .replace(/\[nome do candidato\]/g, candidate.name)
+                  .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
+                  .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+                  .replace(/\[número de perguntas\]/g, questions.length.toString())
+                  .replace(/\{link\}/g, interviewLink);
+
+                emailSubject = emailSubject
+                  .replace(/\{vaga\}/g, job.nomeVaga)
+                  .replace(/\[Nome da Vaga\]/g, job.nomeVaga);
+
+                if (!emailMessage.includes(interviewLink)) {
+                  emailMessage += `\n\nPara iniciar sua entrevista, clique no link abaixo:\n${interviewLink}`;
+                }
+                
+                try {
+                  const emailResult = await emailService.sendEmail({
+                    to: candidate.email,
+                    subject: emailSubject,
+                    html: `
+                      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #2563eb;">${emailSubject}</h2>
+                        <div style="line-height: 1.6; white-space: pre-line;">
+                          ${emailMessage}
+                        </div>
+                        <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
+                          <h3 style="color: #1f2937; margin-top: 0;">Link da Entrevista:</h3>
+                          <a href="${interviewLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                            INICIAR ENTREVISTA
+                          </a>
+                          <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
+                            Ou copie e cole este link no seu navegador:<br>
+                            <span style="word-break: break-all;">${interviewLink}</span>
+                          </p>
+                        </div>
+                      </div>
+                    `
+                  });
+                  
+                  await storage.createMessageLog({
+                    interviewId: interview.id,
+                    type: 'email',
+                    channel: 'email',
+                    status: emailResult ? 'sent' : 'failed'
+                  });
+                  
+                  if (emailResult) {
+                    messagesSent++;
+                    console.log(`✅ Email enviado para ${candidate.email}`);
+                  }
+                } catch (emailError) {
+                  console.error('❌ Erro no envio email:', emailError);
+                }
+              } else {
+                console.log('⚠️ Candidato sem email:', candidate.name);
+              }
             }
           }
           
           // Atualizar status da seleção para 'enviado'
-          if (emailsSent > 0) {
+          if (messagesSent > 0) {
             await storage.updateSelection(selection.id, { status: 'enviado' });
-            console.log(`✅ Seleção criada e ${emailsSent} emails enviados automaticamente`);
+            console.log(`✅ Seleção criada e ${messagesSent} mensagens enviadas automaticamente`);
           }
         } catch (emailError) {
           console.error('Erro ao enviar emails automáticos:', emailError);
