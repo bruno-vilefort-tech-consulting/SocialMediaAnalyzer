@@ -230,7 +230,11 @@ export default function ClientsPage() {
   const resetUserForm = () => {
     setShowNewUserForm(false);
     setEditingUser(null);
-    clientUserForm.reset();
+    clientUserForm.reset({
+      name: "",
+      email: "",
+      password: "",
+    });
   };
 
   const startNewClient = () => {
@@ -320,15 +324,6 @@ export default function ClientsPage() {
   };
 
   // Handlers para usuários dos clientes
-  const startNewUser = () => {
-    setShowNewUserForm(true);
-    setEditingUser(null);
-    clientUserForm.reset({
-      name: "",
-      email: "",
-      password: "",
-    });
-  };
 
   const startEditUser = (user: ClientUser) => {
     setEditingUser(user);
