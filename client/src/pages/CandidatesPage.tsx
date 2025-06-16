@@ -861,14 +861,21 @@ export default function CandidatesPage() {
           });
         }
       }}>
-        <DialogContent>
+        <DialogContent aria-describedby="candidate-form-description">
           <DialogHeader>
             <DialogTitle>
               {editingCandidate ? "Editar Candidato" : "Novo Candidato"}
             </DialogTitle>
           </DialogHeader>
+          <div id="candidate-form-description" className="sr-only">
+            {selectedListId ? `Formulário para adicionar candidato à lista selecionada` : `Formulário para adicionar novo candidato`}
+          </div>
           <Form {...candidateForm}>
-            <form onSubmit={candidateForm.handleSubmit(handleCreateCandidate)} className="space-y-4">
+            <form onSubmit={candidateForm.handleSubmit((data) => {
+              console.log('📝 Formulário submetido com dados:', data);
+              console.log('🔍 Erros do formulário:', candidateForm.formState.errors);
+              handleCreateCandidate(data);
+            })} className="space-y-4">
               <FormField
                 control={candidateForm.control}
                 name="name"
