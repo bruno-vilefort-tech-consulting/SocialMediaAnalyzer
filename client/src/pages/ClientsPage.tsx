@@ -133,7 +133,7 @@ export default function ClientsPage() {
         description: "Cliente atualizado com sucesso.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      resetForm();
+      // Não resetar o formulário - manter a tela de edição aberta
     },
     onError: () => {
       toast({
