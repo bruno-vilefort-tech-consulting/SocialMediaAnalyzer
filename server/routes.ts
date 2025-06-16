@@ -3781,5 +3781,114 @@ Responda de forma natural aguardando a resposta do candidato.`;
   });
 
   const httpServer = createServer(app);
+  // Client Voice Settings endpoints
+  app.get("/api/client-voice-settings/:clientId", async (req, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const voiceSetting = await storage.getClientVoiceSetting(clientId);
+      
+      // Se não existe configuração, retorna configuração padrão
+      if (!voiceSetting) {
+        const defaultSetting = {
+          clientId,
+          voice: "nova",
+          id: 0,
+          updatedAt: null
+        };
+        res.json(defaultSetting);
+      } else {
+        res.json(voiceSetting);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar configuração de voz:", error);
+      res.status(500).json({ message: "Erro ao buscar configuração de voz" });
+    }
+  });
+
+  app.post("/api/client-voice-settings", async (req, res) => {
+    try {
+      const voiceSetting = req.body;
+      const saved = await storage.upsertClientVoiceSetting(voiceSetting);
+      res.json(saved);
+    } catch (error) {
+      console.error("Erro ao salvar configuração de voz:", error);
+      res.status(500).json({ message: "Erro ao salvar configuração de voz" });
+    }
+  });
+
+  // Test OpenAI API endpoint
+  app.post("/api/test-openai", async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Chave da API é obrigatória" 
+        });
+      }
+
+      console.log('🧪 Testando chave OpenAI API...');
+      
+      // Test the API key with a simple request
+      const response = await fetch('https://api.openai.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      console.log('📊 Resposta da OpenAI:', response.status, response.statusText);
+
+      if (response.ok) {
+        const models = await response.json();
+        console.log('✅ OpenAI API key válida, modelos disponíveis:', models.data?.length || 0);
+        
+        res.json({ 
+          success: true, 
+          message: `Chave OpenAI válida! ${models.data?.length || 0} modelos disponíveis.`
+        });
+      } else {
+        const errorData = await response.text();
+        console.log('❌ Erro da OpenAI:', response.status, errorData);
+        
+        let errorMessage = 'Chave da API OpenAI inválida';
+        
+        try {
+          const parsedError = JSON.parse(errorData);
+          if (parsedError.error?.message) {
+            if (parsedError.error.code === 'invalid_api_key') {
+              errorMessage = 'Chave da API inválida. Verifique se foi copiada corretamente.';
+            } else if (parsedError.error.code === 'insufficient_quota') {
+              errorMessage = 'Quota excedida. Verifique seu plano e detalhes de faturamento na OpenAI.';
+            } else {
+              errorMessage = parsedError.error.message;
+            }
+          }
+        } catch (e) {
+          // Keep default error message if parsing fails
+        }
+        
+        res.status(400).json({ 
+          success: false, 
+          error: errorMessage,
+          details: response.status === 401 ? 'Unauthorized - verifique a chave' : `HTTP ${response.status}`
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao testar OpenAI API:', error);
+      
+      let errorMessage = 'Falha ao conectar com a OpenAI API';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        error: errorMessage
+      });
+    }
+  });
+
   return httpServer;
 }

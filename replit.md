@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🎛️ PAINEL CONFIGURAÇÕES API REORGANIZADO - Sistema separado por usuário conforme solicitado
+  - **Configurações OpenAI exclusivas para master**: Chave API e modelo GPT (GPT-4o padrão) com botão testar integrado
+  - **Sistema de voz por cliente implementado**: Cada cliente configura voz TTS individualmente (Nova padrão)
+  - **WhatsApp QR integrado**: Painel unificado mostra status de conexão e permite reconexão
+  - **Configurações desnecessárias removidas**: Limites mensais, timeouts, configurações WhatsApp Business eliminados
+  - **Endpoints funcionais**: /api/client-voice-settings e /api/test-openai operacionais
+  - **Schema ClientVoiceSettings**: Tabela Firebase para configurações de voz por cliente
+  - **Interface limpa**: Configurações específicas por tipo de usuário sem confusão
+
 - June 16, 2025: 🔧 SISTEMA DE RECUPERAÇÃO DE SENHA TOTALMENTE FUNCIONAL - Todas as correções Firebase aplicadas
   - **Sintaxe Firebase v9+ implementada**: Todas as chamadas `firebaseDb.collection()` corrigidas para `collection(firebaseDb, ...)`
   - **EmailService importado corretamente**: Import adicionado no routes.ts para funcionamento completo

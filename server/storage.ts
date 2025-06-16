@@ -4,7 +4,8 @@ import {
   type Job, type InsertJob, type Question, type InsertQuestion,
   type CandidateList, type InsertCandidateList, type Candidate, type InsertCandidate, 
   type Selection, type InsertSelection, type Interview, type InsertInterview, 
-  type Response, type InsertResponse, type ApiConfig, type InsertApiConfig, 
+  type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
+  type ClientVoiceSetting, type InsertClientVoiceSetting,
   type MessageLog, type InsertMessageLog
 } from "@shared/schema";
 import { initializeApp } from "firebase/app";
