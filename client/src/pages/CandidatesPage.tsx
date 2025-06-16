@@ -265,7 +265,9 @@ export default function CandidatesPage() {
   // Função para contar candidatos por lista usando relacionamentos
   const getCandidateCountForList = (listId: number): number => {
     if (!candidateListMemberships || candidateListMemberships.length === 0) {
-      return 0;
+      // Fallback: tentar contar dos candidatos diretos se não tiver memberships
+      const directCount = allCandidates.filter(candidate => candidate.listId === listId).length;
+      return directCount;
     }
     const count = candidateListMemberships.filter(membership => membership.listId === listId).length;
     console.log(`📊 Contando candidatos para lista ${listId}: ${count} memberships encontrados`);
@@ -735,7 +737,9 @@ export default function CandidatesPage() {
               <div>
                 <h1 className="text-3xl font-bold">{selectedList?.name}</h1>
                 <p className="text-muted-foreground">
-                  {filteredCandidates.length} candidatos nesta lista
+                  {viewMode === 'single' && selectedListId 
+                    ? listCandidates.length 
+                    : filteredCandidates.length} candidatos nesta lista
                 </p>
               </div>
             </div>
