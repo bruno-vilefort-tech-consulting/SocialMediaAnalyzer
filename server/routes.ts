@@ -357,8 +357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Configuration routes
   app.get("/api/config", authenticate, authorize(['master']), async (req, res) => {
     try {
-      const config = await storage.getApiConfig();
-      res.json(config || {});
+      const masterSettings = await storage.getMasterSettings();
+      res.json(masterSettings || {});
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch config' });
     }
@@ -1640,7 +1640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
+              'Authorization': `Bearer ${masterSettings.openaiApiKey}`,
             },
             body: formData,
           });
@@ -1658,7 +1658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${apiConfig.openaiApiKey}`,
+                  'Authorization': `Bearer ${masterSettings.openaiApiKey}`,
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
@@ -1811,8 +1811,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API Configuration routes
   app.get("/api/config", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
-      const config = await storage.getApiConfig();
-      res.json(config || {});
+      const masterSettings = await storage.getMasterSettings();
+      res.json(masterSettings || {});
     } catch (error) {
       console.error('Error fetching API config:', error);
       res.status(500).json({ error: 'Failed to fetch configuration' });
