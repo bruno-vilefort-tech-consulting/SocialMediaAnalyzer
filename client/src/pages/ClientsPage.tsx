@@ -205,9 +205,19 @@ export default function ClientsPage() {
     }
   };
 
-  const handleDeleteClient = (id: number) => {
-    if (confirm("Tem certeza que deseja remover este cliente?")) {
-      deleteClientMutation.mutate(id);
+  const handleDeleteClient = async (id: number) => {
+    if (window.confirm("Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.")) {
+      try {
+        console.log('Tentando deletar cliente ID:', id);
+        deleteClientMutation.mutate(id);
+      } catch (error) {
+        console.error('Erro ao deletar cliente:', error);
+        toast({
+          title: "Erro",
+          description: "Erro inesperado ao tentar remover cliente",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -583,32 +593,7 @@ export default function ClientsPage() {
                           </div>
                         </div>
 
-                        {/* Dados do Responsável */}
-                        {(client.responsibleName || client.responsiblePhone || client.responsibleEmail) && (
-                          <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-                            <h4 className="text-sm font-medium text-slate-700 mb-2">Responsável</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                              {client.responsibleName && (
-                                <div>
-                                  <span className="text-slate-600">Nome: </span>
-                                  <span className="text-slate-900">{client.responsibleName}</span>
-                                </div>
-                              )}
-                              {client.responsiblePhone && (
-                                <div>
-                                  <span className="text-slate-600">Celular: </span>
-                                  <span className="text-slate-900">{client.responsiblePhone}</span>
-                                </div>
-                              )}
-                              {client.responsibleEmail && (
-                                <div>
-                                  <span className="text-slate-600">Email: </span>
-                                  <span className="text-slate-900">{client.responsibleEmail}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                        
                         
                         <div className="flex items-center gap-4 text-sm text-slate-500">
                           <div className="flex items-center gap-1">

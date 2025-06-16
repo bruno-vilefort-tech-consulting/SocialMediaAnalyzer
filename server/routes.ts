@@ -257,10 +257,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/clients/:id", authenticate, authorize(['master']), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log('🗑️ Tentando deletar cliente com ID:', id);
       await storage.deleteClient(id);
+      console.log('✅ Cliente deletado com sucesso');
       res.status(204).send();
     } catch (error) {
-      res.status(400).json({ message: 'Failed to delete client' });
+      console.error('❌ Erro ao deletar cliente:', error);
+      res.status(400).json({ message: 'Failed to delete client', error: (error as Error).message });
     }
   });
 
