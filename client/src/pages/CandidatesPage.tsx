@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -72,6 +73,7 @@ export default function CandidatesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCandidateForm, setShowCandidateForm] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Queries
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
@@ -430,102 +432,150 @@ export default function CandidatesPage() {
             </div>
           </div>
 
-          {/* Grid horizontal de listas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredCandidateLists.map((list) => {
-              // Com a nova arquitetura muitos-para-muitos, contamos via memberships
-              const candidatesCount = 0; // TODO: implementar contagem via memberships
-              const client = clients.find(c => c.id === list.clientId);
-              
-              return (
-                <Card key={list.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{list.name}</CardTitle>
-                        {user?.role === 'master' && client && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Cliente: {client.companyName}
-                          </p>
-                        )}
-                      </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja deletar a lista "{list.name}"? 
-                              Esta ação não pode ser desfeita e todos os candidatos desta lista também serão removidos.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteListMutation.mutate(list.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Deletar Lista
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                    {list.description && (
-                      <p className="text-sm text-muted-foreground">{list.description}</p>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          {candidatesCount} candidatos
-                        </span>
-                      </div>
-                    </div>
-                    <Button 
-                      className="w-full" 
-                      onClick={() => handleViewList(list.id)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar Lista
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {filteredCandidateLists.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {user?.role === 'master' && selectedClientFilter !== 'all' 
-                    ? "Nenhuma lista encontrada para este cliente"
-                    : "Nenhuma lista encontrada"
-                  }
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  {user?.role === 'master' && selectedClientFilter !== 'all'
-                    ? "Este cliente ainda não possui listas de candidatos"
-                    : "Crie sua primeira lista de candidatos para começar"
-                  }
-                </p>
-                <Button onClick={() => setShowCreateForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Lista
-                </Button>
+          {/* Tabela horizontal de listas */}
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Listas de Candidatos</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar listas..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
               </div>
-            )}
-          </div>
+            </CardHeader>
+            <CardContent>
+              {listsLoading ? (
+                <p>Carregando listas...</p>
+              ) : filteredCandidateLists.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    {user?.role === 'master' && selectedClientFilter !== 'all' 
+                      ? "Nenhuma lista encontrada para este cliente"
+                      : "Nenhuma lista encontrada"
+                    }
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    {user?.role === 'master' && selectedClientFilter !== 'all'
+                      ? "Este cliente ainda não possui listas de candidatos"
+                      : "Crie sua primeira lista de candidatos para começar"
+                    }
+                  </p>
+                  <Button onClick={() => setShowCreateForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Lista
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome da Lista</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      {user?.role === 'master' && <TableHead>Cliente</TableHead>}
+                      <TableHead>Candidatos</TableHead>
+                      <TableHead>Data de Criação</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCandidateLists.map((list) => {
+                      // Com a nova arquitetura muitos-para-muitos, contamos via memberships
+                      const candidatesCount = 0; // TODO: implementar contagem via memberships
+                      const client = clients.find(c => c.id === list.clientId);
+                      
+                      return (
+                        <TableRow key={list.id}>
+                          <TableCell className="font-medium">{list.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {list.description || "Sem descrição"}
+                          </TableCell>
+                          {user?.role === 'master' && (
+                            <TableCell>
+                              {client ? client.companyName : "Cliente não encontrado"}
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">
+                                {candidatesCount} candidatos
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              if (!list.createdAt) return 'N/A';
+                              const date = new Date(list.createdAt.seconds * 1000);
+                              const dateFormatted = date.toLocaleDateString('pt-BR');
+                              const timeFormatted = date.toLocaleTimeString('pt-BR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              });
+                              return (
+                                <div className="text-sm">
+                                  <div className="font-medium">{dateFormatted}</div>
+                                  <div className="text-gray-500 text-xs">{timeFormatted}</div>
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewList(list.id)}
+                                title="Visualizar lista"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    title="Deletar lista"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja deletar a lista "{list.name}"? 
+                                      Esta ação não pode ser desfeita e todos os candidatos desta lista também serão removidos.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteListMutation.mutate(list.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Deletar Lista
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </>
       ) : (
         // Visualização de lista única
