@@ -122,6 +122,7 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Rotas modernizadas**: /api/master-settings global + /api/api-config/{entityType}/{entityId}
   - **Migração executada**: Script migrou dados da estrutura antiga para nova sem perder informações
   - **Schema atualizado**: masterSettings sem masterUserId + apiConfigs com entityType/entityId
+  - **Limpeza realizada**: Estruturas antigas removidas - Firebase organizado com estrutura final limpa
   - **Sistema validado**: Configurações OpenAI compartilhadas + TTS/WhatsApp específicos por usuário
 
 - June 16, 2025: 🔧 IDS DE CLIENTE DAS VAGAS CORRIGIDOS - Inconsistência resolvida conforme solicitado
