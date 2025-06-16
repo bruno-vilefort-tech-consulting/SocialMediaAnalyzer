@@ -85,6 +85,11 @@ export default function CandidatesPage() {
     queryKey: ['/api/candidates']
   });
 
+  // Filtrar listas de candidatos por cliente (apenas para master)
+  const filteredCandidateLists = user?.role === 'master' && selectedClientFilter !== 'all'
+    ? candidateLists.filter(list => list.clientId?.toString() === selectedClientFilter)
+    : candidateLists;
+
   // Filtrar candidatos pela lista selecionada
   const filteredCandidates = selectedListId 
     ? allCandidates.filter(candidate => candidate.listId === selectedListId)
@@ -309,22 +314,52 @@ export default function CandidatesPage() {
                 Organize seus candidatos em listas e gerencie suas informações
               </p>
             </div>
-            <Button onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Lista
-            </Button>
+            <div className="flex items-center gap-3">
+              {user?.role === 'master' && (
+                <div className="flex items-center gap-2">
+                  <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filtrar por cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os clientes</SelectItem>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Badge variant="secondary">
+                    {filteredCandidateLists.length} listas
+                  </Badge>
+                </div>
+              )}
+              <Button onClick={() => setShowCreateForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Lista
+              </Button>
+            </div>
           </div>
 
           {/* Grid horizontal de listas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {candidateLists.map((list) => {
+            {filteredCandidateLists.map((list) => {
               const candidatesCount = allCandidates.filter(c => c.listId === list.id).length;
+              const client = clients.find(c => c.id === list.clientId);
               
               return (
                 <Card key={list.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{list.name}</CardTitle>
+                      <div>
+                        <CardTitle className="text-lg">{list.name}</CardTitle>
+                        {user?.role === 'master' && client && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Cliente: {client.companyName}
+                          </p>
+                        )}
+                      </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
@@ -380,12 +415,20 @@ export default function CandidatesPage() {
               );
             })}
 
-            {candidateLists.length === 0 && (
+            {filteredCandidateLists.length === 0 && (
               <div className="col-span-full text-center py-12">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nenhuma lista encontrada</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  {user?.role === 'master' && selectedClientFilter !== 'all' 
+                    ? "Nenhuma lista encontrada para este cliente"
+                    : "Nenhuma lista encontrada"
+                  }
+                </h3>
                 <p className="text-muted-foreground mb-4">
-                  Crie sua primeira lista de candidatos para começar
+                  {user?.role === 'master' && selectedClientFilter !== 'all'
+                    ? "Este cliente ainda não possui listas de candidatos"
+                    : "Crie sua primeira lista de candidatos para começar"
+                  }
                 </p>
                 <Button onClick={() => setShowCreateForm(true)}>
                   <Plus className="h-4 w-4 mr-2" />
