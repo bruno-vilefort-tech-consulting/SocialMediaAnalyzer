@@ -923,7 +923,7 @@ export class FirebaseStorage implements IStorage {
         const snapshot = await getDocs(q);
         
         if (!snapshot.empty) {
-          await snapshot.docs[0].ref.update({ password: newPasswordHash });
+          await updateDoc(snapshot.docs[0].ref, { password: newPasswordHash });
           return true;
         }
       }
@@ -937,11 +937,12 @@ export class FirebaseStorage implements IStorage {
 
   async findUserByEmail(email: string): Promise<{ userType: string; name: string } | null> {
     // Check master users
-    const masterSnapshot = await firebaseDb
-      .collection('users')
-      .where('email', '==', email)
-      .where('role', '==', 'master')
-      .get();
+    const masterQuery = query(
+      collection(firebaseDb, 'users'),
+      where('email', '==', email),
+      where('role', '==', 'master')
+    );
+    const masterSnapshot = await getDocs(masterQuery);
     
     if (!masterSnapshot.empty) {
       const data = masterSnapshot.docs[0].data();
@@ -949,10 +950,11 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check clients
-    const clientSnapshot = await firebaseDb
-      .collection('clients')
-      .where('email', '==', email)
-      .get();
+    const clientQuery = query(
+      collection(firebaseDb, 'clients'),
+      where('email', '==', email)
+    );
+    const clientSnapshot = await getDocs(clientQuery);
     
     if (!clientSnapshot.empty) {
       const data = clientSnapshot.docs[0].data();
@@ -960,10 +962,11 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check client users
-    const userSnapshot = await firebaseDb
-      .collection('clientUsers')
-      .where('email', '==', email)
-      .get();
+    const userQuery = query(
+      collection(firebaseDb, 'clientUsers'),
+      where('email', '==', email)
+    );
+    const userSnapshot = await getDocs(userQuery);
     
     if (!userSnapshot.empty) {
       const data = userSnapshot.docs[0].data();
@@ -1002,10 +1005,11 @@ export class FirebaseStorage implements IStorage {
 
   async updateUserPassword(email: string, hashedPassword: string): Promise<void> {
     // Check if it's a master user
-    const masterSnapshot = await firebaseDb
-      .collection('users')
-      .where('email', '==', email)
-      .get();
+    const masterQuery = query(
+      collection(firebaseDb, 'users'),
+      where('email', '==', email)
+    );
+    const masterSnapshot = await getDocs(masterQuery);
     
     if (!masterSnapshot.empty) {
       const userDoc = masterSnapshot.docs[0];
@@ -1014,10 +1018,11 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check if it's a client
-    const clientSnapshot = await firebaseDb
-      .collection('clients')
-      .where('email', '==', email)
-      .get();
+    const clientQuery = query(
+      collection(firebaseDb, 'clients'),
+      where('email', '==', email)
+    );
+    const clientSnapshot = await getDocs(clientQuery);
     
     if (!clientSnapshot.empty) {
       const clientDoc = clientSnapshot.docs[0];
@@ -1026,10 +1031,11 @@ export class FirebaseStorage implements IStorage {
     }
     
     // Check if it's a client user
-    const userSnapshot = await firebaseDb
-      .collection('clientUsers')
-      .where('email', '==', email)
-      .get();
+    const userQuery = query(
+      collection(firebaseDb, 'clientUsers'),
+      where('email', '==', email)
+    );
+    const userSnapshot = await getDocs(userQuery);
     
     if (!userSnapshot.empty) {
       const userDoc = userSnapshot.docs[0];
