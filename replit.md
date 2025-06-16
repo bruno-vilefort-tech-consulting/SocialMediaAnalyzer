@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ FORMULÁRIO CONTEXTUAL DE CANDIDATOS FINALIZADO - Sistema reconhece automaticamente contexto da lista
+  - **Interface contextual implementada**: Formulário remove campos desnecessários quando dentro de lista específica
+  - **Reconhecimento automático**: Sistema pré-define clientId e listId baseado na lista selecionada
+  - **Validação corrigida**: Formulário funciona corretamente com logs de debug implementados
+  - **Campos básicos mantidos**: Nome, email, WhatsApp conforme especificação original
+  - **UX melhorada**: Mensagem visual mostra contexto (lista + cliente) quando aplicável
+  - **Sistema validado**: Candidato "Daniel Moreira Braga de Lima" criado com sucesso
+  - **Logs funcionais**: Console mostra dados corretos sendo enviados e processados
+
 - June 16, 2025: ✅ CAMPO DE SELEÇÃO DE CLIENTE PARA LISTAS IMPLEMENTADO - Sistema obrigatório funcional
   - **Campo obrigatório adicionado**: Seleção de cliente (*) no formulário de criação de listas de candidatos
   - **Lógica diferenciada por usuário**: Masters selecionam cliente via dropdown, usuários cliente usam automaticamente seu próprio ID
