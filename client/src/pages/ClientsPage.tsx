@@ -802,7 +802,20 @@ export default function ClientsPage() {
                                     <h4 className="text-sm font-medium text-slate-900">{user.name}</h4>
                                     <p className="text-xs text-slate-600">{user.email}</p>
                                     <p className="text-xs text-slate-500">
-                                      Criado em: {user.createdAt ? format(new Date(user.createdAt), "dd/MM/yyyy", { locale: ptBR }) : "N/A"}
+                                      Criado em: {user.createdAt ? (() => {
+                                        try {
+                                          // Handle Firebase Timestamp format
+                                          if (typeof user.createdAt === 'object' && user.createdAt.seconds) {
+                                            return format(new Date(user.createdAt.seconds * 1000), "dd/MM/yyyy", { locale: ptBR });
+                                          }
+                                          // Handle ISO string format
+                                          const date = new Date(user.createdAt);
+                                          if (isNaN(date.getTime())) return "N/A";
+                                          return format(date, "dd/MM/yyyy", { locale: ptBR });
+                                        } catch {
+                                          return "N/A";
+                                        }
+                                      })() : "N/A"}
                                     </p>
                                   </div>
                                 </div>
