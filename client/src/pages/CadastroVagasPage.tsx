@@ -41,6 +41,7 @@ export default function CadastroVagasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>("all");
   
   // Dados da vaga
   const [nomeVaga, setNomeVaga] = useState("");
@@ -272,9 +273,11 @@ export default function CadastroVagasPage() {
   }, [user, clientId]);
 
   // Filtrar vagas
-  const filteredJobs = jobs.filter(job =>
-    job.nomeVaga.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = job.nomeVaga.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClient = selectedClientFilter === "all" || job.clientId.toString() === selectedClientFilter;
+    return matchesSearch && matchesClient;
+  });
 
   return (
     <div className="p-6 space-y-6">
@@ -292,6 +295,35 @@ export default function CadastroVagasPage() {
           Cadastrar Vaga
         </Button>
       </div>
+
+      {/* Filtro por Cliente - apenas para master */}
+      {user?.role === 'master' && (
+        <Card className="bg-slate-50">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-4">
+              <Label htmlFor="clientFilter" className="text-sm font-medium min-w-0">
+                Filtrar por Cliente:
+              </Label>
+              <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">🌟 Todos os Clientes</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Badge variant="outline" className="ml-auto">
+                {filteredJobs.length} {filteredJobs.length === 1 ? 'vaga' : 'vagas'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Formulário de cadastro/edição */}
       {showForm && (
