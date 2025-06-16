@@ -842,7 +842,8 @@ export default function CandidatesPage() {
             email: "",
             whatsapp: "",
             listId: selectedListId || 0,
-            clientId: user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0
+            clientId: selectedListId && candidateLists?.find(list => list.id === selectedListId)?.clientId || 
+                     (user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0)
           });
         }
       }}>
@@ -894,8 +895,23 @@ export default function CandidatesPage() {
                 )}
               />
               
-              {/* Seletor de Cliente (apenas para master) */}
-              {user?.role === 'master' && (
+              {/* Exibir contexto quando lista específica está selecionada */}
+              {selectedListId && candidateLists?.find(list => list.id === selectedListId) && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <div className="font-medium">Adicionando candidato à lista:</div>
+                    <div className="mt-1">
+                      <span className="font-semibold">{candidateLists.find(list => list.id === selectedListId)?.name}</span>
+                      {user?.role === 'master' && clients && (
+                        <span className="text-blue-600 dark:text-blue-300"> - {clients.find(c => c.id === candidateLists.find(list => list.id === selectedListId)?.clientId)?.companyName}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seletor de Cliente (apenas para master quando não há lista selecionada) */}
+              {user?.role === 'master' && !selectedListId && (
                 <FormField
                   control={candidateForm.control}
                   name="clientId"
@@ -922,36 +938,38 @@ export default function CandidatesPage() {
                 />
               )}
               
-              {/* Seletor de Lista */}
-              <FormField
-                control={candidateForm.control}
-                name="listId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lista de Candidatos *</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a lista" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {candidateLists
-                          ?.filter(list => user?.role === 'master' ? 
-                            (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
-                            list.clientId === user?.clientId
-                          )
-                          .map((list) => (
-                            <SelectItem key={list.id} value={list.id.toString()}>
-                              {list.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Seletor de Lista (apenas quando não há lista específica selecionada) */}
+              {!selectedListId && (
+                <FormField
+                  control={candidateForm.control}
+                  name="listId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lista de Candidatos *</FormLabel>
+                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a lista" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {candidateLists
+                            ?.filter(list => user?.role === 'master' ? 
+                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
+                              list.clientId === user?.clientId
+                            )
+                            .map((list) => (
+                              <SelectItem key={list.id} value={list.id.toString()}>
+                                {list.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
