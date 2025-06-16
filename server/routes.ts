@@ -544,10 +544,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Candidate Lists routes
   app.get("/api/candidate-lists", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.role === 'master' ? 1 : req.user!.clientId!;
-      const lists = await storage.getCandidateListsByClientId(clientId);
-      res.json(lists);
+      if (req.user!.role === 'master') {
+        // Master vê todas as listas de todos os clientes
+        const lists = await storage.getAllCandidateLists();
+        console.log('🔍 Master buscando todas as listas:', lists.length);
+        res.json(lists);
+      } else {
+        // Cliente vê apenas suas próprias listas
+        const lists = await storage.getCandidateListsByClientId(req.user!.clientId!);
+        console.log('🔍 Cliente buscando listas do clientId:', req.user!.clientId, '- encontradas:', lists.length);
+        res.json(lists);
+      }
     } catch (error) {
+      console.error('Erro ao buscar listas de candidatos:', error);
       res.status(500).json({ message: 'Failed to fetch candidate lists' });
     }
   });
