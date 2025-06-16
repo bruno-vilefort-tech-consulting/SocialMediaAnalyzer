@@ -370,7 +370,17 @@ export default function CandidatesPage() {
       return await apiRequest(`/api/candidates/${candidateId}`, 'DELETE');
     },
     onSuccess: () => {
+      // Invalidar cache geral de candidatos
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+      
+      // Invalidar cache específico da lista se estivermos visualizando uma lista
+      if (selectedListId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      }
+      
+      // Invalidar memberships para atualizar contadores
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+      
       toast({ title: "Candidato removido com sucesso!" });
     },
     onError: () => {
