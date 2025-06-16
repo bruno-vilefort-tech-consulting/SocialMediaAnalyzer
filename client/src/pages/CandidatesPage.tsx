@@ -53,6 +53,8 @@ const candidateSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
   whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)"),
+  listId: z.number().positive("Lista é obrigatória"),
+  clientId: z.number().positive("Cliente é obrigatório")
 });
 
 type CandidateListFormData = z.infer<typeof candidateListSchema>;
@@ -175,7 +177,13 @@ export default function CandidatesPage() {
 
   const candidateForm = useForm<CandidateFormData>({
     resolver: zodResolver(candidateSchema),
-    defaultValues: { name: "", email: "", whatsapp: "" }
+    defaultValues: { 
+      name: "", 
+      email: "", 
+      whatsapp: "",
+      listId: selectedListId || 0,
+      clientId: user?.role === 'master' ? (selectedClientFilter !== 'all' ? parseInt(selectedClientFilter) : 0) : user?.clientId || 0
+    }
   });
 
   // Mutations
@@ -222,11 +230,7 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      const candidateData = {
-        ...data,
-        listId: selectedListId! // Usado para criar o membership
-      };
-      const response = await apiRequest('/api/candidates', 'POST', candidateData);
+      const response = await apiRequest('/api/candidates', 'POST', data);
       return await response.json();
     },
     onSuccess: () => {
