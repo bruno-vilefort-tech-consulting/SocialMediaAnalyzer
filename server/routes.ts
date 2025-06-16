@@ -2832,6 +2832,12 @@ Responda de forma natural aguardando a resposta do candidato.`;
               // IMPORTANTE: Encontrar a seleção CORRETA baseada na lista do candidato
               console.log(`🔍 Buscando seleção correta para candidato ${candidateById.name} na lista ${candidateById.listId}...`);
               
+              // Debug: mostrar todas as seleções disponíveis
+              console.log(`📋 Seleções disponíveis para debug:`);
+              allSelections.forEach(s => {
+                console.log(`  - Seleção: ${s.name} (ID: ${s.id}) - candidateListId: ${s.candidateListId}`);
+              });
+              
               const correctSelection = allSelections.find(s => 
                 s.candidateListId && s.candidateListId.toString() === candidateById.listId.toString()
               );
@@ -2840,7 +2846,22 @@ Responda de forma natural aguardando a resposta do candidato.`;
                 console.log(`✅ Seleção CORRETA encontrada: ${correctSelection.name} (ID: ${correctSelection.id}) para lista ${candidateById.listId}`);
                 correctSelectionData = correctSelection;
               } else {
-                console.log(`⚠️ Seleção correta não encontrada para lista ${candidateById.listId}, mantendo seleção original`);
+                console.log(`⚠️ Seleção correta não encontrada para lista ${candidateById.listId}, verificando todas as combinações...`);
+                
+                // Debug adicional - verificar se há alguma correspondência parcial
+                const partialMatch = allSelections.find(s => 
+                  s.candidateListId && (
+                    s.candidateListId.toString().includes(candidateById.listId.toString()) ||
+                    candidateById.listId.toString().includes(s.candidateListId.toString())
+                  )
+                );
+                
+                if (partialMatch) {
+                  console.log(`🔍 Encontrada correspondência parcial: ${partialMatch.name} (candidateListId: ${partialMatch.candidateListId})`);
+                  correctSelectionData = partialMatch;
+                } else {
+                  console.log(`❌ Nenhuma seleção encontrada para lista ${candidateById.listId}`);
+                }
               }
             }
           } catch (err) {
