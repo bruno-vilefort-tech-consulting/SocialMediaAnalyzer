@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Building, Edit, Trash2, Filter, Calendar, Users, X, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Client, InsertClient, ClientUser, InsertClientUser } from "@shared/schema";
@@ -56,6 +57,7 @@ export default function ClientsPage() {
   const [showNewUserForm, setShowNewUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<ClientUser | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   // Form para novo cliente
@@ -906,7 +908,9 @@ export default function ClientsPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <Building className="w-5 h-5 text-primary" />
-                          <h3 className="text-lg font-semibold text-slate-900">{client.companyName}</h3>
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {user?.role === 'master' ? `#${client.id} - ${client.companyName}` : client.companyName}
+                          </h3>
                           <Badge 
                             variant={client.status === 'active' ? 'default' : 'secondary'}
                             className={client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
