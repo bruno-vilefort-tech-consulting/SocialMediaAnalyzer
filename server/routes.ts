@@ -1914,25 +1914,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WhatsApp QR endpoints - completely optional and non-blocking
   let whatsappQRService: any = null;
-  let whatsappInitPromise: Promise<void> | null = null;
   
-  // Initialize WhatsApp in background without blocking server startup
-  whatsappInitPromise = (async () => {
-    try {
-      const { WhatsAppQRService } = await import('./whatsappQRService');
-      whatsappQRService = new WhatsAppQRService();
-      console.log('✅ WhatsApp QR Service inicializado com sucesso');
-    } catch (error) {
-      console.log('⚠️ WhatsApp QR Service não disponível - aplicação funcionando sem WhatsApp');
-      console.log('Detalhes:', error instanceof Error ? error.message : String(error));
-    }
-  })();
+  // NO WhatsApp initialization during server startup to prevent crashes
+  console.log('📱 WhatsApp QR Service: Inicialização adiada para não bloquear servidor');
   
-  // Helper function to ensure WhatsApp is initialized
+  // Helper function to safely initialize WhatsApp only when needed
   const ensureWhatsAppReady = async () => {
-    if (whatsappInitPromise) {
-      await whatsappInitPromise;
-      whatsappInitPromise = null;
+    if (!whatsappQRService) {
+      try {
+        // Only initialize WhatsApp when explicitly requested
+        const { WhatsAppQRService } = await import('./whatsappQRService');
+        whatsappQRService = new WhatsAppQRService();
+        console.log('✅ WhatsApp QR Service inicializado sob demanda');
+      } catch (error) {
+        console.log('⚠️ WhatsApp QR Service não disponível:', error instanceof Error ? error.message : String(error));
+        whatsappQRService = null;
+      }
     }
     return whatsappQRService;
   };

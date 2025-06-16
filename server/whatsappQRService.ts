@@ -25,17 +25,55 @@ export class WhatsAppQRService {
   private baileys: any = null;
 
   constructor() {
+    // Adicionar handler global para erros não capturados do Baileys
+    process.on('uncaughtException', (error) => {
+      if (error.message.includes('Timed Out') || error.message.includes('baileys')) {
+        console.log('⚠️ Erro WhatsApp capturado e ignorado:', error.message);
+        this.handleWhatsAppError(error);
+        return; // Não permitir que o processo termine
+      }
+      // Re-throw outros erros não relacionados ao WhatsApp
+      throw error;
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      if (reason && typeof reason === 'object' && 'message' in reason) {
+        const error = reason as Error;
+        if (error.message.includes('Timed Out') || error.message.includes('baileys')) {
+          console.log('⚠️ Promise rejeitada do WhatsApp capturada e ignorada:', error.message);
+          this.handleWhatsAppError(error);
+          return;
+        }
+      }
+      console.error('Unhandled promise rejection:', reason);
+    });
+
     // Inicializar de forma completamente assíncrona em background
     // Não deve bloquear a inicialização do servidor
     setImmediate(() => {
       this.safeInitialize().catch(error => {
         console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
-        // Garantir que o sistema funcione mesmo sem WhatsApp
-        this.config.isConnected = false;
-        this.config.qrCode = null;
-        this.config.phoneNumber = null;
+        this.handleWhatsAppError(error);
       });
     });
+  }
+
+  private handleWhatsAppError(error: any) {
+    // Resetar estado do WhatsApp para um estado seguro
+    try {
+      if (this.socket) {
+        this.socket.removeAllListeners();
+        this.socket = null;
+      }
+    } catch (cleanupError) {
+      // Ignorar erros de limpeza
+    }
+    
+    this.config.isConnected = false;
+    this.config.qrCode = null;
+    this.config.phoneNumber = null;
+    this.notifyConnectionListeners(false);
+    this.notifyQRListeners(null);
   }
 
   private async safeInitialize() {
@@ -158,11 +196,13 @@ export class WhatsAppQRService {
       this.socket = this.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        connectTimeoutMs: 10000, // 10 segundos timeout
-        defaultQueryTimeoutMs: 5000, // 5 segundos para queries
-        keepAliveIntervalMs: 30000, // Keep alive a cada 30 segundos
-        retryRequestDelayMs: 250,
-        maxMsgRetryCount: 3,
+        connectTimeoutMs: 8000, // Reduzido para 8 segundos
+        defaultQueryTimeoutMs: 3000, // Reduzido para 3 segundos
+        keepAliveIntervalMs: 30000,
+        retryRequestDelayMs: 500,
+        maxMsgRetryCount: 2, // Reduzido tentativas
+        qrTimeout: 30000, // Timeout para QR code
+        browser: ['Sistema Entrevistas', 'Chrome', '1.0.0']
       });
 
       this.socket.ev.on('connection.update', async (update: any) => {
@@ -170,7 +210,9 @@ export class WhatsAppQRService {
           const { connection, lastDisconnect, qr } = update;
           
           if (qr) {
-            await this.generateQRCode(qr);
+            await this.generateQRCode(qr).catch(err => 
+              console.log('Erro ao gerar QR Code:', err.message)
+            );
           }
           
           if (connection === 'close') {
