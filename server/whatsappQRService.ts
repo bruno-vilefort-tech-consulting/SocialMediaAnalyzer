@@ -1176,11 +1176,25 @@ Você gostaria de iniciar a entrevista?`;
     this.config.phoneNumber = null;
     this.config.lastConnection = null;
     
+    // Remove credenciais antigas para forçar novo QR
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const authPath = path.join(process.cwd(), 'whatsapp-auth');
+      
+      if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+        console.log('🗑️ Credenciais antigas removidas');
+      }
+    } catch (error) {
+      console.log('⚠️ Erro ao remover credenciais:', error);
+    }
+    
     // Força uma nova inicialização
     setTimeout(() => {
       console.log('🔗 Reinicializando conexão WhatsApp para gerar novo QR...');
       this.initializeConnection();
-    }, 3000);
+    }, 2000);
   }
 }
 
