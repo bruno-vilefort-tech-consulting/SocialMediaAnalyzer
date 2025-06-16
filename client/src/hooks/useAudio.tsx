@@ -101,8 +101,11 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       
       setCurrentAudioUrl(audioUrl);
       setIsPlaying(true);
+      console.log('Estado atualizado - isPlaying:', true, 'currentAudioUrl:', audioUrl);
       
-      audioRef.current.play().catch((error) => {
+      audioRef.current.play().then(() => {
+        console.log('Áudio iniciado com sucesso');
+      }).catch((error) => {
         console.error('Error playing audio:', error);
         console.log('Detalhes do erro:', error.name, error.message);
         setIsPlaying(false);

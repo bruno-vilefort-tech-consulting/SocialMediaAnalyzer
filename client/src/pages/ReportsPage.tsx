@@ -125,6 +125,26 @@ export default function ReportsPage() {
     }
   };
 
+  // Função para normalizar URLs para comparação
+  const normalizeAudioUrl = (audioFile: string) => {
+    let audioUrl = audioFile;
+    
+    // Remover prefixos desnecessários e duplicados
+    if (audioUrl.startsWith('/uploads//')) {
+      audioUrl = audioUrl.replace('/uploads//', '/uploads/');
+    }
+    if (audioUrl.includes('/audio/')) {
+      audioUrl = audioUrl.replace('/audio/', '');
+    }
+    
+    // Garantir que comece com /uploads/
+    if (!audioUrl.startsWith('/uploads/') && !audioUrl.startsWith('http')) {
+      audioUrl = `/uploads/${audioUrl}`;
+    }
+    
+    return audioUrl;
+  };
+
   // Vista: Lista de seleções
   if (!selectedSelection) {
     return (
@@ -410,9 +430,6 @@ export default function ReportsPage() {
                 <div key={index} className="border rounded-lg p-4 space-y-3 bg-white dark:bg-gray-900">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 mb-2">
-                        Pergunta {(response.questionId || 0) + 1}
-                      </h4>
                       <p className="text-base mb-3 font-medium">{response.questionText}</p>
                     </div>
                   </div>
@@ -422,7 +439,17 @@ export default function ReportsPage() {
                       <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Resposta do Daniel</h5>
                       {response.audioFile && (
                         <div className="flex items-center space-x-2">
-                          {!isPlaying || currentAudioUrl !== (response.audioFile.startsWith('/uploads/') ? response.audioFile : `/uploads/${response.audioFile}`) ? (
+                          {(() => {
+                            const normalizedUrl = normalizeAudioUrl(response.audioFile);
+                            const shouldShowPlay = !isPlaying || currentAudioUrl !== normalizedUrl;
+                            console.log('Debug botões:', {
+                              isPlaying,
+                              currentAudioUrl,
+                              normalizedUrl,
+                              shouldShowPlay
+                            });
+                            return shouldShowPlay;
+                          })() ? (
                             <Button
                               variant="outline"
                               size="sm"
