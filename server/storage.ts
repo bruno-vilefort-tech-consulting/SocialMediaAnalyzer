@@ -1,5 +1,6 @@
 import {
   type User, type InsertUser, type Client, type InsertClient,
+  type ClientUser, type InsertClientUser,
   type Job, type InsertJob, type Question, type InsertQuestion,
   type CandidateList, type InsertCandidateList, type Candidate, type InsertCandidate, 
   type Selection, type InsertSelection, type Interview, type InsertInterview, 
@@ -35,6 +36,14 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
+
+  // Client Users
+  getClientUsersByClientId(clientId: number): Promise<ClientUser[]>;
+  getClientUserById(id: number): Promise<ClientUser | undefined>;
+  getClientUserByEmail(email: string): Promise<ClientUser | undefined>;
+  createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
+  updateClientUser(id: number, clientUser: Partial<ClientUser>): Promise<ClientUser>;
+  deleteClientUser(id: number): Promise<void>;
 
   // Jobs
   getJobsByClientId(clientId: number): Promise<Job[]>;
@@ -196,6 +205,66 @@ export class FirebaseStorage implements IStorage {
     console.log(`✅ Cliente encontrado, deletando: ${JSON.stringify(docSnap.data())}`);
     await deleteDoc(docRef);
     console.log(`✅ Cliente ID ${id} deletado com sucesso do Firebase`);
+  }
+
+  // Client Users
+  async getClientUsersByClientId(clientId: number): Promise<ClientUser[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "clientUsers"));
+    return snapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as ClientUser))
+      .filter(user => user.clientId === clientId);
+  }
+
+  async getClientUserById(id: number): Promise<ClientUser | undefined> {
+    const docRef = doc(firebaseDb, "clientUsers", String(id));
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { id: parseInt(docSnap.id), ...docSnap.data() } as ClientUser : undefined;
+  }
+
+  async getClientUserByEmail(email: string): Promise<ClientUser | undefined> {
+    const clientUsersQuery = query(collection(firebaseDb, "clientUsers"), where("email", "==", email));
+    const querySnapshot = await getDocs(clientUsersQuery);
+    
+    if (querySnapshot.empty) return undefined;
+    
+    const doc = querySnapshot.docs[0];
+    return { id: parseInt(doc.id), ...doc.data() } as ClientUser;
+  }
+
+  async createClientUser(insertClientUser: InsertClientUser): Promise<ClientUser> {
+    // Encrypt password
+    const hashedPassword = await bcrypt.hash(insertClientUser.password, 10);
+    
+    // Generate unique client user ID
+    const clientUserId = Date.now() + Math.floor(Math.random() * 1000);
+    const clientUserData = {
+      ...insertClientUser,
+      password: hashedPassword,
+      id: clientUserId,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    await setDoc(doc(firebaseDb, "clientUsers", String(clientUserId)), clientUserData);
+    return clientUserData as ClientUser;
+  }
+
+  async updateClientUser(id: number, clientUserUpdate: Partial<ClientUser>): Promise<ClientUser> {
+    // If password is being updated, hash it
+    if (clientUserUpdate.password) {
+      clientUserUpdate.password = await bcrypt.hash(clientUserUpdate.password, 10);
+    }
+    
+    clientUserUpdate.updatedAt = new Date();
+    
+    const docRef = doc(firebaseDb, "clientUsers", String(id));
+    await updateDoc(docRef, clientUserUpdate);
+    const updatedDoc = await getDoc(docRef);
+    return { id, ...updatedDoc.data() } as ClientUser;
+  }
+
+  async deleteClientUser(id: number): Promise<void> {
+    await deleteDoc(doc(firebaseDb, "clientUsers", String(id)));
   }
 
   // Jobs

@@ -32,6 +32,18 @@ export const clients = pgTable("clients", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Client Users - Multiple administrators per client
+export const clientUsers = pgTable("client_users", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => clients.id).notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(), // Encrypted password
+  status: text("status").notNull().default("active"), // 'active', 'inactive'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Vagas de emprego (presets para entrevistas)
 export const jobs = pgTable("vagas_preset", {
   id: text("id").primaryKey(),
@@ -149,6 +161,11 @@ export const messageLogs = pgTable("message_logs", {
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
+export const insertClientUserSchema = createInsertSchema(clientUsers).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  name: z.string().min(1, "Nome é obrigatório")
+});
 export const insertJobSchema = z.object({
   nomeVaga: z.string().min(1, "Nome da vaga é obrigatório").max(100, "Nome deve ter no máximo 100 caracteres"),
   descricaoVaga: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional(),
@@ -177,6 +194,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
+export type ClientUser = typeof clientUsers.$inferSelect;
+export type InsertClientUser = z.infer<typeof insertClientUserSchema>;
 export type Job = typeof jobs.$inferSelect;
 export type InsertJob = z.infer<typeof insertJobSchema>;
 export type Question = typeof questions.$inferSelect;
