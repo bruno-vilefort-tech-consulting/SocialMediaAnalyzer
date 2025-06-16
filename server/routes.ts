@@ -2742,11 +2742,14 @@ Responda de forma natural aguardando a resposta do candidato.`;
             }
           }
           
-          // Comparar por nome (última opção)
+          // Comparar por nome (busca mais flexível para nomes como Jacqueline)
           if (interviewData.candidateName && candidate.name) {
             const interviewName = interviewData.candidateName.toLowerCase().trim();
             const candidateName = candidate.name.toLowerCase().trim();
-            if (interviewName === candidateName) {
+            // Busca exata ou por similaridade (primeiros nomes)
+            if (interviewName === candidateName || 
+                interviewName.includes(candidateName.split(' ')[0]) ||
+                candidateName.includes(interviewName.split(' ')[0])) {
               return true;
             }
           }
@@ -2757,6 +2760,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
         // Se o candidato não está na lista da seleção, pular
         if (!candidateInSelection) {
           console.log(`🚫 Candidato ${interviewData.candidateName} não encontrado na lista da seleção ${selectionData.name}, pulando...`);
+          console.log(`📋 Candidatos disponíveis na seleção:`, selectionCandidates.map(c => c.name));
           continue;
         }
         
