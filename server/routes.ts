@@ -923,6 +923,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Processed selection data:', selectionData);
       
       const selection = await storage.createSelection(selectionData);
+      console.log('✅ Seleção criada:', {
+        id: selection.id,
+        status: selection.status,
+        sendVia: selection.sendVia,
+        candidateListId: selection.candidateListId
+      });
       
       // Enviar convites automaticamente se a seleção for criada como "active"
       if (selection.status === 'active' && selection.sendVia) {
