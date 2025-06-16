@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from "react";
 
 interface UseAudioRecorderReturn {
@@ -127,17 +128,18 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
   const pauseAudio = useCallback(() => {
     if (audioRef.current && isPlaying && !isPaused) {
-      console.log('⏸️ Pausando áudio');
+      console.log('⏸️ Pausando áudio na posição:', audioRef.current.currentTime);
       audioRef.current.pause();
       setIsPlaying(false);
       setIsPaused(true);
       // Manter currentAudioUrl para permitir resume
+      // NÃO resetar currentTime aqui
     }
   }, [isPlaying, isPaused]);
 
   const resumeAudio = useCallback(() => {
     if (audioRef.current && isPaused && currentAudioUrl) {
-      console.log('▶️ Retomando áudio');
+      console.log('▶️ Retomando áudio da posição:', audioRef.current.currentTime);
       audioRef.current.play().then(() => {
         setIsPlaying(true);
         setIsPaused(false);
@@ -151,9 +153,9 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
-      console.log('⏹️ Parando áudio');
+      console.log('⏹️ Parando áudio completamente');
       audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      audioRef.current.currentTime = 0; // Só resetar no stop
       setIsPlaying(false);
       setIsPaused(false);
       setCurrentAudioUrl(null);
