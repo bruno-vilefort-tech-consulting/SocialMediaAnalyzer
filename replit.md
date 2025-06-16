@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ INTERFACE DE LISTAS SIMPLIFICADA - Coluna "Candidatos" removida conforme solicitação
+  - **Coluna "Candidatos" removida**: Interface mais limpa sem informação redundante de contagem
+  - **Coluna "Descrição" mantida**: Usuário preferiu manter descrição das listas visível
+  - **Layout otimizado**: Tabela agora mostra Nome da Lista, Descrição, Cliente (para masters), Data de Criação e Ações
+  - **Experiência simplificada**: Foco nas informações essenciais sem elementos desnecessários
+
 - June 16, 2025: ✅ SISTEMA DE CANDIDATOS REFORMULADO COMPLETAMENTE - ClientId obrigatório implementado no esquema
   - **Schema corrigido**: Campo clientId adicionado diretamente na tabela candidates conforme especificação
   - **Storage atualizado**: Método createCandidate agora salva clientId diretamente no documento do candidato

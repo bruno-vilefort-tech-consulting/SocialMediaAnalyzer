@@ -665,8 +665,8 @@ export default function CandidatesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome da Lista</TableHead>
+                      <TableHead>Descrição</TableHead>
                       {user?.role === 'master' && <TableHead>Cliente</TableHead>}
-                      <TableHead>Candidatos</TableHead>
                       <TableHead>Data de Criação</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
@@ -681,19 +681,14 @@ export default function CandidatesPage() {
                       return (
                         <TableRow key={list.id}>
                           <TableCell className="font-medium">{list.name}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {list.description || "Sem descrição"}
+                          </TableCell>
                           {user?.role === 'master' && (
                             <TableCell>
                               {client ? client.companyName : "Cliente não encontrado"}
                             </TableCell>
                           )}
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm">
-                                {candidatesCount} candidatos
-                              </span>
-                            </div>
-                          </TableCell>
                           <TableCell>
                             {(() => {
                               if (!list.createdAt) return 'N/A';
