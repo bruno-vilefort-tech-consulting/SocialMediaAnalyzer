@@ -580,20 +580,39 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidatesByListId(listId: number): Promise<Candidate[]> {
+    console.log(`🔍 getCandidatesByListId: Buscando candidatos para lista ${listId}`);
+    
     // Busca memberships da lista
-    const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
-    const memberships = membershipsSnapshot.docs
-      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateListMembership))
-      .filter(membership => membership.listId === listId);
+    const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
+    console.log(`📋 Total de memberships no banco: ${membershipsSnapshot.docs.length}`);
+    
+    const allMemberships = membershipsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return { id: doc.id, ...data };
+    });
+    
+    console.log('🔍 Todos os memberships:', allMemberships);
+    
+    const memberships = allMemberships.filter(membership => membership.listId === listId);
+    console.log(`🎯 Memberships para lista ${listId}:`, memberships);
     
     // Busca candidatos baseado nos IDs encontrados
     const candidateIds = memberships.map(m => m.candidateId);
-    if (candidateIds.length === 0) return [];
+    console.log(`👥 IDs de candidatos encontrados:`, candidateIds);
+    
+    if (candidateIds.length === 0) {
+      console.log('❌ Nenhum candidato encontrado para esta lista');
+      return [];
+    }
     
     const candidatesSnapshot = await getDocs(collection(firebaseDb, "candidates"));
-    return candidatesSnapshot.docs
-      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
-      .filter(candidate => candidateIds.includes(candidate.id));
+    const allCandidates = candidatesSnapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate));
+    console.log(`👤 Total de candidatos no banco: ${allCandidates.length}`);
+    
+    const filteredCandidates = allCandidates.filter(candidate => candidateIds.includes(candidate.id));
+    console.log(`✅ Candidatos filtrados para lista ${listId}:`, filteredCandidates);
+    
+    return filteredCandidates;
   }
 
   async getCandidateById(id: number): Promise<Candidate | undefined> {
