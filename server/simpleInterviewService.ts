@@ -287,7 +287,7 @@ class SimpleInterviewService {
       // Salvar resposta usando storage interface
       await storage.createResponse({
         interviewId: parseInt(interview.candidateId),
-        questionId: currentQuestion.id,
+        questionId: interview.currentQuestion + 1, // Usar índice + 1 como ID da pergunta
         audioUrl: audioFile || null,
         transcription: responseText,
         score: null,
