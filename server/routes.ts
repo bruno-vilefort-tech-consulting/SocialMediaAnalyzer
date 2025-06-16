@@ -1926,14 +1926,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Para clientes, usar a chave da API configurada no sistema
       let openaiApiKey = apiKey;
       if (req.user?.role === 'client') {
-        const config = await storage.getApiConfig();
-        if (!config?.openaiApiKey) {
+        const masterSettings = await storage.getMasterSettings();
+        if (!masterSettings?.openaiApiKey) {
           return res.status(400).json({ 
             message: "OpenAI API not configured. Contact system administrator.",
             status: "error" 
           });
         }
-        openaiApiKey = config.openaiApiKey;
+        openaiApiKey = masterSettings.openaiApiKey;
       } else if (!apiKey) {
         return res.status(400).json({ message: "API key is required for master users" });
       }
@@ -2326,8 +2326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Interview not found" });
       }
 
-      const config = await storage.getApiConfig();
-      if (!config?.openaiApiKey) {
+      const masterSettings = await storage.getMasterSettings();
+      if (!masterSettings?.openaiApiKey) {
         return res.status(400).json({ message: "OpenAI API not configured" });
       }
 
@@ -2693,8 +2693,8 @@ Responda de forma natural aguardando a resposta do candidato.`;
         return res.status(400).json({ message: 'Audio URL is required' });
       }
 
-      const config = await storage.getApiConfig();
-      if (!config?.openaiApiKey) {
+      const masterSettings = await storage.getMasterSettings();
+      if (!masterSettings?.openaiApiKey) {
         return res.status(500).json({ message: 'OpenAI API key not configured' });
       }
 
