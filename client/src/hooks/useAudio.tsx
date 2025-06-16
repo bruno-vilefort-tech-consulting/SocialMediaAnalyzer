@@ -79,30 +79,33 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
 
   const playAudio = useCallback((audioUrl: string) => {
     try {
-      // Se já existe um áudio tocando, parar ele primeiro
+      console.log('🎵 Reproduzindo novo áudio:', audioUrl);
+      
+      // Se já existe um áudio, parar completamente antes
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        audioRef.current.removeEventListener('ended', () => {});
+        audioRef.current.removeEventListener('error', () => {});
       }
       
-      console.log('🎵 Reproduzindo novo áudio:', audioUrl);
-      
+      // Criar novo elemento de áudio
       audioRef.current = new Audio(audioUrl);
       
-      // Event listeners
-      audioRef.current.onended = () => {
+      // Configurar event listeners
+      audioRef.current.addEventListener('ended', () => {
         console.log('✅ Áudio finalizado');
         setIsPlaying(false);
         setIsPaused(false);
         setCurrentAudioUrl(null);
-      };
+      });
       
-      audioRef.current.onerror = (e) => {
+      audioRef.current.addEventListener('error', (e) => {
         console.error('❌ Erro no áudio:', e);
         setIsPlaying(false);
         setIsPaused(false);
         setCurrentAudioUrl(null);
-      };
+      });
       
       // Definir estados
       setCurrentAudioUrl(audioUrl);
@@ -132,24 +135,35 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       audioRef.current.pause();
       setIsPlaying(false);
       setIsPaused(true);
-      // Manter currentAudioUrl para permitir resume
-      // NÃO resetar currentTime aqui
+      // Manter currentAudioUrl e currentTime para permitir resume
+      console.log('⏸️ Estados após pause - isPlaying:', false, 'isPaused:', true);
     }
   }, [isPlaying, isPaused]);
 
   const resumeAudio = useCallback(() => {
-    if (audioRef.current && isPaused && currentAudioUrl) {
+    if (audioRef.current && isPaused && currentAudioUrl && !isPlaying) {
       console.log('▶️ Retomando áudio da posição:', audioRef.current.currentTime);
+      
       audioRef.current.play().then(() => {
+        console.log('✅ Áudio retomado com sucesso');
         setIsPlaying(true);
         setIsPaused(false);
+        console.log('▶️ Estados após resume - isPlaying:', true, 'isPaused:', false);
       }).catch((error) => {
         console.error('❌ Erro ao retomar áudio:', error);
         setIsPlaying(false);
         setIsPaused(false);
+        setCurrentAudioUrl(null);
+      });
+    } else {
+      console.log('⚠️ Não é possível retomar - condições:', {
+        hasAudio: !!audioRef.current,
+        isPaused,
+        currentAudioUrl,
+        isPlaying
       });
     }
-  }, [isPaused, currentAudioUrl]);
+  }, [isPaused, currentAudioUrl, isPlaying]);
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -159,6 +173,7 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       setIsPlaying(false);
       setIsPaused(false);
       setCurrentAudioUrl(null);
+      console.log('⏹️ Estados após stop - isPlaying:', false, 'isPaused:', false);
     }
   }, []);
 
