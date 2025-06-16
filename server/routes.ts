@@ -1636,8 +1636,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id})`);
       
-      const { firebaseDb } = await import('./db');
       const { collection, getDocs, query, where, doc, getDoc } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./storage');
       
       let allInterviews: any[] = [];
       
