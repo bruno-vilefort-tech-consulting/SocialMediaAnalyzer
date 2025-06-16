@@ -150,18 +150,19 @@ export default function ApiConfigPage() {
     setTestStatus('testing');
     try {
       const response = await apiRequest("/api/test-openai", "POST", { apiKey: openaiApiKey });
+      const data = await response.json();
       
-      if (response.success) {
+      if (data.success) {
         setTestStatus('success');
         toast({
           title: "Chave válida",
-          description: response.message,
+          description: data.message,
         });
       } else {
         setTestStatus('error');
         toast({
           title: "Chave inválida",
-          description: response.error,
+          description: data.error,
           variant: "destructive",
         });
       }
