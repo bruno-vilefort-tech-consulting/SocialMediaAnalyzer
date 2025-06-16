@@ -48,6 +48,7 @@ import type { CandidateList, InsertCandidateList, Candidate, InsertCandidate, Cl
 const candidateListSchema = z.object({
   name: z.string().min(1, "Nome da lista é obrigatório"),
   description: z.string().optional(),
+  clientId: z.number().positive("Cliente é obrigatório")
 });
 
 const candidateSchema = z.object({
@@ -221,7 +222,11 @@ export default function CandidatesPage() {
   // Forms
   const listForm = useForm<CandidateListFormData>({
     resolver: zodResolver(candidateListSchema),
-    defaultValues: { name: "", description: "" }
+    defaultValues: { 
+      name: "", 
+      description: "",
+      clientId: user?.role === 'client' ? user?.clientId || 0 : 0
+    }
   });
 
   const candidateForm = useForm<CandidateFormData>({
@@ -240,7 +245,7 @@ export default function CandidatesPage() {
     mutationFn: async (data: CandidateListFormData): Promise<CandidateList> => {
       const listData: InsertCandidateList = {
         ...data,
-        clientId: user?.role === 'master' ? 1 : user?.clientId!
+        clientId: data.clientId
       };
       const response = await apiRequest('/api/candidate-lists', 'POST', listData);
       return await response.json();
@@ -758,6 +763,36 @@ export default function CandidatesPage() {
           </DialogHeader>
           <Form {...listForm}>
             <form onSubmit={listForm.handleSubmit(handleCreateList)} className="space-y-4">
+              {user?.role === 'master' && (
+                <FormField
+                  control={listForm.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cliente</FormLabel>
+                      <FormControl>
+                        <Select 
+                          value={field.value?.toString()} 
+                          onValueChange={(value) => field.onChange(parseInt(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um cliente" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id.toString()}>
+                                {client.companyName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
               <FormField
                 control={listForm.control}
                 name="name"
