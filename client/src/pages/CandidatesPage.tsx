@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Form,
   FormControl,
@@ -39,7 +41,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import type { CandidateList, InsertCandidateList, Candidate, InsertCandidate } from "@shared/schema";
+import type { CandidateList, InsertCandidateList, Candidate, InsertCandidate, Client } from "@shared/schema";
 
 // Schemas de validação
 const candidateListSchema = z.object({
@@ -67,8 +69,14 @@ export default function CandidatesPage() {
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCandidateForm, setShowCandidateForm] = useState(false);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
 
   // Queries
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ['/api/clients'],
+    enabled: user?.role === 'master'
+  });
+
   const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
     queryKey: ['/api/candidate-lists']
   });
