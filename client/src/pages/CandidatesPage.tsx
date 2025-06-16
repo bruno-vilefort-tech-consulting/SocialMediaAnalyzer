@@ -72,10 +72,13 @@ export default function CandidatesPage() {
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
 
   // Queries
-  const { data: clients = [] } = useQuery<Client[]>({
+  const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
     enabled: user?.role === 'master'
   });
+
+  // Debug: log dos clientes carregados
+  console.log('🔍 Dados dos clientes:', { clients, clientsLoading, userRole: user?.role });
 
   const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
     queryKey: ['/api/candidate-lists']
