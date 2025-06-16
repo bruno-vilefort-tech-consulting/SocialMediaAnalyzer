@@ -28,6 +28,7 @@ interface ClientVoiceSetting {
 
 interface WhatsAppStatus {
   isConnected: boolean;
+  qrCode: string | null;
   phone?: string;
   lastConnection?: string;
 }
@@ -63,6 +64,10 @@ export default function ApiConfigPage() {
   // Estados para configurações cliente
   const [selectedVoice, setSelectedVoice] = useState("nova");
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+
+  // Estados para WhatsApp
+  const [testPhone, setTestPhone] = useState("");
+  const [testMessage, setTestMessage] = useState("Teste de conexão WhatsApp QR - Sistema de Entrevistas");
 
   // Vozes disponíveis otimizadas para português brasileiro
   const voices = [
@@ -131,6 +136,61 @@ export default function ApiConfigPage() {
       toast({
         title: "Erro ao salvar voz",
         description: error.message || "Erro ao salvar configuração de voz",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutations para WhatsApp QR
+  const connectWhatsAppMutation = useMutation({
+    mutationFn: () => apiRequest("/api/whatsapp-qr/reconnect", "POST"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+      toast({
+        title: "Reconnectando...",
+        description: "Aguarde um novo QR Code",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao reconectar WhatsApp",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const disconnectWhatsAppMutation = useMutation({
+    mutationFn: () => apiRequest("/api/whatsapp-qr/disconnect", "POST"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+      toast({
+        title: "WhatsApp desconectado",
+        description: "Sessão encerrada com sucesso",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Falha ao desconectar WhatsApp",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const testWhatsAppMutation = useMutation({
+    mutationFn: (data: { phoneNumber: string; message: string }) => 
+      apiRequest("/api/whatsapp-qr/test", "POST", data),
+    onSuccess: () => {
+      toast({
+        title: "Teste enviado!",
+        description: "Mensagem de teste enviada com sucesso",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro no teste",
+        description: error?.message || "Falha ao enviar mensagem de teste",
         variant: "destructive",
       });
     },
@@ -406,60 +466,187 @@ export default function ApiConfigPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className={`h-3 w-3 rounded-full ${whatsappStatus?.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              <div>
-                <p className="font-medium">
-                  Status: {whatsappStatus?.isConnected ? 'Conectado' : 'Desconectado'}
-                </p>
-                {whatsappStatus?.phone && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Telefone: {whatsappStatus.phone}
-                  </p>
-                )}
-                {whatsappStatus?.lastConnection && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Última conexão: {new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')}
-                  </p>
-                )}
+          {/* Status conectado */}
+          {whatsappStatus?.isConnected && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-900 dark:text-green-100">
+                      WhatsApp Conectado
+                    </p>
+                    {whatsappStatus.phone && (
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Número: +{whatsappStatus.phone}
+                      </p>
+                    )}
+                    {whatsappStatus.lastConnection && (
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        Conectado em: {new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="default" className="bg-green-600">
+                    Online
+                  </Badge>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => disconnectWhatsAppMutation.mutate()}
+                    disabled={disconnectWhatsAppMutation.isPending}
+                  >
+                    Desconectar
+                  </Button>
+                </div>
               </div>
-            </div>
-            
-            <Badge variant={whatsappStatus?.isConnected ? "default" : "destructive"}>
-              {whatsappStatus?.isConnected ? 'Online' : 'Offline'}
-            </Badge>
-          </div>
 
-          {!whatsappStatus?.isConnected && (
-            <div className="text-center space-y-4">
-              <p className="text-gray-600 dark:text-gray-400">
-                Conecte seu WhatsApp para enviar entrevistas automáticas
-              </p>
-              <Button
-                onClick={() => connectWhatsAppMutation.mutate()}
-                disabled={connectWhatsAppMutation.isPending}
-                className="w-full lg:w-auto"
-              >
-                {connectWhatsAppMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <QrCode className="h-4 w-4 mr-2" />
-                )}
-                Conectar WhatsApp
-              </Button>
+              {/* Seção de teste quando conectado */}
+              <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="font-medium text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Teste de Envio
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="testPhone" className="text-sm text-blue-800 dark:text-blue-200">
+                      Telefone (com código país)
+                    </Label>
+                    <Input
+                      id="testPhone"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      placeholder="5511999999999"
+                      className="bg-white dark:bg-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="testMessage" className="text-sm text-blue-800 dark:text-blue-200">
+                      Mensagem de teste
+                    </Label>
+                    <Input
+                      id="testMessage"
+                      value={testMessage}
+                      onChange={(e) => setTestMessage(e.target.value)}
+                      placeholder="Mensagem de teste..."
+                      className="bg-white dark:bg-gray-800"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!testPhone || !testMessage) {
+                      toast({
+                        title: "Campos obrigatórios",
+                        description: "Preencha o telefone e a mensagem",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    testWhatsAppMutation.mutate({
+                      phoneNumber: testPhone,
+                      message: testMessage,
+                    });
+                  }}
+                  disabled={testWhatsAppMutation.isPending}
+                  size="sm"
+                  className="w-full md:w-auto"
+                >
+                  {testWhatsAppMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar Teste
+                </Button>
+              </div>
             </div>
           )}
 
-          {whatsappStatus?.isConnected && (
-            <div className="text-center space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-green-600 font-medium">WhatsApp Conectado</span>
+          {/* Status desconectado - aguardando QR */}
+          {!whatsappStatus?.isConnected && whatsappStatus?.qrCode && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center space-y-4 p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <div className="text-center">
+                  <QrCode className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+                  <h3 className="font-medium text-yellow-900 dark:text-yellow-100">Escaneie o QR Code</h3>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-4">
+                    Abra o WhatsApp no seu celular e escaneie o código abaixo
+                  </p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg border-2 border-yellow-300">
+                  <img 
+                    src={whatsappStatus.qrCode} 
+                    alt="QR Code WhatsApp" 
+                    className="w-64 h-64 mx-auto"
+                  />
+                </div>
+                
+                <div className="text-center text-sm text-yellow-700 dark:text-yellow-300">
+                  <p className="mb-2 font-medium">Como escanear:</p>
+                  <ol className="text-left space-y-1 list-decimal list-inside">
+                    <li>Abra o WhatsApp no celular</li>
+                    <li>Toque em "Mais opções" (⋮) ou "Configurações"</li>
+                    <li>Selecione "Aparelhos conectados"</li>
+                    <li>Toque em "Conectar um aparelho"</li>
+                    <li>Escaneie este QR Code</li>
+                  </ol>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => connectWhatsAppMutation.mutate()}
+                  disabled={connectWhatsAppMutation.isPending}
+                  size="sm"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Gerar Novo QR
+                </Button>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Pronto para enviar entrevistas automáticas via WhatsApp
-              </p>
+            </div>
+          )}
+
+          {/* Status desconectado - sem QR */}
+          {!whatsappStatus?.isConnected && !whatsappStatus?.qrCode && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-medium text-red-900 dark:text-red-100">
+                      WhatsApp Desconectado
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      Conecte seu WhatsApp para enviar entrevistas automáticas
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="destructive">
+                  Offline
+                </Badge>
+              </div>
+
+              <div className="text-center space-y-4">
+                <Button
+                  onClick={() => connectWhatsAppMutation.mutate()}
+                  disabled={connectWhatsAppMutation.isPending}
+                  className="w-full lg:w-auto"
+                >
+                  {connectWhatsAppMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <QrCode className="h-4 w-4 mr-2" />
+                  )}
+                  Conectar WhatsApp
+                </Button>
+                
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Clique no botão acima para gerar um QR Code e conectar seu WhatsApp
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
