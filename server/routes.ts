@@ -2815,8 +2815,10 @@ Responda de forma natural aguardando a resposta do candidato.`;
           return false;
         });
         
-        // NOVA LÓGICA: Se não encontrou na seleção atual, buscar candidato real pelo ID em todas as listas
+        // CORREÇÃO: Se não encontrou na seleção atual, buscar candidato real pelo ID e encontrar a seleção correta
         let actualCandidate = candidateInSelection;
+        let correctSelectionData = selectionData;
+        
         if (!candidateInSelection && interviewData.candidateId) {
           console.log(`🔍 Candidato não encontrado na seleção atual, buscando por ID ${interviewData.candidateId} em todas as listas...`);
           try {
@@ -2827,19 +2829,18 @@ Responda de forma natural aguardando a resposta do candidato.`;
               console.log(`✅ Candidato encontrado por ID global: ${candidateById.name} (${candidateById.id})`);
               actualCandidate = candidateById;
               
-              // Verificar se este candidato deveria estar em alguma seleção ativa
-              const candidateSelections = allSelections.filter(s => s.candidateListId);
-              for (const selection of candidateSelections) {
-                try {
-                  const listCandidates = await storage.getCandidatesByListId(selection.candidateListId);
-                  if (listCandidates.find(c => c.id.toString() === candidateById.id.toString())) {
-                    console.log(`✅ Candidato ${candidateById.name} encontrado na seleção ${selection.name}`);
-                    selectionData = selection; // Usar a seleção correta
-                    break;
-                  }
-                } catch (err) {
-                  continue;
-                }
+              // IMPORTANTE: Encontrar a seleção CORRETA baseada na lista do candidato
+              console.log(`🔍 Buscando seleção correta para candidato ${candidateById.name} na lista ${candidateById.listId}...`);
+              
+              const correctSelection = allSelections.find(s => 
+                s.candidateListId && s.candidateListId.toString() === candidateById.listId.toString()
+              );
+              
+              if (correctSelection) {
+                console.log(`✅ Seleção CORRETA encontrada: ${correctSelection.name} (ID: ${correctSelection.id}) para lista ${candidateById.listId}`);
+                correctSelectionData = correctSelection;
+              } else {
+                console.log(`⚠️ Seleção correta não encontrada para lista ${candidateById.listId}, mantendo seleção original`);
               }
             }
           } catch (err) {
@@ -2854,7 +2855,7 @@ Responda de forma natural aguardando a resposta do candidato.`;
             phone: interviewData.phone,
             candidateId: interviewData.candidateId
           });
-          console.log(`📋 Candidatos disponíveis na seleção ${selectionData.name}:`, selectionCandidates.map(c => c.name));
+          console.log(`📋 Candidatos disponíveis na seleção ${correctSelectionData.name}:`, selectionCandidates.map(c => c.name));
           continue;
         }
         
@@ -2914,17 +2915,17 @@ Responda de forma natural aguardando a resposta do candidato.`;
 
         console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
 
-        // Usar dados do candidato confirmado (actualCandidate em vez de candidateInSelection)
+        // CORREÇÃO: Usar dados da seleção CORRETA encontrada
         const candidateName = actualCandidate.name;
         const candidatePhone = actualCandidate.whatsapp || actualCandidate.phone || 'N/A';
-        const jobName = selectionData.jobName || selectionData.name || 'Vaga não identificada';
+        const jobName = correctSelectionData.jobName || correctSelectionData.name || 'Vaga não identificada';
         
         console.log(`✅ Usando dados do candidato confirmado: ${candidateName} (${candidatePhone}) para vaga ${jobName}`);
 
         allInterviews.push({
           id: interviewDoc.id,
-          selectionId: selectionData.id,
-          selectionName: selectionData.jobName || selectionData.name,
+          selectionId: correctSelectionData.id,
+          selectionName: correctSelectionData.jobName || correctSelectionData.name,
           candidateId: actualCandidate.id,
           candidateName: candidateName,
           candidatePhone: candidatePhone,
