@@ -85,7 +85,7 @@ export default function ClientsPage() {
 
   // Query para buscar usuários de um cliente específico
   const { data: clientUsers = [], isLoading: isLoadingUsers } = useQuery<ClientUser[]>({
-    queryKey: ["/api/clients", editingClient?.id, "users"],
+    queryKey: [`/api/clients/${editingClient?.id}/users`],
     enabled: !!editingClient,
   });
 
