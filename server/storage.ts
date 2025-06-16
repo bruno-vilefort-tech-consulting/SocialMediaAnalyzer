@@ -1169,6 +1169,60 @@ export class FirebaseStorage implements IStorage {
     
     throw new Error('Usuário não encontrado');
   }
+
+  // Candidate List Memberships (muitos-para-muitos)
+  async addCandidateToList(candidateId: number, listId: number, clientId: number): Promise<CandidateListMembership> {
+    const membershipId = Date.now() + Math.floor(Math.random() * 1000);
+    const membershipData = {
+      id: membershipId,
+      candidateId,
+      listId,
+      clientId,
+      createdAt: new Date()
+    };
+    await setDoc(doc(firebaseDb, "candidateListMemberships", String(membershipId)), membershipData);
+    return membershipData as CandidateListMembership;
+  }
+
+  async removeCandidateFromList(candidateId: number, listId: number): Promise<void> {
+    const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    const membership = snapshot.docs.find(doc => {
+      const data = doc.data();
+      return data.candidateId === candidateId && data.listId === listId;
+    });
+    
+    if (membership) {
+      await deleteDoc(membership.ref);
+    }
+  }
+
+  async getCandidateListMemberships(candidateId: number): Promise<CandidateListMembership[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    return snapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateListMembership))
+      .filter(membership => membership.candidateId === candidateId);
+  }
+
+  async getCandidatesInList(listId: number): Promise<Candidate[]> {
+    return this.getCandidatesByListId(listId);
+  }
+
+  async getCandidatesByMultipleClients(clientIds: number[]): Promise<Candidate[]> {
+    // Busca memberships de todos os clientes especificados
+    const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    const memberships = membershipsSnapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateListMembership))
+      .filter(membership => clientIds.includes(membership.clientId));
+    
+    // Busca candidatos únicos baseado nos IDs encontrados
+    const candidateIds = [...new Set(memberships.map(m => m.candidateId))];
+    if (candidateIds.length === 0) return [];
+    
+    const candidatesSnapshot = await getDocs(collection(firebaseDb, "candidates"));
+    return candidatesSnapshot.docs
+      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate))
+      .filter(candidate => candidateIds.includes(candidate.id));
+  }
 }
 
 export const storage = new FirebaseStorage();
