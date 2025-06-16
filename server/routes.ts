@@ -1036,6 +1036,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para buscar todos os relacionamentos candidato-lista
+  app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const memberships = await storage.getAllCandidateListMemberships();
+      res.json(memberships);
+    } catch (error) {
+      console.error('Erro ao buscar relacionamentos candidato-lista:', error);
+      res.status(400).json({ message: 'Failed to get candidate list memberships' });
+    }
+  });
+
   app.get("/api/lists/:listId/candidates", authenticate, authorize(['client', 'master']), async (req, res) => {
     try {
       const listId = parseInt(req.params.listId);

@@ -213,6 +213,11 @@ export default function CandidatesPage() {
   // Lista selecionada atual
   const selectedList = candidateLists.find(list => list.id === selectedListId);
 
+  // Função para contar candidatos por lista usando relacionamentos
+  const getCandidateCountForList = (listId: number): number => {
+    return candidateListMemberships.filter(membership => membership.listId === listId).length;
+  };
+
   // Forms
   const listForm = useForm<CandidateListFormData>({
     resolver: zodResolver(candidateListSchema),
@@ -528,9 +533,7 @@ export default function CandidatesPage() {
                   <TableBody>
                     {filteredCandidateLists.map((list) => {
                       // Contar candidatos nesta lista via relacionamentos
-                      const candidatesCount = candidateListMemberships.filter(
-                        membership => membership.candidateListId === list.id
-                      ).length;
+                      const candidatesCount = getCandidateCountForList(list.id);
                       const client = clients.find(c => c.id === list.clientId);
                       
                       return (

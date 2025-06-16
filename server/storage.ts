@@ -927,6 +927,11 @@ export class FirebaseStorage implements IStorage {
     return snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Selection));
   }
 
+  async getAllCandidateListMemberships(): Promise<any[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    return snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() }));
+  }
+
   // Criar configuração padrão de API para novo cliente
   async createDefaultClientApiConfig(clientId: string): Promise<void> {
     const docId = `client_${clientId}`;
