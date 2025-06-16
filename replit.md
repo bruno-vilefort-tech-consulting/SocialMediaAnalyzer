@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: 🔧 WHATSAPP SERVICE CORRIGIDO PARA NOVA ARQUITETURA - Conexão salva corretamente no banco
+  - **WhatsApp Service atualizado**: Todas chamadas `getApiConfig()` corrigidas para usar `getApiConfig('master', '1749848502212')`
+  - **Persistência funcionando**: Sistema agora salva status de conexão no documento correto do Firebase
+  - **Métodos corrigidos**: `loadConnectionFromDB()`, `saveConnectionToDB()` e `sendQuestionAudio()` usando nova arquitetura
+  - **Conexão ativa confirmada**: WhatsApp conectado e salvando dados em `apiConfigs/master_1749848502212`
+  - **Root cause resolvido**: Serviço estava usando método obsoleto sem parâmetros entityType/entityId
+  - **Logs funcionais**: Sistema mostra "💾 Conexão WhatsApp QR salva no banco de dados" confirmando persistência
+  - **Arquitetura consistente**: WhatsApp QR Service totalmente integrado com sistema separado por usuário
+
 - June 16, 2025: 🔧 SISTEMA APICONFIGS AUTOMÁTICO IMPLEMENTADO - Configurações padrão para novos clientes
   - **Configurações criadas para clientes existentes**: Grupo Maximuns (1749849987543) e Universidade dos Campeões (1749852235275)
   - **Sistema automático implementado**: Novos clientes têm apiConfig criada automaticamente no cadastro
