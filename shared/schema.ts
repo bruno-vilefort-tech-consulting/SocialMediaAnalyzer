@@ -14,7 +14,7 @@ export const users = pgTable("users", {
 
 // Corporate clients
 export const clients = pgTable("clients", {
-  id: serial("id").primaryKey(),
+  id: bigint("id", { mode: "number" }).primaryKey(),
   companyName: text("company_name").notNull(),
   cnpj: text("cnpj").notNull().unique(),
   email: text("email").notNull().unique(),
@@ -35,7 +35,7 @@ export const clients = pgTable("clients", {
 // Client Users - Multiple administrators per client
 export const clientUsers = pgTable("client_users", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(), // Encrypted password
@@ -58,7 +58,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 // Vagas de emprego (presets para entrevistas)
 export const jobs = pgTable("vagas_preset", {
   id: text("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   nomeVaga: text("nome_vaga").notNull(), // Nome da vaga
   descricaoVaga: text("descricao_vaga").notNull(), // Descrição para uso interno
   status: text("status").notNull().default("ativo"), // 'ativo', 'inativo'
@@ -78,7 +78,7 @@ export const questions = pgTable("perguntas_entrevista", {
 // Candidate lists
 export const candidateLists = pgTable("candidate_lists", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   name: text("name").notNull(),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -98,14 +98,14 @@ export const candidateListMemberships = pgTable("candidate_list_memberships", {
   id: serial("id").primaryKey(),
   candidateId: integer("candidate_id").references(() => candidates.id).notNull(),
   listId: integer("list_id").references(() => candidateLists.id).notNull(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Selection processes
 export const selections = pgTable("selections", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   jobId: text("job_id").references(() => jobs.id).notNull(),
   candidateListId: integer("candidate_list_id").references(() => candidateLists.id),
   name: text("name").notNull(),
@@ -172,7 +172,7 @@ export const apiConfigs = pgTable("api_configs", {
 // Client voice settings - DEPRECATED - substituído por apiConfigs
 export const clientVoiceSettings = pgTable("client_voice_settings", {
   id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clients.id).notNull(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
   openaiVoice: text("openai_voice").default("nova"),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
