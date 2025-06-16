@@ -368,17 +368,42 @@ export default function CandidatesPage() {
 
   const updateCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      const response = await apiRequest(`/api/candidates/${editingCandidate!.id}`, 'PATCH', data);
+      if (!editingCandidate) {
+        throw new Error("Nenhum candidato selecionado para edição");
+      }
+      
+      console.log(`🔧 Atualizando candidato ${editingCandidate.id} com dados:`, data);
+      const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
       return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
       setEditingCandidate(null);
+      setShowCandidateForm(false);
       candidateForm.reset();
       toast({ title: "Candidato atualizado com sucesso!" });
     },
-    onError: () => {
-      toast({ title: "Erro ao atualizar candidato", variant: "destructive" });
+    onError: (error) => {
+      console.error('❌ Erro na atualização:', error);
+      
+      // Se candidato não existe mais, limpar estado
+      if (error.message.includes('não encontrado')) {
+        setEditingCandidate(null);
+        setShowCandidateForm(false);
+        candidateForm.reset();
+        queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      }
+      
+      toast({ 
+        title: "Erro ao atualizar candidato", 
+        description: error.message.includes('não encontrado') ? 
+          "Candidato não existe mais no sistema" : 
+          "Falha na atualização",
+        variant: "destructive" 
+      });
     }
   });
 

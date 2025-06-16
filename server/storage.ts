@@ -734,7 +734,33 @@ export class FirebaseStorage implements IStorage {
   }
 
   async deleteCandidate(id: number): Promise<void> {
-    await deleteDoc(doc(firebaseDb, "candidates", String(id)));
+    try {
+      console.log(`🗑️ Deletando candidato ${id} e seus memberships...`);
+      
+      // Deletar candidato
+      await deleteDoc(doc(firebaseDb, "candidates", String(id)));
+      console.log(`✅ Candidato ${id} deletado`);
+      
+      // Deletar todos os memberships do candidato
+      const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
+      const candidateMemberships = membershipsSnapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.candidateId === id;
+      });
+      
+      if (candidateMemberships.length > 0) {
+        const batch = writeBatch(firebaseDb);
+        candidateMemberships.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        console.log(`✅ ${candidateMemberships.length} memberships deletados`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erro ao deletar candidato ${id}:`, error);
+      throw error;
+    }
   }
 
   // Selections
