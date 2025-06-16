@@ -1800,6 +1800,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint temporário para limpeza completa de candidatos e listas
+  app.post("/api/cleanup-candidates-lists", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🧹 Iniciando limpeza completa de candidatos e listas...');
+      
+      const { collection, getDocs, deleteDoc, doc } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db');
+      
+      let totalDeleted = 0;
+      
+      // 1. Deletar todos os candidate-list-memberships
+      console.log('🗑️ Deletando candidate-list-memberships...');
+      const membershipsSnapshot = await getDocs(collection(firebaseDb, 'candidate-list-memberships'));
+      for (const membershipDoc of membershipsSnapshot.docs) {
+        await deleteDoc(doc(firebaseDb, 'candidate-list-memberships', membershipDoc.id));
+        totalDeleted++;
+      }
+      console.log(`✅ ${membershipsSnapshot.size} memberships deletados`);
+      
+      // 2. Deletar todos os candidatos
+      console.log('🗑️ Deletando candidatos...');
+      const candidatesSnapshot = await getDocs(collection(firebaseDb, 'candidates'));
+      for (const candidateDoc of candidatesSnapshot.docs) {
+        await deleteDoc(doc(firebaseDb, 'candidates', candidateDoc.id));
+        totalDeleted++;
+      }
+      console.log(`✅ ${candidatesSnapshot.size} candidatos deletados`);
+      
+      // 3. Deletar todas as listas de candidatos
+      console.log('🗑️ Deletando listas de candidatos...');
+      const listsSnapshot = await getDocs(collection(firebaseDb, 'candidate-lists'));
+      for (const listDoc of listsSnapshot.docs) {
+        await deleteDoc(doc(firebaseDb, 'candidate-lists', listDoc.id));
+        totalDeleted++;
+      }
+      console.log(`✅ ${listsSnapshot.size} listas deletadas`);
+      
+      // 4. Verificação final
+      const finalCandidates = await getDocs(collection(firebaseDb, 'candidates'));
+      const finalLists = await getDocs(collection(firebaseDb, 'candidate-lists'));
+      const finalMemberships = await getDocs(collection(firebaseDb, 'candidate-list-memberships'));
+      
+      console.log(`📊 Verificação final: ${finalCandidates.size} candidatos, ${finalLists.size} listas, ${finalMemberships.size} memberships restantes`);
+      
+      res.json({ 
+        success: true, 
+        message: 'Limpeza completa concluída com sucesso',
+        deleted: {
+          memberships: membershipsSnapshot.size,
+          candidates: candidatesSnapshot.size,
+          lists: listsSnapshot.size,
+          total: totalDeleted
+        },
+        remaining: {
+          candidates: finalCandidates.size,
+          lists: finalLists.size,
+          memberships: finalMemberships.size
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erro na limpeza:', error);
+      res.status(500).json({ message: 'Erro na limpeza', error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
