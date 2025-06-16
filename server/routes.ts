@@ -3097,6 +3097,28 @@ Responda de forma natural aguardando a resposta do candidato.`;
     }
   });
 
+  // Endpoint para deletar todos os usuários de um cliente
+  app.delete("/api/clients/:clientId/users/all", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      
+      console.log(`🗑️ Deletando todos os usuários do cliente ID: ${clientId}`);
+      
+      const deletedUsers = await storage.deleteAllClientUsers(clientId);
+      
+      console.log(`✅ ${deletedUsers.length} usuário(s) deletado(s) com sucesso!`);
+      
+      res.json({ 
+        success: true, 
+        message: `${deletedUsers.length} usuário(s) deletado(s) com sucesso`,
+        deletedUsers 
+      });
+    } catch (error) {
+      console.error("❌ Erro ao deletar usuários do cliente:", error);
+      res.status(500).json({ message: "Erro ao deletar usuários do cliente" });
+    }
+  });
+
   // Endpoint para limpeza do Firebase
   app.post("/api/firebase/clean", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
