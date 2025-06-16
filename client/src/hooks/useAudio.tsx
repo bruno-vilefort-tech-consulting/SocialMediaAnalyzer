@@ -83,8 +83,15 @@ export const useAudioRecorder = (): UseAudioRecorderReturn => {
       
       audioRef.current = new Audio(audioUrl);
       audioRef.current.onended = () => {
+        console.log('Áudio finalizado naturalmente');
         setIsPlaying(false);
         setCurrentAudioUrl(null);
+      };
+      
+      audioRef.current.ondurationchange = () => {
+        if (audioRef.current) {
+          console.log('Duração do áudio:', audioRef.current.duration);
+        }
       };
       audioRef.current.onerror = (e) => {
         console.error('Erro no áudio:', e);

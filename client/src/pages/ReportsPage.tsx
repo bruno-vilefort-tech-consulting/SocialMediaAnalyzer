@@ -439,17 +439,7 @@ export default function ReportsPage() {
                       <h5 className="font-semibold text-sm text-blue-900 dark:text-blue-100">Resposta do Daniel</h5>
                       {response.audioFile && (
                         <div className="flex items-center space-x-2">
-                          {(() => {
-                            const normalizedUrl = normalizeAudioUrl(response.audioFile);
-                            const shouldShowPlay = !isPlaying || currentAudioUrl !== normalizedUrl;
-                            console.log('Debug botões:', {
-                              isPlaying,
-                              currentAudioUrl,
-                              normalizedUrl,
-                              shouldShowPlay
-                            });
-                            return shouldShowPlay;
-                          })() ? (
+                          {!isPlaying || currentAudioUrl !== normalizeAudioUrl(response.audioFile) ? (
                             <Button
                               variant="outline"
                               size="sm"
