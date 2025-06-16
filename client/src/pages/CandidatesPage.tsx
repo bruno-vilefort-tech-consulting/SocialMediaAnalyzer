@@ -634,7 +634,8 @@ export default function CandidatesPage() {
                   <TableBody>
                     {filteredCandidateLists.map((list) => {
                       // Contar candidatos nesta lista via relacionamentos - corrigido
-                      const candidatesCount = candidateListMemberships.filter(m => m.listId === list.id).length;
+                      const candidatesCount = candidateListMemberships?.filter(m => m.listId === list.id).length || 0;
+                      console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Memberships encontrados:`, candidatesCount);
                       const client = clients.find(c => c.id === list.clientId);
                       
                       return (
