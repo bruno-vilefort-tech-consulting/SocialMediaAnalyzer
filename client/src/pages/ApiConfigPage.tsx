@@ -70,11 +70,12 @@ export default function ApiConfigPage() {
     enabled: !isMaster && !!user?.clientId,
   });
 
-  // Status WhatsApp QR
-  const { data: whatsappStatus, isLoading: whatsappLoading } = useQuery<WhatsAppStatus>({
+  // Status WhatsApp QR - Desabilitado o polling automático
+  const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: ["/api/whatsapp-qr/status"],
-    refetchInterval: 2000, // Atualiza a cada 2 segundos para capturar QR Code
-    refetchOnWindowFocus: true,
+    refetchInterval: false, // Polling desabilitado
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
   });
 
   // Estados para configurações master

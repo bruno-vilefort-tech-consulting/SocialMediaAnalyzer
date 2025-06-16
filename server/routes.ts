@@ -1865,6 +1865,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp QR endpoints
+  let whatsappQRService: any = null;
+  
+  try {
+    const { WhatsAppQRService } = await import('./whatsappQRService');
+    whatsappQRService = new WhatsAppQRService();
+  } catch (error) {
+    console.error('❌ Erro ao importar WhatsAppQRService:', error);
+  }
+
+  app.get("/api/whatsapp-qr/status", (req, res) => {
+    try {
+      if (!whatsappQRService) {
+        return res.status(500).json({ 
+          error: 'WhatsApp QR Service não disponível',
+          isConnected: false,
+          qrCode: null 
+        });
+      }
+      
+      const status = whatsappQRService.getConnectionStatus();
+      res.json({
+        isConnected: status.isConnected,
+        qrCode: status.qrCode,
+        phone: status.phoneNumber,
+        lastConnection: status.lastConnection
+      });
+    } catch (error) {
+      console.error('❌ Erro ao obter status WhatsApp QR:', error);
+      res.status(500).json({ 
+        error: 'Erro interno',
+        isConnected: false,
+        qrCode: null 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/reconnect", async (req, res) => {
+    try {
+      if (!whatsappQRService) {
+        return res.status(500).json({ error: 'WhatsApp QR Service não disponível' });
+      }
+      
+      console.log('🔄 Iniciando reconexão WhatsApp QR via API...');
+      await whatsappQRService.reconnect();
+      
+      res.json({ 
+        success: true, 
+        message: 'Processo de reconexão iniciado. Aguarde alguns segundos para o QR Code.' 
+      });
+    } catch (error) {
+      console.error('❌ Erro na reconexão WhatsApp QR:', error);
+      res.status(500).json({ 
+        error: 'Falha na reconexão',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-qr/disconnect", async (req, res) => {
+    try {
+      if (!whatsappQRService) {
+        return res.status(500).json({ error: 'WhatsApp QR Service não disponível' });
+      }
+      
+      console.log('🔌 Desconectando WhatsApp QR via API...');
+      await whatsappQRService.disconnect();
+      
+      res.json({ 
+        success: true, 
+        message: 'WhatsApp desconectado com sucesso' 
+      });
+    } catch (error) {
+      console.error('❌ Erro ao desconectar WhatsApp QR:', error);
+      res.status(500).json({ 
+        error: 'Falha na desconexão',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
