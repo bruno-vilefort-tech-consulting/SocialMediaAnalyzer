@@ -2700,12 +2700,46 @@ Responda de forma natural aguardando a resposta do candidato.`;
         // Buscar seleção correspondente primeiro
         let selectionData = null;
         if (interviewData.selectionId) {
+          // Busca exata por ID
           selectionData = allSelections.find(s => s.id.toString() === interviewData.selectionId.toString());
+          
+          // Se não encontrou, tentar busca por ID parcial ou similar
+          if (!selectionData) {
+            selectionData = allSelections.find(s => 
+              s.id.toString().includes(interviewData.selectionId.toString()) ||
+              interviewData.selectionId.toString().includes(s.id.toString())
+            );
+          }
+          
+          // Se ainda não encontrou, buscar por candidato e vaga
+          if (!selectionData && interviewData.candidateName) {
+            console.log(`🔍 Tentando encontrar seleção por candidato: ${interviewData.candidateName}`);
+            
+            for (const selection of allSelections) {
+              if (selection.candidateListId) {
+                try {
+                  const selectionCandidates = await storage.getCandidatesByListId(selection.candidateListId);
+                  const candidateMatch = selectionCandidates.find(c => 
+                    c.name.toLowerCase().includes(interviewData.candidateName.toLowerCase()) ||
+                    interviewData.candidateName.toLowerCase().includes(c.name.toLowerCase())
+                  );
+                  
+                  if (candidateMatch) {
+                    console.log(`✅ Seleção encontrada por candidato: ${selection.name} para ${candidateMatch.name}`);
+                    selectionData = selection;
+                    break;
+                  }
+                } catch (err) {
+                  console.log(`⚠️ Erro ao verificar candidatos da seleção ${selection.id}:`, err);
+                }
+              }
+            }
+          }
         }
         
         // Se não encontrou seleção, pular esta entrevista
         if (!selectionData) {
-          console.log(`⚠️ Seleção não encontrada para entrevista ${interviewDoc.id}, pulando...`);
+          console.log(`⚠️ Seleção não encontrada para entrevista ${interviewDoc.id} (candidato: ${interviewData.candidateName}), pulando...`);
           continue;
         }
         
@@ -2872,11 +2906,22 @@ Responda de forma natural aguardando a resposta do candidato.`;
             console.log(`📋 Lista ${selection.candidateListId} da seleção "${selection.name}": ${listCandidates.length} candidatos`);
             
             for (const candidate of listCandidates) {
-              // Verificar se este candidato já tem entrevista no array
-              const hasInterview = allInterviews.some(interview => 
-                interview.candidateName?.toLowerCase().includes(candidate.name.toLowerCase()) ||
-                interview.candidatePhone?.replace(/\D/g, '').includes(candidate.whatsapp?.replace(/\D/g, '') || '')
-              );
+              // Verificar se este candidato já tem entrevista no array - busca mais rigorosa
+              const hasInterview = allInterviews.some(interview => {
+                // Busca por nome exato ou similar
+                const nameMatch = interview.candidateName?.toLowerCase().trim() === candidate.name.toLowerCase().trim() ||
+                                 interview.candidateName?.toLowerCase().includes(candidate.name.toLowerCase().split(' ')[0]) ||
+                                 candidate.name.toLowerCase().includes(interview.candidateName?.toLowerCase().split(' ')[0] || '');
+                
+                // Busca por telefone
+                const phoneMatch = interview.candidatePhone && candidate.whatsapp &&
+                                  interview.candidatePhone.replace(/\D/g, '') === candidate.whatsapp.replace(/\D/g, '');
+                
+                // Busca por ID
+                const idMatch = interview.candidateId?.toString() === candidate.id.toString();
+                
+                return nameMatch || phoneMatch || idMatch;
+              });
               
               if (!hasInterview) {
                 console.log(`➕ Adicionando candidato sem entrevista: ${candidate.name} da seleção ${selection.name}`);
@@ -2895,6 +2940,8 @@ Responda de forma natural aguardando a resposta do candidato.`;
                   totalQuestions: 0,
                   answeredQuestions: 0
                 });
+              } else {
+                console.log(`✅ Candidato ${candidate.name} já tem entrevista registrada, não será adicionado como pendente`);
               }
             }
           } catch (err) {
