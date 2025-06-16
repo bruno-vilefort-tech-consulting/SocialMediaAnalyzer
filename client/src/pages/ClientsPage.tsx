@@ -89,14 +89,7 @@ export default function ClientsPage() {
     enabled: !!editingClient,
   });
 
-  // Debug: Log para investigar dados incorretos
-  useEffect(() => {
-    if (editingClient) {
-      console.log('🔍 Cliente sendo editado:', editingClient.id);
-      console.log('📊 Usuários retornados pela API:', clientUsers);
-      console.log('📝 Quantidade de usuários:', clientUsers.length);
-    }
-  }, [editingClient, clientUsers]);
+
 
 
 
@@ -183,7 +176,7 @@ export default function ClientsPage() {
         title: "Sucesso!",
         description: "Usuário criado com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${editingClient?.id}/users`] });
       resetUserForm();
     },
     onError: (error: any) => {
@@ -203,7 +196,7 @@ export default function ClientsPage() {
         title: "Sucesso!",
         description: "Usuário atualizado com sucesso.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${editingClient?.id}/users`] });
       resetUserForm();
     },
     onError: (error: any) => {
@@ -223,7 +216,7 @@ export default function ClientsPage() {
         title: "Usuário removido",
         description: "Usuário foi removido com sucesso",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", editingClient?.id, "users"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/clients/${editingClient?.id}/users`] });
     },
     onError: () => {
       toast({
