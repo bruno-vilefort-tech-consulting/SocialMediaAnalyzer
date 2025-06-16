@@ -624,11 +624,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
-      const candidateData = { ...req.body, clientId };
+      console.log('🔍 Dados recebidos no endpoint POST /api/candidates:', req.body);
+      
+      const { name, email, whatsapp, listId, clientId } = req.body;
+      
+      // Validar campos obrigatórios
+      if (!name || !email || !whatsapp || !listId || !clientId) {
+        return res.status(400).json({ 
+          message: 'Campos obrigatórios: name, email, whatsapp, listId, clientId' 
+        });
+      }
+      
+      // Criar candidato no Firebase
+      const candidateData = {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        whatsapp: whatsapp.trim(),
+        clientId: parseInt(clientId),
+        listId: parseInt(listId)
+      };
+      
+      console.log('💾 Criando candidato com dados:', candidateData);
       const candidate = await storage.createCandidate(candidateData);
+      
+      console.log('✅ Candidato criado:', candidate);
       res.status(201).json(candidate);
     } catch (error) {
+      console.error('❌ Erro ao criar candidato:', error);
       res.status(400).json({ message: 'Failed to create candidate' });
     }
   });
