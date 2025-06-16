@@ -104,11 +104,22 @@ export default function ReportsPage() {
 
   const handlePlayAudio = (audioFile: string) => {
     if (audioFile) {
-      // Garantir que o caminho do áudio está correto
+      // Limpar e corrigir o caminho do áudio
       let audioUrl = audioFile;
-      if (!audioFile.startsWith('http') && !audioFile.startsWith('/uploads/')) {
-        audioUrl = `/uploads/${audioFile}`;
+      
+      // Remover prefixos desnecessários e duplicados
+      if (audioUrl.startsWith('/uploads//')) {
+        audioUrl = audioUrl.replace('/uploads//', '/uploads/');
       }
+      if (audioUrl.includes('/audio/')) {
+        audioUrl = audioUrl.replace('/audio/', '');
+      }
+      
+      // Garantir que comece com /uploads/
+      if (!audioUrl.startsWith('/uploads/') && !audioUrl.startsWith('http')) {
+        audioUrl = `/uploads/${audioUrl}`;
+      }
+      
       console.log('🎵 Reproduzindo áudio:', audioUrl);
       playAudioHook(audioUrl);
     }

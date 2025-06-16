@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, firebaseDb } from "./storage";
-import { collection, getDocs, query, where, doc, setDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc, getDoc } from "firebase/firestore";
 import { whatsappService } from "./whatsappService";
 import { whatsappQRService } from "./whatsappQRService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
