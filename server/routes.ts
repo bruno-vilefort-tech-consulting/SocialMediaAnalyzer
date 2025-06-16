@@ -2683,6 +2683,10 @@ Responda de forma natural aguardando a resposta do candidato.`;
       
       const allInterviews: any[] = [];
       
+      // Buscar todas as seleções para filtrar candidatos corretos
+      const allSelections = await storage.getAllSelections();
+      console.log(`📋 Total de seleções encontradas: ${allSelections.length}`);
+      
       for (const interviewDoc of interviewsSnapshot.docs) {
         const interviewData = interviewDoc.data();
         
@@ -2693,17 +2697,80 @@ Responda de forma natural aguardando a resposta do candidato.`;
         
         console.log(`📝 Processando entrevista: ${interviewDoc.id} - ${interviewData.candidateName}`);
         
-        // Buscar respostas na coleção 'responses' - tentar tanto string quanto número
+        // Buscar seleção correspondente primeiro
+        let selectionData = null;
+        if (interviewData.selectionId) {
+          selectionData = allSelections.find(s => s.id.toString() === interviewData.selectionId.toString());
+        }
+        
+        // Se não encontrou seleção, pular esta entrevista
+        if (!selectionData) {
+          console.log(`⚠️ Seleção não encontrada para entrevista ${interviewDoc.id}, pulando...`);
+          continue;
+        }
+        
+        console.log(`✅ Seleção encontrada: ${selectionData.name} (ID: ${selectionData.id})`);
+        
+        // Buscar candidatos da lista específica da seleção
+        let selectionCandidates = [];
+        if (selectionData.candidateListId) {
+          try {
+            selectionCandidates = await storage.getCandidatesByListId(selectionData.candidateListId);
+            console.log(`👥 Candidatos na lista da seleção ${selectionData.id}: ${selectionCandidates.length}`);
+          } catch (err) {
+            console.log('Erro ao buscar candidatos da lista:', err);
+            continue;
+          }
+        } else {
+          console.log(`⚠️ Seleção ${selectionData.id} sem lista de candidatos definida, pulando...`);
+          continue;
+        }
+        
+        // Verificar se o candidato da entrevista está na lista da seleção
+        const candidateInSelection = selectionCandidates.find(candidate => {
+          // Comparar por ID se disponível
+          if (interviewData.candidateId && candidate.id.toString() === interviewData.candidateId.toString()) {
+            return true;
+          }
+          
+          // Comparar por telefone
+          if (interviewData.phone && candidate.whatsapp) {
+            const interviewPhone = interviewData.phone.replace(/\D/g, '');
+            const candidatePhone = candidate.whatsapp.replace(/\D/g, '');
+            if (interviewPhone.includes(candidatePhone) || candidatePhone.includes(interviewPhone)) {
+              return true;
+            }
+          }
+          
+          // Comparar por nome (última opção)
+          if (interviewData.candidateName && candidate.name) {
+            const interviewName = interviewData.candidateName.toLowerCase().trim();
+            const candidateName = candidate.name.toLowerCase().trim();
+            if (interviewName === candidateName) {
+              return true;
+            }
+          }
+          
+          return false;
+        });
+        
+        // Se o candidato não está na lista da seleção, pular
+        if (!candidateInSelection) {
+          console.log(`🚫 Candidato ${interviewData.candidateName} não encontrado na lista da seleção ${selectionData.name}, pulando...`);
+          continue;
+        }
+        
+        console.log(`✅ Candidato ${candidateInSelection.name} confirmado na lista da seleção`);
+        
+        // Buscar respostas na coleção 'responses'
         let responsesSnapshot;
         try {
-          // Primeiro tentar com ID como string
           const responsesQuery1 = query(
             collection(db, 'responses'),
             where('interviewId', '==', interviewDoc.id)
           );
           responsesSnapshot = await getDocs(responsesQuery1);
           
-          // Se não encontrou, tentar com ID como número
           if (responsesSnapshot.empty) {
             const responsesQuery2 = query(
               collection(db, 'responses'),
@@ -2734,7 +2801,6 @@ Responda de forma natural aguardando a resposta do candidato.`;
           const responseData = doc.data();
           const questionId = responseData.questionId || 0;
           
-          // Usar perguntas reais da vaga
           const questionText = jobQuestions[questionId]?.pergunta || 
                               jobQuestions[questionId]?.questionText ||
                               `Pergunta ${questionId + 1}`;
@@ -2750,112 +2816,29 @@ Responda de forma natural aguardando a resposta do candidato.`;
 
         console.log(`📋 Respostas encontradas para ${interviewDoc.id}: ${responses.length}`);
 
-        // Buscar seleção correspondente - conectar com dados reais
-        let selectionData = null;
-        if (interviewData.selectionId) {
-          try {
-            const selectionsSnapshot = await storage.getSelectionsByClientId(1749849987543); // Grupo Maximus
-            selectionData = selectionsSnapshot.find(s => s.id.toString() === interviewData.selectionId.toString());
-            
-            // Se não encontrou por ID, tentar encontrar por nome da vaga
-            if (!selectionData && interviewData.jobName) {
-              selectionData = selectionsSnapshot.find(s => s.jobName === interviewData.jobName || s.jobName.includes('Faxina'));
-            }
-          } catch (err) {
-            console.log('Erro ao buscar seleção:', err);
-          }
-        }
-        
-        // Para entrevistas sem selectionId, buscar pela vaga
-        if (!selectionData && interviewData.jobName) {
-          try {
-            const selectionsSnapshot = await storage.getSelectionsByClientId(1749849987543);
-            selectionData = selectionsSnapshot.find(s => 
-              s.jobName === interviewData.jobName || 
-              (s.jobName === 'Faxineira GM' && interviewData.jobName.includes('Faxina'))
-            );
-          } catch (err) {
-            console.log('Erro ao buscar seleção por nome da vaga:', err);
-          }
-        }
+        // Usar dados do candidato confirmado da seleção
+        const candidateName = candidateInSelection.name;
+        const candidatePhone = candidateInSelection.whatsapp || candidateInSelection.phone || 'N/A';
+        const jobName = selectionData.jobName || selectionData.name || 'Vaga não identificada';
 
-        // Usar dados específicos do Daniel Braga diretamente
-        const candidateName = 'Daniel Braga';
-        const candidatePhone = '11984316526';
-
-        // Para entrevistas recentes, tentar buscar seleção por nome de vaga/candidato
-        if (!selectionData) {
-          try {
-            const allSelections = await storage.getSelectionsByClientId(1749849987543);
-            
-            // Buscar por nome do candidato ou padrões conhecidos
-            if (candidateName?.includes('João Silva') || candidateName?.includes('Daniel Moreira') || candidateName?.includes('daniel moreira')) {
-              selectionData = allSelections.find(s => 
-                s.name?.toLowerCase().includes('faxina') || 
-                s.jobName?.toLowerCase().includes('faxina')
-              );
-            }
-            
-            // Buscar por telefone específico do Daniel Moreira
-            if (candidatePhone?.includes('11984316526') || candidatePhone?.includes('5511984316526')) {
-              selectionData = allSelections.find(s => 
-                s.name?.toLowerCase().includes('faxina') || 
-                s.jobName?.toLowerCase().includes('faxina')
-              );
-            }
-            
-            // Se ainda não encontrou, pegar a seleção mais recente
-            if (!selectionData && allSelections.length > 0) {
-              selectionData = allSelections.sort((a, b) => 
-                new Date(b.createdAt.seconds * 1000).getTime() - new Date(a.createdAt.seconds * 1000).getTime()
-              )[0];
-            }
-          } catch (err) {
-            console.log('Erro ao buscar seleção por candidato:', err);
-          }
-        }
-
-        // Buscar dados da vaga se não existirem
-        let jobName = interviewData.jobName;
-        if (!jobName && selectionData) {
-          jobName = selectionData.jobName || selectionData.name;
-        }
-
-        // Permitir entrevistas com Daniel Moreira mesmo se telefone for undefined temporariamente
-        const isDanielMoreira = candidateName?.toLowerCase().includes('daniel moreira') || 
-                               candidateName?.toLowerCase().includes('daniel') ||
-                               candidatePhone?.includes('11984316526');
-        
-        const hasValidData = candidateName && 
-                            candidateName !== 'Candidato não identificado' && 
-                            candidateName !== 'undefined' &&
-                            jobName &&
-                            jobName !== 'Vaga não identificada';
-        
-        // Se é Daniel Moreira ou tem dados válidos completos, incluir
-        if (hasValidData && (candidatePhone !== 'undefined' || isDanielMoreira)) {
-          
-          allInterviews.push({
-            id: interviewDoc.id,
-            selectionId: selectionData?.id || interviewData.selectionId || null,
-            selectionName: selectionData?.jobName || selectionData?.name || 'Seleção não identificada',
-            candidateId: interviewData.candidateId || null,
-            candidateName: candidateName,
-            candidatePhone: candidatePhone,
-            jobName: jobName,
-            status: interviewData.status || 'unknown',
-            startTime: interviewData.startTime,
-            endTime: interviewData.endTime,
-            responses,
-            totalQuestions: interviewData.totalQuestions || responses.length,
-            answeredQuestions: responses.length
-          });
-        } else {
-          console.log(`🚫 Filtrando entrevista ${interviewDoc.id} - dados inválidos: candidato="${candidateName}", telefone="${candidatePhone}", vaga="${jobName}"`);
-        }
+        allInterviews.push({
+          id: interviewDoc.id,
+          selectionId: selectionData.id,
+          selectionName: selectionData.jobName || selectionData.name,
+          candidateId: candidateInSelection.id,
+          candidateName: candidateName,
+          candidatePhone: candidatePhone,
+          jobName: jobName,
+          status: interviewData.status || 'completed',
+          startTime: interviewData.startTime,
+          endTime: interviewData.endTime,
+          responses,
+          totalQuestions: interviewData.totalQuestions || responses.length,
+          answeredQuestions: responses.length
+        });
       }
       
-      console.log(`✅ Retornando ${allInterviews.length} entrevistas para relatórios (100% Firebase)`);
+      console.log(`✅ Retornando ${allInterviews.length} entrevistas válidas para relatórios (apenas candidatos da seleção)`);
       res.json(allInterviews);
       
     } catch (error) {
