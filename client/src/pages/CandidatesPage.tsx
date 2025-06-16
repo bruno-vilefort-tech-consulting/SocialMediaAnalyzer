@@ -94,8 +94,31 @@ export default function CandidatesPage() {
       const params = user?.role === 'master' && selectedClientFilter !== 'all'
         ? `?clientId=${selectedClientFilter}`
         : '';
-      const response = await fetch(`/api/candidates${params}`);
-      return response.json();
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/candidates${params}`, {
+        headers,
+        credentials: "include"
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_data");
+          window.location.href = "/login";
+          return [];
+        }
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      // Garantir que sempre retornamos um array
+      return Array.isArray(data) ? data : [];
     }
   });
 
@@ -103,8 +126,30 @@ export default function CandidatesPage() {
   const { data: listCandidates = [], isLoading: listCandidatesLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/lists', selectedListId, 'candidates'],
     queryFn: async () => {
-      const response = await fetch(`/api/lists/${selectedListId}/candidates`);
-      return response.json();
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`/api/lists/${selectedListId}/candidates`, {
+        headers,
+        credentials: "include"
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_data");
+          window.location.href = "/login";
+          return [];
+        }
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!selectedListId && viewMode === 'single'
   });
@@ -177,16 +222,16 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      const candidateData: InsertCandidate = {
+      const candidateData = {
         ...data,
-        clientId: user?.role === 'master' ? 1 : user?.clientId!,
-        listId: selectedListId!
+        listId: selectedListId! // Usado para criar o membership
       };
       const response = await apiRequest('/api/candidates', 'POST', candidateData);
       return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
       setShowCandidateForm(false);
       candidateForm.reset();
       toast({ title: "Candidato adicionado com sucesso!" });
@@ -369,7 +414,8 @@ export default function CandidatesPage() {
           {/* Grid horizontal de listas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredCandidateLists.map((list) => {
-              const candidatesCount = allCandidates.filter(c => c.listId === list.id).length;
+              // Com a nova arquitetura muitos-para-muitos, contamos via memberships
+              const candidatesCount = 0; // TODO: implementar contagem via memberships
               const client = clients.find(c => c.id === list.clientId);
               
               return (
