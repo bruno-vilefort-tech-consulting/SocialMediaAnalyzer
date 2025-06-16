@@ -769,7 +769,7 @@ export default function CandidatesPage() {
                   name="clientId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cliente</FormLabel>
+                      <FormLabel>Cliente *</FormLabel>
                       <FormControl>
                         <Select 
                           value={field.value?.toString()} 

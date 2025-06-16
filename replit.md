@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 16, 2025: ✅ CAMPO DE SELEÇÃO DE CLIENTE PARA LISTAS IMPLEMENTADO - Sistema obrigatório funcional
+  - **Campo obrigatório adicionado**: Seleção de cliente (*) no formulário de criação de listas de candidatos
+  - **Lógica diferenciada por usuário**: Masters selecionam cliente via dropdown, usuários cliente usam automaticamente seu próprio ID
+  - **Validação robusta**: Schema com clientId obrigatório (z.number().positive()) impede criação sem cliente
+  - **Sistema Firebase exclusivo**: Todas as referências ao PostgreSQL removidas, mantendo apenas Firebase como banco
+  - **Interface atualizada**: Label "Cliente *" indica campo obrigatório com validação visual
+  - **Compatibilidade mantida**: db.ts configurado para compatibilidade sem usar PostgreSQL
+  - **Arquitetura limpa**: Sistema usa exclusivamente Firebase conforme especificação do usuário
+
 - June 16, 2025: ✅ CONTADOR DE CANDIDATOS E DATAS CORRIGIDOS - Sistema de contagem e formatação funcional
   - **Contador real implementado**: getCandidateCountForList() calcula via relacionamentos muitos-para-muitos
   - **Endpoint /api/candidate-list-memberships**: Busca todos os relacionamentos candidato-lista no Firebase
