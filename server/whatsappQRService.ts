@@ -53,7 +53,8 @@ export class WhatsAppQRService {
 
   private async loadConnectionFromDB() {
     try {
-      const config = await storage.getApiConfig();
+      // Usar nova arquitetura: buscar configuração específica do master
+      const config = await storage.getApiConfig('master', '1749848502212');
       if (config && config.whatsappQrConnected) {
         this.config.isConnected = config.whatsappQrConnected;
         this.config.phoneNumber = config.whatsappQrPhoneNumber || null;
@@ -71,12 +72,16 @@ export class WhatsAppQRService {
 
   private async saveConnectionToDB() {
     try {
-      const currentConfig = await storage.getApiConfig();
+      // Usar nova arquitetura: buscar e atualizar configuração específica do master
+      const currentConfig = await storage.getApiConfig('master', '1749848502212');
       await storage.upsertApiConfig({
         ...currentConfig,
+        entityType: 'master',
+        entityId: '1749848502212',
         whatsappQrConnected: this.config.isConnected,
         whatsappQrPhoneNumber: this.config.phoneNumber,
-        whatsappQrLastConnection: this.config.lastConnection
+        whatsappQrLastConnection: this.config.lastConnection,
+        updatedAt: new Date()
       });
       console.log('💾 Conexão WhatsApp QR salva no banco de dados');
     } catch (error) {
@@ -315,7 +320,7 @@ export class WhatsAppQRService {
       // Buscar configuração de voz
       const { storage } = await import('./storage');
       console.log(`🔍 [DEBUG] Buscando configuração OpenAI...`);
-      const config = await storage.getApiConfig();
+      const config = await storage.getApiConfig('master', '1749848502212');
       
       if (!config?.openaiApiKey) {
         console.error(`❌ [DEBUG] OpenAI API não configurada - enviando pergunta por texto`);
@@ -636,7 +641,7 @@ export class WhatsAppQRService {
       console.log(`❓ [DEBUG] Processando resposta para pergunta ${currentQuestionIndex + 1}: ${currentQuestion.pergunta}`);
       
       // Buscar configuração OpenAI para transcrição
-      const config = await storage.getApiConfig();
+      const config = await storage.getApiConfig('master', '1749848502212');
       if (!config?.openaiApiKey) {
         console.log(`❌ [DEBUG] OpenAI API não configurada para transcrição`);
         await this.sendTextMessage(from, "Erro: sistema de transcrição não configurado.");
