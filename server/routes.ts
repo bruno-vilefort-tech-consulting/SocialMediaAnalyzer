@@ -2035,17 +2035,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'ClientId não encontrado no token' });
       }
 
-      // Busca conexão específica do cliente
-      const apiConfig = await storage.getApiConfig('client', clientId.toString());
-      
-      const whatsappStatus = {
-        isConnected: apiConfig?.whatsappQrConnected || false,
-        phone: apiConfig?.whatsappQrPhoneNumber || null,
-        lastConnection: apiConfig?.whatsappQrLastConnection || null,
-        qrCode: null // QR Code será gerado quando necessário
-      };
+      console.log(`📱 Buscando status WhatsApp para cliente ${clientId}...`);
+      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const status = await clientWhatsAppService.getClientStatus(clientId.toString());
 
-      res.json(whatsappStatus);
+      res.json({
+        isConnected: status.isConnected,
+        phone: status.phoneNumber,
+        lastConnection: status.lastConnection,
+        qrCode: status.qrCode
+      });
     } catch (error) {
       console.error('Erro ao buscar status WhatsApp do cliente:', error);
       res.status(500).json({ error: 'Falha ao buscar status' });
@@ -2059,11 +2058,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'ClientId não encontrado no token' });
       }
 
-      // Conectar WhatsApp específico para este cliente
-      const { whatsappQrService } = await import('./whatsappQrService');
-      await whatsappQrService.initializeConnection(clientId.toString());
+      console.log(`🔗 Conectando WhatsApp para cliente ${clientId}...`);
+      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const result = await clientWhatsAppService.connectClient(clientId.toString());
       
-      res.json({ success: true, message: 'Iniciando conexão WhatsApp para o cliente' });
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message,
+          qrCode: result.qrCode 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.message 
+        });
+      }
     } catch (error) {
       console.error('Erro ao conectar WhatsApp do cliente:', error);
       res.status(500).json({ error: 'Falha ao conectar WhatsApp' });
@@ -2077,18 +2087,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'ClientId não encontrado no token' });
       }
 
-      // Desconectar WhatsApp específico deste cliente
-      const { whatsappQrService } = await import('./whatsappQrService');
-      await whatsappQrService.disconnect();
-      
-      // Atualizar status no banco
-      await storage.updateApiConfig('client', clientId.toString(), {
-        whatsappQrConnected: false,
-        whatsappQrPhoneNumber: null,
-        whatsappQrLastConnection: new Date()
-      });
+      console.log(`🔌 Desconectando WhatsApp para cliente ${clientId}...`);
+      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const result = await clientWhatsAppService.disconnectClient(clientId.toString());
 
-      res.json({ success: true, message: 'WhatsApp desconectado com sucesso' });
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          error: result.message 
+        });
+      }
     } catch (error) {
       console.error('Erro ao desconectar WhatsApp do cliente:', error);
       res.status(500).json({ error: 'Falha ao desconectar WhatsApp' });
@@ -2108,14 +2121,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
       }
 
-      // Usar WhatsApp do cliente específico
-      const { whatsappQrService } = await import('./whatsappQrService');
-      const success = await whatsappQrService.sendMessage(phoneNumber, message);
+      console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
+      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const result = await clientWhatsAppService.sendTestMessage(clientId.toString(), phoneNumber, message);
       
-      if (success) {
-        res.json({ success: true, message: 'Mensagem enviada com sucesso pelo WhatsApp do cliente' });
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message 
+        });
       } else {
-        res.status(500).json({ error: 'Falha ao enviar mensagem' });
+        res.status(500).json({ 
+          success: false, 
+          error: result.message 
+        });
       }
     } catch (error) {
       console.error('Erro ao testar WhatsApp do cliente:', error);
