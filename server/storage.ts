@@ -197,16 +197,45 @@ export class FirebaseStorage implements IStorage {
 
   // Client Users Helper Methods
   async getClientUsers(clientId: number): Promise<ClientUser[]> {
+    console.log(`🔍 Buscando usuários para clientId: ${clientId} (tipo: ${typeof clientId})`);
+    
     const usersQuery = query(
       collection(firebaseDb, "users"), 
       where("role", "==", "client"),
       where("clientId", "==", clientId)
     );
+    
     const querySnapshot = await getDocs(usersQuery);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClientUser));
+    console.log(`📊 Query retornou ${querySnapshot.size} documentos`);
+    
+    if (querySnapshot.size === 0) {
+      // Debug: buscar todos os usuários para verificar o que temos
+      console.log('🔍 Buscando TODOS os usuários para debug:');
+      const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
+      allUsersSnapshot.docs.forEach((doc, index) => {
+        const userData = doc.data();
+        console.log(`   ${index + 1}. ID: ${doc.id}, Role: ${userData.role}, ClientId: ${userData.clientId} (${typeof userData.clientId}), Name: ${userData.name}`);
+      });
+    }
+    
+    const users = querySnapshot.docs.map(doc => {
+      const userData = doc.data();
+      console.log(`👤 Usuário encontrado: ${userData.name} (${userData.email}) - ClientId: ${userData.clientId}`);
+      return { id: doc.id, ...userData } as ClientUser;
+    });
+    
+    console.log(`✅ Retornando ${users.length} usuários`);
+    return users;
   }
 
   async createClientUser(clientUser: InsertClientUser): Promise<ClientUser> {
+    console.log('🔧 Criando usuário de cliente:', { 
+      name: clientUser.name, 
+      email: clientUser.email, 
+      clientId: clientUser.clientId,
+      role: clientUser.role
+    });
+    
     const userId = Date.now().toString();
     const hashedPassword = await bcrypt.hash(clientUser.password, 10);
     
@@ -214,10 +243,24 @@ export class FirebaseStorage implements IStorage {
       ...clientUser,
       password: hashedPassword,
       id: userId,
-      createdAt: new Date()
+      role: 'client',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
+    console.log('💾 Salvando usuário na coleção users com ID:', userId);
+    console.log('📋 Dados do usuário:', { 
+      id: userData.id, 
+      name: userData.name, 
+      email: userData.email, 
+      clientId: userData.clientId,
+      role: userData.role 
+    });
+    
     await setDoc(doc(firebaseDb, "users", userId), userData);
+    console.log('✅ Usuário salvo com sucesso no Firebase');
+    
     return userData as ClientUser;
   }
 
