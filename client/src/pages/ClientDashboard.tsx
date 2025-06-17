@@ -152,7 +152,7 @@ export default function ClientDashboard() {
           <CardContent>
             <div className="space-y-3">
               <Button 
-                onClick={() => handleQuickAction("/jobs")}
+                onClick={() => handleQuickAction("/vagas")}
                 className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20"
                 variant="outline"
               >
@@ -168,7 +168,7 @@ export default function ClientDashboard() {
                 Importar Candidatos
               </Button>
               <Button 
-                onClick={() => handleQuickAction("/selections")}
+                onClick={() => handleQuickAction("/selecoes")}
                 className="w-full justify-start bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
                 variant="outline"
               >

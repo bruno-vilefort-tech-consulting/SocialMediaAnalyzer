@@ -146,7 +146,7 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/selections">
+      <Route path="/client-selections">
         <PrivateRoute allowedRoles={['client']}>
           <Layout>
             <SelectionsPage />
