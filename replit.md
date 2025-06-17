@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 🔒 VULNERABILIDADES CRÍTICAS DE SEGURANÇA CORRIGIDAS - Isolamento total de dados entre clientes implementado
+  - **Problema crítico resolvido**: Usuários cliente podiam ver dados de outros clientes através de múltiplos endpoints
+  - **Endpoints corrigidos**: /api/candidate-list-memberships, /api/selections/:id/results, POST /api/candidates, POST /api/selections, POST /api/candidate-lists
+  - **Método adicionado**: getCandidateListMembershipsByClientId() no storage para filtro por clientId
+  - **Validação implementada**: Padrão de verificação de ownership em todos os endpoints críticos
+  - **Logs de segurança**: Sistema registra tentativas de acesso não autorizado com detalhes
+  - **Isolamento garantido**: Clientes agora veem exclusivamente seus próprios dados
+  - **Documentação completa**: SEGURANCA_CLIENTID_CORRIGIDA.md com detalhes técnicos e validações
+
 - June 17, 2025: 📋 BACKUP COMPLETO CRIADO - Sistema totalmente documentado em BACKUP_SISTEMA_2025-06-17.md
   - **Documentação completa**: Arquitetura, funcionalidades, configurações e dependências
   - **Status atual**: Sistema de usuários cliente funcional com criptografia bcrypt

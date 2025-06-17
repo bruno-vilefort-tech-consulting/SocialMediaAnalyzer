@@ -518,6 +518,9 @@ export default function CadastroVagasPage() {
                   <TableHead>Nome da Vaga</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Perguntas</TableHead>
+                  {user?.role === 'master' && (
+                    <TableHead>Cliente</TableHead>
+                  )}
                   <TableHead>Data de Criação</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -532,6 +535,11 @@ export default function CadastroVagasPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{job.perguntas?.length || 0} perguntas</TableCell>
+                    {user?.role === 'master' && (
+                      <TableCell>
+                        {clients.find(client => client.id === job.clientId)?.companyName || 'Cliente não encontrado'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {job.createdAt 
                         ? (() => {
