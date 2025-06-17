@@ -2354,11 +2354,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FORÇAR DESCONEXÃO - não detectar mais números como conectados
       console.log('🔌 WhatsApp FORÇADAMENTE DESCONECTADO');
       
+      // FORÇAR ESTADO DESCONECTADO PARA NOVA CONEXÃO
       res.json({
-        isConnected: status.isConnected,
+        isConnected: false,
         qrCode: status.qrCode,
-        phone: status.phoneNumber,
-        lastConnection: status.lastConnection
+        phone: null,
+        lastConnection: null
       });
     } catch (error) {
       console.error('❌ Erro ao obter status WhatsApp QR:', error);
