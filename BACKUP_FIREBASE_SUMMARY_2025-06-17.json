@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "date": "2025-06-17T14:58:58.255Z",
+    "description": "Backup completo do banco Firebase via sistema"
+  },
+  "summary": {
+    "totalUsers": 3,
+    "totalClients": 2,
+    "totalJobs": 2,
+    "totalCandidates": 7,
+    "totalInterviews": 55
+  },
+  "structure": {
+    "users": "Usuários do sistema (masters e clientes)",
+    "clients": "Empresas clientes corporativas",
+    "jobs": "Vagas de emprego com perguntas",
+    "candidates": "Candidatos cadastrados",
+    "candidateLists": "Listas de candidatos",
+    "candidateListMemberships": "Relacionamentos many-to-many",
+    "selections": "Processos seletivos",
+    "interviews": "Entrevistas individuais",
+    "responses": "Respostas por pergunta",
+    "apiConfigs": "Configurações por cliente",
+    "masterSettings": "Configurações globais"
+  },
+  "note": "Para backup completo de dados, usar Firebase Console ou Admin SDK com credenciais de serviço"
+}
