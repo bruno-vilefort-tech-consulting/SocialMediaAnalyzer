@@ -1,8 +1,8 @@
 import {
   type User, type InsertUser, type Client, type InsertClient,
-  type ClientUser, type InsertClientUser,
   type Job, type InsertJob, type Question, type InsertQuestion,
   type CandidateList, type InsertCandidateList, type Candidate, type InsertCandidate, 
+  type CandidateListMembership, type InsertCandidateListMembership,
   type Selection, type InsertSelection, type Interview, type InsertInterview, 
   type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
   type ClientVoiceSetting, type InsertClientVoiceSetting,

@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { Client, InsertClient, ClientUser, InsertClientUser } from "@shared/schema";
+import type { Client, InsertClient, User } from "@shared/schema";
 
 // Schema de validação para clientes
 const clientFormSchema = z.object({

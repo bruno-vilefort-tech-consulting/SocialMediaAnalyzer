@@ -115,7 +115,7 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 17, 2025: ✅ PROBLEMA DE CLIENTID DANIEL BRAGA RESOLVIDO - Sistema cliente totalmente funcional
+- June 17, 2025: ✅ SCHEMA SIMPLIFICADO E CLIENTID DANIEL BRAGA RESOLVIDO - Sistema cliente totalmente funcional
   - **Root cause identificado**: Usuário Daniel Braga não tinha campo clientId no registro Firebase
   - **ClientId corrigido**: Adicionado clientId: 1749849987543 (Grupo Maximuns) ao registro do usuário
   - **JWT atualizado**: Token agora inclui clientId para usuários com role "client"
@@ -123,7 +123,8 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **APIs funcionais**: /api/jobs, /api/client/stats retornando dados filtrados corretamente
   - **Dashboard operacional**: Interface cliente carrega estatísticas sem erros 404
   - **Filtros por cliente**: Sistema filtra vagas, candidatos e seleções pelo clientId correto
-  - **Endpoint de correção**: /api/fix-daniel-clientid implementado para futuras correções
+  - **Schema limpo**: Removida tabela clientUsers não utilizada do shared/schema.ts
+  - **Arquitetura simplificada**: Sistema usa apenas users (com clientId) + clients no Firebase
   - **Validação completa**: Login, autorização e acesso a dados funcionando para usuários cliente
 
 - June 17, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE INTEGRADO - Sistema de conexões por cliente implementado na página de configurações
