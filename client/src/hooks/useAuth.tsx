@@ -55,11 +55,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const login = async (email: string, password: string) => {
     try {
       console.log("🔐 Iniciando login com:", email);
-      const response = await apiRequest("/api/auth/login", "POST", { email, password });
-      console.log("📡 Resposta do servidor:", response.status);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password })
+      });
       
-      const data = await response.json();
-      console.log("📄 Dados recebidos:", data);
+      console.log("📡 Status da resposta:", response.status);
+      
+      const responseText = await response.text();
+      console.log("📄 Resposta bruta:", responseText);
+      
+      if (!response.ok) {
+        let errorMessage = "Erro de autenticação";
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = responseText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const data = JSON.parse(responseText);
+      console.log("📄 Dados processados:", data);
       
       if (!data.token || !data.user) {
         throw new Error("Dados de autenticação inválidos recebidos do servidor");
@@ -74,7 +95,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log("✅ Login realizado com sucesso para:", data.user.name);
     } catch (error) {
       console.error("❌ Erro no login:", error);
-      throw new Error("Invalid credentials");
+      throw error;
     }
   };
 

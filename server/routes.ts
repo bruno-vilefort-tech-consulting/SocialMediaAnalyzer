@@ -114,30 +114,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
+      console.log("🔐 Tentativa de login:", email);
       
       // Check regular users first
       let user = await storage.getUserByEmail(email);
       let clientId;
       
+      console.log("👤 Usuário encontrado em users:", !!user);
+      if (user) {
+        console.log("👤 Dados do usuário:", {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+          hasPassword: !!user.password,
+          passwordLength: user.password?.length
+        });
+      }
+      
       // If not found in users, check clients
       if (!user) {
+        console.log("🏢 Buscando em clientes...");
         const client = await storage.getClientByEmail(email);
-        if (client && await bcrypt.compare(password, client.password)) {
-          user = {
+        console.log("🏢 Cliente encontrado:", !!client);
+        
+        if (client) {
+          console.log("🏢 Dados do cliente:", {
             id: client.id,
             email: client.email,
-            role: 'client',
-            name: client.companyName,
-            password: client.password,
-            createdAt: client.createdAt
-          };
-          clientId = client.id;
+            companyName: client.companyName,
+            hasPassword: !!client.password,
+            passwordLength: client.password?.length
+          });
+          
+          const passwordMatch = await bcrypt.compare(password, client.password);
+          console.log("🔑 Senha do cliente confere:", passwordMatch);
+          
+          if (passwordMatch) {
+            user = {
+              id: client.id,
+              email: client.email,
+              role: 'client',
+              name: client.companyName,
+              password: client.password,
+              createdAt: client.createdAt
+            };
+            clientId = client.id;
+          }
         }
+      } else {
+        // Verificar senha do usuário regular
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        console.log("🔑 Senha do usuário confere:", passwordMatch);
       }
       
       if (!user || !await bcrypt.compare(password, user.password)) {
+        console.log("❌ Falha na autenticação");
         return res.status(401).json({ message: 'Invalid credentials' });
       }
+      
+      console.log("✅ Login bem-sucedido para:", user.name);
 
       const token = jwt.sign({ 
         id: user.id, 
