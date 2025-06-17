@@ -74,7 +74,14 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
 // Role authorization middleware
 const authorize = (roles: string[]) => {
   return (req: AuthRequest, res: Express.Response, next: Express.NextFunction) => {
+    console.log('🔐 Authorization check:', {
+      userRole: req.user?.role,
+      allowedRoles: roles,
+      userExists: !!req.user
+    });
+    
     if (!req.user || !roles.includes(req.user.role)) {
+      console.log('❌ Authorization failed for user:', req.user?.email, 'Role:', req.user?.role, 'Required:', roles);
       return res.status(403).json({ message: 'Insufficient permissions' });
     }
     next();
@@ -1146,7 +1153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/selections/:id/send", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/selections/:id/send", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       console.log('🚀 INICIANDO ENVIO DE EMAILS - Selection ID:', req.params.id);
       
