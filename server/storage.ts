@@ -1227,6 +1227,64 @@ export class FirebaseStorage implements IStorage {
       .filter(candidate => candidateIds.includes(candidate.id));
   }
 
+  // Client Users Management
+  async createClientUser(userData: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+    clientId: number;
+  }): Promise<any> {
+    console.log('🔧 Storage: Criando usuário cliente com dados:', {
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      clientId: userData.clientId
+    });
+
+    const userId = Date.now().toString();
+    const userDoc = {
+      id: userId,
+      name: userData.name,
+      email: userData.email,
+      password: userData.password,
+      role: userData.role,
+      clientId: userData.clientId,
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    console.log('💾 Storage: Salvando usuário no Firebase com ID:', userId);
+    await setDoc(doc(firebaseDb, 'users', userId), userDoc);
+    
+    console.log('✅ Storage: Usuário criado com sucesso');
+    return userDoc;
+  }
+
+  async getClientUsers(clientId: number): Promise<any[]> {
+    console.log('🔍 Storage: Buscando usuários do cliente:', clientId);
+    const q = query(
+      collection(firebaseDb, 'users'),
+      where('clientId', '==', clientId),
+      where('role', '==', 'client')
+    );
+    const snapshot = await getDocs(q);
+    
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    console.log(`📋 Storage: Encontrados ${users.length} usuários para o cliente ${clientId}`);
+    return users;
+  }
+
+  async fixClientUsersWithoutClientId(clientId: number): Promise<void> {
+    // Este método pode ser usado para corrigir usuários antigos sem clientId se necessário
+    console.log('🔧 Storage: Verificando usuários sem clientId para cliente:', clientId);
+  }
+
 
 }
 
