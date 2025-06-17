@@ -1320,8 +1320,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Verificar disponibilidade do WhatsApp service
-            if (!whatsappQRService) {
-              console.log(`❌ WhatsApp service não disponível - pulando envio para ${normalizedPhone}`);
+            console.log(`🔍 Verificando WhatsApp service:`, {
+              serviceExists: !!whatsappQRService,
+              serviceType: typeof whatsappQRService,
+              hasSendMethod: typeof whatsappQRService?.sendTextMessage
+            });
+
+            // Tentar forçar o uso do service mesmo se parecer indisponível
+            let serviceToUse = whatsappQRService;
+            
+            if (!serviceToUse) {
+              console.log(`⚠️ Service parece null, tentando reimportar...`);
+              try {
+                const { whatsappQRService: freshService } = await import('./whatsappQRService.js');
+                serviceToUse = freshService;
+                console.log(`✅ Service reimportado:`, !!serviceToUse);
+              } catch (reimportError) {
+                console.log(`❌ Falha ao reimportar:`, reimportError);
+              }
+            }
+
+            if (!serviceToUse || typeof serviceToUse.sendTextMessage !== 'function') {
+              console.log(`❌ WhatsApp service definitivamente não disponível - pulando envio para ${normalizedPhone}`);
               await storage.createMessageLog({
                 interviewId: interview.id,
                 type: 'whatsapp',
@@ -1335,7 +1355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Inicializar se necessário
             try {
-              await whatsappQRService.ensureInitialized();
+              await serviceToUse.ensureInitialized();
               console.log(`✅ WhatsApp service inicializado com sucesso`);
             } catch (initError) {
               console.log(`⚠️ Aviso na inicialização WhatsApp:`, initError);
@@ -1353,7 +1373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             while (!whatsappSuccess && attempts < maxAttempts) {
               attempts++;
               try {
-                whatsappSuccess = await whatsappQRService.sendTextMessage(
+                whatsappSuccess = await serviceToUse.sendTextMessage(
                   normalizedPhone, 
                   whatsappMessage
                 );
