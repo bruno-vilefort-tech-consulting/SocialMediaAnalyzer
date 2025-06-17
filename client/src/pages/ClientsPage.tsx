@@ -485,6 +485,15 @@ export default function ClientsPage() {
             </Form>
           </CardContent>
         </Card>
+
+        {/* Gerenciamento de Usuários - Apenas para clientes existentes */}
+        {editingClient && (
+          <ClientUserManager 
+            clientId={editingClient.id}
+            isVisible={true}
+          />
+        )}
+      </div>
       )}
 
       {/* Lista de Clientes */}

@@ -62,7 +62,7 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
   });
 
   // Query para buscar usuários do cliente
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading } = useQuery<ClientUser[]>({
     queryKey: [`/api/clients/${clientId}/users`],
     enabled: !!clientId && isVisible,
     staleTime: 1000 * 60 * 5, // 5 minutos
@@ -72,10 +72,7 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
   const createUserMutation = useMutation({
     mutationFn: async (userData: ClientUserFormData) => {
       if (!clientId) throw new Error("Cliente não selecionado");
-      return apiRequest(`/api/clients/${clientId}/users`, {
-        method: "POST",
-        body: JSON.stringify(userData),
-      });
+      return apiRequest(`/api/clients/${clientId}/users`, "POST", userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientId}/users`] });
@@ -99,10 +96,7 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, userData }: { userId: string; userData: Partial<ClientUserFormData> }) => {
       if (!clientId) throw new Error("Cliente não selecionado");
-      return apiRequest(`/api/clients/${clientId}/users/${userId}`, {
-        method: "PATCH",
-        body: JSON.stringify(userData),
-      });
+      return apiRequest(`/api/clients/${clientId}/users/${userId}`, "PATCH", userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientId}/users`] });
@@ -126,9 +120,7 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (!clientId) throw new Error("Cliente não selecionado");
-      return apiRequest(`/api/clients/${clientId}/users/${userId}`, {
-        method: "DELETE",
-      });
+      return apiRequest(`/api/clients/${clientId}/users/${userId}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/clients/${clientId}/users`] });
