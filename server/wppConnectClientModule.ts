@@ -69,6 +69,8 @@ export class WppConnectClientModule {
         };
 
         try {
+          console.log(`🔄 [DEBUG] Iniciando criação WPPConnect para cliente ${clientId}...`);
+          
           wppconnect
             .create({
               session: sessionName,
