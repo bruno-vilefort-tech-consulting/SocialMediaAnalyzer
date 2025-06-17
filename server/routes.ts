@@ -10,6 +10,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
+import { whatsappQRService } from "./whatsappQRService";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
 const upload = multer({ 
@@ -1306,15 +1307,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Log WhatsApp messages (for future integration)
-        if (shouldSendWhatsApp) {
-          await storage.createMessageLog({
-            interviewId: interview.id,
-            type: 'whatsapp',
-            channel: 'whatsapp',
-            status: 'logged' // WhatsApp integration pending
-          });
-          console.log(`📱 WhatsApp message logged for ${candidate.phone}: ${whatsappMessage}`);
+        // Send WhatsApp messages
+        if (shouldSendWhatsApp && candidate.whatsapp) {
+          try {
+            // Enviar mensagem via WhatsApp
+            const whatsappSuccess = await whatsappQRService.sendTextMessage(
+              candidate.whatsapp, 
+              whatsappMessage
+            );
+            
+            await storage.createMessageLog({
+              interviewId: interview.id,
+              type: 'whatsapp',
+              channel: 'whatsapp',
+              status: whatsappSuccess ? 'sent' : 'failed'
+            });
+            
+            if (whatsappSuccess) {
+              console.log(`✅ WhatsApp enviado para ${candidate.whatsapp}: ${whatsappMessage.substring(0, 50)}...`);
+            } else {
+              console.log(`❌ Falha no envio WhatsApp para ${candidate.whatsapp}`);
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao enviar WhatsApp para ${candidate.whatsapp}:`, error);
+            await storage.createMessageLog({
+              interviewId: interview.id,
+              type: 'whatsapp',
+              channel: 'whatsapp',
+              status: 'failed'
+            });
+          }
         }
 
         interviews.push({
