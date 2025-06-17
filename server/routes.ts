@@ -1715,11 +1715,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Manager Routes - Client-specific connections
   app.get("/api/whatsapp/connections", authenticate, authorize(['master']), async (req, res) => {
     try {
+      const { whatsappManager } = await import('./whatsappManager');
       const connections = await whatsappManager.getClientConnections();
       res.json(connections);
     } catch (error) {
-      console.error('Error fetching WhatsApp connections:', error);
-      res.status(500).json({ error: 'Failed to fetch connections' });
+      console.error('Erro ao buscar conexões WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao buscar conexões' });
     }
   });
 
@@ -1728,36 +1729,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientId, clientName } = req.body;
       
       if (!clientId || !clientName) {
-        return res.status(400).json({ error: 'clientId and clientName are required' });
+        return res.status(400).json({ error: 'clientId e clientName são obrigatórios' });
       }
 
+      const { whatsappManager } = await import('./whatsappManager');
       const connectionId = await whatsappManager.createConnection(clientId, clientName);
       res.json({ success: true, connectionId });
     } catch (error) {
-      console.error('Error creating WhatsApp connection:', error);
-      res.status(500).json({ error: 'Failed to create connection' });
+      console.error('Erro ao criar conexão WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao criar conexão' });
     }
   });
 
   app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
       await whatsappManager.disconnectClient(connectionId);
       res.json({ success: true });
     } catch (error) {
-      console.error('Error disconnecting WhatsApp connection:', error);
-      res.status(500).json({ error: 'Failed to disconnect' });
+      console.error('Erro ao desconectar WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao desconectar' });
     }
   });
 
   app.delete("/api/whatsapp/connections/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
       await whatsappManager.deleteConnection(connectionId);
       res.json({ success: true });
     } catch (error) {
-      console.error('Error deleting WhatsApp connection:', error);
-      res.status(500).json({ error: 'Failed to delete connection' });
+      console.error('Erro ao deletar conexão WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao deletar conexão' });
     }
   });
 
@@ -1767,30 +1771,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneNumber, message } = req.body;
       
       if (!phoneNumber || !message) {
-        return res.status(400).json({ error: 'phoneNumber and message are required' });
+        return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
       }
 
+      const { whatsappManager } = await import('./whatsappManager');
       const success = await whatsappManager.sendMessage(connectionId, phoneNumber, message);
       
       if (success) {
-        res.json({ success: true, message: 'Message sent successfully' });
+        res.json({ success: true, message: 'Mensagem enviada com sucesso' });
       } else {
-        res.status(500).json({ error: 'Failed to send message' });
+        res.status(500).json({ error: 'Falha ao enviar mensagem' });
       }
     } catch (error) {
-      console.error('Error testing WhatsApp connection:', error);
-      res.status(500).json({ error: 'Failed to send test message' });
+      console.error('Erro ao testar conexão WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao enviar mensagem de teste' });
     }
   });
 
   app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
       const status = whatsappManager.getConnectionStatus(connectionId);
       res.json(status);
     } catch (error) {
-      console.error('Error getting WhatsApp connection status:', error);
-      res.status(500).json({ error: 'Failed to get connection status' });
+      console.error('Erro ao obter status da conexão WhatsApp:', error);
+      res.status(500).json({ error: 'Falha ao obter status da conexão' });
     }
   });
 
