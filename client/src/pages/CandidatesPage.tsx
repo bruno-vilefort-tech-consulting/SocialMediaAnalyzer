@@ -680,7 +680,20 @@ export default function CandidatesPage() {
                       
                       return (
                         <TableRow key={list.id}>
-                          <TableCell className="font-medium">{list.name}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {list.name}
+                              {candidatesCount === 0 ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                  Vazia
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  {candidatesCount} {candidatesCount === 1 ? 'candidato' : 'candidatos'}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-muted-foreground">
                             {list.description || "Sem descrição"}
                           </TableCell>
@@ -692,7 +705,9 @@ export default function CandidatesPage() {
                           <TableCell>
                             {(() => {
                               if (!list.createdAt) return 'N/A';
-                              const date = new Date(list.createdAt.seconds * 1000);
+                              const date = list.createdAt instanceof Date 
+                                ? list.createdAt 
+                                : new Date((list.createdAt as any)?.seconds * 1000 || list.createdAt);
                               const dateFormatted = date.toLocaleDateString('pt-BR');
                               const timeFormatted = date.toLocaleTimeString('pt-BR', { 
                                 hour: '2-digit', 

@@ -266,8 +266,7 @@ export class FirebaseStorage implements IStorage {
       
       console.log(`📋 Dados finais com timestamps convertidos:`, JSON.stringify({
         contractStart: finalData.contractStart,
-        contractEnd: finalData.contractEnd,
-        isIndefiniteContract: finalData.isIndefiniteContract
+        contractEnd: finalData.contractEnd
       }, null, 2));
       
       return finalData;
