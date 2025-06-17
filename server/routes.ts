@@ -2469,19 +2469,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new user for a specific client
   app.post("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
+      console.log('🔧 Backend: Recebendo requisição para criar usuário');
+      console.log('   Headers:', {
+        authorization: req.headers.authorization ? 'Bearer ***' : 'None',
+        contentType: req.headers['content-type']
+      });
+      console.log('   Params:', req.params);
+      console.log('   Body:', req.body);
+      console.log('   User from auth:', req.user);
+
       const clientId = parseInt(req.params.clientId);
       const { name, email, password } = req.body;
 
+      console.log('   Parsed clientId:', clientId);
+      console.log('   Extracted data:', { name, email, password: password ? '***' : 'missing' });
+
       if (!name || !email || !password) {
+        console.log('❌ Backend: Dados obrigatórios ausentes');
         return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
       }
 
+      console.log('🔍 Backend: Verificando se email já existe...');
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
+        console.log('❌ Backend: Email já existe no sistema');
         return res.status(400).json({ error: 'Este email já está em uso' });
       }
 
+      console.log('✅ Backend: Email disponível, criando usuário...');
       const newUser = await storage.createClientUser({
         name,
         email,
@@ -2490,9 +2506,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientId
       });
 
+      console.log('✅ Backend: Usuário criado com sucesso:', {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        clientId: newUser.clientId
+      });
+
       res.status(201).json(newUser);
     } catch (error) {
-      console.error('Error creating client user:', error);
+      console.error('❌ Backend: Erro ao criar usuário:', error);
       res.status(500).json({ error: 'Failed to create client user' });
     }
   });

@@ -169,9 +169,15 @@ export default function ClientsPage() {
 
   // Mutations para usuários dos clientes
   const createClientUserMutation = useMutation({
-    mutationFn: ({ clientId, userData }: { clientId: number; userData: ClientUserFormData }) =>
-      apiRequest(`/api/clients/${clientId}/users`, "POST", userData),
-    onSuccess: () => {
+    mutationFn: ({ clientId, userData }: { clientId: number; userData: ClientUserFormData }) => {
+      console.log('🔧 Frontend: Enviando requisição para criar usuário');
+      console.log('   ClientId:', clientId);
+      console.log('   UserData:', userData);
+      console.log('   URL:', `/api/clients/${clientId}/users`);
+      return apiRequest(`/api/clients/${clientId}/users`, "POST", userData);
+    },
+    onSuccess: (data) => {
+      console.log('✅ Frontend: Usuário criado com sucesso:', data);
       toast({
         title: "Sucesso!",
         description: "Usuário criado com sucesso.",
@@ -180,6 +186,12 @@ export default function ClientsPage() {
       resetUserForm();
     },
     onError: (error: any) => {
+      console.error('❌ Frontend: Erro ao criar usuário:', error);
+      console.error('   Error details:', {
+        message: error.message,
+        status: error.status,
+        response: error.response
+      });
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar usuário.",
