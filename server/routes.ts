@@ -356,15 +356,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let jobs;
       if (req.user!.role === 'master') {
-        // Master pode ver todas as vagas
+        console.log('🔍 Master buscando todas as vagas');
         jobs = await storage.getJobs();
+        console.log(`📄 Vagas encontradas (master): ${jobs.length}`);
       } else {
-        // Cliente vê apenas suas vagas
         const clientId = req.user!.clientId!;
+        console.log(`🔍 Cliente buscando vagas para clientId: ${clientId}`);
         jobs = await storage.getJobsByClientId(clientId);
+        console.log(`📄 Vagas encontradas para cliente ${clientId}: ${jobs.length}`);
+        if (jobs.length > 0) {
+          console.log('📋 Primeira vaga:', jobs[0]);
+        }
       }
       res.json(jobs);
     } catch (error) {
+      console.error('❌ Erro ao buscar vagas:', error);
       res.status(500).json({ message: 'Failed to fetch jobs' });
     }
   });
