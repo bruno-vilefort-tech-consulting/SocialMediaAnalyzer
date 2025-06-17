@@ -1129,126 +1129,38 @@ Ou use os botões se disponíveis.`);
   }
 
   public async sendTextMessage(phoneNumber: string, message: string): Promise<boolean> {
-    console.log(`🚀 [NOVO DEBUG] Sistema robusta de envio iniciado`);
-    console.log(`📞 [NOVO DEBUG] Telefone: ${phoneNumber}`);
-    console.log(`💬 [NOVO DEBUG] Mensagem: ${message.substring(0, 100)}...`);
-
-    try {
-      // SEMPRE fazer reconexão limpa para garantir estabilidade
-      console.log(`🔄 [NOVO DEBUG] Iniciando reconexão limpa obrigatória...`);
-      
-      // Primeiro, desconectar qualquer socket existente
-      if (this.socket) {
-        try {
-          console.log(`🔌 [NOVO DEBUG] Desconectando socket existente...`);
-          await this.socket.end();
-          this.socket = null;
-        } catch (e) {
-          console.log(`⚠️ [NOVO DEBUG] Erro ao desconectar socket antigo (normal):`, e?.message);
-        }
-      }
-      
-      // Aguardar um momento para limpeza
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Reconectar do zero
-      console.log(`🔄 [NOVO DEBUG] Estabelecendo nova conexão...`);
-      await this.initializeConnection();
-      
-      // Aguardar até ter conexão sólida
-      let connectionAttempts = 0;
-      const maxConnectionAttempts = 15;
-      
-      while (connectionAttempts < maxConnectionAttempts) {
-        if (this.socket && this.socket.user && this.socket.user.id) {
-          console.log(`✅ [NOVO DEBUG] Conexão estabelecida - Usuário: ${this.socket.user.id}`);
-          break;
-        }
-        
-        connectionAttempts++;
-        console.log(`⏳ [NOVO DEBUG] Aguardando conexão sólida... ${connectionAttempts}/${maxConnectionAttempts}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      
-      if (!this.socket || !this.socket.user) {
-        throw new Error(`Falha na conexão após ${maxConnectionAttempts} tentativas`);
-      }
-      
-      // Preparar envio
-      const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
-      console.log(`📤 [NOVO DEBUG] JID: ${jid}`);
-      
-      // Enviar mensagem com múltiplas tentativas
-      const maxSendAttempts = 5;
-      let lastError = null;
-      
-      for (let attempt = 1; attempt <= maxSendAttempts; attempt++) {
-        try {
-          console.log(`📨 [NOVO DEBUG] Tentativa ${attempt}/${maxSendAttempts} de envio...`);
-          
-          // Verificar se socket ainda está ativo antes de enviar
-          if (!this.socket || !this.socket.user) {
-            throw new Error('Socket perdido durante envio');
-          }
-          
-          const result = await this.socket.sendMessage(jid, { 
-            text: message 
-          });
-          
-          console.log(`✅ [NOVO DEBUG] SUCESSO! ID da mensagem:`, result?.key?.id || 'sem-id');
-          console.log(`✅ Mensagem enviada com sucesso para ${phoneNumber}`);
-          
-          return true;
-          
-        } catch (sendError: any) {
-          lastError = sendError;
-          console.log(`❌ [NOVO DEBUG] Erro tentativa ${attempt}:`, sendError?.message);
-          
-          // Se não é a última tentativa, tentar reconectar
-          if (attempt < maxSendAttempts) {
-            if (sendError?.message?.includes('Connection Closed') || 
-                sendError?.output?.statusCode === 428) {
-              console.log(`🔄 [NOVO DEBUG] Reconectando por erro de conexão...`);
-              
-              try {
-                if (this.socket) {
-                  await this.socket.end();
-                  this.socket = null;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                await this.initializeConnection();
-                
-                // Aguardar reconexão
-                let reconnectWait = 0;
-                while (reconnectWait < 5 && (!this.socket || !this.socket.user)) {
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  reconnectWait++;
-                }
-              } catch (reconnectError) {
-                console.log(`❌ [NOVO DEBUG] Falha na reconexão:`, reconnectError?.message);
-              }
-            } else {
-              // Para outros erros, apenas aguardar
-              await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-          }
-        }
-      }
-      
-      // Se chegou aqui, todas as tentativas falharam
-      throw lastError || new Error('Falha no envio após múltiplas tentativas');
-      
-    } catch (error: any) {
-      console.error(`❌ [NOVO DEBUG] Erro crítico:`, error?.message);
-      console.error(`❌ [NOVO DEBUG] Stack:`, error?.stack);
+    console.log(`🚀 Enviando WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
+    
+    // Verificar se WhatsApp está conectado
+    if (!this.socket || !this.socket.user) {
+      console.log(`❌ WhatsApp não conectado - impossível enviar`);
       return false;
     }
-    } catch (error) {
-      console.error(`❌ [DEBUG] Erro detalhado ao enviar mensagem via QR para ${phoneNumber}:`);
-      console.error(`❌ [DEBUG] Tipo do erro: ${error?.constructor?.name}`);
-      console.error(`❌ [DEBUG] Mensagem do erro: ${error?.message}`);
-      console.error(`❌ [DEBUG] Código do erro: ${error?.output?.statusCode || error?.code}`);
-      console.error(`❌ [DEBUG] Stack trace:`, error?.stack);
+    
+    try {
+      const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      
+      // Envio direto e simples com timeout
+      const result = await Promise.race([
+        this.socket.sendMessage(jid, { text: message }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout no envio')), 15000)
+        )
+      ]);
+      
+      console.log(`✅ Mensagem enviada! ID:`, result?.key?.id || 'sem-id');
+      return true;
+      
+    } catch (error: any) {
+      console.error(`❌ Erro no envio WhatsApp:`, error?.message);
+      
+      // Se falhou por conexão fechada, marcar como desconectado
+      if (error?.message?.includes('Connection Closed') || error?.output?.statusCode === 428) {
+        console.log(`🔌 Conexão perdida - atualizando status`);
+        this.config.isConnected = false;
+        await this.saveConnectionToDB();
+      }
+      
       return false;
     }
   }
