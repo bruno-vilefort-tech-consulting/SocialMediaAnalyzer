@@ -116,6 +116,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 ## Recent Changes
 
 - June 17, 2025: ✅ SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Envio de entrevistas operacional conforme solicitado
+  - **Autorização corrigida**: Endpoint /api/selections/:id/send agora permite tanto 'client' quanto 'master'
+  - **Envio de entrevistas validado**: Teste bem-sucedido enviando para 2 candidatos (ID: 1750118960709)
+  - **WhatsApp integração confirmada**: Mensagem teste enviada com ID 3EB0255EDE19BA89FC43E6
+  - **Sistema completamente operacional**: Fluxo completo funcionando - login → seleções → envio WhatsApp
+  - **Debug implementado**: Logs detalhados mostram todo processo de autorização e envio
+  - **Permissões corrigidas**: Masters podem enviar entrevistas normalmente via API
   - **Problema de inicialização resolvido**: WhatsApp QR Service agora carrega estado conectado do banco automaticamente
   - **Envio de mensagens funcionando**: Teste confirmado com ID 3EB0449B649B98CC5F0174
   - **Sistema de reconexão inteligente**: Detecta conexões ativas e reconecta automaticamente quando necessário
