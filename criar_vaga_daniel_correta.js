@@ -1,5 +1,5 @@
-const { initializeApp } = require('firebase/app');
-const { getFirestore, collection, addDoc, updateDoc, doc, getDocs, query, where } = require('firebase/firestore');
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc, updateDoc, doc, getDocs, query, where } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBjf8nV2q7Jz_wAERHWqZN9O5BcT8wKl4A",
