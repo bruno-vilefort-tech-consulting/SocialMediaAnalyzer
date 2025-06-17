@@ -253,16 +253,17 @@ export class WhatsAppQRService {
               }, 30000);
             } else {
               if (isConflictError) {
-                console.log('✅ Conflito detectado - WhatsApp funcionalmente conectado em outro dispositivo.');
-                // Para conflitos, manter status conectado mas parar reconexões
-                this.config.isConnected = true;
-                this.config.phoneNumber = '5511984316526'; // Número conhecido conectado
-                this.config.lastConnection = new Date();
-                this.config.qrCode = null; // Limpar QR code pois está conectado
+                console.log('⚠️ Conflito detectado - WhatsApp conectado em outro local. Sistema não funcional.');
+                // Para conflitos, marcar como desconectado pois não pode enviar mensagens
+                this.config.isConnected = false;
+                this.config.phoneNumber = null;
+                this.config.lastConnection = null;
+                this.config.qrCode = null;
+                this.socket = null; // Limpar socket inválido
                 await this.saveConnectionToDB().catch(err => 
-                  console.error('Erro ao salvar status de conflito:', err.message)
+                  console.error('Erro ao salvar desconexão por conflito:', err.message)
                 );
-                this.notifyConnectionListeners(true);
+                this.notifyConnectionListeners(false);
                 this.notifyQRListeners(null);
               } else {
                 console.log('❌ Não reconectando devido ao tipo de erro');
@@ -1150,7 +1151,8 @@ Ou use os botões se disponíveis.`);
           return false;
         }
       } else {
-        console.log(`⚠️ WebSocket não disponível, mas tentando envio mesmo assim`);
+        console.log(`❌ WebSocket não disponível - estado: undefined`);
+        return false;
       }
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
