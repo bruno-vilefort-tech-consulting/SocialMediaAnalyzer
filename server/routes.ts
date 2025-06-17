@@ -2335,8 +2335,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar configuração API para detectar conexão persistente
       const masterConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // FORÇAR DESCONEXÃO COMPLETA - não reconhecer mais números conectados
-      console.log('🔌 WhatsApp DESCONECTADO - pronto para nova conexão');
+      // Detectar se há conexão ativa com novo número
+      const isUserConnected = masterConfig && masterConfig.whatsappQrPhoneNumber && 
+        masterConfig.whatsappQrPhoneNumber.length > 0;
+      
+      if (isUserConnected) {
+        console.log(`✅ WhatsApp CONECTADO para usuário: ${masterConfig.whatsappQrPhoneNumber}`);
+        return res.json({
+          isConnected: true,
+          qrCode: null,
+          phone: masterConfig.whatsappQrPhoneNumber,
+          lastConnection: masterConfig.whatsappQrLastConnection || new Date()
+        });
+      }
 
       // Fallback para o sistema antigo se não houver conexões ativas
       const service = await ensureWhatsAppReady();
@@ -2351,15 +2362,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const status = service.getConnectionStatus();
       
-      // FORÇAR DESCONEXÃO - não detectar mais números como conectados
-      console.log('🔌 WhatsApp FORÇADAMENTE DESCONECTADO');
+      // Se detectar número no status do service, considerar conectado
+      if (status.phoneNumber && status.phoneNumber.length > 0) {
+        console.log(`✅ WhatsApp CONECTADO via service: ${status.phoneNumber}`);
+        return res.json({
+          isConnected: true,
+          qrCode: null,
+          phone: status.phoneNumber,
+          lastConnection: status.lastConnection
+        });
+      }
       
-      // FORÇAR ESTADO DESCONECTADO PARA NOVA CONEXÃO
       res.json({
-        isConnected: false,
+        isConnected: status.isConnected,
         qrCode: status.qrCode,
-        phone: null,
-        lastConnection: null
+        phone: status.phoneNumber,
+        lastConnection: status.lastConnection
       });
     } catch (error) {
       console.error('❌ Erro ao obter status WhatsApp QR:', error);

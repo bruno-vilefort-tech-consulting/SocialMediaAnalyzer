@@ -172,9 +172,9 @@ export class WhatsAppQRService {
       // Usar nova arquitetura: buscar e atualizar configuração específica do master
       const currentConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // FORÇAR DESCONEXÃO COMPLETA - resetar estado
-      const finalConnection = false;
-      const finalPhoneNumber = null;
+      // Detectar conexão real baseada no status atual
+      const finalConnection = this.config.isConnected;
+      const finalPhoneNumber = this.config.phoneNumber;
       
       await storage.upsertApiConfig({
         ...currentConfig,
@@ -188,14 +188,9 @@ export class WhatsAppQRService {
       
       console.log(`💾 WhatsApp Status: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (${finalPhoneNumber})`);
       
-      // Atualizar estado local se detectar usuário conectado
-      if (isUserPhone && !this.config.isConnected) {
-        this.config.isConnected = true;
-        this.config.phoneNumber = userPhoneNumber;
-        this.config.qrCode = null; // Remover QR code
-        this.notifyConnectionListeners(true);
-        this.notifyQRListeners(null);
-        console.log('✅ Usuário detectado como conectado - QR Code removido');
+      // Log adicional para debug
+      if (finalConnection && finalPhoneNumber) {
+        console.log(`📱 Número conectado salvo no banco: ${finalPhoneNumber}`);
       }
     } catch (error) {
       console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
