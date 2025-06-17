@@ -597,6 +597,7 @@ export default function CandidatesPage() {
                       <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">Todos os Clientes</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client.id} value={client.id.toString()}>
                           {client.companyName}
@@ -604,14 +605,6 @@ export default function CandidatesPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Badge variant="secondary">
-                    {selectedClientFilter === 'all' ? '0' : filteredCandidateLists.length} listas
-                  </Badge>
-                  {selectedClientFilter === 'all' && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-200">
-                      Selecione um cliente para ver dados
-                    </Badge>
-                  )}
                 </div>
               )}
               <Button onClick={() => setShowCreateForm(true)}>
