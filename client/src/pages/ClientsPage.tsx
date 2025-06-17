@@ -244,12 +244,13 @@ export default function ClientsPage() {
 
       {/* Formulário de Cliente */}
       {showNewClientForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingClient ? "Editar Cliente" : "Novo Cliente"}
-            </CardTitle>
-          </CardHeader>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {editingClient ? "Editar Cliente" : "Novo Cliente"}
+              </CardTitle>
+            </CardHeader>
           <CardContent>
             <Form {...clientForm}>
               <form onSubmit={clientForm.handleSubmit(onSubmitClient)} className="space-y-4">
@@ -493,7 +494,7 @@ export default function ClientsPage() {
             isVisible={true}
           />
         )}
-      </div>
+        </div>
       )}
 
       {/* Lista de Clientes */}
