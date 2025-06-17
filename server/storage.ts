@@ -288,103 +288,7 @@ export class FirebaseStorage implements IStorage {
     console.log(`✅ Cliente ID ${id} deletado com sucesso do Firebase`);
   }
 
-  // Client Users
-  async getClientUsersByClientId(clientId: number): Promise<ClientUser[]> {
-    const snapshot = await getDocs(collection(firebaseDb, "clientUsers"));
-    return snapshot.docs
-      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as ClientUser))
-      .filter(user => user.clientId === clientId);
-  }
 
-  async getClientUserById(id: number): Promise<ClientUser | undefined> {
-    const docRef = doc(firebaseDb, "clientUsers", String(id));
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: parseInt(docSnap.id), ...docSnap.data() } as ClientUser : undefined;
-  }
-
-  async getClientUserByEmail(email: string): Promise<ClientUser | undefined> {
-    const clientUsersQuery = query(collection(firebaseDb, "clientUsers"), where("email", "==", email));
-    const querySnapshot = await getDocs(clientUsersQuery);
-    
-    if (querySnapshot.empty) return undefined;
-    
-    const doc = querySnapshot.docs[0];
-    return { id: parseInt(doc.id), ...doc.data() } as ClientUser;
-  }
-
-  async createClientUser(insertClientUser: InsertClientUser): Promise<ClientUser> {
-    // Encrypt password
-    const hashedPassword = await bcrypt.hash(insertClientUser.password, 10);
-    
-    // Generate unique client user ID
-    const clientUserId = Date.now() + Math.floor(Math.random() * 1000);
-    const clientUserData = {
-      ...insertClientUser,
-      password: hashedPassword,
-      id: clientUserId,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    await setDoc(doc(firebaseDb, "clientUsers", String(clientUserId)), clientUserData);
-    return clientUserData as ClientUser;
-  }
-
-  async updateClientUser(id: number, clientUserUpdate: Partial<ClientUser>): Promise<ClientUser> {
-    // If password is being updated, hash it
-    if (clientUserUpdate.password) {
-      clientUserUpdate.password = await bcrypt.hash(clientUserUpdate.password, 10);
-    }
-    
-    clientUserUpdate.updatedAt = new Date();
-    
-    const docRef = doc(firebaseDb, "clientUsers", String(id));
-    await updateDoc(docRef, clientUserUpdate);
-    const updatedDoc = await getDoc(docRef);
-    return { id, ...updatedDoc.data() } as ClientUser;
-  }
-
-  async deleteClientUser(id: number): Promise<void> {
-    await deleteDoc(doc(firebaseDb, "clientUsers", String(id)));
-  }
-
-  async deleteAllClientUsers(clientId: number): Promise<ClientUser[]> {
-    console.log(`🔍 Buscando todos os usuários do cliente ID: ${clientId}`);
-    
-    // Buscar todos os usuários do cliente
-    const clientUsersQuery = query(collection(firebaseDb, "clientUsers"), where("clientId", "==", clientId));
-    const querySnapshot = await getDocs(clientUsersQuery);
-    
-    if (querySnapshot.empty) {
-      console.log(`✅ Nenhum usuário encontrado para o cliente ${clientId}`);
-      return [];
-    }
-    
-    console.log(`📋 Encontrados ${querySnapshot.size} usuário(s) para deletar:`);
-    
-    const deletedUsers: ClientUser[] = [];
-    const batch = writeBatch(firebaseDb);
-    
-    querySnapshot.docs.forEach((docSnapshot) => {
-      const userData = docSnapshot.data();
-      console.log(`- Usuário: ${userData.name} (${userData.email}) - ID: ${docSnapshot.id}`);
-      
-      // Adicionar ao batch para deleção
-      batch.delete(docSnapshot.ref);
-      
-      // Salvar dados do usuário deletado
-      deletedUsers.push({
-        id: parseInt(docSnapshot.id),
-        ...userData
-      } as ClientUser);
-    });
-    
-    // Executar deleção em batch
-    await batch.commit();
-    console.log(`✅ ${deletedUsers.length} usuário(s) deletado(s) com sucesso do cliente ${clientId}!`);
-    
-    return deletedUsers;
-  }
 
   // Jobs
   async getJobsByClientId(clientId: number): Promise<Job[]> {
@@ -1155,17 +1059,7 @@ export class FirebaseStorage implements IStorage {
           await updateDoc(snapshot.docs[0].ref, { password: newPasswordHash });
           return true;
         }
-      } else if (userType === 'client_user') {
-        const q = query(
-          collection(firebaseDb, 'clientUsers'),
-          where('email', '==', email)
-        );
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-          await updateDoc(snapshot.docs[0].ref, { password: newPasswordHash });
-          return true;
-        }
+
       }
       
       return false;
@@ -1201,17 +1095,7 @@ export class FirebaseStorage implements IStorage {
       return { userType: 'client', name: data.companyName };
     }
     
-    // Check client users
-    const userQuery = query(
-      collection(firebaseDb, 'clientUsers'),
-      where('email', '==', email)
-    );
-    const userSnapshot = await getDocs(userQuery);
-    
-    if (!userSnapshot.empty) {
-      const data = userSnapshot.docs[0].data();
-      return { userType: 'client_user', name: data.name };
-    }
+
     
     return null;
   }
@@ -1270,18 +1154,7 @@ export class FirebaseStorage implements IStorage {
       return;
     }
     
-    // Check if it's a client user
-    const userQuery = query(
-      collection(firebaseDb, 'clientUsers'),
-      where('email', '==', email)
-    );
-    const userSnapshot = await getDocs(userQuery);
-    
-    if (!userSnapshot.empty) {
-      const userDoc = userSnapshot.docs[0];
-      await updateDoc(userDoc.ref, { password: hashedPassword });
-      return;
-    }
+
     
     throw new Error('Usuário não encontrado');
   }
