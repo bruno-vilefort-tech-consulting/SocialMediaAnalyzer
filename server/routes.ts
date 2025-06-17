@@ -2617,11 +2617,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Este email já está em uso' });
       }
 
+      console.log('🔐 Backend: Criptografando senha...');
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
       console.log('✅ Backend: Email disponível, criando usuário...');
       const newUser = await storage.createClientUser({
         name,
         email,
-        password,
+        password: hashedPassword,
         role: 'client',
         clientId
       });
