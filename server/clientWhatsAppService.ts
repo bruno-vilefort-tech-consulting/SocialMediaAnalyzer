@@ -1,7 +1,8 @@
-import qrcode from 'qrcode';
-import path from 'path';
+import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import { Boom } from '@hapi/boom';
 import fs from 'fs';
-import { storage } from './storage.js';
+import path from 'path';
+import { storage } from './storage';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -28,15 +29,15 @@ export class ClientWhatsAppService {
 
   private async initializeBaileys() {
     try {
-      this.baileys = await import('@whiskeysockets/baileys');
       console.log('📱 Baileys inicializado para ClientWhatsAppService');
+      this.baileys = { makeWASocket, useMultiFileAuthState };
     } catch (error) {
-      console.error('❌ Erro ao importar Baileys:', error);
+      console.error('❌ Erro ao inicializar Baileys:', error);
     }
   }
 
   private getSessionPath(clientId: string): string {
-    return path.join('./whatsapp-sessions', `client-${clientId}`);
+    return path.join(process.cwd(), 'whatsapp-sessions', `client-${clientId}`);
   }
 
   private async ensureSessionDirectory(clientId: string) {
@@ -49,118 +50,111 @@ export class ClientWhatsAppService {
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
       console.log(`🔗 Iniciando conexão WhatsApp para cliente ${clientId}...`);
-
+      
       if (!this.baileys) {
         await this.initializeBaileys();
-        if (!this.baileys) {
-          throw new Error('Baileys não disponível');
-        }
       }
 
-      // Garantir diretório da sessão
       await this.ensureSessionDirectory(clientId);
 
-      const { makeWASocket, useMultiFileAuthState } = this.baileys;
-      const sessionPath = this.getSessionPath(clientId);
-
-      // Configurar autenticação
-      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-
-      // Criar socket
-      const socket = makeWASocket({
+      const { state, saveCreds } = await this.baileys.useMultiFileAuthState(this.getSessionPath(clientId));
+      
+      const socket = this.baileys.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        connectTimeoutMs: 10000,
-        defaultQueryTimeoutMs: 5000,
-        keepAliveIntervalMs: 30000,
-        retryRequestDelayMs: 1000,
-        maxMsgRetryCount: 3,
+        browser: ['Ubuntu', 'Chrome', '22.04.4']
       });
 
-      // Configurar eventos
-      let qrCodeGenerated: string | null = null;
+      return new Promise((resolve) => {
+        let resolved = false;
 
-      socket.ev.on('connection.update', async (update: any) => {
-        const { connection, lastDisconnect, qr } = update;
+        socket.ev.on('connection.update', async (update: any) => {
+          const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-          console.log(`📱 QR Code gerado para cliente ${clientId}`);
-          try {
-            const qrCodeDataURL = await qrcode.toDataURL(qr);
-            qrCodeGenerated = qrCodeDataURL;
+          if (qr && !resolved) {
+            console.log(`📱 QR Code gerado para cliente ${clientId}`);
             
-            // Atualizar configuração no banco
+            // Atualizar configuração do cliente
             await this.updateClientConfig(clientId, {
-              qrCode: qrCodeDataURL,
+              qrCode: qr,
               isConnected: false,
-              lastConnection: new Date()
+              phoneNumber: null,
+              lastConnection: new Date(),
+              clientId
             });
-          } catch (qrError) {
-            console.error(`❌ Erro ao gerar QR Code para cliente ${clientId}:`, qrError);
+
+            resolved = true;
+            resolve({
+              success: true,
+              qrCode: qr,
+              message: 'QR Code gerado com sucesso'
+            });
           }
-        }
 
-        if (connection === 'close') {
-          console.log(`❌ Conexão fechada para cliente ${clientId}`);
-          await this.updateClientConfig(clientId, {
-            isConnected: false,
-            qrCode: null,
-            phoneNumber: null,
-            lastConnection: new Date()
-          });
-          this.sessions.delete(clientId);
-        } else if (connection === 'open') {
-          console.log(`✅ WhatsApp conectado para cliente ${clientId}`);
-          const phoneNumber = socket.user?.id?.split(':')[0] || 'unknown';
-          
-          await this.updateClientConfig(clientId, {
-            isConnected: true,
-            qrCode: null,
-            phoneNumber,
-            lastConnection: new Date()
-          });
-        }
+          if (connection === 'open') {
+            console.log(`✅ WhatsApp conectado para cliente ${clientId}`);
+            
+            const phoneNumber = socket.user?.id?.split(':')[0] || null;
+            
+            await this.updateClientConfig(clientId, {
+              isConnected: true,
+              phoneNumber,
+              lastConnection: new Date(),
+              qrCode: null,
+              clientId
+            });
+
+            // Armazenar sessão ativa
+            const session: WhatsAppSession = {
+              socket,
+              config: {
+                isConnected: true,
+                qrCode: null,
+                phoneNumber,
+                lastConnection: new Date(),
+                clientId
+              },
+              makeWASocket: this.baileys.makeWASocket,
+              useMultiFileAuthState: this.baileys.useMultiFileAuthState
+            };
+
+            this.sessions.set(clientId, session);
+          }
+
+          if (connection === 'close') {
+            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log(`🔌 Conexão fechada para cliente ${clientId}, reconectar:`, shouldReconnect);
+
+            if (!shouldReconnect) {
+              await this.updateClientConfig(clientId, {
+                isConnected: false,
+                phoneNumber: null,
+                qrCode: null,
+                lastConnection: new Date(),
+                clientId
+              });
+            }
+          }
+        });
+
+        socket.ev.on('creds.update', saveCreds);
+
+        // Timeout para QR Code
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            resolve({
+              success: false,
+              message: 'Timeout ao gerar QR Code'
+            });
+          }
+        }, 30000);
       });
-
-      socket.ev.on('creds.update', saveCreds);
-
-      // Armazenar sessão
-      const session: WhatsAppSession = {
-        socket,
-        config: {
-          clientId,
-          isConnected: false,
-          qrCode: null,
-          phoneNumber: null,
-          lastConnection: new Date()
-        },
-        makeWASocket,
-        useMultiFileAuthState
-      };
-
-      this.sessions.set(clientId, session);
-
-      // Aguardar QR Code ou conexão (timeout de 10 segundos)
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      if (qrCodeGenerated) {
-        return {
-          success: true,
-          qrCode: qrCodeGenerated,
-          message: 'QR Code gerado. Escaneie com seu WhatsApp.'
-        };
-      }
-
-      return {
-        success: true,
-        message: 'Conexão iniciada. Aguarde...'
-      };
-
     } catch (error) {
-      console.error(`❌ Erro ao conectar WhatsApp cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao conectar WhatsApp para cliente ${clientId}:`, error);
       return {
         success: false,
-        message: `Erro na conexão: ${error.message}`
+        message: 'Erro interno ao conectar WhatsApp'
       };
     }
   }
@@ -174,96 +168,95 @@ export class ClientWhatsAppService {
         try {
           await session.socket.logout();
         } catch (logoutError) {
-          console.log(`⚠️ Erro no logout para cliente ${clientId}:`, logoutError.message);
+          console.log('Erro ao fazer logout, continuando...', logoutError);
         }
       }
 
-      // Limpar diretório da sessão
+      this.sessions.delete(clientId);
+
+      // Limpar pasta de sessão
       const sessionPath = this.getSessionPath(clientId);
       if (fs.existsSync(sessionPath)) {
         fs.rmSync(sessionPath, { recursive: true, force: true });
       }
 
-      // Atualizar configuração no banco
       await this.updateClientConfig(clientId, {
         isConnected: false,
-        qrCode: null,
         phoneNumber: null,
-        lastConnection: new Date()
+        qrCode: null,
+        lastConnection: new Date(),
+        clientId
       });
-
-      // Remover sessão
-      this.sessions.delete(clientId);
 
       return {
         success: true,
         message: 'WhatsApp desconectado com sucesso'
       };
-
     } catch (error) {
-      console.error(`❌ Erro ao desconectar cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao desconectar WhatsApp para cliente ${clientId}:`, error);
       return {
         success: false,
-        message: `Erro na desconexão: ${error.message}`
+        message: 'Erro ao desconectar WhatsApp'
       };
     }
   }
 
   async sendTestMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
-
       const session = this.sessions.get(clientId);
-      if (!session?.socket) {
+      
+      if (!session?.socket || !session.config.isConnected) {
         return {
           success: false,
-          message: 'Cliente não conectado ao WhatsApp'
+          message: 'WhatsApp não está conectado para este cliente'
         };
       }
 
-      // Formatar número
-      const formattedNumber = phoneNumber.replace(/[^\d]/g, '');
-      const jid = formattedNumber.includes('@') ? formattedNumber : `${formattedNumber}@s.whatsapp.net`;
-
-      // Enviar mensagem
-      await session.socket.sendMessage(jid, { text: message });
-
-      console.log(`✅ Mensagem enviada para ${phoneNumber} via cliente ${clientId}`);
-
+      const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      
+      await session.socket.sendMessage(formattedNumber, { text: message });
+      
+      console.log(`✅ Mensagem teste enviada para ${phoneNumber} via cliente ${clientId}`);
+      
       return {
         success: true,
         message: 'Mensagem enviada com sucesso'
       };
-
     } catch (error) {
-      console.error(`❌ Erro ao enviar mensagem para cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao enviar mensagem teste para cliente ${clientId}:`, error);
       return {
         success: false,
-        message: `Erro no envio: ${error.message}`
+        message: 'Erro ao enviar mensagem'
       };
     }
   }
 
   async getClientStatus(clientId: string): Promise<WhatsAppClientConfig> {
+    const session = this.sessions.get(clientId);
+    
+    if (session) {
+      return session.config;
+    }
+
+    // Buscar do banco de dados se não estiver em memória
     try {
-      // Buscar configuração do banco
       const apiConfig = await storage.getApiConfig('client', clientId);
       
       return {
-        clientId,
         isConnected: apiConfig?.whatsappQrConnected || false,
+        qrCode: null, // QR codes não são persistidos
         phoneNumber: apiConfig?.whatsappQrPhoneNumber || null,
         lastConnection: apiConfig?.whatsappQrLastConnection || null,
-        qrCode: null // QR Code não é persistido
+        clientId
       };
     } catch (error) {
-      console.error(`❌ Erro ao buscar status do cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao buscar status para cliente ${clientId}:`, error);
       return {
-        clientId,
         isConnected: false,
+        qrCode: null,
         phoneNumber: null,
         lastConnection: null,
-        qrCode: null
+        clientId
       };
     }
   }
@@ -275,9 +268,7 @@ export class ClientWhatsAppService {
       
       if (!apiConfig) {
         // Criar configuração se não existir
-        apiConfig = await storage.createApiConfig({
-          entityType: 'client',
-          entityId: clientId,
+        await storage.upsertApiConfig('client', clientId, {
           openaiVoice: 'nova',
           whatsappQrConnected: false,
           whatsappQrPhoneNumber: null,
@@ -285,14 +276,24 @@ export class ClientWhatsAppService {
           firebaseProjectId: null,
           firebaseServiceAccount: null
         });
+        
+        // Buscar novamente após criação
+        apiConfig = await storage.getApiConfig('client', clientId);
       }
 
-      // Atualizar configuração
-      await storage.updateApiConfig(apiConfig.id, {
+      if (!apiConfig) {
+        console.error(`❌ Não foi possível criar/buscar configuração para cliente ${clientId}`);
+        return;
+      }
+
+      // Atualizar configuração usando upsertApiConfig
+      await storage.upsertApiConfig('client', clientId, {
         whatsappQrConnected: updates.isConnected ?? apiConfig.whatsappQrConnected,
         whatsappQrPhoneNumber: updates.phoneNumber ?? apiConfig.whatsappQrPhoneNumber,
         whatsappQrLastConnection: updates.lastConnection ?? apiConfig.whatsappQrLastConnection,
-        updatedAt: new Date()
+        openaiVoice: apiConfig.openaiVoice || 'nova',
+        firebaseProjectId: apiConfig.firebaseProjectId,
+        firebaseServiceAccount: apiConfig.firebaseServiceAccount
       });
 
       console.log(`💾 Configuração WhatsApp atualizada para cliente ${clientId}`);
@@ -311,27 +312,13 @@ export class ClientWhatsAppService {
           await session.socket.logout();
         }
       } catch (error) {
-        console.log(`⚠️ Erro ao fazer logout da sessão ${clientId}:`, error.message);
+        console.log(`Erro ao limpar sessão ${clientId}:`, error);
       }
     }
-
+    
     this.sessions.clear();
-
-    // Limpar diretórios de sessão
-    const sessionsDir = './whatsapp-sessions';
-    if (fs.existsSync(sessionsDir)) {
-      const files = fs.readdirSync(sessionsDir);
-      for (const file of files) {
-        if (file.startsWith('client-')) {
-          const filePath = path.join(sessionsDir, file);
-          fs.rmSync(filePath, { recursive: true, force: true });
-        }
-      }
-    }
-
-    console.log('✅ Limpeza de sessões concluída');
   }
 }
 
-// Instância única do serviço
+// Instância singleton
 export const clientWhatsAppService = new ClientWhatsAppService();
