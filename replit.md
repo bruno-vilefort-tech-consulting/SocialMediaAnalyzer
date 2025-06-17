@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 🎯 ARQUITETURA DE ROTAS UNIFICADA - Sistema completamente simplificado conforme solicitação do usuário
+  - **URLs unificadas**: Masters e clientes agora usam as mesmas rotas (/dashboard, /selecoes, /vagas, etc.)
+  - **Manutenção reduzida**: Não é mais necessário duplicar alterações em URLs separadas para cada tipo de usuário
+  - **Controle de acesso baseado em role**: DashboardPage.tsx renderiza MasterDashboard ou ClientDashboard automaticamente
+  - **Rotas duplicadas removidas**: Eliminadas /client-dashboard, /client-selections em favor de rotas unificadas
+  - **Redirecionamento inteligente**: Login redireciona todos os usuários autenticados para /dashboard
+  - **Arquitetura simplificada**: Uma única rota com controle de acesso interno, reduzindo complexidade de manutenção
+
 - June 17, 2025: 🔐 AUTENTICAÇÃO DE USUÁRIOS CLIENTE CORRIGIDA - Problema de login resolvido completamente
   - **Vulnerabilidade de criptografia corrigida**: Endpoint PATCH agora criptografa senhas com bcrypt antes de salvar
   - **Login de cliente funcionando**: Daniel Braga (danielmoreirabraga@gmail.com) pode fazer login com senha padrão

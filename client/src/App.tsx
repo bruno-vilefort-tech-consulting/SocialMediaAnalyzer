@@ -12,6 +12,7 @@ import MasterDashboard from "@/pages/MasterDashboard";
 import ClientsPage from "@/pages/ClientsPage";
 import ApiConfigPage from "@/pages/ApiConfigPage";
 import ClientDashboard from "@/pages/ClientDashboard";
+import DashboardPage from "@/pages/DashboardPage";
 import JobsPage from "@/pages/JobsPage";
 import CadastroVagasPage from "@/pages/CadastroVagasPage";
 import CandidatesPage from "@/pages/CandidatesPage";
@@ -70,11 +71,11 @@ function Router() {
       <Route path="/natural-interview/:token" component={NaturalInterviewPage} />
       <Route path="/demo-entrevista" component={InterviewDemoPage} />
 
-      {/* Master Routes */}
+      {/* Unified Dashboard - Shows appropriate content based on user role */}
       <Route path="/dashboard">
-        <PrivateRoute allowedRoles={['master']}>
+        <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
-            <MasterDashboard />
+            <DashboardPage />
           </Layout>
         </PrivateRoute>
       </Route>
@@ -147,17 +148,6 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      {/* Client Routes */}
-      <Route path="/client-dashboard">
-        <PrivateRoute allowedRoles={['client']}>
-          <Layout>
-            <ClientDashboard />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
-
-
       <Route path="/candidates">
         <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
@@ -166,16 +156,8 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/client-selections">
-        <PrivateRoute allowedRoles={['client']}>
-          <Layout>
-            <SelectionsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
       <Route path="/results">
-        <PrivateRoute allowedRoles={['client']}>
+        <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
             <ResultsPage />
           </Layout>
@@ -219,12 +201,9 @@ function RedirectToDashboard() {
     return <Redirect to="/login" />;
   }
 
-  if (user?.role === 'master') {
-    console.log('📍 Master user, redirecting to /dashboard');
+  if (user?.role === 'master' || user?.role === 'client') {
+    console.log('📍 User authenticated, redirecting to /dashboard');
     return <Redirect to="/dashboard" />;
-  } else if (user?.role === 'client') {
-    console.log('📍 Client user, redirecting to /client-dashboard');
-    return <Redirect to="/client-dashboard" />;
   }
 
   console.log('📍 Unknown role, redirecting to login');
