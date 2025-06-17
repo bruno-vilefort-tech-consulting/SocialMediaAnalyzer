@@ -2449,6 +2449,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint de debug para corrigir senha do usuário
+  app.post("/api/auth/fix-user-password", async (req, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      
+      if (!email || !newPassword) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'Email e nova senha são obrigatórios' 
+        });
+      }
+      
+      console.log(`🔧 Corrigindo senha para usuário: ${email}`);
+      
+      // Buscar usuário no Firebase
+      const usersSnapshot = await storage.firestore.collection('users')
+        .where('email', '==', email)
+        .get();
+      
+      if (usersSnapshot.empty) {
+        return res.status(404).json({ 
+          success: false,
+          error: 'Usuário não encontrado' 
+        });
+      }
+      
+      const userDoc = usersSnapshot.docs[0];
+      const userData = userDoc.data();
+      
+      console.log(`👤 Usuário encontrado: ${userData.name} (${userData.role})`);
+      
+      // Gerar nova senha hash
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Atualizar senha no Firebase
+      await userDoc.ref.update({ 
+        password: hashedPassword 
+      });
+      
+      console.log(`✅ Senha atualizada para usuário: ${email}`);
+      
+      // Testar nova senha
+      const passwordTest = await bcrypt.compare(newPassword, hashedPassword);
+      
+      res.json({ 
+        success: true,
+        message: 'Senha corrigida com sucesso',
+        user: {
+          id: userDoc.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          clientId: userData.clientId
+        },
+        passwordTest: passwordTest
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao corrigir senha:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Erro interno ao corrigir senha',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // WhatsApp Manager endpoints - New system with client selection
   app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
