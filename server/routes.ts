@@ -163,6 +163,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } else {
+        // Verificar se usuário é do tipo client e tem clientId
+        if (user.role === 'client' && user.clientId) {
+          console.log("👤 Usuário cliente com clientId:", user.clientId);
+          clientId = user.clientId;
+        }
+        
         // Verificar senha do usuário regular
         const passwordMatch = await bcrypt.compare(password, user.password);
         console.log("🔑 Senha do usuário confere:", passwordMatch);
@@ -335,6 +341,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(config);
     } catch (error) {
       res.status(400).json({ message: 'Failed to save config' });
+    }
+  });
+
+  // Endpoint para corrigir clientId do Daniel Braga
+  app.post("/api/fix-daniel-clientid", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔧 Corrigindo clientId do usuário Daniel Braga...');
+      
+      const danielUserId = '1750131049173';
+      const correctClientId = 1749849987543; // Grupo Maximuns
+      
+      await storage.updateUser(danielUserId, { clientId: correctClientId });
+      
+      console.log('✅ ClientId do Daniel atualizado para:', correctClientId);
+      res.json({ success: true, message: 'ClientId atualizado com sucesso' });
+    } catch (error) {
+      console.error('❌ Erro ao corrigir clientId:', error);
+      res.status(500).json({ message: 'Falha ao corrigir clientId' });
     }
   });
 
