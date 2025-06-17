@@ -1224,47 +1224,7 @@ export class FirebaseStorage implements IStorage {
       .filter(candidate => candidateIds.includes(candidate.id));
   }
 
-  // Método para deletar coleção clientUsers completamente
-  async deleteClientUsersCollection(): Promise<{ deletedCount: number }> {
-    try {
-      console.log('🗑️ Iniciando deleção da coleção clientUsers...');
-      
-      const collectionRef = collection(firebaseDb, 'clientUsers');
-      const snapshot = await getDocs(collectionRef);
-      
-      console.log(`📊 Documentos encontrados: ${snapshot.size}`);
-      
-      if (snapshot.empty) {
-        console.log('✅ Coleção clientUsers já está vazia');
-        return { deletedCount: 0 };
-      }
-      
-      // Deletar em lotes
-      const batch = writeBatch(firebaseDb);
-      let count = 0;
-      
-      snapshot.forEach((docSnapshot) => {
-        console.log(`- Deletando documento: ${docSnapshot.id}`);
-        batch.delete(docSnapshot.ref);
-        count++;
-      });
-      
-      if (count > 0) {
-        await batch.commit();
-        console.log(`🎉 ${count} documentos deletados com sucesso!`);
-      }
-      
-      // Verificação final
-      const finalCheck = await getDocs(collectionRef);
-      console.log(`🔍 Verificação final: ${finalCheck.size} documentos restantes`);
-      
-      return { deletedCount: count };
-      
-    } catch (error: any) {
-      console.error('❌ Erro ao deletar coleção clientUsers:', error.message);
-      throw error;
-    }
-  }
+
 }
 
 export const storage = new FirebaseStorage();

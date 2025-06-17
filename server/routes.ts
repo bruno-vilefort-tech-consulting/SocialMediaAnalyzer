@@ -2702,24 +2702,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint temporário para deletar coleção clientUsers
-  app.delete("/api/delete-clientusers-collection", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🗑️ Executando deleção da coleção clientUsers...');
-      const result = await storage.deleteClientUsersCollection();
-      res.json({ 
-        success: true, 
-        message: 'Coleção clientUsers deletada com sucesso',
-        deletedCount: result.deletedCount
-      });
-    } catch (error: any) {
-      console.error('❌ Erro ao deletar coleção clientUsers:', error.message);
-      res.status(500).json({ 
-        error: 'Erro ao deletar coleção clientUsers', 
-        details: error.message 
-      });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
