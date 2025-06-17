@@ -1851,7 +1851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Módulo Isolado
+  // Client WhatsApp endpoints - Sistema Baileys do backup
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -1860,22 +1860,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📱 Buscando status WhatsApp para cliente ${user.clientId}...`);
-      console.log(`📱 Buscando status WPPConnect para cliente ${user.clientId}...`);
       
-      const status = await wppConnectClientModule.getClientStatus(user.clientId.toString());
+      // Buscar configuração do Firebase
+      const apiConfig = await storage.getApiConfig('client', user.clientId.toString());
       
-      console.log(`📱 [DEBUG] Status retornado:`, {
-        isConnected: status.isConnected,
-        hasQrCode: !!status.qrCode,
-        qrCodeLength: status.qrCode ? status.qrCode.length : 0,
-        phoneNumber: status.phoneNumber
+      console.log(`📱 [DEBUG] Config encontrada:`, {
+        exists: !!apiConfig,
+        isConnected: apiConfig?.whatsappQrConnected,
+        hasQrCode: !!apiConfig?.whatsappQrCode,
+        qrCodeLength: apiConfig?.whatsappQrCode ? apiConfig.whatsappQrCode.length : 0,
+        phoneNumber: apiConfig?.whatsappQrPhoneNumber
       });
       
       res.json({
-        isConnected: status.isConnected,
-        phone: status.phoneNumber,
-        lastConnection: status.lastConnection,
-        qrCode: status.qrCode
+        isConnected: apiConfig?.whatsappQrConnected || false,
+        phone: apiConfig?.whatsappQrPhoneNumber || null,
+        lastConnection: apiConfig?.whatsappQrLastConnection || null,
+        qrCode: apiConfig?.whatsappQrCode || null
       });
     } catch (error) {
       console.error('Client WhatsApp status error:', error);

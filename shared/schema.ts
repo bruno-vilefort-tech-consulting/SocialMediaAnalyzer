@@ -168,6 +168,7 @@ export const apiConfigs = pgTable("api_configs", {
   entityId: text("entity_id").notNull(), // ID do master ou cliente
   openaiVoice: text("openai_voice").default("nova"), // Voz TTS
   whatsappQrConnected: boolean("whatsapp_qr_connected").default(false),
+  whatsappQrCode: text("whatsapp_qr_code"), // QR Code para conexão WhatsApp
   whatsappQrPhoneNumber: text("whatsapp_qr_phone_number"),
   whatsappQrLastConnection: timestamp("whatsapp_qr_last_connection"),
   firebaseProjectId: text("firebase_project_id"),

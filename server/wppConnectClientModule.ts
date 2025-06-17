@@ -380,15 +380,26 @@ export class WppConnectClientModule {
       // Primeiro verificar se há sessão ativa na memória
       const session = this.sessions.get(clientId);
       if (session) {
+        console.log(`📱 [DEBUG] Sessão encontrada na memória para cliente ${clientId}:`, {
+          isConnected: session.config.isConnected,
+          hasQrCode: !!session.config.qrCode,
+          qrCodeLength: session.config.qrCode ? session.config.qrCode.length : 0
+        });
         return session.config;
       }
 
       // Buscar no Firebase
       const apiConfig = await storage.getApiConfig('client', clientId);
+      console.log(`📱 [DEBUG] Config do Firebase para cliente ${clientId}:`, {
+        exists: !!apiConfig,
+        isConnected: apiConfig?.whatsappQrConnected,
+        hasQrCode: !!apiConfig?.whatsappQrCode,
+        qrCodeLength: apiConfig?.whatsappQrCode ? apiConfig.whatsappQrCode.length : 0
+      });
       
       return {
         isConnected: apiConfig?.whatsappQrConnected || false,
-        qrCode: apiConfig?.whatsappQrQrCode || null,
+        qrCode: apiConfig?.whatsappQrCode || null,
         phoneNumber: apiConfig?.whatsappQrPhoneNumber || null,
         lastConnection: apiConfig?.whatsappQrLastConnection || null,
         clientId
@@ -418,6 +429,7 @@ export class WppConnectClientModule {
       const configData = {
         ...existingConfig,
         whatsappQrConnected: updates.isConnected || false,
+        whatsappQrCode: updates.qrCode || null,
         whatsappQrPhoneNumber: updates.phoneNumber || null,
         whatsappQrLastConnection: updates.lastConnection || null
       };
