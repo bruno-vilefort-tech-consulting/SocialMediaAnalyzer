@@ -1,76 +1,30 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDGpAHia_wEmrhnmYjrPJmMIIQmod_2tHs",
-  authDomain: "replit-interview-system.firebaseapp.com",
-  projectId: "replit-interview-system",
-  storageBucket: "replit-interview-system.firebasestorage.app",
-  messagingSenderId: "1092163565832",
-  appId: "1:1092163565832:web:b6902ba81c50eff0b98800"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Script para verificar usuários no Firebase via servidor
+import { storage } from './server/storage.js';
 
 async function verificarUsuarios() {
   try {
-    console.log("\n🔍 VERIFICANDO USUÁRIOS NO FIREBASE:");
-    console.log("========================================");
+    console.log("\n🔍 VERIFICANDO USUARIOS NO FIREBASE:");
+    console.log("===================================");
 
-    // 1. Buscar todos os usuários
-    const usersSnapshot = await getDocs(collection(db, "users"));
+    // Buscar todos os usuários
+    const allUsers = await storage.getAllUsers();
+    console.log(`📊 Total de usuários no sistema: ${allUsers.length}`);
     
-    if (usersSnapshot.empty) {
-      console.log("❌ Nenhum usuário encontrado na coleção 'users'");
-      return;
-    }
-
-    console.log(`✅ ${usersSnapshot.size} usuário(s) encontrado(s):\n`);
-    
-    usersSnapshot.docs.forEach((doc, index) => {
-      const user = doc.data();
-      console.log(`📄 Usuário ${index + 1}:`);
-      console.log(`   🆔 ID: ${doc.id}`);
-      console.log(`   👤 Nome: ${user.name}`);
-      console.log(`   📧 Email: ${user.email}`);
-      console.log(`   🏷️ Role: ${user.role}`);
-      console.log(`   🏢 Cliente ID: ${user.clientId || 'N/A'}`);
-      console.log(`   📅 Criado em: ${user.createdAt?.toDate?.() || user.createdAt || 'N/A'}`);
-      console.log("");
+    allUsers.forEach((user, index) => {
+      console.log(`   ${index + 1}. ${user.name} (${user.email})`);
+      console.log(`      Role: ${user.role}`);
+      console.log(`      ClientId: ${user.clientId || 'UNDEFINED'}`);
+      console.log(`      ID: ${user.id}`);
+      console.log('');
     });
 
-    // 2. Verificar especificamente usuários de clientes
-    console.log("\n🏢 VERIFICANDO USUÁRIOS POR TIPO:");
-    console.log("===================================");
+    // Buscar usuários de cliente especificamente
+    console.log("\n🔍 BUSCANDO USUARIOS DE CLIENTE (clientId: 1749849987543):");
+    const clientUsers = await storage.getClientUsers(1749849987543);
+    console.log(`📊 Usuários do cliente encontrados: ${clientUsers.length}`);
     
-    const masterQuery = query(collection(db, "users"), where("role", "==", "master"));
-    const clientQuery = query(collection(db, "users"), where("role", "==", "client"));
-    
-    const masterSnapshot = await getDocs(masterQuery);
-    const clientSnapshot = await getDocs(clientQuery);
-    
-    console.log(`👑 Masters: ${masterSnapshot.size}`);
-    console.log(`🏢 Clientes: ${clientSnapshot.size}`);
-    
-    if (clientSnapshot.size > 0) {
-      console.log("\n📋 USUÁRIOS CLIENTES DETALHADOS:");
-      clientSnapshot.docs.forEach((doc, index) => {
-        const user = doc.data();
-        console.log(`   ${index + 1}. ${user.name} (${user.email}) - Cliente ID: ${user.clientId}`);
-      });
-    }
-
-    // 3. Verificar clientes existentes
-    console.log("\n🏢 VERIFICANDO CLIENTES:");
-    console.log("========================");
-    
-    const clientsSnapshot = await getDocs(collection(db, "clients"));
-    console.log(`✅ ${clientsSnapshot.size} cliente(s) encontrado(s):\n`);
-    
-    clientsSnapshot.docs.forEach((doc, index) => {
-      const client = doc.data();
-      console.log(`   ${index + 1}. ${client.companyName} (ID: ${doc.id})`);
+    clientUsers.forEach((user, index) => {
+      console.log(`   ${index + 1}. ${user.name} (${user.email}) - ClientId: ${user.clientId}`);
     });
 
   } catch (error) {
