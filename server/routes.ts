@@ -1929,6 +1929,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoints WhatsApp específicos para Clientes
+  app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req, res) => {
+    try {
+      const clientId = (req as AuthRequest).user.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: 'ClientId não encontrado no token' });
+      }
+
+      // Busca conexão específica do cliente
+      const apiConfig = await storage.getApiConfig('client', clientId.toString());
+      
+      const whatsappStatus = {
+        isConnected: apiConfig?.whatsappQrConnected || false,
+        phone: apiConfig?.whatsappQrPhoneNumber || null,
+        lastConnection: apiConfig?.whatsappQrLastConnection || null,
+        qrCode: null // QR Code será gerado quando necessário
+      };
+
+      res.json(whatsappStatus);
+    } catch (error) {
+      console.error('Erro ao buscar status WhatsApp do cliente:', error);
+      res.status(500).json({ error: 'Falha ao buscar status' });
+    }
+  });
+
+  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
+    try {
+      const clientId = (req as AuthRequest).user.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: 'ClientId não encontrado no token' });
+      }
+
+      // Conectar WhatsApp específico para este cliente
+      const { whatsappQrService } = await import('./whatsappQrService');
+      await whatsappQrService.initializeConnection(clientId.toString());
+      
+      res.json({ success: true, message: 'Iniciando conexão WhatsApp para o cliente' });
+    } catch (error) {
+      console.error('Erro ao conectar WhatsApp do cliente:', error);
+      res.status(500).json({ error: 'Falha ao conectar WhatsApp' });
+    }
+  });
+
+  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req, res) => {
+    try {
+      const clientId = (req as AuthRequest).user.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: 'ClientId não encontrado no token' });
+      }
+
+      // Desconectar WhatsApp específico deste cliente
+      const { whatsappQrService } = await import('./whatsappQrService');
+      await whatsappQrService.disconnect();
+      
+      // Atualizar status no banco
+      await storage.updateApiConfig('client', clientId.toString(), {
+        whatsappQrConnected: false,
+        whatsappQrPhoneNumber: null,
+        whatsappQrLastConnection: new Date()
+      });
+
+      res.json({ success: true, message: 'WhatsApp desconectado com sucesso' });
+    } catch (error) {
+      console.error('Erro ao desconectar WhatsApp do cliente:', error);
+      res.status(500).json({ error: 'Falha ao desconectar WhatsApp' });
+    }
+  });
+
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req, res) => {
+    try {
+      const clientId = (req as AuthRequest).user.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: 'ClientId não encontrado no token' });
+      }
+
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
+      }
+
+      // Usar WhatsApp do cliente específico
+      const { whatsappQrService } = await import('./whatsappQrService');
+      const success = await whatsappQrService.sendMessage(phoneNumber, message);
+      
+      if (success) {
+        res.json({ success: true, message: 'Mensagem enviada com sucesso pelo WhatsApp do cliente' });
+      } else {
+        res.status(500).json({ error: 'Falha ao enviar mensagem' });
+      }
+    } catch (error) {
+      console.error('Erro ao testar WhatsApp do cliente:', error);
+      res.status(500).json({ error: 'Falha ao enviar mensagem de teste' });
+    }
+  });
+
   app.post("/api/whatsapp/test/:connectionId", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { connectionId } = req.params;

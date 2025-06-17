@@ -88,9 +88,10 @@ export default function ApiConfigPage() {
     enabled: !isMaster && !!user?.clientId,
   });
 
-  // Status WhatsApp QR - Reduzindo polling para evitar refresh constante
+  // Status WhatsApp QR - Usa endpoint específico baseado no tipo de usuário
+  const whatsappEndpoint = isMaster ? "/api/whatsapp-qr/status" : "/api/client/whatsapp/status";
   const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
-    queryKey: ["/api/whatsapp-qr/status"],
+    queryKey: [whatsappEndpoint],
     refetchInterval: 15000, // Reduzido para 15 segundos para diminuir refresh
     refetchOnWindowFocus: false, // Desabilitado para evitar refresh desnecessário
     refetchOnMount: true,
@@ -217,11 +218,15 @@ export default function ApiConfigPage() {
     },
   });
 
-  // Mutations para WhatsApp QR
+  // Mutations para WhatsApp QR - Usa endpoints específicos baseado no tipo de usuário
+  const connectEndpoint = isMaster ? "/api/whatsapp-qr/reconnect" : "/api/client/whatsapp/connect";
+  const disconnectEndpoint = isMaster ? "/api/whatsapp-qr/disconnect" : "/api/client/whatsapp/disconnect";
+  const testEndpoint = isMaster ? "/api/whatsapp-qr/test" : "/api/client/whatsapp/test";
+
   const connectWhatsAppMutation = useMutation({
-    mutationFn: () => apiRequest("/api/whatsapp-qr/reconnect", "POST"),
+    mutationFn: () => apiRequest(connectEndpoint, "POST"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+      queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
       toast({
         title: "Gerando QR Code...",
         description: "Aguarde alguns segundos para o QR Code aparecer",
@@ -229,7 +234,7 @@ export default function ApiConfigPage() {
       
       // Atualiza status após um delay para permitir geração do QR
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+        queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
       }, 3000);
     },
     onError: () => {
@@ -242,9 +247,9 @@ export default function ApiConfigPage() {
   });
 
   const disconnectWhatsAppMutation = useMutation({
-    mutationFn: () => apiRequest("/api/whatsapp-qr/disconnect", "POST"),
+    mutationFn: () => apiRequest(disconnectEndpoint, "POST"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp-qr/status"] });
+      queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
       toast({
         title: "WhatsApp desconectado",
         description: "Sessão encerrada com sucesso",
@@ -262,7 +267,7 @@ export default function ApiConfigPage() {
   const testWhatsAppMutation = useMutation({
     mutationFn: (data: { phoneNumber: string; message: string }) => {
       console.log('🧪 Iniciando teste WhatsApp com dados:', data);
-      return apiRequest("/api/whatsapp-qr/test", "POST", data);
+      return apiRequest(testEndpoint, "POST", data);
     },
     onSuccess: (response) => {
       console.log('✅ Teste WhatsApp bem-sucedido:', response);
@@ -912,6 +917,193 @@ export default function ApiConfigPage() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Configurações WhatsApp para Cliente */}
+      {!isMaster && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Configuração WhatsApp
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure sua conexão WhatsApp para envio de entrevistas automáticas
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status da Conexão WhatsApp */}
+            <div className="space-y-4">
+              {whatsappStatus?.isConnected ? (
+                <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-green-900 dark:text-green-100">WhatsApp Conectado</h4>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        {whatsappStatus.phone ? `Telefone: ${whatsappStatus.phone}` : 'Conexão ativa'}
+                      </p>
+                      {whatsappStatus.lastConnection && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          Última conexão: {new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => disconnectWhatsAppMutation.mutate()}
+                    disabled={disconnectWhatsAppMutation.isPending}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    {disconnectWhatsAppMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <WifiOff className="h-4 w-4 mr-2" />
+                    )}
+                    Desconectar
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-yellow-900 dark:text-yellow-100">WhatsApp Desconectado</h4>
+                        <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                          Conecte seu WhatsApp para enviar entrevistas automáticas
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => connectWhatsAppMutation.mutate()}
+                      disabled={connectWhatsAppMutation.isPending}
+                      variant="outline"
+                      size="sm"
+                      className="border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                    >
+                      {connectWhatsAppMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Wifi className="h-4 w-4 mr-2" />
+                      )}
+                      Conectar
+                    </Button>
+                  </div>
+
+                  {/* QR Code para Conexão */}
+                  {whatsappStatus?.qrCode && (
+                    <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="text-center">
+                        <QrCode className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                        <h5 className="font-medium text-blue-900 dark:text-blue-100">
+                          Escaneie o QR Code
+                        </h5>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                          Use o WhatsApp do seu celular para escanear este código
+                        </p>
+                      </div>
+                      
+                      <div className="bg-white p-4 rounded-lg border">
+                        <img 
+                          src={whatsappStatus.qrCode} 
+                          alt="QR Code WhatsApp" 
+                          className="w-48 h-48 mx-auto"
+                        />
+                      </div>
+                      
+                      <div className="text-center">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+                          1. Abra o WhatsApp no seu celular<br/>
+                          2. Toque em ⋮ (menu) ou em Configurações<br/>
+                          3. Selecione "Dispositivos conectados"<br/>
+                          4. Toque em "Conectar um dispositivo"<br/>
+                          5. Escaneie este código
+                        </p>
+                        
+                        <Button
+                          onClick={() => refetchWhatsAppStatus()}
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Atualizar Status
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Teste de Envio WhatsApp (apenas quando conectado) */}
+            {whatsappStatus?.isConnected && (
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Teste de Envio
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="testPhone">Número de Teste</Label>
+                    <Input
+                      id="testPhone"
+                      placeholder="5511999999999"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="testMessage">Mensagem de Teste</Label>
+                    <Input
+                      id="testMessage"
+                      placeholder="Mensagem de teste..."
+                      value={testMessage}
+                      onChange={(e) => setTestMessage(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={() => {
+                    if (!testPhone.trim() || !testMessage.trim()) {
+                      toast({
+                        title: "Campos obrigatórios",
+                        description: "Preencha o número e a mensagem de teste",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    testWhatsAppMutation.mutate({
+                      phoneNumber: testPhone,
+                      message: testMessage
+                    });
+                  }}
+                  disabled={testWhatsAppMutation.isPending}
+                  className="w-full md:w-auto"
+                >
+                  {testWhatsAppMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar Teste
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
