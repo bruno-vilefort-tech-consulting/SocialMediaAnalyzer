@@ -266,6 +266,24 @@ export class WhatsAppManager {
     }
   }
 
+  private formatBrazilianPhoneNumber(phoneNumber: string): string {
+    // Remove todos os caracteres não numéricos
+    let cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // Se já tem código do país, usa como está
+    if (cleanNumber.startsWith('55') && cleanNumber.length >= 12) {
+      return cleanNumber;
+    }
+    
+    // Se não tem código do país, adiciona +55
+    if (cleanNumber.length === 11 || cleanNumber.length === 10) {
+      return `55${cleanNumber}`;
+    }
+    
+    // Se já tem 55 mas não está completo, retorna como está
+    return cleanNumber;
+  }
+
   async sendMessage(connectionId: string, phoneNumber: string, message: string): Promise<boolean> {
     const connection = this.activeConnections.get(connectionId);
     
@@ -275,12 +293,16 @@ export class WhatsAppManager {
     }
 
     try {
-      const formattedNumber = phoneNumber.includes('@s.whatsapp.net') 
-        ? phoneNumber 
-        : `${phoneNumber}@s.whatsapp.net`;
+      // Formatar número brasileiro com código do país
+      const formattedPhoneNumber = this.formatBrazilianPhoneNumber(phoneNumber);
+      
+      const whatsappNumber = formattedPhoneNumber.includes('@s.whatsapp.net') 
+        ? formattedPhoneNumber 
+        : `${formattedPhoneNumber}@s.whatsapp.net`;
 
-      await connection.socket.sendMessage(formattedNumber, { text: message });
-      console.log(`✅ Mensagem enviada via ${connection.clientName} para ${phoneNumber}`);
+      console.log(`📱 Enviando mensagem para: ${phoneNumber} → ${formattedPhoneNumber}`);
+      await connection.socket.sendMessage(whatsappNumber, { text: message });
+      console.log(`✅ Mensagem enviada via ${connection.clientName} para ${formattedPhoneNumber}`);
       return true;
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem via ${connection.clientName}:`, error);
