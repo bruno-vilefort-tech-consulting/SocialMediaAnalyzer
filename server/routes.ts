@@ -13,7 +13,7 @@ import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
 import { firebaseDb } from "./db";
-import { doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
 const upload = multer({ 
@@ -2463,19 +2463,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🔧 Corrigindo senha para usuário: ${email}`);
       
-      // Buscar usuário no Firebase
-      const usersSnapshot = await storage.firestore.collection('users')
-        .where('email', '==', email)
-        .get();
+      // Buscar usuário diretamente no Firebase
+      const usersQuery = query(collection(firebaseDb, "users"), where("email", "==", email));
+      const querySnapshot = await getDocs(usersQuery);
       
-      if (usersSnapshot.empty) {
+      if (querySnapshot.empty) {
         return res.status(404).json({ 
           success: false,
           error: 'Usuário não encontrado' 
         });
       }
       
-      const userDoc = usersSnapshot.docs[0];
+      const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
       
       console.log(`👤 Usuário encontrado: ${userData.name} (${userData.role})`);
@@ -2484,7 +2483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       
       // Atualizar senha no Firebase
-      await userDoc.ref.update({ 
+      await updateDoc(userDoc.ref, { 
         password: hashedPassword 
       });
       
