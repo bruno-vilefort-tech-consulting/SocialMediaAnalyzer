@@ -246,7 +246,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractStart: req.body.contractStart ? new Date(req.body.contractStart) : new Date(),
         additionalLimitExpiry: req.body.additionalLimitExpiry ? new Date(req.body.additionalLimitExpiry) : null,
         contractEnd: req.body.contractEnd ? new Date(req.body.contractEnd) : null,
+        additionalLimit: req.body.additionalLimit || null,
       };
+      
+      // Remover campos undefined e isIndefiniteContract (não faz parte do schema)
+      delete processedData.isIndefiniteContract;
       
       console.log("Dados processados:", processedData);
       
@@ -258,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Object.entries(clientData).filter(([_, v]) => v !== undefined)
       );
       
-      cleanedData.password = await bcrypt.hash(cleanedData.password, 10);
+      cleanedData.password = await bcrypt.hash(cleanedData.password as string, 10);
       console.log("Senha hasheada com sucesso");
       
       const client = await storage.createClient(cleanedData);
