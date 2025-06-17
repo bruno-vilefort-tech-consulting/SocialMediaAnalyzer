@@ -686,6 +686,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Dados recebidos para lista de candidatos:', req.body);
       console.log('Usuário:', req.user);
       
+      // Cliente só pode criar listas para seu próprio clientId
+      if (req.user!.role === 'client' && req.body.clientId && req.body.clientId !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou criar lista para clientId ${req.body.clientId}, mas pertence ao clientId ${req.user!.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only create candidate lists for your own client' });
+      }
+      
       const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
       const listData = insertCandidateListSchema.parse({ 
         ...req.body, 
@@ -807,6 +813,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ 
           message: 'Campos obrigatórios: name, email, whatsapp, listId, clientId' 
         });
+      }
+      
+      // Cliente só pode criar candidatos para seu próprio clientId
+      if (req.user!.role === 'client' && parseInt(clientId) !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou criar candidato para clientId ${clientId}, mas pertence ao clientId ${req.user!.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only create candidates for your own client' });
       }
       
       // Criar candidato no Firebase
@@ -1041,6 +1053,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/selections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       console.log('Received selection data:', req.body);
+      
+      // Cliente só pode criar seleções para seu próprio clientId
+      if (req.user!.role === 'client' && req.body.clientId && req.body.clientId !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou criar seleção para clientId ${req.body.clientId}, mas pertence ao clientId ${req.user!.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only create selections for your own client' });
+      }
       
       const selectionData = {
         ...req.body,
@@ -1999,6 +2017,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/selections/:id/results", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const selectionId = parseInt(req.params.id);
+      
+      // Verificar se a seleção existe e se o usuário tem permissão para acessá-la
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+      
+      // Cliente só pode ver resultados de suas próprias seleções
+      if (req.user!.role === 'client' && selection.clientId !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou acessar seleção ${selectionId} do cliente ${selection.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only view results from your own selections' });
+      }
+      
+      console.log(`✅ Usuário ${req.user!.email} (role: ${req.user!.role}) acessando resultados da seleção ${selectionId}`);
+      
       const interviews = await storage.getInterviewsBySelectionId(selectionId);
       
       const results = [];
