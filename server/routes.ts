@@ -1826,6 +1826,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint de debug temporário para testar WPPConnect
+  app.post("/api/debug/wppconnect/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      console.log(`🐛 [DEBUG] Testando WPPConnect para cliente ${clientId}...`);
+      
+      const result = await wppConnectClientModule.connectClient(clientId);
+      
+      console.log(`🐛 [DEBUG] Resultado:`, result);
+      
+      res.json({
+        success: result.success,
+        message: result.message,
+        qrCode: result.qrCode ? 'QR Code gerado' : null,
+        clientId
+      });
+    } catch (error) {
+      console.error(`🐛 [DEBUG] Erro no teste:`, error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        stack: error instanceof Error ? error.stack : null
+      });
+    }
+  });
+
   // Client WhatsApp endpoints - Módulo Isolado
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
