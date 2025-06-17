@@ -164,9 +164,7 @@ function Router() {
 
       {/* Default redirects */}
       <Route path="/">
-        <PrivateRoute>
-          <RedirectToDashboard />
-        </PrivateRoute>
+        <RedirectToDashboard />
       </Route>
 
       {/* Fallback */}
@@ -176,7 +174,19 @@ function Router() {
 }
 
 function RedirectToDashboard() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
 
   if (user?.role === 'master') {
     return <Redirect to="/dashboard" />;
