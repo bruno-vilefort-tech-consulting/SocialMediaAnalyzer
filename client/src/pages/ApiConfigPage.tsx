@@ -311,18 +311,20 @@ export default function ApiConfigPage() {
 
 
   // Estados para WhatsApp do próprio cliente
-  const [clientWhatsappStatus, setClientWhatsappStatus] = useState<WhatsAppStatus>({ 
-    isConnected: false, 
-    qrCode: null 
-  });
   const [clientTestPhone, setClientTestPhone] = useState("");
   const [clientTestMessage, setClientTestMessage] = useState("Olá! Esta é uma mensagem de teste do sistema de entrevistas.");
 
-  // Query para buscar status WhatsApp do cliente
+  // Query para buscar API Config do cliente (para voz)
   const { data: clientWhatsappConfig, refetch: refetchClientWhatsapp } = useQuery({
     queryKey: [`/api/api-config/client/${user?.clientId}`],
     enabled: user?.role === 'client' && !!user?.clientId,
-    refetchInterval: 15000, // Verifica a cada 15 segundos
+  });
+
+  // Query separada para buscar status WhatsApp do cliente (com QR Code)
+  const { data: clientWhatsappStatus, refetch: refetchClientWhatsAppStatus } = useQuery({
+    queryKey: [`/api/client/whatsapp/status`],
+    enabled: user?.role === 'client',
+    refetchInterval: 5000, // Verifica a cada 5 segundos quando desconectado
   });
 
   // Mutation para conectar WhatsApp do cliente
@@ -333,8 +335,9 @@ export default function ApiConfigPage() {
         title: "Conectando WhatsApp",
         description: "QR Code sendo gerado... Aguarde alguns segundos"
       });
-      setTimeout(() => refetchClientWhatsapp(), 2000);
-      setTimeout(() => refetchClientWhatsapp(), 5000);
+      // Revalidar status após delay para pegar QR Code
+      setTimeout(() => refetchClientWhatsAppStatus(), 2000);
+      setTimeout(() => refetchClientWhatsAppStatus(), 5000);
     },
     onError: (error: any) => {
       toast({
@@ -353,7 +356,7 @@ export default function ApiConfigPage() {
         title: "WhatsApp desconectado",
         description: "Conexão removida com sucesso"
       });
-      refetchClientWhatsapp();
+      refetchWhatsAppStatus();
     },
     onError: (error: any) => {
       toast({

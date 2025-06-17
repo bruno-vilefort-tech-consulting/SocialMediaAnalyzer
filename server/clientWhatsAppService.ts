@@ -268,7 +268,9 @@ export class ClientWhatsAppService {
       
       if (!apiConfig) {
         // Criar configuração se não existir
-        await storage.upsertApiConfig('client', clientId, {
+        await storage.upsertApiConfig({
+          entityType: 'client',
+          entityId: clientId,
           openaiVoice: 'nova',
           whatsappQrConnected: false,
           whatsappQrPhoneNumber: null,
@@ -287,7 +289,9 @@ export class ClientWhatsAppService {
       }
 
       // Atualizar configuração usando upsertApiConfig
-      await storage.upsertApiConfig('client', clientId, {
+      await storage.upsertApiConfig({
+        entityType: 'client',
+        entityId: clientId,
         whatsappQrConnected: updates.isConnected ?? apiConfig.whatsappQrConnected,
         whatsappQrPhoneNumber: updates.phoneNumber ?? apiConfig.whatsappQrPhoneNumber,
         whatsappQrLastConnection: updates.lastConnection ?? apiConfig.whatsappQrLastConnection,
