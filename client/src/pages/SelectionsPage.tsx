@@ -629,6 +629,7 @@ export default function SelectionsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Lista de Candidatos</TableHead>
                   <TableHead>Vaga</TableHead>
+                  {user?.role === 'master' && <TableHead>Cliente</TableHead>}
                   <TableHead>Envio</TableHead>
                   <TableHead>Data de Criação</TableHead>
                   <TableHead>Ações</TableHead>
@@ -659,6 +660,11 @@ export default function SelectionsPage() {
                     <TableCell>
                       {filteredJobs.find(job => job.id === selection.jobId)?.nomeVaga || 'Vaga não encontrada'}
                     </TableCell>
+                    {user?.role === 'master' && (
+                      <TableCell>
+                        {clients.find(client => client.id === selection.clientId)?.companyName || 'Cliente não encontrado'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="space-y-2">
                         <div className="flex gap-1 mb-1">
