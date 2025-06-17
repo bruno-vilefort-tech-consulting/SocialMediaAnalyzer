@@ -59,6 +59,15 @@ app.use((req, res, next) => {
   const { initializeFirebaseData } = await import("./initializeFirebaseData");
   await initializeFirebaseData();
 
+  // Initialize WhatsApp service for message sending
+  const { whatsappQRService } = await import("./whatsappQRService");
+  try {
+    await whatsappQRService.ensureInitialized();
+    console.log('✅ WhatsApp QR Service inicializado no startup');
+  } catch (error) {
+    console.log('⚠️ WhatsApp QR Service não pôde ser inicializado no startup:', error);
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
