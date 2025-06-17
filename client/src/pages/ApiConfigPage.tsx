@@ -246,8 +246,13 @@ export default function ApiConfigPage() {
   const testEndpoint = isMaster ? "/api/whatsapp-qr/test" : "/api/client/whatsapp/test";
 
   const connectWhatsAppMutation = useMutation({
-    mutationFn: () => apiRequest(connectEndpoint, "POST"),
-    onSuccess: () => {
+    mutationFn: () => {
+      console.log(`🔗 [DEBUG] Chamando endpoint de conexão: ${connectEndpoint}`);
+      console.log(`🔗 [DEBUG] isMaster: ${isMaster}, user role: ${user?.role}`);
+      return apiRequest(connectEndpoint, "POST");
+    },
+    onSuccess: (response) => {
+      console.log(`✅ [DEBUG] Conexão bem-sucedida:`, response);
       queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
       toast({
         title: "Gerando QR Code...",
@@ -259,10 +264,11 @@ export default function ApiConfigPage() {
         queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
       }, 3000);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error(`❌ [DEBUG] Erro na conexão:`, error);
       toast({
         title: "Erro ao conectar",
-        description: "Falha ao inicializar conexão WhatsApp",
+        description: error.message || "Falha ao inicializar conexão WhatsApp",
         variant: "destructive",
       });
     },
