@@ -236,7 +236,9 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 
-export type Job = typeof jobs.$inferSelect;
+export type Job = typeof jobs.$inferSelect & {
+  perguntas?: any[];
+};
 export type InsertJob = z.infer<typeof insertJobSchema>;
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;

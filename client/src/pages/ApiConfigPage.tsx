@@ -286,11 +286,20 @@ export default function ApiConfigPage() {
     onSuccess: () => {
       toast({
         title: "Conexão criada",
-        description: "Nova conexão WhatsApp criada com sucesso"
+        description: "QR Code sendo gerado... Aguarde alguns segundos"
       });
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
       setSelectedClientId("");
       setSelectedClientName("");
+      
+      // Atualizações periódicas para capturar o QR Code quando gerado
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+      }, 2000);
+      
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+      }, 5000);
     },
     onError: (error: any) => {
       toast({
