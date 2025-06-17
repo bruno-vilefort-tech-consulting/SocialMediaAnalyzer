@@ -54,9 +54,9 @@ export interface WhatsAppConnection {
   isConnected: boolean;
   qrCode?: string | null;
   sessionPath?: string; // Path to session folder
-  lastConnection?: string | null;
-  createdAt: string;
-  updatedAt?: string;
+  lastConnection?: Date | null;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
 // Password reset tokens

@@ -322,7 +322,7 @@ export default function ApiConfigPage() {
 
   const deleteConnectionMutation = useMutation({
     mutationFn: (connectionId: string) =>
-      apiRequest(`/api/whatsapp/connection/${connectionId}`, "DELETE"),
+      apiRequest(`/api/whatsapp/connections/${connectionId}`, "DELETE"),
     onSuccess: () => {
       toast({
         title: "Conexão removida",
@@ -341,7 +341,7 @@ export default function ApiConfigPage() {
 
   const sendTestMessageMutation = useMutation({
     mutationFn: (data: { connectionId: string; phoneNumber: string; message: string }) =>
-      apiRequest(`/api/whatsapp/send/${data.connectionId}`, "POST", {
+      apiRequest(`/api/whatsapp/test/${data.connectionId}`, "POST", {
         phoneNumber: data.phoneNumber,
         message: data.message
       }),
