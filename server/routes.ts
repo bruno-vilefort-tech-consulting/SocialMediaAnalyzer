@@ -2157,36 +2157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint duplicado removido - usar apenas o WPPConnect isolado
-
-  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
-    try {
-      const clientId = (req as AuthRequest).user.clientId;
-      if (!clientId) {
-        return res.status(400).json({ error: 'ClientId não encontrado no token' });
-      }
-
-      console.log(`🔗 Conectando WhatsApp para cliente ${clientId}...`);
-      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
-      const result = await clientWhatsAppService.connectClient(clientId.toString());
-      
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: result.message,
-          qrCode: result.qrCode 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          error: result.message 
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao conectar WhatsApp do cliente:', error);
-      res.status(500).json({ error: 'Falha ao conectar WhatsApp' });
-    }
-  });
+  // Endpoint duplicado removido - usando apenas a implementação Baileys acima
 
   app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req, res) => {
     try {
