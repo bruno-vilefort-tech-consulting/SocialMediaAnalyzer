@@ -2,10 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, CheckCircle, Clock, Calendar, Phone, Mail, FileText, User, Briefcase, ChevronRight, Play, Pause, Square, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAudioRecorder } from "@/hooks/useAudio";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Selection {
   id: number;
@@ -42,9 +44,15 @@ export default function ReportsPage() {
   const [selectedSelection, setSelectedSelection] = useState<number | null>(null);
   const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying, isPaused, currentAudioUrl } = useAudioRecorder();
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
+  const { user } = useAuth();
 
   const { data: selections = [] } = useQuery({
     queryKey: ['/api/selections'],
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ['/api/clients'],
   });
 
   const { data: interviews = [] } = useQuery({
@@ -52,9 +60,21 @@ export default function ReportsPage() {
   });
 
   // Filtrar seleções válidas e calcular estatísticas
-  const validSelections = Array.isArray(selections) ? selections.filter((selection: any) => 
-    selection && selection.name && selection.id
-  ) : [];
+  const validSelections = Array.isArray(selections) ? selections.filter((selection: any) => {
+    if (!selection || !selection.name || !selection.id) return false;
+    
+    // Filtro por cliente (apenas para masters)
+    if (user?.role === 'master' && selectedClientFilter !== 'all') {
+      return selection.clientId?.toString() === selectedClientFilter;
+    }
+    
+    // Para usuários cliente, mostrar apenas suas próprias seleções
+    if (user?.role === 'client') {
+      return selection.clientId === user.clientId;
+    }
+    
+    return true;
+  }) : [];
 
   const validInterviews = Array.isArray(interviews) ? interviews.filter((interview: Interview) => 
     interview && 
@@ -164,6 +184,31 @@ export default function ReportsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Relatórios de Entrevistas</h1>
             <p className="text-muted-foreground">Acompanhe o progresso das seleções e entrevistas</p>
           </div>
+          
+          {/* Filtro por cliente - apenas para usuários master */}
+          {user?.role === 'master' && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium">Cliente:</span>
+              <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Selecionar cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Clientes</SelectItem>
+                  {clients.map((client: any) => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedClientFilter !== 'all' && (
+                <Badge variant="secondary" className="text-xs">
+                  {validSelections.length} seleções
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Lista horizontal de seleções - uma linha por seleção */}
