@@ -155,8 +155,7 @@ export class WhatsAppManager {
       
       // Atualizar no Firebase com QR Code específico do cliente
       await this.updateConnectionFirebase(connectionId, {
-        qrCode: qr,
-        status: 'connecting'
+        qrCode: qr
       });
       
       // Notificar listeners
@@ -173,7 +172,7 @@ export class WhatsAppManager {
         isConnected: true,
         phoneNumber: activeConn.phoneNumber,
         qrCode: null,
-        lastConnection: new Date()
+        lastConnection: new Date().toISOString()
       });
       
       this.notifyQRListeners(connectionId, null);
@@ -373,10 +372,11 @@ export class WhatsAppManager {
         id: connectionId,
         clientId,
         clientName,
+        status: 'disconnected',
         isConnected: false,
         sessionPath: this.getSessionPath(clientId),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
       await setDoc(doc(firebaseDb, 'whatsappConnections', connectionId), connectionData);
@@ -390,7 +390,7 @@ export class WhatsAppManager {
     try {
       await updateDoc(doc(firebaseDb, 'whatsappConnections', connectionId), {
         ...updates,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       });
     } catch (error) {
       console.error('❌ Erro ao atualizar conexão no Firebase:', error);

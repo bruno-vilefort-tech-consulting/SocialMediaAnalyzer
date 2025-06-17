@@ -49,13 +49,14 @@ export interface WhatsAppConnection {
   id: string;
   clientId: string;
   clientName: string;
-  phoneNumber?: string;
+  status: 'connected' | 'connecting' | 'disconnected';
+  phoneNumber?: string | null;
   isConnected: boolean;
-  qrCode?: string;
+  qrCode?: string | null;
   sessionPath?: string; // Path to session folder
-  lastConnection?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  lastConnection?: string | null;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 // Password reset tokens
