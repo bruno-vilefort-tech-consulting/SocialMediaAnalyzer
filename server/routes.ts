@@ -1823,7 +1823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fix-daniel-password", async (req, res) => {
     try {
       const userId = "1750131049173";
-      const newPassword = "580190";
+      const newPassword = "daniel580190";
       
       // Criptografar a senha
       const hashedPassword = await bcrypt.hash(newPassword, 10);
