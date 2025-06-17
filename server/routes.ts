@@ -1860,7 +1860,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📱 Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`📱 Buscando status WPPConnect para cliente ${user.clientId}...`);
+      
       const status = await wppConnectClientModule.getClientStatus(user.clientId.toString());
+      
+      console.log(`📱 [DEBUG] Status retornado:`, {
+        isConnected: status.isConnected,
+        hasQrCode: !!status.qrCode,
+        qrCodeLength: status.qrCode ? status.qrCode.length : 0,
+        phoneNumber: status.phoneNumber
+      });
       
       res.json({
         isConnected: status.isConnected,
@@ -2067,29 +2076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoints WhatsApp específicos para Clientes
-  app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req, res) => {
-    try {
-      const clientId = (req as AuthRequest).user.clientId;
-      if (!clientId) {
-        return res.status(400).json({ error: 'ClientId não encontrado no token' });
-      }
-
-      console.log(`📱 Buscando status WhatsApp para cliente ${clientId}...`);
-      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
-      const status = await clientWhatsAppService.getClientStatus(clientId.toString());
-
-      res.json({
-        isConnected: status.isConnected,
-        phone: status.phoneNumber,
-        lastConnection: status.lastConnection,
-        qrCode: status.qrCode
-      });
-    } catch (error) {
-      console.error('Erro ao buscar status WhatsApp do cliente:', error);
-      res.status(500).json({ error: 'Falha ao buscar status' });
-    }
-  });
+  // Endpoint duplicado removido - usar apenas o WPPConnect isolado
 
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {

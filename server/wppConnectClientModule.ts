@@ -138,14 +138,17 @@ export class WppConnectClientModule {
               },
               disableWelcome: true,
               updatesLog: false,
-              autoClose: 60000,
+              autoClose: 300000, // 5 minutos para dar tempo de escanear o QR
               createPathFileToken: true,
               catchQR: (base64Qr: string, asciiQR: string) => {
                 console.log(`📱 [DEBUG] QR Code gerado para cliente ${clientId}`);
                 console.log(`📱 [DEBUG] QR Base64 length: ${base64Qr.length}`);
+                console.log(`📱 [DEBUG] ASCII QR:`, asciiQR ? asciiQR.substring(0, 100) + '...' : 'não disponível');
+                
                 qrCodeGenerated = true;
                 
                 const qrCodeString = `data:image/png;base64,${base64Qr}`;
+                console.log(`📱 [DEBUG] QR Code string criado: ${qrCodeString.substring(0, 50)}...`);
                 
                 // Salvar QR Code no Firebase
                 this.updateClientConfig(clientId, {
@@ -153,7 +156,11 @@ export class WppConnectClientModule {
                   qrCode: qrCodeString,
                   phoneNumber: null,
                   lastConnection: null
-                }).catch(err => console.error(`❌ Erro ao salvar QR no Firebase:`, err));
+                }).then(() => {
+                  console.log(`✅ [DEBUG] QR Code salvo no Firebase para cliente ${clientId}`);
+                }).catch(err => {
+                  console.error(`❌ [DEBUG] Erro ao salvar QR no Firebase:`, err);
+                });
 
                 resolveOnce({ 
                   success: true, 
