@@ -1929,7 +1929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/whatsapp/test/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+  app.post("/api/whatsapp/test/:connectionId", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { connectionId } = req.params;
       const { phoneNumber, message } = req.body;
