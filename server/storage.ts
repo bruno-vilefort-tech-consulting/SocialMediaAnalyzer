@@ -178,18 +178,21 @@ export class FirebaseStorage implements IStorage {
     return snapshot.docs.map(doc => {
       const data = doc.data();
       
+      // Remover campos que não fazem parte do schema oficial
+      const { isIndefiniteContract, ...cleanData } = data;
+      
       // Converter Firebase Timestamps para Date objects
-      if (data.contractStart && typeof data.contractStart === 'object' && data.contractStart.seconds) {
-        data.contractStart = new Date(data.contractStart.seconds * 1000);
+      if (cleanData.contractStart && typeof cleanData.contractStart === 'object' && cleanData.contractStart.seconds) {
+        cleanData.contractStart = new Date(cleanData.contractStart.seconds * 1000);
       }
-      if (data.contractEnd && typeof data.contractEnd === 'object' && data.contractEnd.seconds) {
-        data.contractEnd = new Date(data.contractEnd.seconds * 1000);
+      if (cleanData.contractEnd && typeof cleanData.contractEnd === 'object' && cleanData.contractEnd.seconds) {
+        cleanData.contractEnd = new Date(cleanData.contractEnd.seconds * 1000);
       }
-      if (data.createdAt && typeof data.createdAt === 'object' && data.createdAt.seconds) {
-        data.createdAt = new Date(data.createdAt.seconds * 1000);
+      if (cleanData.createdAt && typeof cleanData.createdAt === 'object' && cleanData.createdAt.seconds) {
+        cleanData.createdAt = new Date(cleanData.createdAt.seconds * 1000);
       }
       
-      return { id: parseInt(doc.id), ...data } as Client;
+      return { id: parseInt(doc.id), ...cleanData } as Client;
     });
   }
 
