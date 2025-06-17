@@ -2081,6 +2081,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New API Config architecture - entity-specific configurations
+  app.get("/api/api-config/:entityType/:entityId", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      console.log(`🔍 Buscando API Config: ${entityType}/${entityId}`);
+      
+      const config = await storage.getApiConfig(entityType, entityId);
+      res.json(config || {});
+    } catch (error) {
+      console.error('Error fetching API config:', error);
+      res.status(500).json({ error: 'Failed to fetch configuration' });
+    }
+  });
+
+  app.post("/api/api-config", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const { entityType, entityId, openaiVoice } = req.body;
+      console.log(`💾 Salvando API Config: ${entityType}/${entityId}, voz: ${openaiVoice}`);
+      
+      if (!entityType || !entityId) {
+        return res.status(400).json({ error: 'entityType e entityId são obrigatórios' });
+      }
+
+      const configData = {
+        entityType,
+        entityId,
+        openaiVoice: openaiVoice || null,
+        updatedAt: new Date()
+      };
+
+      const config = await storage.upsertApiConfig(configData);
+      console.log(`✅ API Config salva com sucesso:`, config);
+      res.json(config);
+    } catch (error) {
+      console.error('❌ Erro ao salvar API config:', error);
+      res.status(500).json({ error: 'Failed to save configuration' });
+    }
+  });
+
   // TTS Preview endpoint
   app.post("/api/preview-tts", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
