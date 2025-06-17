@@ -1,4 +1,4 @@
-const { FirebaseStorage } = require('./server/storage.js');
+import { FirebaseStorage } from './server/storage.js';
 
 async function debugWhatsAppConnection() {
   console.log('🔍 Investigando status da conexão WhatsApp...');
