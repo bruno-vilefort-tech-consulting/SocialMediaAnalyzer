@@ -1361,8 +1361,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`⚠️ Aviso na inicialização WhatsApp:`, initError);
             }
 
-            // Verificar status de conectividade
-            const connectionStatus = whatsappQRService.getConnectionStatus();
+            // Verificar status de conectividade com validação robusta
+            let connectionStatus = { isConnected: false };
+            try {
+              if (serviceToUse && typeof serviceToUse.getConnectionStatus === 'function') {
+                connectionStatus = serviceToUse.getConnectionStatus() || { isConnected: false };
+              } else {
+                console.log(`⚠️ Método getConnectionStatus não disponível no service`);
+              }
+            } catch (statusError) {
+              console.log(`⚠️ Erro ao verificar status de conexão:`, statusError.message);
+            }
             console.log(`🔍 Status de conexão WhatsApp: ${JSON.stringify(connectionStatus)}`);
             
             // Tentar enviar via WhatsApp com retry
