@@ -1783,6 +1783,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint temporário para corrigir senha do Daniel Braga
+  app.post("/api/fix-daniel-password", async (req, res) => {
+    try {
+      const userId = "1750131049173";
+      const newPassword = "580190";
+      
+      // Criptografar a senha
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      // Atualizar no Firebase via servidor (tem permissões adequadas)
+      const { doc, updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(firebaseDb, 'users', userId), {
+        password: hashedPassword,
+        updatedAt: new Date()
+      });
+      
+      res.json({ 
+        success: true, 
+        message: 'Senha do Daniel Braga atualizada com hash bcrypt',
+        hashedPassword: hashedPassword.substring(0, 20) + '...'
+      });
+    } catch (error) {
+      console.error('Erro ao corrigir senha:', error);
+      res.status(500).json({ error: 'Falha ao atualizar senha' });
+    }
+  });
+
   app.post("/api/whatsapp/test/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;

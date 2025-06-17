@@ -47,6 +47,23 @@ export async function initializeFirebaseData() {
       console.log("✅ Cliente Grupo Maximus já existe no Firebase - não será recriado");
     }
 
+    // Corrigir senha do Daniel Braga se necessário
+    const danielUser = await storage.getUserByEmail("danielmoreirabraga@gmail.com");
+    if (danielUser && danielUser.password === "580190580190") {
+      console.log("🔧 Corrigindo senha do Daniel Braga - convertendo para hash bcrypt...");
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db');
+      
+      const hashedPassword = await bcrypt.hash("580190", 10);
+      await updateDoc(doc(firebaseDb, 'users', danielUser.id.toString()), {
+        password: hashedPassword,
+        updatedAt: new Date()
+      });
+      console.log("✅ Senha do Daniel Braga corrigida com hash bcrypt");
+    } else if (danielUser) {
+      console.log("✅ Senha do Daniel Braga já está em formato correto");
+    }
+
     // Criar vaga de exemplo se não existir
     const jobs = await storage.getJobs();
     if (jobs.length === 0) {
