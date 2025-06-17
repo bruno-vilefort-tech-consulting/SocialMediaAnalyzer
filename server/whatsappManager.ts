@@ -148,10 +148,18 @@ export class WhatsAppManager {
 
     const { connection, lastDisconnect, qr } = update;
 
+    // Gerar QR Code específico para este cliente
     if (qr) {
       console.log(`📱 QR Code gerado para ${activeConn.clientName}`);
       activeConn.qrCode = qr;
-      await this.updateConnectionFirebase(connectionId, { qrCode: qr });
+      
+      // Atualizar no Firebase com QR Code específico do cliente
+      await this.updateConnectionFirebase(connectionId, {
+        qrCode: qr,
+        status: 'connecting'
+      });
+      
+      // Notificar listeners
       this.notifyQRListeners(connectionId, qr);
     }
 

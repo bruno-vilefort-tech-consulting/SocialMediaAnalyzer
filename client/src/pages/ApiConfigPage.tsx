@@ -586,207 +586,7 @@ export default function ApiConfigPage() {
         </CardContent>
       </Card>
 
-      {/* WhatsApp QR Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            WhatsApp QR Code
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Status conectado */}
-          {whatsappStatus?.isConnected && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <div>
-                    <p className="font-medium text-green-900 dark:text-green-100">
-                      WhatsApp Conectado
-                    </p>
-                    {whatsappStatus.phone && (
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        Número: +{whatsappStatus.phone}
-                      </p>
-                    )}
-                    {whatsappStatus.lastConnection && (
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        Conectado em: {new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant="default" className="bg-green-600">
-                    Online
-                  </Badge>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => disconnectWhatsAppMutation.mutate()}
-                    disabled={disconnectWhatsAppMutation.isPending}
-                  >
-                    Desconectar
-                  </Button>
-                </div>
-              </div>
 
-              {/* Seção de teste quando conectado */}
-              <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Teste de Envio
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="testPhone" className="text-sm text-blue-800 dark:text-blue-200">
-                      Telefone (com código país)
-                    </Label>
-                    <Input
-                      id="testPhone"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
-                      placeholder="5511999999999"
-                      className="bg-white dark:bg-gray-800"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="testMessage" className="text-sm text-blue-800 dark:text-blue-200">
-                      Mensagem de teste
-                    </Label>
-                    <Input
-                      id="testMessage"
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
-                      placeholder="Mensagem de teste..."
-                      className="bg-white dark:bg-gray-800"
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={() => {
-                    console.log('🔘 Botão de teste WhatsApp clicado');
-                    console.log('📱 testPhone:', testPhone);
-                    console.log('💬 testMessage:', testMessage);
-                    
-                    if (!testPhone || !testMessage) {
-                      console.log('❌ Validação falhou - campos vazios');
-                      toast({
-                        title: "Campos obrigatórios",
-                        description: "Preencha o telefone e a mensagem",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    
-                    console.log('✅ Validação passou - iniciando mutation');
-                    testWhatsAppMutation.mutate({
-                      phoneNumber: testPhone,
-                      message: testMessage,
-                    });
-                  }}
-                  disabled={testWhatsAppMutation.isPending}
-                  size="sm"
-                  className="w-full md:w-auto"
-                >
-                  {testWhatsAppMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Enviar Teste
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Status desconectado - aguardando QR */}
-          {!whatsappStatus?.isConnected && whatsappStatus?.qrCode && (
-            <div className="space-y-4">
-              <div className="flex flex-col items-center space-y-4 p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <div className="text-center">
-                  <QrCode className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                  <h3 className="font-medium text-yellow-900 dark:text-yellow-100">Escaneie o QR Code</h3>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-4">
-                    Abra o WhatsApp no seu celular e escaneie o código abaixo
-                  </p>
-                </div>
-                
-                <div className="bg-white p-4 rounded-lg border-2 border-yellow-300">
-                  <img 
-                    src={whatsappStatus.qrCode} 
-                    alt="QR Code WhatsApp" 
-                    className="w-64 h-64 mx-auto"
-                  />
-                </div>
-                
-                <div className="text-center text-sm text-yellow-700 dark:text-yellow-300">
-                  <p className="mb-2 font-medium">Como escanear:</p>
-                  <ol className="text-left space-y-1 list-decimal list-inside">
-                    <li>Abra o WhatsApp no celular</li>
-                    <li>Toque em "Mais opções" (⋮) ou "Configurações"</li>
-                    <li>Selecione "Aparelhos conectados"</li>
-                    <li>Toque em "Conectar um aparelho"</li>
-                    <li>Escaneie este QR Code</li>
-                  </ol>
-                </div>
-
-                <Button
-                  variant="outline"
-                  onClick={() => connectWhatsAppMutation.mutate()}
-                  disabled={connectWhatsAppMutation.isPending}
-                  size="sm"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Gerar Novo QR
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Status desconectado - sem QR */}
-          {!whatsappStatus?.isConnected && !whatsappStatus?.qrCode && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <div>
-                    <p className="font-medium text-red-900 dark:text-red-100">
-                      WhatsApp Desconectado
-                    </p>
-                    <p className="text-sm text-red-700 dark:text-red-300">
-                      Conecte seu WhatsApp para enviar entrevistas automáticas
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="destructive">
-                  Offline
-                </Badge>
-              </div>
-
-              <div className="text-center space-y-4">
-                <Button
-                  onClick={() => connectWhatsAppMutation.mutate()}
-                  disabled={connectWhatsAppMutation.isPending}
-                  className="w-full lg:w-auto"
-                >
-                  {connectWhatsAppMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <QrCode className="h-4 w-4 mr-2" />
-                  )}
-                  Conectar WhatsApp
-                </Button>
-                
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Clique no botão acima para gerar um QR Code e conectar seu WhatsApp
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Seção de Gerenciamento de Conexões WhatsApp por Cliente (apenas para Master) */}
       {isMaster && (
@@ -944,6 +744,77 @@ export default function ApiConfigPage() {
                           </Button>
                         </div>
                       </div>
+
+                      {/* QR Code específico para este cliente quando desconectado */}
+                      {connection.status === 'disconnected' && connection.qrCode && (
+                        <div className="mt-4 pt-4 border-t space-y-4">
+                          <div className="flex flex-col items-center space-y-4 p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                            <div className="text-center">
+                              <QrCode className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                              <h5 className="font-medium text-yellow-900 dark:text-yellow-100">
+                                QR Code para {connection.clientName}
+                              </h5>
+                              <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-4">
+                                Escaneie este código para conectar o WhatsApp deste cliente
+                              </p>
+                            </div>
+                            
+                            <div className="bg-white p-3 rounded-lg border-2 border-yellow-300">
+                              <img 
+                                src={connection.qrCode} 
+                                alt={`QR Code WhatsApp - ${connection.clientName}`}
+                                className="w-48 h-48 mx-auto"
+                              />
+                            </div>
+                            
+                            <div className="text-center text-xs text-yellow-700 dark:text-yellow-300">
+                              <p className="mb-1 font-medium">Como conectar:</p>
+                              <p>WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho</p>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // Gerar novo QR Code para este cliente específico
+                                createConnectionMutation.mutate({
+                                  clientId: connection.clientId,
+                                  clientName: connection.clientName
+                                });
+                              }}
+                              disabled={createConnectionMutation.isPending}
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Novo QR
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Botão para conectar quando desconectado sem QR */}
+                      {connection.status === 'disconnected' && !connection.qrCode && (
+                        <div className="mt-4 pt-4 border-t">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              // Gerar QR Code para este cliente específico
+                              createConnectionMutation.mutate({
+                                clientId: connection.clientId,
+                                clientName: connection.clientName
+                              });
+                            }}
+                            disabled={createConnectionMutation.isPending}
+                            className="w-full"
+                          >
+                            {createConnectionMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <QrCode className="h-4 w-4 mr-2" />
+                            )}
+                            Gerar QR Code para {connection.clientName}
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Teste de Mensagem para Conexão Específica */}
                       {connection.status === 'connected' && (
