@@ -84,7 +84,7 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
       id: user.id, 
       email: user.email, 
       role: user.role,
-      clientId: user.role === 'client' ? user.id : undefined
+      clientId: user.role === 'client' ? (user.clientId || decoded.clientId) : undefined
     };
     next();
   } catch (error) {
@@ -2078,6 +2078,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error saving API config:', error);
       res.status(500).json({ error: 'Failed to save configuration' });
+    }
+  });
+
+  // TTS Preview endpoint
+  app.post("/api/preview-tts", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const { text, voice } = req.body;
+      
+      if (!text || !voice) {
+        return res.status(400).json({ error: 'Text and voice are required' });
+      }
+
+      // Get master settings for OpenAI API key
+      const masterSettings = await storage.getMasterSettings();
+      if (!masterSettings?.openaiApiKey) {
+        return res.status(400).json({ error: 'OpenAI API key not configured' });
+      }
+
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${masterSettings.openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          input: text,
+          voice: voice,
+          response_format: 'mp3'
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('OpenAI TTS error:', error);
+        return res.status(response.status).json({ error: 'Failed to generate audio' });
+      }
+
+      const audioBuffer = await response.arrayBuffer();
+      
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.byteLength.toString(),
+      });
+      
+      res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+      console.error('TTS Preview error:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
