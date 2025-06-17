@@ -68,6 +68,7 @@ export default function SelectionsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
   // Buscar seleções
   const { data: selections = [], isLoading } = useQuery<Selection[]>({
@@ -186,6 +187,7 @@ export default function SelectionsPage() {
     setShowForm(false);
     setEditingSelection(null);
     setNomeSelecao("");
+    setSelectedClientId(null);
     setCandidateListId(null);
     setJobId("");
     setMensagemWhatsApp(defaultWhatsAppMessage);
@@ -210,6 +212,7 @@ export default function SelectionsPage() {
   const startEdit = (selection: Selection) => {
     setEditingSelection(selection);
     setNomeSelecao(selection.nomeSelecao);
+    setSelectedClientId(selection.clientId);
     setCandidateListId(selection.candidateListId);
     setJobId(selection.jobId);
     setMensagemWhatsApp(selection.mensagemWhatsApp || defaultWhatsAppMessage);
@@ -225,6 +228,7 @@ export default function SelectionsPage() {
   const duplicateSelection = (selection: Selection) => {
     setEditingSelection(null); // Não é edição, é criação de nova seleção
     setNomeSelecao(`${selection.name || selection.nomeSelecao} - Cópia`);
+    setSelectedClientId(selection.clientId);
     setCandidateListId(selection.candidateListId);
     setJobId(selection.jobId);
     setMensagemWhatsApp(selection.whatsappTemplate || selection.mensagemWhatsApp || defaultWhatsAppMessage);
@@ -270,6 +274,12 @@ export default function SelectionsPage() {
       return;
     }
 
+    // Validação do cliente para usuários master
+    if (user?.role === 'master' && !selectedClientId) {
+      toast({ title: "Selecione um cliente", variant: "destructive" });
+      return;
+    }
+
     if (!candidateListId) {
       toast({ title: "Selecione uma lista de candidatos", variant: "destructive" });
       return;
@@ -291,7 +301,7 @@ export default function SelectionsPage() {
       return;
     }
 
-    const finalClientId = user?.role === 'master' ? jobs.find(j => j.id === jobId)?.clientId : user?.clientId;
+    const finalClientId = user?.role === 'master' ? selectedClientId : user?.clientId;
 
     const selectionData = {
       name: nomeSelecao.trim(),
@@ -388,6 +398,25 @@ export default function SelectionsPage() {
                 maxLength={100}
               />
             </div>
+
+            {/* Seleção de Cliente (apenas para master) */}
+            {user?.role === 'master' && (
+              <div className="space-y-2">
+                <Label htmlFor="selectedClientId">Cliente *</Label>
+                <Select value={selectedClientId?.toString() || ""} onValueChange={(value) => setSelectedClientId(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.companyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Candidatos e Vaga */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
