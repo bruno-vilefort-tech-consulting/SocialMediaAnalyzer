@@ -200,7 +200,8 @@ export default function SelectionsPage() {
     setShowForm(false);
     setEditingSelection(null);
     setNomeSelecao("");
-    setSelectedClientId(null);
+    // For client users, automatically set their clientId; for master users, reset to null
+    setSelectedClientId(user?.role === 'client' ? user.clientId : null);
     setCandidateListId(null);
     setJobId("");
     setMensagemWhatsApp(defaultWhatsAppMessage);
@@ -381,7 +382,10 @@ export default function SelectionsPage() {
             </div>
           )}
           <Button 
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -440,7 +444,7 @@ export default function SelectionsPage() {
                     <SelectValue placeholder="Selecione uma lista" />
                   </SelectTrigger>
                   <SelectContent>
-                    {candidateLists.map((list) => (
+                    {filteredCandidateLists.map((list) => (
                       <SelectItem key={list.id} value={list.id.toString()}>
                         {list.name}
                       </SelectItem>
@@ -456,7 +460,7 @@ export default function SelectionsPage() {
                     <SelectValue placeholder="Selecione uma vaga" />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobs.map((job) => (
+                    {filteredJobs.map((job) => (
                       <SelectItem key={job.id} value={job.id}>
                         {job.nomeVaga} ({job.perguntas?.length || 0} perguntas)
                       </SelectItem>
@@ -650,10 +654,10 @@ export default function SelectionsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {candidateLists.find(list => list.id === selection.candidateListId)?.name || 'Todos os candidatos'}
+                      {filteredCandidateLists.find(list => list.id === selection.candidateListId)?.name || 'Todos os candidatos'}
                     </TableCell>
                     <TableCell>
-                      {jobs.find(job => job.id === selection.jobId)?.nomeVaga || 'Vaga não encontrada'}
+                      {filteredJobs.find(job => job.id === selection.jobId)?.nomeVaga || 'Vaga não encontrada'}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-2">
