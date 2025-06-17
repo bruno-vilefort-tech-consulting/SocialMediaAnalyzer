@@ -2178,6 +2178,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Manager endpoints - New system with client selection
+  app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { whatsappManager } = await import('./whatsappManager');
+      const connections = await whatsappManager.getClientConnections();
+      
+      // Filter connections based on user role
+      if (req.user?.role === 'client') {
+        const userClientId = req.user.clientId?.toString();
+        const filteredConnections = connections.filter(conn => conn.clientId === userClientId);
+        return res.json(filteredConnections);
+      }
+      
+      res.json(connections);
+    } catch (error) {
+      console.error('Erro ao buscar conexões WhatsApp:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  app.post("/api/whatsapp/connect", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { clientId, clientName } = req.body;
+      
+      if (!clientId || !clientName) {
+        return res.status(400).json({ error: 'clientId e clientName são obrigatórios' });
+      }
+
+      // For client users, validate they can only connect their own client
+      if (req.user?.role === 'client' && req.user.clientId?.toString() !== clientId) {
+        return res.status(403).json({ error: 'Acesso negado: você só pode conectar seu próprio cliente' });
+      }
+
+      const { whatsappManager } = await import('./whatsappManager');
+      const connectionId = await whatsappManager.createConnection(clientId, clientName);
+      
+      res.json({ success: true, connectionId });
+    } catch (error) {
+      console.error('Erro ao criar conexão WhatsApp:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
+      const status = whatsappManager.getConnectionStatus(connectionId);
+      res.json(status);
+    } catch (error) {
+      console.error('Erro ao buscar status da conexão:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
+      await whatsappManager.disconnectClient(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao desconectar WhatsApp:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  app.delete("/api/whatsapp/connection/:connectionId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { whatsappManager } = await import('./whatsappManager');
+      await whatsappManager.deleteConnection(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Erro ao deletar conexão:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  app.post("/api/whatsapp/send/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
+      }
+
+      const { whatsappManager } = await import('./whatsappManager');
+      const success = await whatsappManager.sendMessage(connectionId, phoneNumber, message);
+      
+      res.json({ success });
+    } catch (error) {
+      console.error('Erro ao enviar mensagem:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
