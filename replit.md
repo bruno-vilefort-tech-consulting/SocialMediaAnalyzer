@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 📋 BACKUP COMPLETO CRIADO - Sistema totalmente documentado em BACKUP_SISTEMA_2025-06-17.md
+  - **Documentação completa**: Arquitetura, funcionalidades, configurações e dependências
+  - **Status atual**: Sistema de usuários cliente funcional com criptografia bcrypt
+  - **Instruções de restauração**: Procedimentos detalhados para deploy em novo ambiente
+  - **Dados de teste**: Credenciais e exemplos para validação
+  - **Próximas melhorias**: Lista de funcionalidades sugeridas para evolução
+
 - June 17, 2025: ✅ PROBLEMA DE CRIAÇÃO DE CLIENTES RESOLVIDO COMPLETAMENTE - Firebase não aceita valores undefined
   - **Root cause identificado**: Firebase rejeita valores `undefined` em documentos, mas aceita `null`
   - **Endpoint POST /api/clients corrigido**: Filtro remove valores undefined antes de salvar no Firebase
