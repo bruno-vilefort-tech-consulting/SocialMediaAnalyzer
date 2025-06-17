@@ -504,6 +504,28 @@ export default function ApiConfigPage() {
     }
   });
 
+  // Mutation para enviar teste WhatsApp via WhatsApp Manager (master)
+  const sendTestMessageMutation = useMutation({
+    mutationFn: (data: { connectionId: string; phoneNumber: string; message: string }) =>
+      apiRequest(`/api/whatsapp/send/${data.connectionId}`, "POST", {
+        phoneNumber: data.phoneNumber,
+        message: data.message
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Mensagem enviada",
+        description: "Teste do WhatsApp Manager enviado com sucesso"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro no teste",
+        description: error.message || "Falha ao enviar mensagem do WhatsApp Manager",
+        variant: "destructive"
+      });
+    }
+  });
+
   // Testar chave OpenAI
   const testOpenAI = async () => {
     if (!openaiApiKey.trim()) {
