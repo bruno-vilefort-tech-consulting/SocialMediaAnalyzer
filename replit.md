@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: ✅ PROBLEMA DE CRIAÇÃO DE CLIENTES RESOLVIDO COMPLETAMENTE - Firebase não aceita valores undefined
+  - **Root cause identificado**: Firebase rejeita valores `undefined` em documentos, mas aceita `null`
+  - **Endpoint POST /api/clients corrigido**: Filtro remove valores undefined antes de salvar no Firebase
+  - **Schema de inserção melhorado**: Validação adequada para campos opcionais (contractEnd, additionalLimitExpiry)
+  - **Estrutura de clientes padronizada**: Campo `isIndefiniteContract` removido dos clientes existentes
+  - **Método getClients() limpo**: Filtro automático remove campos extras para garantir estrutura consistente
+  - **Teste validado**: Cliente "Empresa Teste Final" (ID: 1750161015007) criado com sucesso
+  - **Compatibilidade total**: Todos os clientes agora retornam exatamente a mesma estrutura de campos
+  - **Sistema robusto**: Funcionalidade "Novo Cliente" no dashboard master 100% operacional
+
 - June 17, 2025: ✅ ARQUITETURA COMPLETAMENTE SIMPLIFICADA - Remoção total de clientUsers concluída e verificada
   - **Root cause identificado**: Usuário Daniel Braga não tinha campo clientId no registro Firebase
   - **ClientId corrigido**: Adicionado clientId: 1749849987543 (Grupo Maximuns) ao registro do usuário
