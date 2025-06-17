@@ -44,6 +44,19 @@ export const clientUsers = pgTable("client_users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// WhatsApp connections per client
+export const whatsappConnections = pgTable("whatsapp_connections", {
+  id: serial("id").primaryKey(),
+  clientId: bigint("client_id", { mode: "number" }).references(() => clients.id).notNull(),
+  phoneNumber: text("phone_number"), // Phone number connected
+  isConnected: boolean("is_connected").notNull().default(false),
+  qrCode: text("qr_code"), // Base64 QR code
+  sessionData: jsonb("session_data"), // Baileys session data
+  lastConnection: timestamp("last_connection"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Password reset tokens
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
