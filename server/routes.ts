@@ -2335,21 +2335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar configuração API para detectar conexão persistente
       const masterConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // Detectar se o usuário está conectado no número específico (5511984316526)
-      const isUserConnected = masterConfig && (
-        masterConfig.whatsappQrPhoneNumber === '5511984316526' ||
-        masterConfig.whatsappQrPhoneNumber === '11984316526'
-      );
-      
-      if (isUserConnected) {
-        console.log(`✅ WhatsApp CONECTADO para usuário: ${masterConfig.whatsappQrPhoneNumber}`);
-        return res.json({
-          isConnected: true,
-          qrCode: null,
-          phone: masterConfig.whatsappQrPhoneNumber,
-          lastConnection: masterConfig.whatsappQrLastConnection || new Date()
-        });
-      }
+      // FORÇAR DESCONEXÃO COMPLETA - não reconhecer mais números conectados
+      console.log('🔌 WhatsApp DESCONECTADO - pronto para nova conexão');
 
       // Fallback para o sistema antigo se não houver conexões ativas
       const service = await ensureWhatsAppReady();
@@ -2364,16 +2351,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const status = service.getConnectionStatus();
       
-      // Se detectar o número do usuário no status, considerar conectado
-      if (status.phoneNumber === '5511984316526' || status.phoneNumber === '11984316526') {
-        console.log(`✅ WhatsApp CONECTADO via service: ${status.phoneNumber}`);
-        return res.json({
-          isConnected: true,
-          qrCode: null,
-          phone: status.phoneNumber,
-          lastConnection: status.lastConnection
-        });
-      }
+      // FORÇAR DESCONEXÃO - não detectar mais números como conectados
+      console.log('🔌 WhatsApp FORÇADAMENTE DESCONECTADO');
       
       res.json({
         isConnected: status.isConnected,

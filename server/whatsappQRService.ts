@@ -172,14 +172,9 @@ export class WhatsAppQRService {
       // Usar nova arquitetura: buscar e atualizar configuração específica do master
       const currentConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // FORÇAR conexão como ativa para o usuário específico (5511984316526)
-      const userPhoneNumber = '5511984316526';
-      const isUserPhone = this.config.phoneNumber === userPhoneNumber || 
-                         this.config.phoneNumber === '11984316526';
-      
-      // Se detectar o número do usuário, sempre considerar conectado
-      const finalConnection = isUserPhone || this.config.isConnected;
-      const finalPhoneNumber = isUserPhone ? userPhoneNumber : this.config.phoneNumber;
+      // FORÇAR DESCONEXÃO COMPLETA - resetar estado
+      const finalConnection = false;
+      const finalPhoneNumber = null;
       
       await storage.upsertApiConfig({
         ...currentConfig,
