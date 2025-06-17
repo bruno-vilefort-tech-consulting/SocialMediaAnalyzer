@@ -59,14 +59,22 @@ app.use((req, res, next) => {
   const { initializeFirebaseData } = await import("./initializeFirebaseData");
   await initializeFirebaseData();
 
-  // Initialize WhatsApp service for message sending
-  const { whatsappQRService } = await import("./whatsappQRService");
-  try {
-    await whatsappQRService.ensureInitialized();
-    console.log('✅ WhatsApp QR Service inicializado no startup');
-  } catch (error) {
-    console.log('⚠️ WhatsApp QR Service não pôde ser inicializado no startup:', error);
-  }
+  // Initialize WhatsApp service for message sending (non-blocking)
+  console.log('📱 WhatsApp QR Service: Inicialização em background para não bloquear servidor');
+  
+  // Start WhatsApp initialization in background without blocking server startup
+  const initWhatsAppBackground = async () => {
+    try {
+      const { whatsappQRService } = await import("./whatsappQRService");
+      await whatsappQRService.ensureInitialized();
+      console.log('✅ WhatsApp QR Service inicializado em background');
+    } catch (error) {
+      console.log('⚠️ WhatsApp QR Service não disponível em background:', error instanceof Error ? error.message : String(error));
+    }
+  };
+  
+  // Start background initialization but don't wait for it
+  setTimeout(initWhatsAppBackground, 2000);
 
   const server = await registerRoutes(app);
 

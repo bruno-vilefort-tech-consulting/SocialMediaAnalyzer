@@ -2630,6 +2630,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para corrigir senha do Daniel Braga
+  app.post("/api/fix-daniel-password", async (req, res) => {
+    try {
+      console.log("🔧 Corrigindo senha do Daniel Braga...");
+      
+      const danielBraga = await storage.getUserByEmail("danielmoreirabraga@gmail.com");
+      if (!danielBraga) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      console.log("👤 Usuário encontrado:", danielBraga.name);
+      
+      const correctHash = await bcrypt.hash("daniel580190", 10);
+      await storage.updateUser(danielBraga.id, { password: correctHash });
+      
+      console.log("✅ Senha corrigida no Firebase");
+      
+      // Testar a nova senha
+      const testPasswordMatch = await bcrypt.compare("daniel580190", correctHash);
+      console.log("🔐 Teste da nova senha:", testPasswordMatch);
+      
+      res.json({ 
+        message: 'Senha do Daniel Braga corrigida com sucesso',
+        testResult: testPasswordMatch
+      });
+    } catch (error) {
+      console.error('Erro ao corrigir senha:', error);
+      res.status(500).json({ message: 'Erro interno' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
