@@ -270,8 +270,11 @@ export class FirebaseStorage implements IStorage {
     const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
     let usersFixed = 0;
     
+    console.log(`📊 Total de usuários na coleção: ${allUsersSnapshot.size}`);
+    
     for (const userDoc of allUsersSnapshot.docs) {
       const userData = userDoc.data();
+      console.log(`👤 Verificando usuário: ${userData.name} (${userData.email}) - Role: ${userData.role}, ClientId: ${userData.clientId}`);
       
       // Se é um usuário cliente mas não tem clientId
       if (userData.role === 'client' && !userData.clientId) {
