@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 📱 MÓDULO WHATSAPP CLIENTE ISOLADO CRIADO - Sistema totalmente funcional e independente conforme solicitado
+  - **Módulo completamente isolado**: whatsappClientModule.ts criado do zero para conexões WhatsApp específicas por cliente
+  - **Endpoints funcionais**: /api/client/whatsapp/status, connect, disconnect e test operacionais
+  - **QR Code gerado com sucesso**: Sistema gera QR Code único para cada clientId (testado com cliente 1749849987543)
+  - **Baileys integrado**: Sistema usa @whiskeysockets/baileys para conexão WhatsApp real
+  - **Sessões isoladas**: Cada cliente possui diretório de sessão separado em whatsapp-sessions/client_{clientId}
+  - **Firebase persistente**: Status de conexão salvo automaticamente no Firebase por cliente
+  - **Arquitetura robusta**: Detecção de conflitos, reconexão automática e limpeza de credenciais
+  - **Substituição completa**: Antigo clientWhatsAppService substituído pelo novo módulo isolado
+
 - June 17, 2025: 🎯 ARQUITETURA DE ROTAS UNIFICADA - Sistema completamente simplificado conforme solicitação do usuário
   - **URLs unificadas**: Masters e clientes agora usam as mesmas rotas (/dashboard, /selecoes, /vagas, etc.)
   - **Manutenção reduzida**: Não é mais necessário duplicar alterações em URLs separadas para cada tipo de usuário
