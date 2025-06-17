@@ -341,7 +341,12 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-slate-500">
-                        {format(new Date(user.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                        {user.createdAt && typeof user.createdAt === 'object' && 'seconds' in user.createdAt 
+                          ? format(new Date(user.createdAt.seconds * 1000), "dd/MM/yyyy", { locale: ptBR })
+                          : user.createdAt 
+                            ? format(new Date(user.createdAt), "dd/MM/yyyy", { locale: ptBR })
+                            : "Data não disponível"
+                        }
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
