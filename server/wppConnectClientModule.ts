@@ -110,7 +110,12 @@ export class WppConnectClientModule {
                   '--disable-features=VizDisplayCompositor',
                   '--disable-extensions',
                   '--disable-plugins',
-                  '--disable-images'
+                  '--disable-images',
+                  '--disable-process-singleton-dialog',
+                  '--user-data-dir=' + path.join(process.cwd(), 'tokens', sessionName),
+                  '--no-default-browser-check',
+                  '--disable-background-networking',
+                  '--disable-sync'
                 ]
               },
               disableWelcome: true,
