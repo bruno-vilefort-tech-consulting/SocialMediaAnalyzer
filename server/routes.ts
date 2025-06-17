@@ -243,9 +243,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Converter strings de data para objetos Date antes da validação
       const processedData = {
         ...req.body,
-        contractStart: req.body.contractStart ? new Date(req.body.contractStart) : undefined,
-        additionalLimitExpiry: req.body.additionalLimitExpiry ? new Date(req.body.additionalLimitExpiry) : undefined,
-        contractEnd: req.body.contractEnd ? new Date(req.body.contractEnd) : undefined,
+        contractStart: req.body.contractStart ? new Date(req.body.contractStart) : new Date(),
+        additionalLimitExpiry: req.body.additionalLimitExpiry ? new Date(req.body.additionalLimitExpiry) : null,
+        contractEnd: req.body.contractEnd ? new Date(req.body.contractEnd) : null,
       };
       
       console.log("Dados processados:", processedData);
@@ -253,10 +253,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientData = insertClientSchema.parse(processedData);
       console.log("Dados validados:", clientData);
       
-      clientData.password = await bcrypt.hash(clientData.password, 10);
+      // Filtrar valores undefined que o Firebase não aceita
+      const cleanedData = Object.fromEntries(
+        Object.entries(clientData).filter(([_, v]) => v !== undefined)
+      );
+      
+      cleanedData.password = await bcrypt.hash(cleanedData.password, 10);
       console.log("Senha hasheada com sucesso");
       
-      const client = await storage.createClient(clientData);
+      const client = await storage.createClient(cleanedData);
       console.log("Cliente criado com sucesso:", client);
       res.status(201).json(client);
     } catch (error) {
