@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Client, InsertClient } from "@shared/schema";
+import ClientUserManager from "@/components/ClientUserManager";
 
 // Schema de validação para clientes
 const clientFormSchema = z.object({
