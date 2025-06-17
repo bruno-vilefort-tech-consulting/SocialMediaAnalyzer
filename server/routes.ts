@@ -247,12 +247,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         additionalLimitExpiry: req.body.additionalLimitExpiry ? new Date(req.body.additionalLimitExpiry) : null,
         contractEnd: req.body.contractEnd ? new Date(req.body.contractEnd) : null,
         additionalLimit: req.body.additionalLimit || null,
+        password: req.body.password || '123456', // Senha padrão se não fornecida
       };
       
       // Remover campos undefined e isIndefiniteContract (não faz parte do schema)
       delete processedData.isIndefiniteContract;
       
-      console.log("Dados processados:", processedData);
+      console.log("Dados processados (incluindo senha):", { ...processedData, password: "***hidden***" });
       
       const clientData = insertClientSchema.parse(processedData);
       console.log("Dados validados:", clientData);
