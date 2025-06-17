@@ -327,7 +327,7 @@ export default function ApiConfigPage() {
 
   // Mutation para conectar WhatsApp do cliente
   const connectClientWhatsappMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/whatsapp-qr/connect-client`, "POST"),
+    mutationFn: () => apiRequest(`/api/client/whatsapp/connect`, "POST"),
     onSuccess: () => {
       toast({
         title: "Conectando WhatsApp",
@@ -347,7 +347,7 @@ export default function ApiConfigPage() {
 
   // Mutation para desconectar WhatsApp do cliente
   const disconnectClientWhatsappMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/whatsapp-qr/disconnect-client`, "POST"),
+    mutationFn: () => apiRequest(`/api/client/whatsapp/disconnect`, "POST"),
     onSuccess: () => {
       toast({
         title: "WhatsApp desconectado",
@@ -367,7 +367,7 @@ export default function ApiConfigPage() {
   // Mutation para enviar teste WhatsApp do cliente
   const sendClientTestMutation = useMutation({
     mutationFn: (data: { phoneNumber: string; message: string }) =>
-      apiRequest(`/api/whatsapp-qr/test-client`, "POST", data),
+      apiRequest(`/api/client/whatsapp/test`, "POST", data),
     onSuccess: () => {
       toast({
         title: "Mensagem enviada",
