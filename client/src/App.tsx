@@ -112,7 +112,7 @@ function Router() {
         </PrivateRoute>
       </Route>
 
-      <Route path="/api-config">
+      <Route path="/configuracoes">
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
             <ApiConfigPage />

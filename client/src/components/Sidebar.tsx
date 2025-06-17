@@ -34,7 +34,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/clients", label: "Clientes", icon: Building },
-    { path: "/api-config", label: "Configurações API", icon: Settings },
+    { path: "/configuracoes", label: "Configurações API", icon: Settings },
   ];
 
   const clientMenuItems = [
@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/candidates", label: "Lista de Candidatos", icon: Users },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
-    { path: "/api-config", label: "Configurações", icon: Settings },
+    { path: "/configuracoes", label: "Configurações", icon: Settings },
   ];
 
   const menuItems = user?.role === "master" ? masterMenuItems : clientMenuItems;
