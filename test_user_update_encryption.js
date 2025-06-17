@@ -1,4 +1,5 @@
-const { storage } = require('./server/storage');
+import { storage } from './server/storage.js';
+import bcrypt from 'bcrypt';
 
 async function testUserUpdateEncryption() {
   try {
@@ -40,7 +41,6 @@ async function testUserUpdateEncryption() {
     const testPassword = 'NovaSegura123';
     
     // Simular chamada do endpoint
-    const bcrypt = require('bcrypt');
     const updateData = {
       name: testUser.name,
       password: testPassword
