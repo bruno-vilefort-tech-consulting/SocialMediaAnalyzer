@@ -1240,7 +1240,7 @@ export class FirebaseStorage implements IStorage {
       }
       
       // Deletar em lotes
-      const batch = writeBatch(this.firestore);
+      const batch = writeBatch(firebaseDb);
       let count = 0;
       
       snapshot.forEach((docSnapshot) => {
