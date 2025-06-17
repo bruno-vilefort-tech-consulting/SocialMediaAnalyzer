@@ -115,6 +115,19 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE INTEGRADO - Sistema de conexões por cliente implementado na página de configurações
+  - **Interface totalmente unificada**: WhatsApp Manager integrado diretamente na página de Configurações API
+  - **Seção específica para Master**: Gerenciamento de conexões WhatsApp por cliente visível apenas para usuários master
+  - **Criação de conexões por cliente**: Dropdown de seleção permite criar conexões WhatsApp isoladas para cada cliente
+  - **Gerenciamento completo de conexões**: Listar, conectar, desconectar e deletar conexões WhatsApp específicas por cliente
+  - **Teste individual por conexão**: Cada conexão WhatsApp permite teste de mensagens independente
+  - **Estados visuais intuitivos**: Badges indicam status (conectado/conectando/desconectado) com ícones apropriados
+  - **Interface responsiva**: Layout adaptável para desktop e mobile com componentes Shadcn/UI
+  - **Mutations robustas**: Sistema completo de create, disconnect, delete e sendTest para conexões WhatsApp
+  - **Validação frontend**: Verificações de campos obrigatórios e feedback visual de carregamento
+  - **Integração com backend existente**: Usa APIs já implementadas do WhatsApp Manager sem duplicação
+  - **Experiência unificada**: Uma única página para todas as configurações (OpenAI, TTS, WhatsApp global e WhatsApp por cliente)
+
 - June 17, 2025: ✅ PROBLEMA DE DESCONEXÃO WHATSAPP RESOLVIDO - Sistema robusto implementado
   - **Sistema de conflitos esclarecido**: WhatsApp permite 4 dispositivos conectados simultaneamente
   - **Detecção automática de conflitos**: Sistema detecta quando mesmo número está conectado em múltiplos locais

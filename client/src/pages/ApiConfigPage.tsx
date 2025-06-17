@@ -787,6 +787,223 @@ export default function ApiConfigPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Seção de Gerenciamento de Conexões WhatsApp por Cliente (apenas para Master) */}
+      {isMaster && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Gerenciamento de Conexões WhatsApp por Cliente
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Gerencie conexões WhatsApp específicas para cada cliente. Cada cliente pode ter sua própria sessão de WhatsApp isolada.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Criar Nova Conexão */}
+            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+              <h3 className="font-medium flex items-center gap-2">
+                <QrCode className="h-4 w-4" />
+                Criar Nova Conexão
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="clientSelect">Cliente *</Label>
+                  <Select 
+                    value={selectedClientId} 
+                    onValueChange={(value) => {
+                      setSelectedClientId(value);
+                      const client = clients.find(c => c.id.toString() === value);
+                      setSelectedClientName(client?.companyName || "");
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.companyName} ({client.cnpj})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={() => {
+                      if (!selectedClientId || !selectedClientName) {
+                        toast({
+                          title: "Cliente obrigatório",
+                          description: "Selecione um cliente para criar a conexão",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      createConnectionMutation.mutate({
+                        clientId: selectedClientId,
+                        clientName: selectedClientName
+                      });
+                    }}
+                    disabled={createConnectionMutation.isPending || !selectedClientId}
+                    className="w-full"
+                  >
+                    {createConnectionMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <QrCode className="h-4 w-4 mr-2" />
+                    )}
+                    Criar Conexão
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Lista de Conexões Existentes */}
+            <div className="space-y-4">
+              <h3 className="font-medium flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Conexões Ativas ({connections.length})
+              </h3>
+
+              {connections.length === 0 ? (
+                <div className="text-center p-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed">
+                  <Smartphone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                    Nenhuma conexão WhatsApp
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Crie conexões WhatsApp específicas para seus clientes
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {connections.map((connection) => (
+                    <div key={connection.id} className="border rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{connection.clientName}</h4>
+                            <Badge 
+                              variant={connection.status === 'connected' ? 'default' : 
+                                      connection.status === 'connecting' ? 'secondary' : 'destructive'}
+                              className="flex items-center gap-1"
+                            >
+                              {connection.status === 'connected' ? (
+                                <Wifi className="h-3 w-3" />
+                              ) : connection.status === 'connecting' ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <WifiOff className="h-3 w-3" />
+                              )}
+                              {connection.status === 'connected' ? 'Conectado' : 
+                               connection.status === 'connecting' ? 'Conectando' : 'Desconectado'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>ID: {connection.id}</p>
+                            {connection.phoneNumber && (
+                              <p>Telefone: {connection.phoneNumber}</p>
+                            )}
+                            {connection.lastConnection && (
+                              <p>Última conexão: {new Date(connection.lastConnection).toLocaleString('pt-BR')}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {connection.status === 'connected' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => disconnectConnectionMutation.mutate(connection.id)}
+                              disabled={disconnectConnectionMutation.isPending}
+                            >
+                              {disconnectConnectionMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <WifiOff className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                          
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteConnectionMutation.mutate(connection.id)}
+                            disabled={deleteConnectionMutation.isPending}
+                          >
+                            {deleteConnectionMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Teste de Mensagem para Conexão Específica */}
+                      {connection.status === 'connected' && (
+                        <div className="mt-4 pt-4 border-t space-y-3">
+                          <h5 className="text-sm font-medium">Teste de Mensagem</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <Input
+                                placeholder="5511999999999"
+                                value={managerTestPhone}
+                                onChange={(e) => setManagerTestPhone(e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Input
+                                placeholder="Mensagem de teste..."
+                                value={managerTestMessage}
+                                onChange={(e) => setManagerTestMessage(e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (!managerTestPhone || !managerTestMessage) {
+                                toast({
+                                  title: "Campos obrigatórios",
+                                  description: "Preencha o telefone e a mensagem",
+                                  variant: "destructive"
+                                });
+                                return;
+                              }
+                              sendTestMessageMutation.mutate({
+                                connectionId: connection.id,
+                                phoneNumber: managerTestPhone,
+                                message: managerTestMessage
+                              });
+                            }}
+                            disabled={sendTestMessageMutation.isPending}
+                            className="w-full md:w-auto"
+                          >
+                            {sendTestMessageMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                              <Send className="h-4 w-4 mr-2" />
+                            )}
+                            Enviar Teste
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
