@@ -731,12 +731,14 @@ export default function ApiConfigPage() {
                               variant="outline"
                               onClick={() => disconnectConnectionMutation.mutate(connection.id)}
                               disabled={disconnectConnectionMutation.isPending}
+                              title="Desconectar WhatsApp"
                             >
                               {disconnectConnectionMutation.isPending ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <WifiOff className="h-4 w-4" />
                               )}
+                              <span className="sr-only">Desconectar WhatsApp</span>
                             </Button>
                           )}
                           
@@ -745,12 +747,14 @@ export default function ApiConfigPage() {
                             variant="destructive"
                             onClick={() => deleteConnectionMutation.mutate(connection.id)}
                             disabled={deleteConnectionMutation.isPending}
+                            title="Deletar conexão WhatsApp"
                           >
                             {deleteConnectionMutation.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />
                             )}
+                            <span className="sr-only">Deletar conexão WhatsApp</span>
                           </Button>
                         </div>
                       </div>

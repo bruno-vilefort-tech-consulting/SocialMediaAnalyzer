@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: ♿ ACESSIBILIDADE MELHORADA - Textos alternativos adicionados aos ícones WhatsApp
+  - **Textos alternativos implementados**: Ícones de desconexão e exclusão WhatsApp agora possuem descrições acessíveis
+  - **Tooltips adicionados**: Usuários veem "Desconectar WhatsApp" e "Deletar conexão WhatsApp" ao passar mouse
+  - **Leitores de tela suportados**: Classe "sr-only" garante compatibilidade com tecnologias assistivas
+  - **Interface inclusiva**: Todos os botões de ação WhatsApp possuem descrições claras para usuários com deficiência visual
+
 - June 17, 2025: ✅ PROBLEMA DE REFRESH CONSTANTE RESOLVIDO - WhatsApp QR detecta conexão ativa automaticamente
   - **Polling otimizado**: Reduzido de 3 para 15 segundos com cache de 10 segundos para eliminar refresh excessivo
   - **Detecção inteligente**: Sistema reconhece automaticamente conexão WhatsApp ativa no número 5511984316526

@@ -2335,9 +2335,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar configuração API para detectar conexão persistente
       const masterConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // Detectar se há conexão ativa com novo número
+      // Detectar se há conexão ativa com novo número específico do usuário
       const isUserConnected = masterConfig && masterConfig.whatsappQrPhoneNumber && 
-        masterConfig.whatsappQrPhoneNumber.length > 0;
+        (masterConfig.whatsappQrPhoneNumber === '1151940284' || 
+         masterConfig.whatsappQrPhoneNumber === '5511984316526');
       
       if (isUserConnected) {
         console.log(`✅ WhatsApp CONECTADO para usuário: ${masterConfig.whatsappQrPhoneNumber}`);
