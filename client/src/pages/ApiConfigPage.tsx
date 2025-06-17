@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +107,26 @@ export default function ApiConfigPage() {
   const [selectedVoice, setSelectedVoice] = useState<string>("nova");
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
 
+  // Inicializar valores das configurações carregadas
+  React.useEffect(() => {
+    if (isMaster && masterSettings) {
+      setOpenaiApiKey(masterSettings.openaiApiKey || "");
+      setOpenaiModel(masterSettings.gptModel || "gpt-4o");
+    }
+  }, [isMaster, masterSettings]);
+
+  // Inicializar configuração de voz baseada na nova arquitetura
+  React.useEffect(() => {
+    if (apiConfig?.openaiVoice) {
+      setSelectedVoice(apiConfig.openaiVoice);
+      console.log('🎵 Voz carregada do apiConfig:', apiConfig.openaiVoice);
+    } else if (!isMaster && voiceSetting?.voice) {
+      // Fallback para compatibilidade com sistema antigo
+      setSelectedVoice(voiceSetting.voice);
+      console.log('🎵 Voz carregada do voiceSetting (fallback):', voiceSetting.voice);
+    }
+  }, [apiConfig, voiceSetting, isMaster]);
+
   // Estados para teste WhatsApp
   const [testPhone, setTestPhone] = useState("");
   const [testMessage, setTestMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
@@ -196,20 +216,36 @@ export default function ApiConfigPage() {
   // Mutation para salvar configuração de voz via nova arquitetura API Config
   const saveApiConfigMutation = useMutation({
     mutationFn: async () => {
+      console.log('💾 Salvando configuração de voz:', {
+        entityType,
+        entityId,
+        selectedVoice,
+        isMaster,
+        userClientId: user?.clientId
+      });
+      
       return await apiRequest("/api/api-config", "POST", {
         entityType,
         entityId,
         openaiVoice: selectedVoice,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('✅ Configuração salva com sucesso:', data);
       queryClient.invalidateQueries({ queryKey: [`/api/api-config/${entityType}/${entityId}`] });
+      
+      // Também invalidar configurações antigas para compatibilidade
+      if (!isMaster && user?.clientId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/client-voice-settings/${user.clientId}`] });
+      }
+      
       toast({
         title: "Configurações salvas",
-        description: "Configuração de voz salva com sucesso",
+        description: `Voz "${selectedVoice}" configurada com sucesso`,
       });
     },
     onError: (error) => {
+      console.error('❌ Erro ao salvar configuração:', error);
       toast({
         title: "Erro ao salvar",
         description: error.message || "Falha ao salvar configurações",
@@ -418,6 +454,16 @@ export default function ApiConfigPage() {
 
   // Preview de voz
   const playVoicePreview = async () => {
+    console.log('🎵 Iniciando preview da voz:', selectedVoice);
+    
+    if (!selectedVoice) {
+      toast({
+        title: "Voz não selecionada",
+        description: "Selecione uma voz antes do preview",
+        variant: "destructive",
+      });
+      return;
+    }
     if (isPlayingVoice) return;
     
     setIsPlayingVoice(true);
