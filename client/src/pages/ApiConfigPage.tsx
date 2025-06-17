@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -742,20 +743,45 @@ export default function ApiConfigPage() {
                             </Button>
                           )}
                           
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => deleteConnectionMutation.mutate(connection.id)}
-                            disabled={deleteConnectionMutation.isPending}
-                            title="Deletar conexão WhatsApp"
-                          >
-                            {deleteConnectionMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Deletar conexão WhatsApp</span>
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={deleteConnectionMutation.isPending}
+                                title="Deletar conexão WhatsApp"
+                              >
+                                {deleteConnectionMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Deletar conexão WhatsApp</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja deletar a conexão WhatsApp de <strong>{connection.clientName}</strong>? 
+                                  <br /><br />
+                                  Esta ação é irreversível e irá:
+                                  <br />• Desconectar o WhatsApp imediatamente
+                                  <br />• Remover todas as configurações salvas
+                                  <br />• Exigir uma nova configuração completa para reconectar
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => deleteConnectionMutation.mutate(connection.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Sim, deletar conexão
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
 
