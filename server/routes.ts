@@ -1891,20 +1891,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await wppConnectClientModule.connectClient(user.clientId.toString());
+      console.log(`🔗 Conectando WhatsApp Baileys para cliente ${user.clientId}...`);
       
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: result.message,
-          qrCode: result.qrCode
+      // Sistema Baileys diretamente no endpoint
+      const { makeWASocket, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
+      const sessionPath = `./whatsapp-sessions/client_${user.clientId}`;
+      
+      try {
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        
+        const socket = makeWASocket({
+          auth: state,
+          printQRInTerminal: false,
+          browser: ['Chrome (Linux)', '', ''],
+          defaultQueryTimeoutMs: 60000,
         });
-      } else {
-        res.status(400).json({ 
-          success: false, 
-          message: result.message 
+
+        let qrCodeGenerated = false;
+        let connectionResolved = false;
+
+        const connectionPromise = new Promise((resolve) => {
+          socket.ev.on('connection.update', async (update) => {
+            const { connection, lastDisconnect, qr } = update;
+            
+            if (qr && !qrCodeGenerated) {
+              qrCodeGenerated = true;
+              console.log(`📱 QR Code Baileys gerado para cliente ${user.clientId}`);
+              
+              // Salvar QR Code no Firebase
+              await storage.upsertApiConfig('client', user.clientId.toString(), {
+                whatsappQrConnected: false,
+                whatsappQrCode: qr,
+                whatsappQrPhoneNumber: null,
+                whatsappQrLastConnection: null
+              });
+              
+              if (!connectionResolved) {
+                connectionResolved = true;
+                resolve({ success: true, qrCode: qr, message: 'QR Code gerado - escaneie com seu WhatsApp' });
+              }
+            }
+            
+            if (connection === 'open') {
+              console.log(`✅ WhatsApp Baileys conectado para cliente ${user.clientId}`);
+              
+              // Salvar conexão no Firebase
+              await storage.upsertApiConfig('client', user.clientId.toString(), {
+                whatsappQrConnected: true,
+                whatsappQrCode: null,
+                whatsappQrPhoneNumber: socket.user?.id?.split(':')[0] || null,
+                whatsappQrLastConnection: new Date()
+              });
+              
+              if (!connectionResolved) {
+                connectionResolved = true;
+                resolve({ success: true, message: 'WhatsApp conectado com sucesso!' });
+              }
+            }
+            
+            if (connection === 'close') {
+              console.log(`❌ Conexão WhatsApp fechada para cliente ${user.clientId}`);
+              
+              if (!connectionResolved) {
+                connectionResolved = true;
+                resolve({ success: false, message: 'Conexão fechada - tente novamente' });
+              }
+            }
+          });
+
+          socket.ev.on('creds.update', saveCreds);
+          
+          // Timeout após 45 segundos
+          setTimeout(() => {
+            if (!connectionResolved) {
+              connectionResolved = true;
+              resolve({ success: false, message: 'Timeout - tente novamente' });
+            }
+          }, 45000);
         });
+
+        const result = await connectionPromise;
+        res.json(result);
+
+      } catch (error) {
+        console.error(`❌ Erro ao criar sessão Baileys para cliente ${user.clientId}:`, error);
+        res.status(500).json({ success: false, message: 'Erro ao inicializar WhatsApp' });
       }
+
     } catch (error) {
       console.error('Client WhatsApp connect error:', error);
       res.status(500).json({ message: 'Erro ao conectar WhatsApp' });
