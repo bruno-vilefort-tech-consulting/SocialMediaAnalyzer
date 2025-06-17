@@ -303,7 +303,11 @@ export class FirebaseStorage implements IStorage {
       console.log(`📄 Vaga encontrada: ID=${doc.id}, clientId=${data.clientId}, nome=${data.nomeVaga}`);
       return { 
         id: doc.id, 
-        ...data,
+        clientId: data.clientId,
+        nomeVaga: data.nomeVaga,
+        descricaoVaga: data.descricaoVaga,
+        status: data.status,
+        createdAt: data.createdAt,
         perguntas: data.perguntas || []
       } as Job;
     });
@@ -321,7 +325,11 @@ export class FirebaseStorage implements IStorage {
       console.log(`📄 Vaga: ID=${doc.id}, cliente=${data.clientId}, nome=${data.nomeVaga}`);
       return { 
         id: doc.id, 
-        ...data,
+        clientId: data.clientId,
+        nomeVaga: data.nomeVaga,
+        descricaoVaga: data.descricaoVaga,
+        status: data.status,
+        createdAt: data.createdAt,
         perguntas: data.perguntas || []
       } as Job;
     });
@@ -333,10 +341,15 @@ export class FirebaseStorage implements IStorage {
     const docRef = doc(firebaseDb, "jobs", id);
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) return undefined;
+    const data = docSnap.data();
     return { 
       id: docSnap.id, 
-      ...docSnap.data(),
-      perguntas: docSnap.data().perguntas || []
+      clientId: data.clientId,
+      nomeVaga: data.nomeVaga,
+      descricaoVaga: data.descricaoVaga,
+      status: data.status,
+      createdAt: data.createdAt,
+      perguntas: data.perguntas || []
     } as Job;
   }
 

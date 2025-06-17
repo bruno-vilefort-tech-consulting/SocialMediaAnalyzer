@@ -754,8 +754,8 @@ export default function ApiConfigPage() {
                         </div>
                       </div>
 
-                      {/* QR Code específico para este cliente quando desconectado */}
-                      {connection.status === 'disconnected' && connection.qrCode && (
+                      {/* QR Code específico para este cliente quando conectando ou desconectado */}
+                      {(connection.status === 'connecting' || connection.status === 'disconnected') && connection.qrCode && (
                         <div className="mt-4 pt-4 border-t space-y-4">
                           <div className="flex flex-col items-center space-y-4 p-6 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                             <div className="text-center">
