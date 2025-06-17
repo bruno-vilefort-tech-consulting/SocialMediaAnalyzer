@@ -1895,10 +1895,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Debug: Verificar se Baileys está disponível
       console.log(`📱 [DEBUG] Importando Baileys...`);
+      console.log(`📱 [DEBUG] ClientId do usuário: ${user.clientId}`);
+      console.log(`📱 [DEBUG] Tipo do clientId: ${typeof user.clientId}`);
       
-      // Sistema Baileys diretamente no endpoint
+      // Sistema Baileys diretamente no endpoint - ESPECÍFICO POR CLIENTE
       const { makeWASocket, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
       const sessionPath = `./whatsapp-sessions/client_${user.clientId}`;
+      
+      console.log(`📱 [DEBUG] Caminho da sessão: ${sessionPath}`);
       
       try {
         const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
