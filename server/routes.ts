@@ -1172,9 +1172,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const job = await storage.getJobById(selection.jobId);
       console.log('📝 Job encontrado:', job);
       
-      // For now, get all candidates for this client since we don't have candidateListId
-      const candidates = await storage.getCandidatesByClientId(selection.clientId);
+      // Get candidates from the specific list
+      const candidates = selection.candidateListId 
+        ? await storage.getCandidatesByListId(selection.candidateListId)
+        : await storage.getCandidatesByClientId(selection.clientId);
       console.log('👥 Candidatos encontrados:', candidates.length, 'candidatos');
+      console.log('🔍 Debug candidatos:', candidates.map(c => ({ id: c.id, name: c.name, whatsapp: c.whatsapp })));
       
       if (!job || candidates.length === 0) {
         console.log('❌ Job ou candidatos não encontrados. Job:', !!job, 'Candidatos:', candidates.length);
@@ -1310,11 +1313,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Send WhatsApp messages
         if (shouldSendWhatsApp && candidate.whatsapp) {
           try {
-            // Enviar mensagem via WhatsApp
-            const whatsappSuccess = await whatsappQRService.sendTextMessage(
-              candidate.whatsapp, 
-              whatsappMessage
-            );
+            // Normalizar número WhatsApp (adicionar 55 se necessário)
+            let normalizedPhone = candidate.whatsapp;
+            if (!normalizedPhone.startsWith('55')) {
+              normalizedPhone = '55' + normalizedPhone;
+            }
+            
+            // Tentar enviar via WhatsApp com retry
+            let whatsappSuccess = false;
+            let attempts = 0;
+            const maxAttempts = 2;
+            
+            while (!whatsappSuccess && attempts < maxAttempts) {
+              attempts++;
+              try {
+                whatsappSuccess = await whatsappQRService.sendTextMessage(
+                  normalizedPhone, 
+                  whatsappMessage
+                );
+                
+                if (whatsappSuccess) {
+                  console.log(`✅ WhatsApp enviado para ${normalizedPhone}: ${whatsappMessage.substring(0, 50)}...`);
+                  break;
+                } else {
+                  console.log(`⚠️ Tentativa ${attempts} falhou para ${normalizedPhone}`);
+                  if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                  }
+                }
+              } catch (error) {
+                console.error(`❌ Erro tentativa ${attempts} para ${normalizedPhone}:`, error);
+                if (attempts < maxAttempts) {
+                  await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                }
+              }
+            }
             
             await storage.createMessageLog({
               interviewId: interview.id,
@@ -1323,13 +1356,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: whatsappSuccess ? 'sent' : 'failed'
             });
             
-            if (whatsappSuccess) {
-              console.log(`✅ WhatsApp enviado para ${candidate.whatsapp}: ${whatsappMessage.substring(0, 50)}...`);
-            } else {
-              console.log(`❌ Falha no envio WhatsApp para ${candidate.whatsapp}`);
+            if (!whatsappSuccess) {
+              console.log(`❌ Todas tentativas falharam para ${normalizedPhone}`);
             }
+            
           } catch (error) {
-            console.error(`❌ Erro ao enviar WhatsApp para ${candidate.whatsapp}:`, error);
+            console.error(`❌ Erro geral ao enviar WhatsApp para ${candidate.whatsapp}:`, error);
             await storage.createMessageLog({
               interviewId: interview.id,
               type: 'whatsapp',
