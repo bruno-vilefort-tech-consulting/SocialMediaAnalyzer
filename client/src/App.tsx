@@ -23,11 +23,20 @@ import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
 import ReportsPage from "@/pages/ReportsPage";
 import InterviewDetailsPage from "@/pages/InterviewDetailsPage";
+import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, isLoading } = useAuth();
+
+  console.log('🔐 PrivateRoute check:', {
+    isLoading,
+    hasUser: !!user,
+    userRole: user?.role,
+    allowedRoles,
+    userEmail: user?.email
+  });
 
   if (isLoading) {
     return (
@@ -38,13 +47,16 @@ function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; a
   }
 
   if (!user) {
+    console.log('❌ No user found, redirecting to login');
     return <Redirect to="/login" />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    console.log('❌ Role not allowed:', user.role, 'Required:', allowedRoles);
     return <Redirect to="/unauthorized" />;
   }
 
+  console.log('✅ Access granted for role:', user.role);
   return <>{children}</>;
 }
 
@@ -170,6 +182,9 @@ function Router() {
         </PrivateRoute>
       </Route>
 
+      {/* Unauthorized page */}
+      <Route path="/unauthorized" component={UnauthorizedPage} />
+
       {/* Default redirects */}
       <Route path="/">
         <RedirectToDashboard />
@@ -184,6 +199,13 @@ function Router() {
 function RedirectToDashboard() {
   const { user, isLoading } = useAuth();
 
+  console.log('📍 RedirectToDashboard:', {
+    isLoading,
+    hasUser: !!user,
+    userRole: user?.role,
+    userEmail: user?.email
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -193,15 +215,19 @@ function RedirectToDashboard() {
   }
 
   if (!user) {
+    console.log('📍 No user, redirecting to login');
     return <Redirect to="/login" />;
   }
 
   if (user?.role === 'master') {
+    console.log('📍 Master user, redirecting to /dashboard');
     return <Redirect to="/dashboard" />;
   } else if (user?.role === 'client') {
+    console.log('📍 Client user, redirecting to /client-dashboard');
     return <Redirect to="/client-dashboard" />;
   }
 
+  console.log('📍 Unknown role, redirecting to login');
   return <Redirect to="/login" />;
 }
 

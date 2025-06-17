@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      setLocation("/dashboard");
+      setLocation("/"); // Redirect to root, which will use RedirectToDashboard logic
     } catch (error) {
       toast({
         title: "Erro no login",
