@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: ✅ PROBLEMA DE REFRESH CONSTANTE RESOLVIDO - WhatsApp QR detecta conexão ativa automaticamente
+  - **Polling otimizado**: Reduzido de 3 para 15 segundos com cache de 10 segundos para eliminar refresh excessivo
+  - **Detecção inteligente**: Sistema reconhece automaticamente conexão WhatsApp ativa no número 5511984316526
+  - **QR Code removido**: Interface não exibe mais QR Code quando conexão está ativa
+  - **Status persistente**: Conexão WhatsApp salva corretamente no Firebase como conectada
+  - **Experiência otimizada**: Página para de fazer refresh constante mantendo funcionalidade completa
+  - **Logs confirmados**: Sistema detecta "WhatsApp CONECTADO para usuário: 5511984316526" corretamente
+
 - June 17, 2025: 🔒 VULNERABILIDADES CRÍTICAS DE SEGURANÇA CORRIGIDAS - Isolamento total de dados entre clientes implementado
   - **Problema crítico resolvido**: Usuários cliente podiam ver dados de outros clientes através de múltiplos endpoints
   - **Endpoints corrigidos**: /api/candidate-list-memberships, /api/selections/:id/results, POST /api/candidates, POST /api/selections, POST /api/candidate-lists

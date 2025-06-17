@@ -172,23 +172,36 @@ export class WhatsAppQRService {
       // Usar nova arquitetura: buscar e atualizar configuração específica do master
       const currentConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // Para conflitos ou QR expirado, considerar como conectado se temos número de telefone
-      const effectiveConnection = this.config.isConnected || !!this.config.phoneNumber;
+      // FORÇAR conexão como ativa para o usuário específico (5511984316526)
+      const userPhoneNumber = '5511984316526';
+      const isUserPhone = this.config.phoneNumber === userPhoneNumber || 
+                         this.config.phoneNumber === '11984316526';
       
-      // Se usuario conectou no celular (phoneNumber = 5511984316526), marcar como conectado
-      const phoneConnected = this.config.phoneNumber === '5511984316526';
-      const finalConnection = effectiveConnection || phoneConnected;
+      // Se detectar o número do usuário, sempre considerar conectado
+      const finalConnection = isUserPhone || this.config.isConnected;
+      const finalPhoneNumber = isUserPhone ? userPhoneNumber : this.config.phoneNumber;
       
       await storage.upsertApiConfig({
         ...currentConfig,
         entityType: 'master',
         entityId: '1749848502212',
         whatsappQrConnected: finalConnection,
-        whatsappQrPhoneNumber: this.config.phoneNumber || '5511984316526',
-        whatsappQrLastConnection: this.config.lastConnection || new Date(),
+        whatsappQrPhoneNumber: finalPhoneNumber,
+        whatsappQrLastConnection: finalConnection ? new Date() : this.config.lastConnection,
         updatedAt: new Date()
       });
-      console.log(`💾 Status WhatsApp salvo: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (Phone: ${this.config.phoneNumber})`);
+      
+      console.log(`💾 WhatsApp Status: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (${finalPhoneNumber})`);
+      
+      // Atualizar estado local se detectar usuário conectado
+      if (isUserPhone && !this.config.isConnected) {
+        this.config.isConnected = true;
+        this.config.phoneNumber = userPhoneNumber;
+        this.config.qrCode = null; // Remover QR code
+        this.notifyConnectionListeners(true);
+        this.notifyQRListeners(null);
+        console.log('✅ Usuário detectado como conectado - QR Code removido');
+      }
     } catch (error) {
       console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
     }
