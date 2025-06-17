@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff } from "lucide-react";
+import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff, PhoneOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -428,31 +428,67 @@ export default function ApiConfigPage() {
     },
   });
 
-  // Estados para controle do WhatsApp Manager
+  // Estados para controle do WhatsApp Manager (para clientes apenas sua própria conexão)
   const [testData, setTestData] = useState<Record<string, { phone: string; message: string }>>({});
-      apiRequest(`/api/whatsapp/connections/${connectionId}`, "DELETE"),
+
+  // Estados para WhatsApp do próprio cliente
+  const [clientWhatsappStatus, setClientWhatsappStatus] = useState<WhatsAppStatus>({ 
+    isConnected: false, 
+    qrCode: null 
+  });
+  const [clientTestPhone, setClientTestPhone] = useState("");
+  const [clientTestMessage, setClientTestMessage] = useState("Olá! Esta é uma mensagem de teste do sistema de entrevistas.");
+
+  // Query para buscar status WhatsApp do cliente
+  const { data: clientWhatsappConfig, refetch: refetchClientWhatsapp } = useQuery({
+    queryKey: [`/api/api-config/client/${user?.clientId}`],
+    enabled: user?.role === 'client' && !!user?.clientId,
+    refetchInterval: 15000, // Verifica a cada 15 segundos
+  });
+
+  // Mutation para conectar WhatsApp do cliente
+  const connectClientWhatsappMutation = useMutation({
+    mutationFn: () => apiRequest(`/api/whatsapp-qr/connect-client`, "POST"),
     onSuccess: () => {
       toast({
-        title: "Conexão removida",
-        description: "Conexão WhatsApp removida permanentemente"
+        title: "Conectando WhatsApp",
+        description: "QR Code sendo gerado... Aguarde alguns segundos"
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+      setTimeout(() => refetchClientWhatsapp(), 2000);
+      setTimeout(() => refetchClientWhatsapp(), 5000);
     },
     onError: (error: any) => {
       toast({
-        title: "Erro ao remover",
+        title: "Erro ao conectar",
         description: error.message || "Erro interno do servidor",
         variant: "destructive"
       });
     }
   });
 
-  const sendTestMessageMutation = useMutation({
-    mutationFn: (data: { connectionId: string; phoneNumber: string; message: string }) =>
-      apiRequest(`/api/whatsapp/test/${data.connectionId}`, "POST", {
-        phoneNumber: data.phoneNumber,
-        message: data.message
-      }),
+  // Mutation para desconectar WhatsApp do cliente
+  const disconnectClientWhatsappMutation = useMutation({
+    mutationFn: () => apiRequest(`/api/whatsapp-qr/disconnect-client`, "POST"),
+    onSuccess: () => {
+      toast({
+        title: "WhatsApp desconectado",
+        description: "Conexão removida com sucesso"
+      });
+      refetchClientWhatsapp();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao desconectar",
+        description: error.message || "Erro interno do servidor",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation para enviar teste WhatsApp do cliente
+  const sendClientTestMutation = useMutation({
+    mutationFn: (data: { phoneNumber: string; message: string }) =>
+      apiRequest(`/api/whatsapp-qr/test-client`, "POST", data),
     onSuccess: () => {
       toast({
         title: "Mensagem enviada",
@@ -704,7 +740,139 @@ export default function ApiConfigPage() {
         </CardContent>
       </Card>
 
+      {/* WhatsApp para Cliente - Interface idêntica ao Master */}
+      {!isMaster && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              WhatsApp para Entrevistas
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure e gerencie sua conexão WhatsApp para envio de convites de entrevista.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status da Conexão */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${
+                    clientWhatsappConfig?.whatsappQrConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
+                  <div>
+                    <p className="font-medium">Status da Conexão</p>
+                    <p className="text-sm text-muted-foreground">
+                      {clientWhatsappConfig?.whatsappQrConnected ? 
+                        `Conectado - ${clientWhatsappConfig.whatsappQrPhoneNumber || 'Número não identificado'}` : 
+                        'Desconectado'
+                      }
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  {clientWhatsappConfig?.whatsappQrConnected ? (
+                    <Button
+                      onClick={() => disconnectClientWhatsappMutation.mutate()}
+                      disabled={disconnectClientWhatsappMutation.isPending}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      {disconnectClientWhatsappMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <PhoneOff className="h-4 w-4 mr-2" />
+                      )}
+                      Desconectar
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => connectClientWhatsappMutation.mutate()}
+                      disabled={connectClientWhatsappMutation.isPending}
+                      size="sm"
+                    >
+                      {connectClientWhatsappMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <QrCode className="h-4 w-4 mr-2" />
+                      )}
+                      Conectar WhatsApp
+                    </Button>
+                  )}
+                </div>
+              </div>
 
+              {/* QR Code quando não conectado */}
+              {!clientWhatsappConfig?.whatsappQrConnected && (
+                <div className="text-center p-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                  <QrCode className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-sm text-muted-foreground">
+                    Clique em "Conectar WhatsApp" para gerar o QR Code
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Teste de Mensagem */}
+            {clientWhatsappConfig?.whatsappQrConnected && (
+              <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h3 className="font-medium flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Teste de Mensagem
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="testPhone">Número de Teste</Label>
+                    <Input
+                      id="testPhone"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      placeholder="5511999999999"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="testMessage">Mensagem</Label>
+                    <Input
+                      id="testMessage"
+                      value={testMessage}
+                      onChange={(e) => setTestMessage(e.target.value)}
+                      placeholder="Mensagem de teste"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    if (!testPhone.trim() || !testMessage.trim()) {
+                      toast({
+                        title: "Campos obrigatórios",
+                        description: "Preencha o número e a mensagem para enviar o teste",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    sendClientTestMutation.mutate({
+                      phoneNumber: testPhone,
+                      message: testMessage
+                    });
+                  }}
+                  disabled={sendClientTestMutation.isPending}
+                  className="w-full md:w-auto"
+                >
+                  {sendClientTestMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar Teste
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Seção de Gerenciamento de Conexões WhatsApp por Cliente (apenas para Master) */}
       {isMaster && (
