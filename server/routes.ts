@@ -1826,72 +1826,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client WhatsApp endpoints
-  app.post("/api/whatsapp-qr/connect-client", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {
       const user = req.user;
       if (!user.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      // Get or create client-specific API config
-      let config = await storage.getApiConfig('client', user.clientId.toString());
-      if (!config) {
-        config = await storage.createApiConfig({
-          entityType: 'client',
-          entityId: user.clientId.toString(),
-          openaiVoice: 'nova',
-          whatsappQrConnected: false,
-          whatsappQrPhoneNumber: null,
-          whatsappQrLastConnection: null,
-          firebaseProjectId: null,
-          firebaseServiceAccount: null
+      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message,
+          qrCode: result.qrCode
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: result.message 
         });
       }
-
-      // Update status to connecting
-      await storage.updateApiConfig(config.id, {
-        whatsappQrConnected: false,
-        whatsappQrLastConnection: new Date()
-      });
-
-      res.json({ 
-        success: true, 
-        message: 'Iniciando conexão WhatsApp para cliente',
-        qrCode: 'generating'
-      });
     } catch (error) {
       console.error('Client WhatsApp connect error:', error);
       res.status(500).json({ message: 'Erro ao conectar WhatsApp' });
     }
   });
 
-  app.post("/api/whatsapp-qr/disconnect-client", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req, res) => {
     try {
       const user = req.user;
       if (!user.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const config = await storage.getApiConfig('client', user.clientId.toString());
-      if (config) {
-        await storage.updateApiConfig(config.id, {
-          whatsappQrConnected: false,
-          whatsappQrPhoneNumber: null,
-          whatsappQrLastConnection: null
+      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: result.message 
         });
       }
-
-      res.json({ 
-        success: true, 
-        message: 'WhatsApp desconectado com sucesso' 
-      });
     } catch (error) {
       console.error('Client WhatsApp disconnect error:', error);
       res.status(500).json({ message: 'Erro ao desconectar WhatsApp' });
     }
   });
 
-  app.post("/api/whatsapp-qr/test-client", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req, res) => {
     try {
       const user = req.user;
       const { phoneNumber, message } = req.body;
