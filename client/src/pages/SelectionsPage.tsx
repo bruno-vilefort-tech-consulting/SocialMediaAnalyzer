@@ -75,15 +75,28 @@ export default function SelectionsPage() {
     queryKey: ["/api/selections"],
   });
 
-  // Buscar listas de candidatos
+  // Buscar listas de candidatos - filtrar automaticamente para clients
   const { data: candidateLists = [] } = useQuery<CandidateList[]>({
     queryKey: ["/api/candidate-lists"],
   });
 
-  // Buscar vagas
+  // Buscar vagas - filtrar automaticamente para clients
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
   });
+
+  // Filtrar dados baseado no role do usuário
+  const filteredSelections = user?.role === 'master' 
+    ? selections 
+    : selections.filter(selection => selection.clientId === user?.clientId);
+
+  const filteredCandidateLists = user?.role === 'master' 
+    ? candidateLists 
+    : candidateLists.filter(list => list.clientId === user?.clientId);
+
+  const filteredJobs = user?.role === 'master' 
+    ? jobs 
+    : jobs.filter(job => job.clientId === user?.clientId);
 
   // Buscar clientes (apenas para master)
   const { data: clients = [] } = useQuery<Client[]>({
@@ -324,8 +337,8 @@ export default function SelectionsPage() {
     }
   };
 
-  // Filtrar seleções
-  const filteredSelections = selections
+  // Aplicar filtros adicionais nas seleções já filtradas por role
+  const finalFilteredSelections = filteredSelections
     .filter(selection => {
       // Filtro por cliente (apenas para master)
       if (user?.role === 'master' && selectedClientFilter !== 'all') {
@@ -618,7 +631,7 @@ export default function SelectionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSelections.map((selection) => (
+                {finalFilteredSelections.map((selection) => (
                   <TableRow key={selection.id}>
                     <TableCell className="font-medium">{selection.name}</TableCell>
                     <TableCell>

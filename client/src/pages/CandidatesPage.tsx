@@ -435,6 +435,10 @@ export default function CandidatesPage() {
 
   // Handlers
   const handleCreateList = (data: CandidateListFormData) => {
+    // Para usuários client, usar automaticamente o clientId do usuário
+    if (user?.role === 'client' && user?.clientId) {
+      data.clientId = user.clientId;
+    }
     createListMutation.mutate(data);
   };
 
