@@ -21,10 +21,6 @@ export interface IStorage {
   updateUser(id: number, user: Partial<User>): Promise<User>;
   deleteUser(id: number): Promise<void>;
 
-  // Client Users Helper Methods  
-  getClientUsers(clientId: number): Promise<ClientUser[]>;
-  createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
-
   // Clients
   getClients(): Promise<Client[]>;
   getClientById(id: number): Promise<Client | undefined>;
@@ -32,15 +28,6 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: number, client: Partial<Client>): Promise<Client>;
   deleteClient(id: number): Promise<void>;
-
-  // Client Users
-  getClientUsersByClientId(clientId: number): Promise<ClientUser[]>;
-  getClientUserById(id: number): Promise<ClientUser | undefined>;
-  getClientUserByEmail(email: string): Promise<ClientUser | undefined>;
-  createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
-  updateClientUser(id: number, clientUser: Partial<ClientUser>): Promise<ClientUser>;
-  deleteClientUser(id: number): Promise<void>;
-  deleteAllClientUsers(clientId: number): Promise<ClientUser[]>;
 
   // Jobs
   getJobsByClientId(clientId: number): Promise<Job[]>;
@@ -183,102 +170,7 @@ export class FirebaseStorage implements IStorage {
     await deleteDoc(doc(firebaseDb, "users", String(id)));
   }
 
-  // Client Users Helper Methods
-  async getClientUsers(clientId: number): Promise<ClientUser[]> {
-    console.log(`🔍 Buscando usuários para clientId: ${clientId} (tipo: ${typeof clientId})`);
-    
-    const usersQuery = query(
-      collection(firebaseDb, "users"), 
-      where("role", "==", "client"),
-      where("clientId", "==", clientId)
-    );
-    
-    const querySnapshot = await getDocs(usersQuery);
-    console.log(`📊 Query retornou ${querySnapshot.size} documentos`);
-    
-    if (querySnapshot.size === 0) {
-      // Debug: buscar todos os usuários para verificar o que temos
-      console.log('🔍 Buscando TODOS os usuários para debug:');
-      const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
-      allUsersSnapshot.docs.forEach((doc, index) => {
-        const userData = doc.data();
-        console.log(`   ${index + 1}. ID: ${doc.id}, Role: ${userData.role}, ClientId: ${userData.clientId} (${typeof userData.clientId}), Name: ${userData.name}`);
-      });
-    }
-    
-    const users = querySnapshot.docs.map(doc => {
-      const userData = doc.data();
-      console.log(`👤 Usuário encontrado: ${userData.name} (${userData.email}) - ClientId: ${userData.clientId}`);
-      return { id: doc.id, ...userData } as ClientUser;
-    });
-    
-    console.log(`✅ Retornando ${users.length} usuários`);
-    return users;
-  }
 
-  async createClientUser(clientUser: InsertClientUser): Promise<ClientUser> {
-    console.log('🔧 Criando usuário de cliente:', { 
-      name: clientUser.name, 
-      email: clientUser.email, 
-      clientId: clientUser.clientId,
-      role: clientUser.role
-    });
-    
-    const userId = Date.now().toString();
-    const hashedPassword = await bcrypt.hash(clientUser.password, 10);
-    
-    const userData = {
-      ...clientUser,
-      password: hashedPassword,
-      id: userId,
-      role: 'client',
-      status: 'active',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    console.log('💾 Salvando usuário na coleção users com ID:', userId);
-    console.log('📋 Dados do usuário:', { 
-      id: userData.id, 
-      name: userData.name, 
-      email: userData.email, 
-      clientId: userData.clientId,
-      role: userData.role 
-    });
-    
-    await setDoc(doc(firebaseDb, "users", userId), userData);
-    console.log('✅ Usuário salvo com sucesso no Firebase');
-    
-    return userData as ClientUser;
-  }
-
-  async fixClientUsersWithoutClientId(targetClientId: number): Promise<void> {
-    console.log(`🔧 Verificando e corrigindo usuários sem clientId para cliente ${targetClientId}...`);
-    
-    const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
-    let usersFixed = 0;
-    
-    console.log(`📊 Total de usuários na coleção: ${allUsersSnapshot.size}`);
-    
-    for (const userDoc of allUsersSnapshot.docs) {
-      const userData = userDoc.data();
-      console.log(`👤 Verificando usuário: ${userData.name} (${userData.email}) - Role: ${userData.role}, ClientId: ${userData.clientId}`);
-      
-      // Se é um usuário cliente mas não tem clientId
-      if (userData.role === 'client' && !userData.clientId) {
-        console.log(`🔍 Usuário sem clientId encontrado: ${userData.name} (${userData.email})`);
-        
-        await updateDoc(doc(firebaseDb, "users", userDoc.id), {
-          clientId: targetClientId
-        });
-        
-        usersFixed++;
-        console.log(`✅ Usuário ${userData.name} corrigido com clientId: ${targetClientId}`);
-      }
-    }
-    
-    console.log(`✅ Total de usuários corrigidos: ${usersFixed}`);
-  }
 
   // Clients
   async getClients(): Promise<Client[]> {
