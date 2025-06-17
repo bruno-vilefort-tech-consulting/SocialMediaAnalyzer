@@ -421,15 +421,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Dados recebidos para criação de vaga:', req.body);
       
       // Garantir que clientId seja um número válido
-      let clientId = 1;
+      let clientId;
       if (req.user!.role === 'master') {
         clientId = req.body.clientId && Number.isInteger(req.body.clientId) && req.body.clientId < 2147483647 
           ? req.body.clientId 
           : 1;
       } else {
-        clientId = req.user!.clientId && req.user!.clientId < 2147483647 
-          ? req.user!.clientId 
-          : 1;
+        // Para usuários cliente, sempre usar o clientId do próprio usuário
+        clientId = req.user!.clientId!;
+        console.log(`👤 Usuário cliente criando vaga para clientId: ${clientId}`);
       }
 
       // Validar dados básicos da vaga
