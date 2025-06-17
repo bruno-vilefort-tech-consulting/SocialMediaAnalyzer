@@ -12,7 +12,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
-import { clientWhatsAppService } from "./clientWhatsAppService";
+import { whatsappClientModule } from "./whatsappClientModule";
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
@@ -1826,7 +1826,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints
+  // Client WhatsApp endpoints - Módulo Isolado
+  app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`📱 Buscando status WhatsApp para cliente ${user.clientId}...`);
+      const status = await whatsappClientModule.getClientStatus(user.clientId.toString());
+      
+      res.json({
+        isConnected: status.isConnected,
+        phone: status.phoneNumber,
+        lastConnection: status.lastConnection,
+        qrCode: status.qrCode
+      });
+    } catch (error) {
+      console.error('Client WhatsApp status error:', error);
+      res.status(500).json({ message: 'Erro ao buscar status WhatsApp' });
+    }
+  });
+
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {
       const user = req.user;
@@ -1834,7 +1856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      const result = await whatsappClientModule.connectClient(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -1861,7 +1883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
+      const result = await whatsappClientModule.disconnectClient(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -1893,7 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const result = await clientWhatsAppService.sendTestMessage(
+      const result = await whatsappClientModule.sendTestMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message
