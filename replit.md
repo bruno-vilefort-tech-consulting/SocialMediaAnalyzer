@@ -115,7 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 17, 2025: ✅ SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Conflito "replaced" resolvido definitivamente
+- June 17, 2025: 🔄 SISTEMA WHATSAPP COM DETECÇÃO DE CONFLITOS - QR Code regenerado para nova conexão
+  - **Sistema de conflitos esclarecido**: WhatsApp permite 4 dispositivos conectados simultaneamente
+  - **Detecção automática de conflitos**: Sistema detecta quando mesmo número está conectado em múltiplos locais
+  - **Reconexão automática implementada**: Força nova autenticação quando detecta conflitos tipo "replaced"
+  - **QR Code regenerado**: Novo código disponível para conexão após limpeza de credenciais antigas
+  - **Teste de entrevista preparado**: Sistema aguarda conexão WhatsApp para enviar teste para 11984316526
+  - **Fluxo completo pronto**: Convite → respostas por áudio → transcrição Whisper → análise OpenAI
+  - **Arquitetura resiliente**: Sistema limpa dados automaticamente e regenera QR para nova autenticação
   - **Problema crítico do conflito resolvido**: Sistema detecta estado "conflict: replaced" e força nova autenticação
   - **Reconexão automática implementada**: WebSocket é reinicializado automaticamente quando detecta conflitos
   - **Limpeza de dados de autenticação**: Remove credenciais antigas e força geração de novo QR Code
