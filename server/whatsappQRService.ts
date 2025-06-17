@@ -144,15 +144,23 @@ export class WhatsAppQRService {
     try {
       // Usar nova arquitetura: buscar configuração específica do master
       const config = await storage.getApiConfig('master', '1749848502212');
-      if (config && config.whatsappQrConnected) {
-        this.config.isConnected = config.whatsappQrConnected;
+      if (config) {
+        // Atualizar configuração local com dados do banco
+        this.config.isConnected = config.whatsappQrConnected || false;
         this.config.phoneNumber = config.whatsappQrPhoneNumber || null;
         this.config.lastConnection = config.whatsappQrLastConnection;
+        
         console.log('📱 Dados WhatsApp QR carregados do banco:', {
           connected: this.config.isConnected,
           phone: this.config.phoneNumber,
           lastConnection: this.config.lastConnection
         });
+        
+        // Se o banco indica que está conectado, notificar listeners
+        if (this.config.isConnected) {
+          this.notifyConnectionListeners(true);
+          console.log('✅ Status conectado carregado do banco de dados');
+        }
       }
     } catch (error) {
       console.error('❌ Erro ao carregar dados WhatsApp QR do banco:', error);
@@ -1128,14 +1136,36 @@ Ou use os botões se disponíveis.`);
       console.log(`🔌 [DEBUG] Socket existe: ${!!this.socket}`);
       console.log(`✅ [DEBUG] Status conectado: ${this.config.isConnected}`);
 
-      if (!this.socket || !this.config.isConnected) {
-        console.log(`❌ [DEBUG] WhatsApp QR não conectado - Socket: ${!!this.socket}, Connected: ${this.config.isConnected}`);
+      // Verificar se temos socket ativo OU se o status indica conexão funcional
+      const hasActiveSocket = this.socket && this.socket.user;
+      const hasConnectionStatus = this.config.isConnected && this.config.phoneNumber;
+      
+      if (!hasActiveSocket && !hasConnectionStatus) {
+        console.log(`❌ [DEBUG] WhatsApp QR não conectado - Socket ativo: ${hasActiveSocket}, Status conectado: ${hasConnectionStatus}`);
         throw new Error('WhatsApp QR não está conectado');
+      }
+      
+      // Se não temos socket mas temos status de conectado, tentar reconectar
+      if (!hasActiveSocket && hasConnectionStatus) {
+        console.log(`🔄 [DEBUG] Tentando reconectar socket para envio...`);
+        try {
+          await this.reconnect();
+          // Aguardar um pouco para a reconexão
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (reconnectError) {
+          console.log(`⚠️ [DEBUG] Erro na reconexão, continuando com envio:`, reconnectError);
+        }
       }
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
       console.log(`📤 [DEBUG] JID formatado: ${jid}`);
       console.log(`⏰ [DEBUG] Iniciando envio às: ${new Date().toISOString()}`);
+
+      // Verificar se ainda temos socket válido após possível reconexão
+      if (!this.socket) {
+        console.log(`❌ [DEBUG] Socket não disponível após verificações`);
+        throw new Error('Socket WhatsApp não disponível');
+      }
 
       // Verificar se o número existe no WhatsApp
       console.log(`🔍 [DEBUG] Verificando se número existe no WhatsApp...`);

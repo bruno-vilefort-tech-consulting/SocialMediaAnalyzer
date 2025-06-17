@@ -1926,6 +1926,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { WhatsAppQRService } = await import('./whatsappQRService');
         whatsappQRService = new WhatsAppQRService();
         console.log('✅ WhatsApp QR Service inicializado sob demanda');
+        
+        // Aguardar um momento para a inicialização e carregamento de dados
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         console.log('⚠️ WhatsApp QR Service não disponível:', error instanceof Error ? error.message : String(error));
         whatsappQRService = null;
