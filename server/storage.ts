@@ -9,21 +9,9 @@ import {
   type MasterSettings, type InsertMasterSettings,
   type MessageLog, type InsertMessageLog
 } from "@shared/schema";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
 import bcrypt from "bcrypt";
-
-// Initialize Firebase
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
-  appId: process.env.VITE_FIREBASE_APP_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-export const firebaseDb = getFirestore(app);
+import { firebaseDb } from "./db.js";
 
 export interface IStorage {
   // Users
