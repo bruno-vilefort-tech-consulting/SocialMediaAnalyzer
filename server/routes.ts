@@ -1712,6 +1712,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Manager Routes - Client-specific connections
+  app.get("/api/whatsapp/connections", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const connections = await whatsappManager.getClientConnections();
+      res.json(connections);
+    } catch (error) {
+      console.error('Error fetching WhatsApp connections:', error);
+      res.status(500).json({ error: 'Failed to fetch connections' });
+    }
+  });
+
+  app.post("/api/whatsapp/connect", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const { clientId, clientName } = req.body;
+      
+      if (!clientId || !clientName) {
+        return res.status(400).json({ error: 'clientId and clientName are required' });
+      }
+
+      const connectionId = await whatsappManager.createConnection(clientId, clientName);
+      res.json({ success: true, connectionId });
+    } catch (error) {
+      console.error('Error creating WhatsApp connection:', error);
+      res.status(500).json({ error: 'Failed to create connection' });
+    }
+  });
+
+  app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      await whatsappManager.disconnectClient(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error disconnecting WhatsApp connection:', error);
+      res.status(500).json({ error: 'Failed to disconnect' });
+    }
+  });
+
+  app.delete("/api/whatsapp/connections/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      await whatsappManager.deleteConnection(connectionId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting WhatsApp connection:', error);
+      res.status(500).json({ error: 'Failed to delete connection' });
+    }
+  });
+
+  app.post("/api/whatsapp/test/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ error: 'phoneNumber and message are required' });
+      }
+
+      const success = await whatsappManager.sendMessage(connectionId, phoneNumber, message);
+      
+      if (success) {
+        res.json({ success: true, message: 'Message sent successfully' });
+      } else {
+        res.status(500).json({ error: 'Failed to send message' });
+      }
+    } catch (error) {
+      console.error('Error testing WhatsApp connection:', error);
+      res.status(500).json({ error: 'Failed to send test message' });
+    }
+  });
+
+  app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+    try {
+      const { connectionId } = req.params;
+      const status = whatsappManager.getConnectionStatus(connectionId);
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting WhatsApp connection status:', error);
+      res.status(500).json({ error: 'Failed to get connection status' });
+    }
+  });
+
   // API Configuration routes
   app.get("/api/config", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
