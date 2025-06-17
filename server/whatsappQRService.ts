@@ -1175,20 +1175,22 @@ Ou use os botões se disponíveis.`);
       }
 
       // Verificar estado do WebSocket de forma mais robusta
-      if (this.socket.ws) {
-        if (this.socket.ws.readyState !== 1) {
-          console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState} - tentando reconectar`);
+      if (!this.socket.ws || this.socket.ws.readyState !== 1) {
+        console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws?.readyState || 'undefined'} - tentando reconectar`);
+        
+        // Força reconexão completa
+        try {
           await this.ensureInitialized();
-          if (!this.socket.ws || this.socket.ws.readyState !== 1) {
-            console.log(`❌ Reconexão do WebSocket falhou`);
+          
+          // Verificar novamente após reconexão
+          if (!this.socket?.ws || this.socket.ws.readyState !== 1) {
+            console.log(`❌ Reconexão do WebSocket falhou - estado final: ${this.socket?.ws?.readyState || 'undefined'}`);
             return false;
           }
-        }
-      } else {
-        console.log(`❌ WebSocket não disponível - tentando reconectar`);
-        await this.ensureInitialized();
-        if (!this.socket.ws) {
-          console.log(`❌ WebSocket ainda não disponível após reconexão`);
+          
+          console.log(`✅ WebSocket reconectado com sucesso - estado: ${this.socket.ws.readyState}`);
+        } catch (reconnectError) {
+          console.log(`❌ Erro durante reconexão: ${reconnectError.message}`);
           return false;
         }
       }
@@ -1424,9 +1426,39 @@ Você gostaria de iniciar a entrevista?`;
       }
     }
 
-    if (!this.socket && this.config.isConnected) {
-      console.log('🔄 Reconectando socket WhatsApp...');
+    // Verificar se socket existe e está funcional para envio de mensagens
+    const isSocketFunctional = this.socket && 
+                               this.socket.user && 
+                               this.socket.ws && 
+                               this.socket.ws.readyState === 1;
+
+    if (!isSocketFunctional) {
+      console.log('🔄 Socket não funcional - forçando nova conexão completa...');
+      
+      // Limpar socket antigo
+      this.socket = null;
+      
+      // Forçar nova conexão
       await this.initializeConnection();
+      
+      // Aguardar estabelecimento completo da conexão WebSocket
+      let attempts = 0;
+      const maxAttempts = 15;
+      
+      while (attempts < maxAttempts) {
+        if (this.socket?.ws?.readyState === 1 && this.socket?.user) {
+          console.log(`✅ WebSocket conectado na tentativa ${attempts + 1}`);
+          return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+        console.log(`⏳ Aguardando WebSocket conectar... ${attempts}/${maxAttempts}`);
+      }
+      
+      if (!this.socket?.ws || this.socket.ws.readyState !== 1) {
+        throw new Error('Falha ao estabelecer conexão WebSocket funcional para envio de mensagens');
+      }
     }
   }
 
