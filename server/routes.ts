@@ -2454,6 +2454,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
       const clientId = parseInt(req.params.clientId);
+      
+      // Primeiro, corrigir usuários sem clientId para este cliente
+      await storage.fixClientUsersWithoutClientId(clientId);
+      
       const users = await storage.getClientUsers(clientId);
       res.json(users);
     } catch (error) {

@@ -264,8 +264,8 @@ export class FirebaseStorage implements IStorage {
     return userData as ClientUser;
   }
 
-  async fixClientUsersWithoutClientId(): Promise<void> {
-    console.log('🔧 Verificando e corrigindo usuários sem clientId...');
+  async fixClientUsersWithoutClientId(targetClientId: number): Promise<void> {
+    console.log(`🔧 Verificando e corrigindo usuários sem clientId para cliente ${targetClientId}...`);
     
     const allUsersSnapshot = await getDocs(collection(firebaseDb, "users"));
     let usersFixed = 0;
@@ -277,15 +277,12 @@ export class FirebaseStorage implements IStorage {
       if (userData.role === 'client' && !userData.clientId) {
         console.log(`🔍 Usuário sem clientId encontrado: ${userData.name} (${userData.email})`);
         
-        // Como só temos um cliente ativo, vamos associar a ele
-        const clientId = 1749849987543;
-        
         await updateDoc(doc(firebaseDb, "users", userDoc.id), {
-          clientId: clientId
+          clientId: targetClientId
         });
         
         usersFixed++;
-        console.log(`✅ Usuário ${userData.name} corrigido com clientId: ${clientId}`);
+        console.log(`✅ Usuário ${userData.name} corrigido com clientId: ${targetClientId}`);
       }
     }
     
