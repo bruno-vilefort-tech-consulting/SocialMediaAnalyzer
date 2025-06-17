@@ -288,17 +288,19 @@ export class ClientWhatsAppService {
         return;
       }
 
-      // Atualizar configuração usando upsertApiConfig
-      await storage.upsertApiConfig({
-        entityType: 'client',
+      // Atualizar configuração usando upsertApiConfig (filtrando valores undefined)
+      const configUpdate = {
+        entityType: 'client' as const,
         entityId: clientId,
-        whatsappQrConnected: updates.isConnected ?? apiConfig.whatsappQrConnected,
-        whatsappQrPhoneNumber: updates.phoneNumber ?? apiConfig.whatsappQrPhoneNumber,
-        whatsappQrLastConnection: updates.lastConnection ?? apiConfig.whatsappQrLastConnection,
+        whatsappQrConnected: updates.isConnected ?? apiConfig.whatsappQrConnected ?? false,
+        whatsappQrPhoneNumber: updates.phoneNumber ?? apiConfig.whatsappQrPhoneNumber ?? null,
+        whatsappQrLastConnection: updates.lastConnection ?? apiConfig.whatsappQrLastConnection ?? null,
         openaiVoice: apiConfig.openaiVoice || 'nova',
-        firebaseProjectId: apiConfig.firebaseProjectId,
-        firebaseServiceAccount: apiConfig.firebaseServiceAccount
-      });
+        firebaseProjectId: apiConfig.firebaseProjectId ?? null,
+        firebaseServiceAccount: apiConfig.firebaseServiceAccount ?? null
+      };
+
+      await storage.upsertApiConfig(configUpdate);
 
       console.log(`💾 Configuração WhatsApp atualizada para cliente ${clientId}`);
     } catch (error) {

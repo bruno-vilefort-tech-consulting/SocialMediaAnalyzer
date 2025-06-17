@@ -12,6 +12,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
+import { clientWhatsAppService } from "./clientWhatsAppService";
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
@@ -1892,19 +1893,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const config = await storage.getApiConfig('client', user.clientId.toString());
-      if (!config?.whatsappQrConnected) {
-        return res.status(400).json({ message: 'WhatsApp não conectado' });
+      const result = await clientWhatsAppService.sendTestMessage(
+        user.clientId.toString(), 
+        phoneNumber, 
+        message
+      );
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: result.message 
+        });
       }
-
-      // Simulate message sending (in real implementation, integrate with WhatsApp service)
-      console.log(`📱 Cliente ${user.clientId} enviando teste WhatsApp para ${phoneNumber}: ${message}`);
-
-      res.json({ 
-        success: true, 
-        message: 'Mensagem de teste enviada com sucesso',
-        messageId: `test_${Date.now()}`
-      });
     } catch (error) {
       console.error('Client WhatsApp test error:', error);
       res.status(500).json({ message: 'Erro ao enviar mensagem de teste' });
