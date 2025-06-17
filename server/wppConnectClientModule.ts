@@ -71,9 +71,21 @@ export class WppConnectClientModule {
         try {
           console.log(`🔄 [DEBUG] Iniciando criação WPPConnect para cliente ${clientId}...`);
           
+          // Criar diretório temporário único para evitar conflitos
+          const timestamp = Date.now();
+          const tempSessionName = `${sessionName}_${timestamp}`;
+          const tempUserDataDir = path.join(process.cwd(), 'tokens', tempSessionName);
+          
+          console.log(`🗂️ [DEBUG] Usando diretório temporário: ${tempUserDataDir}`);
+          
+          // Garantir que o diretório existe
+          if (!fs.existsSync(tempUserDataDir)) {
+            fs.mkdirSync(tempUserDataDir, { recursive: true });
+          }
+          
           wppconnect
             .create({
-              session: sessionName,
+              session: tempSessionName,
               folderNameToken: 'tokens',
               mkdirFolderToken: 'tokens',
               headless: 'new',
@@ -96,7 +108,7 @@ export class WppConnectClientModule {
                 '--disable-renderer-backgrounding'
               ],
               puppeteerOptions: {
-                userDataDir: path.join(process.cwd(), 'tokens', sessionName),
+                userDataDir: tempUserDataDir,
                 headless: 'new',
                 executablePath: '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
                 args: [
@@ -114,7 +126,7 @@ export class WppConnectClientModule {
                   '--disable-plugins',
                   '--disable-images',
                   '--disable-process-singleton-dialog',
-                  '--user-data-dir=' + path.join(process.cwd(), 'tokens', sessionName),
+                  '--user-data-dir=' + tempUserDataDir,
                   '--no-default-browser-check',
                   '--disable-background-networking',
                   '--disable-sync',
