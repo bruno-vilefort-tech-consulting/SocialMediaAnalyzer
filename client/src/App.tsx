@@ -23,6 +23,7 @@ import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
 import ReportsPage from "@/pages/ReportsPage";
 import InterviewDetailsPage from "@/pages/InterviewDetailsPage";
+import WhatsAppManagerPage from "@/pages/WhatsAppManagerPage";
 import NotFound from "@/pages/not-found";
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
@@ -94,6 +95,14 @@ function Router() {
         <PrivateRoute allowedRoles={['master']}>
           <Layout>
             <ApiConfigPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
+      <Route path="/whatsapp-manager">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <WhatsAppManagerPage />
           </Layout>
         </PrivateRoute>
       </Route>

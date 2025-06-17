@@ -14,7 +14,8 @@ import {
   Mic,
   LogOut,
   MessageCircle,
-  FileText
+  FileText,
+  Smartphone
 } from "lucide-react";
 
 interface SidebarProps {
@@ -33,6 +34,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/clients", label: "Clientes", icon: Building },
+    { path: "/whatsapp-manager", label: "WhatsApp por Cliente", icon: Smartphone },
     { path: "/api-config", label: "Configurações API", icon: Settings },
   ];
 
@@ -43,6 +45,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/results", label: "Resultados", icon: PieChart },
+    { path: "/whatsapp-manager", label: "WhatsApp", icon: Smartphone },
   ];
 
   const menuItems = user?.role === "master" ? masterMenuItems : clientMenuItems;
