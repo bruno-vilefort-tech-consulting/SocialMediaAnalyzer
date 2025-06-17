@@ -63,6 +63,8 @@ export interface IStorage {
   addCandidateToList(candidateId: number, listId: number, clientId: number): Promise<CandidateListMembership>;
   removeCandidateFromList(candidateId: number, listId: number): Promise<void>;
   getCandidateListMemberships(candidateId: number): Promise<CandidateListMembership[]>;
+  getAllCandidateListMemberships(): Promise<CandidateListMembership[]>;
+  getCandidateListMembershipsByClientId(clientId: number): Promise<CandidateListMembership[]>;
   getCandidatesInList(listId: number): Promise<Candidate[]>;
   getCandidatesByMultipleClients(clientIds: number[]): Promise<Candidate[]>;
 
@@ -1203,6 +1205,16 @@ export class FirebaseStorage implements IStorage {
       ...doc.data() 
     } as CandidateListMembership));
     console.log(`📋 Total de memberships encontrados: ${memberships.length}`);
+    return memberships;
+  }
+
+  async getCandidateListMembershipsByClientId(clientId: number): Promise<CandidateListMembership[]> {
+    console.log(`🔍 Buscando candidate-list-memberships para clientId: ${clientId}`);
+    const snapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
+    const memberships = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as CandidateListMembership))
+      .filter(membership => membership.clientId === clientId);
+    console.log(`📋 Memberships encontrados para cliente ${clientId}: ${memberships.length}`);
     return memberships;
   }
 

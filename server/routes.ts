@@ -748,10 +748,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint para buscar todos os relacionamentos candidato-lista-memberships
   app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      console.log('🔍 Buscando todos os candidate-list-memberships');
-      const memberships = await storage.getAllCandidateListMemberships();
-      console.log(`📋 Retornando ${memberships.length} memberships para o frontend`);
-      res.json(memberships);
+      if (req.user!.role === 'master') {
+        // Master pode ver memberships de todos os clientes OU filtrar por cliente específico
+        const clientIdFilter = req.query.clientId as string;
+        if (clientIdFilter) {
+          const memberships = await storage.getCandidateListMembershipsByClientId(parseInt(clientIdFilter));
+          console.log(`🔍 Master buscando memberships do cliente ${clientIdFilter}: ${memberships.length} encontrados`);
+          res.json(memberships);
+        } else {
+          const memberships = await storage.getAllCandidateListMemberships();
+          console.log(`🔍 Master buscando todos os memberships: ${memberships.length} encontrados`);
+          res.json(memberships);
+        }
+      } else {
+        // Cliente vê APENAS seus próprios memberships - ISOLAMENTO TOTAL
+        const memberships = await storage.getCandidateListMembershipsByClientId(req.user!.clientId!);
+        console.log(`🔍 Cliente ${req.user!.email} buscando memberships do clientId ${req.user!.clientId}: ${memberships.length} encontrados`);
+        res.json(memberships);
+      }
     } catch (error) {
       console.error('Erro ao buscar candidate-list-memberships:', error);
       res.status(500).json({ message: 'Failed to fetch candidate list memberships' });
