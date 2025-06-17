@@ -1319,12 +1319,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               normalizedPhone = '55' + normalizedPhone;
             }
             
-            // Usar diretamente o WhatsApp service importado (sem verificação problemática)
-            let whatsappService = whatsappQRService;
+            // Verificar se o WhatsApp service está disponível e inicializado
+            if (!whatsappQRService) {
+              console.log(`❌ WhatsApp service não disponível - pulando envio para ${normalizedPhone}`);
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'whatsapp',
+                channel: 'whatsapp',
+                status: 'failed'
+              });
+              continue;
+            }
 
             // Inicializar o WhatsApp service se necessário
             try {
-              await whatsappService.ensureInitialized();
+              await whatsappQRService.ensureInitialized();
             } catch (initError) {
               console.log(`❌ Erro ao inicializar WhatsApp - pulando envio para ${normalizedPhone}:`, initError);
               await storage.createMessageLog({
@@ -1337,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Verificar status de conectividade antes de tentar enviar
-            const connectionStatus = whatsappService.getConnectionStatus();
+            const connectionStatus = whatsappQRService.getConnectionStatus();
             console.log(`🔍 Status de conexão WhatsApp: ${JSON.stringify(connectionStatus)}`);
             
             // Não bloquear envio mesmo se status não estiver atualizado
@@ -1353,7 +1362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             while (!whatsappSuccess && attempts < maxAttempts) {
               attempts++;
               try {
-                whatsappSuccess = await whatsappService.sendTextMessage(
+                whatsappSuccess = await whatsappQRService.sendTextMessage(
                   normalizedPhone, 
                   whatsappMessage
                 );
@@ -1876,7 +1885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let candidateData = null;
         try {
           if (interviewData.candidateId) {
-            const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', interviewData.candidateId));
+            const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', String(interviewData.candidateId)));
             if (candidateDoc.exists()) {
               candidateData = candidateDoc.data();
               
