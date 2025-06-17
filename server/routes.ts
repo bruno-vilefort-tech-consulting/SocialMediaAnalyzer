@@ -989,12 +989,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
                   .replace(/\[número de perguntas\]/g, questions.length.toString());
 
-                // Importar e usar WhatsApp QR Service
-                const { whatsappQRService } = await import('./whatsappQRService');
+                // Garantir que WhatsApp está inicializado e conectado
+                const whatsappService = await ensureWhatsAppReady();
+                if (!whatsappService) {
+                  console.log(`❌ WhatsApp Service não disponível para ${candidate.whatsapp}`);
+                  throw new Error('WhatsApp Service não disponível');
+                }
+                
+                // Aguardar mais tempo para garantir conexão ativa
+                console.log(`🔄 Aguardando conexão WhatsApp para ${candidate.whatsapp}...`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 try {
-                  const whatsappResult = await whatsappQRService.sendTextMessage(
-                    candidate.whatsapp.includes('@') ? candidate.whatsapp : `${candidate.whatsapp}@s.whatsapp.net`,
+                  console.log(`📱 Tentando envio WhatsApp para ${candidate.whatsapp}`);
+                  const whatsappResult = await whatsappService.sendTextMessage(
+                    candidate.whatsapp,
                     whatsappMessage
                   );
                   
