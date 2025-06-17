@@ -55,9 +55,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize Firebase data
-  const { initializeFirebaseData } = await import("./initializeFirebaseData");
-  await initializeFirebaseData();
+  // Skip Firebase initialization due to quota issues - system will work with existing data
+  console.log('📊 Sistema iniciando com dados existentes (Firebase quota management)');
 
   // WhatsApp service initialization disabled to prevent startup loops
   console.log('📱 WhatsApp QR Service: Inicialização desabilitada temporariamente');

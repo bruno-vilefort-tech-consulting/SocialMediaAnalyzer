@@ -23,19 +23,20 @@ export class WhatsAppManager {
   private connectionListeners: Map<string, ((isConnected: boolean) => void)[]> = new Map();
 
   constructor() {
-    this.initializeManager();
-  }
-
-  private async initializeManager() {
-    console.log('🚀 Inicializando WhatsApp Manager com Firebase');
+    // Initialize manager without auto-loading connections to prevent startup loops
+    console.log('🚀 WhatsApp Manager criado - inicialização sob demanda');
     
     // Garantir que o diretório de sessões existe
     const sessionsDir = path.join(process.cwd(), 'whatsapp-sessions');
     if (!fs.existsSync(sessionsDir)) {
       fs.mkdirSync(sessionsDir, { recursive: true });
     }
+  }
+
+  private async initializeManager() {
+    console.log('🚀 Inicializando WhatsApp Manager com Firebase');
     
-    // Carregar conexões ativas do Firebase
+    // Carregar conexões ativas do Firebase apenas quando necessário
     await this.loadActiveConnections();
   }
 
