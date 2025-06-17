@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 🔐 AUTENTICAÇÃO DE USUÁRIOS CLIENTE CORRIGIDA - Problema de login resolvido completamente
+  - **Vulnerabilidade de criptografia corrigida**: Endpoint PATCH agora criptografa senhas com bcrypt antes de salvar
+  - **Login de cliente funcionando**: Daniel Braga (danielmoreirabraga@gmail.com) pode fazer login com senha padrão
+  - **Validação de senha implementada**: Sistema verifica senhas corretamente após criptografia
+  - **Endpoint seguro**: PATCH /api/users/:id aplica hash bcrypt salt 10 para novas senhas
+  - **Interface atualizada**: Campo senha opcional em edições (vazio mantém senha atual)
+  - **Teste validado**: Login via API e interface funcionando corretamente
+
 - June 17, 2025: 📱 SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Envio de mensagens teste validado e operacional
   - **Detecção de conexão corrigida**: Sistema detecta automaticamente conexão WhatsApp ativa do usuário (1151940284)
   - **Autorização corrigida**: Usuários cliente podem enviar mensagens de teste através do endpoint corrigido
