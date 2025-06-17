@@ -1319,8 +1319,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               normalizedPhone = '55' + normalizedPhone;
             }
             
-            // Garantir que o WhatsApp service está disponível
-            if (!whatsappQRService) {
+            // Debug do WhatsApp service importado
+            console.log(`🔍 [DEBUG] whatsappQRService existe?`, !!whatsappQRService);
+            console.log(`🔍 [DEBUG] whatsappQRService tipo:`, typeof whatsappQRService);
+            
+            // Usar diretamente o serviço importado
+            let whatsappService = whatsappQRService;
+            
+            if (!whatsappService) {
               console.log(`❌ WhatsApp QR Service não disponível - pulando envio para ${normalizedPhone}`);
               await storage.createMessageLog({
                 interviewId: interview.id,
@@ -1333,7 +1339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Inicializar o WhatsApp service se necessário
             try {
-              await whatsappQRService.ensureInitialized();
+              await whatsappService.ensureInitialized();
             } catch (initError) {
               console.log(`❌ Erro ao inicializar WhatsApp - pulando envio para ${normalizedPhone}:`, initError);
               await storage.createMessageLog({
@@ -1346,7 +1352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
 
             // Verificar status de conectividade antes de tentar enviar
-            const connectionStatus = whatsappQRService.getConnectionStatus();
+            const connectionStatus = whatsappService.getConnectionStatus();
             console.log(`🔍 Status de conexão WhatsApp: ${JSON.stringify(connectionStatus)}`);
             
             // Não bloquear envio mesmo se status não estiver atualizado
@@ -1362,7 +1368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             while (!whatsappSuccess && attempts < maxAttempts) {
               attempts++;
               try {
-                whatsappSuccess = await whatsappQRService.sendTextMessage(
+                whatsappSuccess = await whatsappService.sendTextMessage(
                   normalizedPhone, 
                   whatsappMessage
                 );
