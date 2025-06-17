@@ -312,7 +312,14 @@ export class FirebaseStorage implements IStorage {
       } as Job;
     });
     
-    const filteredJobs = allJobs.filter(job => job.clientId === clientId);
+    const filteredJobs = allJobs.filter(job => {
+      const jobClientId = typeof job.clientId === 'string' ? parseInt(job.clientId) : job.clientId;
+      const match = jobClientId === clientId;
+      if (match) {
+        console.log(`✅ Vaga matched: ${job.nomeVaga} (clientId: ${job.clientId})`);
+      }
+      return match;
+    });
     console.log(`📋 Vagas filtradas para cliente ${clientId}: ${filteredJobs.length}`);
     return filteredJobs;
   }
