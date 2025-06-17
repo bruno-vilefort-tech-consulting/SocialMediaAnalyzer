@@ -1319,6 +1319,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
               normalizedPhone = '55' + normalizedPhone;
             }
             
+            // Garantir que o WhatsApp service está inicializado
+            if (!whatsappQRService) {
+              console.log(`❌ WhatsApp QR Service não inicializado - pulando envio para ${normalizedPhone}`);
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'whatsapp',
+                channel: 'whatsapp',
+                status: 'skipped'
+              });
+              continue;
+            }
+
+            // Inicializar o WhatsApp service se necessário
+            try {
+              await whatsappQRService.ensureInitialized();
+            } catch (initError) {
+              console.log(`❌ Erro ao inicializar WhatsApp - pulando envio para ${normalizedPhone}:`, initError);
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'whatsapp',
+                channel: 'whatsapp',
+                status: 'failed'
+              });
+              continue;
+            }
+
+            // Verificar status de conectividade antes de tentar enviar
+            const connectionStatus = whatsappQRService.getConnectionStatus();
+            if (!connectionStatus.isConnected) {
+              console.log(`❌ WhatsApp não conectado - pulando envio para ${normalizedPhone}`);
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'whatsapp',
+                channel: 'whatsapp',
+                status: 'skipped'
+              });
+              continue;
+            }
+            
             // Tentar enviar via WhatsApp com retry
             let whatsappSuccess = false;
             let attempts = 0;

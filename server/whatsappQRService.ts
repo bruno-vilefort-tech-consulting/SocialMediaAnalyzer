@@ -1131,31 +1131,61 @@ Ou use os botões se disponíveis.`);
   public async sendTextMessage(phoneNumber: string, message: string): Promise<boolean> {
     console.log(`🚀 Enviando WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
     
-    // Verificar se WhatsApp está conectado
-    if (!this.socket || !this.socket.user) {
-      console.log(`❌ WhatsApp não conectado - impossível enviar`);
-      return false;
-    }
-    
     try {
+      // Verificações robustas de conectividade
+      if (!this.socket) {
+        console.log(`❌ Socket WhatsApp não inicializado`);
+        return false;
+      }
+
+      if (!this.socket.user) {
+        console.log(`❌ WhatsApp sem usuário autenticado`);
+        return false;
+      }
+
+      // Verificar estado do WebSocket se disponível
+      if (this.socket.ws && this.socket.ws.readyState !== 1) {
+        console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState}`);
+        return false;
+      }
+
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
       
-      // Envio direto e simples com timeout
+      // Verificar se o número existe no WhatsApp primeiro
+      try {
+        const [numberExists] = await this.socket.onWhatsApp(jid);
+        if (!numberExists || !numberExists.exists) {
+          console.log(`❌ Número ${phoneNumber} não existe no WhatsApp`);
+          return false;
+        }
+      } catch (checkError) {
+        console.log(`⚠️ Não foi possível verificar o número - prosseguindo com envio`);
+      }
+      
+      // Envio com timeout reduzido
       const result = await Promise.race([
         this.socket.sendMessage(jid, { text: message }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout no envio')), 15000)
+          setTimeout(() => reject(new Error('Timeout no envio')), 8000)
         )
       ]);
       
-      console.log(`✅ Mensagem enviada! ID:`, result?.key?.id || 'sem-id');
-      return true;
+      if (result && result.key && result.key.id) {
+        console.log(`✅ WhatsApp enviado com sucesso! ID: ${result.key.id}`);
+        return true;
+      } else {
+        console.log(`❌ Falha no envio - resposta inválida`);
+        return false;
+      }
       
     } catch (error: any) {
-      console.error(`❌ Erro no envio WhatsApp:`, error?.message);
+      console.error(`❌ Erro no envio WhatsApp:`, error?.message || 'Erro desconhecido');
       
-      // Se falhou por conexão fechada, marcar como desconectado
-      if (error?.message?.includes('Connection Closed') || error?.output?.statusCode === 428) {
+      // Tratar diferentes tipos de erro de conexão
+      if (error?.message?.includes('Connection Closed') || 
+          error?.message?.includes('Socket') ||
+          error?.message?.includes('stream errored') ||
+          error?.output?.statusCode === 428) {
         console.log(`🔌 Conexão perdida - atualizando status`);
         this.config.isConnected = false;
         await this.saveConnectionToDB();
@@ -1333,6 +1363,26 @@ Você gostaria de iniciar a entrevista?`;
       console.log('🔌 WhatsApp QR desconectado');
     } catch (error) {
       console.error('❌ Erro ao desconectar WhatsApp QR:', error);
+    }
+  }
+
+  public async ensureInitialized(): Promise<void> {
+    if (!this.baileys) {
+      console.log('🔧 Inicializando Baileys...');
+      try {
+        this.baileys = await import('@whiskeysockets/baileys');
+        this.makeWASocket = this.baileys.default;
+        this.useMultiFileAuthState = this.baileys.useMultiFileAuthState;
+        console.log('✅ Baileys inicializado com sucesso');
+      } catch (error) {
+        console.error('❌ Erro ao inicializar Baileys:', error);
+        throw new Error('Falha na inicialização do WhatsApp');
+      }
+    }
+
+    if (!this.socket && this.config.isConnected) {
+      console.log('🔄 Reconectando socket WhatsApp...');
+      await this.initializeConnection();
     }
   }
 
