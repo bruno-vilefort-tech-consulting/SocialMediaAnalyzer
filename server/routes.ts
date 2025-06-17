@@ -12,7 +12,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
-import { whatsappClientModule } from "./whatsappClientModule";
+import { wppConnectClientModule } from "./wppConnectClientModule";
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
@@ -1835,7 +1835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`📱 Buscando status WhatsApp para cliente ${user.clientId}...`);
-      const status = await whatsappClientModule.getClientStatus(user.clientId.toString());
+      const status = await wppConnectClientModule.getClientStatus(user.clientId.toString());
       
       res.json({
         isConnected: status.isConnected,
@@ -1856,7 +1856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await whatsappClientModule.connectClient(user.clientId.toString());
+      const result = await wppConnectClientModule.connectClient(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -1883,7 +1883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await whatsappClientModule.disconnectClient(user.clientId.toString());
+      const result = await wppConnectClientModule.disconnectClient(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -1915,7 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const result = await whatsappClientModule.sendTestMessage(
+      const result = await wppConnectClientModule.sendTestMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message
