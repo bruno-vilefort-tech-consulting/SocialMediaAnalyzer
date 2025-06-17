@@ -115,15 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 17, 2025: ✅ PROBLEMA DE AUTENTICAÇÃO DANIEL BRAGA RESOLVIDO - Login funcionando completamente
-  - **Hash bcrypt corrigido**: Senha daniel580190 atualizada com hash seguro no Firebase
-  - **Validação de senha funcional**: Sistema verifica corretamente credenciais via bcrypt.compare()
-  - **Token JWT gerado**: Autenticação retorna token válido e dados do usuário
-  - **Interface de login operacional**: Frontend recebe resposta correta da API
-  - **Logs detalhados confirmam**: Sistema mostra "Login bem-sucedido para: Daniel Braga"
-  - **WhatsApp QR Service ativo**: Sistema inicializado e pronto para envio de entrevistas
-  - **Credenciais corretas**: danielmoreirabraga@gmail.com / daniel580190
-  - **Endpoint de correção funcional**: /api/fix-daniel-password aplicou hash correto
+- June 17, 2025: ✅ PROBLEMA DE CLIENTID DANIEL BRAGA RESOLVIDO - Sistema cliente totalmente funcional
+  - **Root cause identificado**: Usuário Daniel Braga não tinha campo clientId no registro Firebase
+  - **ClientId corrigido**: Adicionado clientId: 1749849987543 (Grupo Maximuns) ao registro do usuário
+  - **JWT atualizado**: Token agora inclui clientId para usuários com role "client"
+  - **Middleware corrigido**: Sistema de autenticação reconhece e inclui clientId nos tokens
+  - **APIs funcionais**: /api/jobs, /api/client/stats retornando dados filtrados corretamente
+  - **Dashboard operacional**: Interface cliente carrega estatísticas sem erros 404
+  - **Filtros por cliente**: Sistema filtra vagas, candidatos e seleções pelo clientId correto
+  - **Endpoint de correção**: /api/fix-daniel-clientid implementado para futuras correções
+  - **Validação completa**: Login, autorização e acesso a dados funcionando para usuários cliente
 
 - June 17, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE INTEGRADO - Sistema de conexões por cliente implementado na página de configurações
   - **Interface totalmente unificada**: WhatsApp Manager integrado diretamente na página de Configurações API

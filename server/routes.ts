@@ -12,6 +12,8 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
+import { firebaseDb } from "./db";
+import { doc, updateDoc } from "firebase/firestore";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
 const upload = multer({ 
@@ -352,7 +354,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const danielUserId = '1750131049173';
       const correctClientId = 1749849987543; // Grupo Maximuns
       
-      await storage.updateUser(danielUserId, { clientId: correctClientId });
+      // Atualizar diretamente no Firebase
+      const userRef = doc(firebaseDb, 'users', danielUserId);
+      await updateDoc(userRef, {
+        clientId: correctClientId,
+        updatedAt: new Date()
+      });
       
       console.log('✅ ClientId do Daniel atualizado para:', correctClientId);
       res.json({ success: true, message: 'ClientId atualizado com sucesso' });
