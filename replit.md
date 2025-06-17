@@ -126,6 +126,7 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Schema completamente limpo**: Removida tabela clientUsers do shared/schema.ts
   - **Storage.ts limpo**: Removidos todos os métodos obsoletos de clientUsers do FirebaseStorage
   - **Interface IStorage atualizada**: Removidas todas as definições obsoletas de clientUsers
+  - **Coleção Firebase deletada**: Coleção clientUsers removida permanentemente do banco (0 documentos)
   - **Arquitetura final**: Sistema usa exclusivamente users (com clientId) + clients no Firebase
   - **Validação completa**: Login, autorização e acesso a dados funcionando para usuários cliente
   - **Sistema unificado**: Uma única tabela users para masters e clientes, diferenciados por role e clientId
