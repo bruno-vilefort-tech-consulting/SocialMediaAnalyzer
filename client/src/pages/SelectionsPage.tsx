@@ -67,6 +67,7 @@ export default function SelectionsPage() {
   const [agendamento, setAgendamento] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
 
   // Buscar seleções
   const { data: selections = [], isLoading } = useQuery<Selection[]>({
@@ -314,9 +315,17 @@ export default function SelectionsPage() {
   };
 
   // Filtrar seleções
-  const filteredSelections = selections.filter(selection =>
-    (selection.name || selection.nomeSelecao || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSelections = selections
+    .filter(selection => {
+      // Filtro por cliente (apenas para master)
+      if (user?.role === 'master' && selectedClientFilter !== 'all') {
+        return selection.clientId?.toString() === selectedClientFilter;
+      }
+      return true;
+    })
+    .filter(selection =>
+      (selection.name || selection.nomeSelecao || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -326,13 +335,36 @@ export default function SelectionsPage() {
           <h1 className="text-3xl font-bold">Seleção de Candidatos</h1>
           <p className="text-muted-foreground">Configure e agende entrevistas por voz via WhatsApp e E-mail</p>
         </div>
-        <Button 
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Seleção
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Selecionador de Cliente (apenas para master) */}
+          {user?.role === 'master' && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="clientFilter" className="text-sm font-medium">
+                Cliente:
+              </Label>
+              <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Clientes</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Seleção
+          </Button>
+        </div>
       </div>
 
       {/* Formulário de seleção */}
