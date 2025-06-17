@@ -176,12 +176,12 @@ export default function ClientDashboard() {
                 Nova Seleção
               </Button>
               <Button 
-                onClick={() => handleQuickAction("/results")}
+                onClick={() => handleQuickAction("/relatorios")}
                 className="w-full justify-start bg-purple-50 text-purple-700 hover:bg-purple-100"
                 variant="outline"
               >
                 <BarChart className="mr-2 h-4 w-4" />
-                Ver Resultados
+                Ver Relatórios
               </Button>
             </div>
           </CardContent>
