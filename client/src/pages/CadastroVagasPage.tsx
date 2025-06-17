@@ -275,6 +275,14 @@ export default function CadastroVagasPage() {
   // Filtrar vagas
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.nomeVaga.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Para usuários cliente, filtrar apenas por suas vagas
+    if (user?.role === 'client') {
+      const matchesClientId = job.clientId === user.clientId || job.clientId.toString() === user.clientId?.toString();
+      return matchesSearch && matchesClientId;
+    }
+    
+    // Para usuários master, aplicar filtro de cliente selecionado
     const matchesClient = selectedClientFilter === "all" || job.clientId.toString() === selectedClientFilter;
     return matchesSearch && matchesClient;
   });
@@ -318,6 +326,23 @@ export default function CadastroVagasPage() {
                 </SelectContent>
               </Select>
               <Badge variant="outline" className="ml-auto">
+                {filteredJobs.length} {filteredJobs.length === 1 ? 'vaga' : 'vagas'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Contador de vagas para usuários cliente */}
+      {user?.role === 'client' && (
+        <Card className="bg-blue-50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">Suas Vagas Cadastradas</span>
+              </div>
+              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
                 {filteredJobs.length} {filteredJobs.length === 1 ? 'vaga' : 'vagas'}
               </Badge>
             </div>

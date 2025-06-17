@@ -342,9 +342,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/client/stats", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.clientId!;
+      console.log(`🔍 Buscando estatísticas para cliente ID: ${clientId}`);
       const stats = await storage.getClientStats(clientId);
+      console.log(`📊 Estatísticas encontradas:`, stats);
       res.json(stats);
     } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas do cliente:', error);
       res.status(500).json({ message: 'Failed to fetch client stats' });
     }
   });
