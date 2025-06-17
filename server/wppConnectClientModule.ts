@@ -117,7 +117,11 @@ export class WppConnectClientModule {
                   '--user-data-dir=' + path.join(process.cwd(), 'tokens', sessionName),
                   '--no-default-browser-check',
                   '--disable-background-networking',
-                  '--disable-sync'
+                  '--disable-sync',
+                  '--allow-multiple-instances',
+                  '--ignore-certificate-errors',
+                  '--disable-process-singleton',
+                  '--profile-directory=' + sessionName
                 ]
               },
               disableWelcome: true,
