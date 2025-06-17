@@ -11,7 +11,7 @@ import {
 } from "@shared/schema";
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
 import bcrypt from "bcrypt";
-import { firebaseDb } from "./db.js";
+import { firebaseDb } from "./db";
 
 export interface IStorage {
   // Users

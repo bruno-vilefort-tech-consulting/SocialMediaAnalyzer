@@ -1830,6 +1830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Atualizar no Firebase via servidor (tem permissões adequadas)
       const { doc, updateDoc } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db');
       await updateDoc(doc(firebaseDb, 'users', userId), {
         password: hashedPassword,
         updatedAt: new Date()
@@ -2657,7 +2658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Erro ao corrigir senha:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      res.status(500).json({ error: 'Falha ao atualizar senha' });
     }
   });
 
