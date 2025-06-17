@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw } from "lucide-react";
+import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +40,23 @@ interface WhatsAppStatus {
   qrCode: string | null;
   phone?: string;
   lastConnection?: string;
+}
+
+interface WhatsAppConnection {
+  id: string;
+  clientId: string;
+  clientName: string;
+  status: 'connected' | 'disconnected' | 'connecting';
+  phoneNumber?: string;
+  lastConnection?: string;
+  createdAt: string;
+}
+
+interface Client {
+  id: number;
+  companyName: string;
+  cnpj: string;
+  status: string;
 }
 
 export default function ApiConfigPage() {
@@ -90,6 +107,22 @@ export default function ApiConfigPage() {
   // Estados para teste WhatsApp
   const [testPhone, setTestPhone] = useState("");
   const [testMessage, setTestMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
+  
+  // Estados para WhatsApp Manager (conexões por cliente)
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedClientName, setSelectedClientName] = useState<string>("");
+  const [managerTestPhone, setManagerTestPhone] = useState<string>("");
+  const [managerTestMessage, setManagerTestMessage] = useState<string>("Teste de mensagem WhatsApp por cliente");
+
+  // Queries para WhatsApp Manager
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+    enabled: isMaster,
+  });
+
+  const { data: connections = [], refetch: refetchConnections } = useQuery<WhatsAppConnection[]>({
+    queryKey: ["/api/whatsapp/connections"],
+  });
 
   // Carrega dados existentes
   useEffect(() => {
@@ -244,6 +277,87 @@ export default function ApiConfigPage() {
         variant: "destructive",
       });
     },
+  });
+
+  // Mutations para WhatsApp Manager (conexões por cliente)
+  const createConnectionMutation = useMutation({
+    mutationFn: (data: { clientId: string; clientName: string }) =>
+      apiRequest("/api/whatsapp/connect", "POST", data),
+    onSuccess: () => {
+      toast({
+        title: "Conexão criada",
+        description: "Nova conexão WhatsApp criada com sucesso"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+      setSelectedClientId("");
+      setSelectedClientName("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao criar conexão",
+        description: error.message || "Erro interno do servidor",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const disconnectConnectionMutation = useMutation({
+    mutationFn: (connectionId: string) =>
+      apiRequest(`/api/whatsapp/disconnect/${connectionId}`, "POST"),
+    onSuccess: () => {
+      toast({
+        title: "Conexão desconectada",
+        description: "WhatsApp desconectado com sucesso"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao desconectar",
+        description: error.message || "Erro interno do servidor",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteConnectionMutation = useMutation({
+    mutationFn: (connectionId: string) =>
+      apiRequest(`/api/whatsapp/connection/${connectionId}`, "DELETE"),
+    onSuccess: () => {
+      toast({
+        title: "Conexão removida",
+        description: "Conexão WhatsApp removida permanentemente"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/connections"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao remover",
+        description: error.message || "Erro interno do servidor",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const sendTestMessageMutation = useMutation({
+    mutationFn: (data: { connectionId: string; phoneNumber: string; message: string }) =>
+      apiRequest(`/api/whatsapp/send/${data.connectionId}`, "POST", {
+        phoneNumber: data.phoneNumber,
+        message: data.message
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Mensagem enviada",
+        description: "Teste enviado com sucesso"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro no teste",
+        description: error.message || "Falha ao enviar mensagem",
+        variant: "destructive"
+      });
+    }
   });
 
   // Testar chave OpenAI
