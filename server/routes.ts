@@ -11,6 +11,7 @@ import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
+import { whatsappManager } from "./whatsappManager";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
 const upload = multer({ 
@@ -2266,13 +2267,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
       }
 
-      const { whatsappManager } = await import('./whatsappManager');
       const success = await whatsappManager.sendMessage(connectionId, phoneNumber, message);
       
       res.json({ success });
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  // WhatsApp Manager Routes - New system for client-specific connections
+  app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const connections = await whatsappManager.getClientConnections();
+      
+      // Filter connections based on user role
+      let filteredConnections = connections;
+      if (req.user?.role === 'client' && req.user.clientId) {
+        filteredConnections = connections.filter(conn => conn.clientId === req.user!.clientId.toString());
+      }
+      
+      res.json(filteredConnections);
+    } catch (error) {
+      console.error('Error fetching WhatsApp connections:', error);
+      res.status(500).json({ message: 'Failed to fetch connections' });
+    }
+  });
+
+  app.post("/api/whatsapp/connect", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { clientId, clientName } = req.body;
+      
+      if (!clientId || !clientName) {
+        return res.status(400).json({ message: 'Client ID and name are required' });
+      }
+      
+      // For client users, ensure they can only create connections for their own client
+      if (req.user?.role === 'client' && req.user.clientId?.toString() !== clientId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const connectionId = await whatsappManager.createConnection(clientId, clientName);
+      res.json({ connectionId, message: 'Connection created successfully' });
+    } catch (error) {
+      console.error('Error creating WhatsApp connection:', error);
+      res.status(500).json({ message: 'Failed to create connection' });
+    }
+  });
+
+  app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      const status = whatsappManager.getConnectionStatus(connectionId);
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting WhatsApp status:', error);
+      res.status(500).json({ message: 'Failed to get status' });
+    }
+  });
+
+  app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      await whatsappManager.disconnectClient(connectionId);
+      res.json({ message: 'Connection disconnected successfully' });
+    } catch (error) {
+      console.error('Error disconnecting WhatsApp:', error);
+      res.status(500).json({ message: 'Failed to disconnect' });
+    }
+  });
+
+  app.delete("/api/whatsapp/connection/:connectionId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { connectionId } = req.params;
+      await whatsappManager.deleteConnection(connectionId);
+      res.json({ message: 'Connection deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting WhatsApp connection:', error);
+      res.status(500).json({ message: 'Failed to delete connection' });
     }
   });
 
