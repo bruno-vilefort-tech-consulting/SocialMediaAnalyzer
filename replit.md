@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 17, 2025: 📱 SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Envio de mensagens teste validado e operacional
+  - **Detecção de conexão corrigida**: Sistema detecta automaticamente conexão WhatsApp ativa do usuário (1151940284)
+  - **Autorização corrigida**: Usuários cliente podem enviar mensagens de teste através do endpoint corrigido
+  - **Envio validado**: Teste confirma mensagem enviada com sucesso para número 5511984316526
+  - **Status persistente**: Conexão WhatsApp salva corretamente no Firebase como conectada
+  - **Interface responsiva**: Botão "Enviar Teste" funcional na página de configurações API
+  - **Logs detalhados**: Sistema registra envio com "✅ Mensagem enviada via Grupo Maximuns"
+  - **Formato de números**: Sistema aceita números com código do país conforme necessidade do usuário
+
 - June 17, 2025: ♿ ACESSIBILIDADE MELHORADA - Textos alternativos adicionados aos ícones WhatsApp
   - **Textos alternativos implementados**: Ícones de desconexão e exclusão WhatsApp agora possuem descrições acessíveis
   - **Tooltips adicionados**: Usuários veem "Desconectar WhatsApp" e "Deletar conexão WhatsApp" ao passar mouse
