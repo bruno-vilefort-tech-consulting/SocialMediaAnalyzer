@@ -253,18 +253,40 @@ export class WhatsAppQRService {
               }, 30000);
             } else {
               if (isConflictError) {
-                console.log('⚠️ Conflito detectado - WhatsApp conectado em outro local. Sistema não funcional.');
-                // Para conflitos, marcar como desconectado pois não pode enviar mensagens
+                console.log('⚠️ Conflito detectado - forçando desconexão completa para permitir nova autenticação');
+                // Para conflitos, limpar tudo e forçar nova autenticação
                 this.config.isConnected = false;
                 this.config.phoneNumber = null;
                 this.config.lastConnection = null;
                 this.config.qrCode = null;
-                this.socket = null; // Limpar socket inválido
+                this.socket = null;
+                
+                // Limpar dados de autenticação para forçar novo QR Code
+                try {
+                  const fs = await import('fs');
+                  const path = await import('path');
+                  const authDir = path.resolve('./whatsapp-auth');
+                  if (fs.existsSync(authDir)) {
+                    fs.rmSync(authDir, { recursive: true, force: true });
+                    console.log('🗑️ Dados de autenticação WhatsApp removidos - nova autenticação necessária');
+                  }
+                } catch (cleanError) {
+                  console.log('⚠️ Erro ao limpar dados de autenticação:', cleanError.message);
+                }
+                
                 await this.saveConnectionToDB().catch(err => 
                   console.error('Erro ao salvar desconexão por conflito:', err.message)
                 );
                 this.notifyConnectionListeners(false);
                 this.notifyQRListeners(null);
+                
+                // Iniciar processo de nova autenticação após delay
+                setTimeout(() => {
+                  console.log('🔄 Iniciando nova autenticação WhatsApp após conflito...');
+                  this.initializeConnection().catch(err => 
+                    console.error('Erro na nova autenticação:', err.message)
+                  );
+                }, 5000);
               } else {
                 console.log('❌ Não reconectando devido ao tipo de erro');
               }
@@ -1135,24 +1157,40 @@ Ou use os botões se disponíveis.`);
     try {
       // Verificações robustas de conectividade
       if (!this.socket) {
-        console.log(`❌ Socket WhatsApp não inicializado`);
-        return false;
+        console.log(`❌ Socket WhatsApp não inicializado - tentando reconectar`);
+        await this.ensureInitialized();
+        if (!this.socket) {
+          console.log(`❌ Falha na reconexão do socket`);
+          return false;
+        }
       }
 
       if (!this.socket.user) {
-        console.log(`❌ WhatsApp sem usuário autenticado`);
-        return false;
+        console.log(`❌ WhatsApp sem usuário autenticado - tentando reconectar`);
+        await this.ensureInitialized();
+        if (!this.socket || !this.socket.user) {
+          console.log(`❌ Falha na reautenticação`);
+          return false;
+        }
       }
 
       // Verificar estado do WebSocket de forma mais robusta
       if (this.socket.ws) {
         if (this.socket.ws.readyState !== 1) {
-          console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState}`);
-          return false;
+          console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState} - tentando reconectar`);
+          await this.ensureInitialized();
+          if (!this.socket.ws || this.socket.ws.readyState !== 1) {
+            console.log(`❌ Reconexão do WebSocket falhou`);
+            return false;
+          }
         }
       } else {
-        console.log(`❌ WebSocket não disponível - estado: undefined`);
-        return false;
+        console.log(`❌ WebSocket não disponível - tentando reconectar`);
+        await this.ensureInitialized();
+        if (!this.socket.ws) {
+          console.log(`❌ WebSocket ainda não disponível após reconexão`);
+          return false;
+        }
       }
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;

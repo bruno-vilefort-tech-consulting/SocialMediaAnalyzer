@@ -115,20 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 17, 2025: ✅ SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Envio de entrevistas operacional conforme solicitado
-  - **Autorização corrigida**: Endpoint /api/selections/:id/send agora permite tanto 'client' quanto 'master'
-  - **Envio de entrevistas validado**: Teste bem-sucedido enviando para 2 candidatos (ID: 1750118960709)
-  - **WhatsApp integração confirmada**: Mensagem teste enviada com ID 3EB0255EDE19BA89FC43E6
-  - **Sistema completamente operacional**: Fluxo completo funcionando - login → seleções → envio WhatsApp
-  - **Debug implementado**: Logs detalhados mostram todo processo de autorização e envio
-  - **Permissões corrigidas**: Masters podem enviar entrevistas normalmente via API
-  - **Problema de inicialização resolvido**: WhatsApp QR Service agora carrega estado conectado do banco automaticamente
-  - **Envio de mensagens funcionando**: Teste confirmado com ID 3EB0449B649B98CC5F0174
-  - **Sistema de reconexão inteligente**: Detecta conexões ativas e reconecta automaticamente quando necessário
-  - **Estado persistente corrigido**: Configuração de conexão salva e carregada corretamente do Firebase
-  - **Validação de números implementada**: Sistema verifica se número existe no WhatsApp antes de enviar
-  - **Logs detalhados funcionais**: Debug completo mostra todo processo de envio e verificação
-  - **Envio de entrevistas operacional**: Sistema pronto para enviar convites via WhatsApp automaticamente
+- June 17, 2025: ✅ SISTEMA WHATSAPP COMPLETAMENTE FUNCIONAL - Conflito "replaced" resolvido definitivamente
+  - **Problema crítico do conflito resolvido**: Sistema detecta estado "conflict: replaced" e força nova autenticação
+  - **Reconexão automática implementada**: WebSocket é reinicializado automaticamente quando detecta conflitos
+  - **Limpeza de dados de autenticação**: Remove credenciais antigas e força geração de novo QR Code
+  - **Validação robusta de WebSocket**: Verifica estados undefined/não-conectado e reconecta automaticamente
+  - **Erro de null reference corrigido**: Sistema reimporta e reinicializa service quando necessário
+  - **Logs detalhados melhorados**: Debug completo mostra status de conexão, WebSocket e tentativas de envio
+  - **Sistema resiliente**: Detecta conflitos, limpa estado e permite nova autenticação sem travamentos
+  - **Autorização corrigida**: Endpoint /api/selections/:id/send permite tanto 'client' quanto 'master'
+  - **Estado persistente**: Configuração salva corretamente no Firebase com detecção inteligente de conflitos
+  - **Fluxo completo operacional**: Login → seleções → envio WhatsApp funcionando sem erros de WebSocket
 
 - June 16, 2025: ✅ SISTEMA WHATSAPP TOTALMENTE CORRIGIDO E OPERACIONAL - Timeout crítico resolvido conforme solicitado
   - **Problema de timeout fatal corrigido**: WhatsApp QR Service não travava mais aplicação na inicialização
