@@ -33,16 +33,22 @@ interface AuthRequest extends Request {
 // Authentication middleware
 const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    console.log('🔑 Middleware authenticate: Verificando autenticação para', req.method, req.path);
+    
     // Try to get token from Authorization header first, then from cookies
     let token = req.headers.authorization?.replace('Bearer ', '');
     if (!token && req.session?.token) {
       token = req.session.token;
     }
     
+    console.log('🔑 Token encontrado:', token ? 'Sim' : 'Não');
+    
     if (!token) {
+      console.log('❌ Middleware authenticate: Token não fornecido');
       return res.status(401).json({ message: 'No token provided' });
     }
 
+    console.log('🔑 Verificando JWT...');
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     console.log('🔑 Decoded JWT:', decoded);
     
