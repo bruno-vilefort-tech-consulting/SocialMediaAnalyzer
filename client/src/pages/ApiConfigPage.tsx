@@ -804,11 +804,11 @@ export default function ApiConfigPage() {
                     <div>
                       <h4 className="font-medium text-green-900 dark:text-green-100">WhatsApp Conectado</h4>
                       <p className="text-sm text-green-700 dark:text-green-300">
-                        {whatsappStatus.phone ? `Telefone: ${whatsappStatus.phone}` : 'Conexão ativa'}
+                        {clientWhatsappStatus.phone ? `Telefone: ${clientWhatsappStatus.phone}` : 'Conexão ativa'}
                       </p>
-                      {whatsappStatus.lastConnection && (
+                      {clientWhatsappStatus.lastConnection && (
                         <p className="text-xs text-green-600 dark:text-green-400">
-                          Última conexão: {new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')}
+                          Última conexão: {new Date(clientWhatsappStatus.lastConnection).toLocaleString('pt-BR')}
                         </p>
                       )}
                     </div>
@@ -873,7 +873,7 @@ export default function ApiConfigPage() {
                       
                       <div className="bg-white p-4 rounded-lg border">
                         <img 
-                          src={whatsappStatus.qrCode} 
+                          src={clientWhatsappStatus.qrCode} 
                           alt="QR Code WhatsApp" 
                           className="w-48 h-48 mx-auto"
                         />
@@ -889,7 +889,7 @@ export default function ApiConfigPage() {
                         </p>
                         
                         <Button
-                          onClick={() => refetchWhatsAppStatus()}
+                          onClick={() => refetchClientWhatsAppStatus()}
                           variant="outline"
                           size="sm"
                           className="mt-2"
@@ -905,7 +905,7 @@ export default function ApiConfigPage() {
             </div>
 
             {/* Teste de Envio WhatsApp (apenas quando conectado) */}
-            {whatsappStatus?.isConnected && (
+            {clientWhatsappStatus?.isConnected && (
               <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
                 <h4 className="font-medium flex items-center gap-2">
                   <Send className="h-4 w-4" />
