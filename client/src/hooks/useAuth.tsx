@@ -54,15 +54,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("🔐 Iniciando login com:", email);
       const response = await apiRequest("/api/auth/login", "POST", { email, password });
+      console.log("📡 Resposta do servidor:", response.status);
+      
       const data = await response.json();
+      console.log("📄 Dados recebidos:", data);
+      
+      if (!data.token || !data.user) {
+        throw new Error("Dados de autenticação inválidos recebidos do servidor");
+      }
       
       setToken(data.token);
       setUser(data.user);
       
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
+      
+      console.log("✅ Login realizado com sucesso para:", data.user.name);
     } catch (error) {
+      console.error("❌ Erro no login:", error);
       throw new Error("Invalid credentials");
     }
   };

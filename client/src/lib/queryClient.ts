@@ -2,12 +2,11 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Se o token for inválido, limpar localStorage e redirecionar para login
+    // Se o token for inválido, limpar localStorage 
     if (res.status === 401) {
       localStorage.removeItem("auth_token");
-      localStorage.removeItem("user_data");
-      window.location.href = "/login";
-      return;
+      localStorage.removeItem("auth_user");
+      // Não redirecionar automaticamente, deixar o React Router lidar com isso
     }
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
