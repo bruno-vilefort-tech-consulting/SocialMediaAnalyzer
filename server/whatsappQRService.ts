@@ -190,12 +190,39 @@ export class WhatsAppQRService {
     }
   }
 
+  private async clearOldSessions() {
+    try {
+      // Limpar diretório de autenticação para evitar conflitos
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const authDir = './whatsapp-auth';
+      if (fs.existsSync(authDir)) {
+        console.log('🧹 Limpando sessões antigas do WhatsApp...');
+        const files = fs.readdirSync(authDir);
+        for (const file of files) {
+          try {
+            fs.unlinkSync(path.join(authDir, file));
+          } catch (error) {
+            // Ignorar erros de arquivos em uso
+          }
+        }
+        console.log('✅ Sessões antigas removidas');
+      }
+    } catch (error) {
+      console.log('⚠️ Não foi possível limpar sessões antigas:', error.message);
+    }
+  }
+
   private async initializeConnection() {
     try {
       if (!this.makeWASocket || !this.useMultiFileAuthState) {
         console.log('⚠️ Baileys não foi inicializado corretamente - funcionando sem WhatsApp');
         return;
       }
+
+      // Limpar sessões antigas antes de conectar
+      await this.clearOldSessions();
 
       console.log('🔗 Inicializando conexão WhatsApp QR...');
       
@@ -239,12 +266,57 @@ export class WhatsAppQRService {
               console.error('Erro ao salvar desconexão:', err.message)
             );
             
-            // Só reconectar se não for erro de autenticação, dispositivo removido ou conflito
+            // Detectar tipos específicos de erro
+            const isStreamError = errorCode === 515 || errorMessage.includes('Stream Errored');
             const isConflictError = errorCode === 440 || errorMessage.includes('conflict') || errorMessage.includes('replaced');
             const shouldReconnect = errorCode !== 401 && errorCode !== 403 && 
-                                   !errorMessage.includes('device_removed') && !isConflictError;
+                                   !errorMessage.includes('device_removed');
             
-            if (shouldReconnect) {
+            if (isStreamError) {
+              console.log('🔄 Erro de stream detectado - limpando credenciais e forçando nova autenticação...');
+              // Limpar credenciais antigas para forçar novo QR
+              await this.clearOldSessions();
+              setTimeout(() => {
+                this.initializeConnection().catch(err => 
+                  console.error('Erro na reconexão:', err.message)
+                );
+              }, 5000);
+            } else if (isConflictError) {
+              console.log('⚠️ Conflito detectado - forçando desconexão completa para permitir nova autenticação');
+              // Para conflitos, limpar tudo e forçar nova autenticação
+              this.config.isConnected = false;
+              this.config.phoneNumber = null;
+              this.config.lastConnection = null;
+              this.config.qrCode = null;
+              this.socket = null;
+              
+              // Limpar dados de autenticação para forçar novo QR Code
+              try {
+                const fs = await import('fs');
+                const path = await import('path');
+                const authDir = path.resolve('./whatsapp-auth');
+                if (fs.existsSync(authDir)) {
+                  fs.rmSync(authDir, { recursive: true, force: true });
+                  console.log('🗑️ Dados de autenticação WhatsApp removidos - nova autenticação necessária');
+                }
+              } catch (cleanError) {
+                console.log('⚠️ Erro ao limpar dados de autenticação:', cleanError.message);
+              }
+              
+              await this.saveConnectionToDB().catch(err => 
+                console.error('Erro ao salvar desconexão por conflito:', err.message)
+              );
+              this.notifyConnectionListeners(false);
+              this.notifyQRListeners(null);
+              
+              // Iniciar processo de nova autenticação após delay
+              setTimeout(() => {
+                console.log('🔄 Iniciando nova autenticação WhatsApp após conflito...');
+                this.initializeConnection().catch(err => 
+                  console.error('Erro na nova autenticação:', err.message)
+                );
+              }, 5000);
+            } else if (shouldReconnect) {
               console.log('🔄 Tentando reconectar em 30 segundos...');
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
@@ -252,44 +324,7 @@ export class WhatsAppQRService {
                 );
               }, 30000);
             } else {
-              if (isConflictError) {
-                console.log('⚠️ Conflito detectado - forçando desconexão completa para permitir nova autenticação');
-                // Para conflitos, limpar tudo e forçar nova autenticação
-                this.config.isConnected = false;
-                this.config.phoneNumber = null;
-                this.config.lastConnection = null;
-                this.config.qrCode = null;
-                this.socket = null;
-                
-                // Limpar dados de autenticação para forçar novo QR Code
-                try {
-                  const fs = await import('fs');
-                  const path = await import('path');
-                  const authDir = path.resolve('./whatsapp-auth');
-                  if (fs.existsSync(authDir)) {
-                    fs.rmSync(authDir, { recursive: true, force: true });
-                    console.log('🗑️ Dados de autenticação WhatsApp removidos - nova autenticação necessária');
-                  }
-                } catch (cleanError) {
-                  console.log('⚠️ Erro ao limpar dados de autenticação:', cleanError.message);
-                }
-                
-                await this.saveConnectionToDB().catch(err => 
-                  console.error('Erro ao salvar desconexão por conflito:', err.message)
-                );
-                this.notifyConnectionListeners(false);
-                this.notifyQRListeners(null);
-                
-                // Iniciar processo de nova autenticação após delay
-                setTimeout(() => {
-                  console.log('🔄 Iniciando nova autenticação WhatsApp após conflito...');
-                  this.initializeConnection().catch(err => 
-                    console.error('Erro na nova autenticação:', err.message)
-                  );
-                }, 5000);
-              } else {
-                console.log('❌ Não reconectando devido ao tipo de erro');
-              }
+              console.log('❌ Não reconectando devido ao tipo de erro');
             }
           } else if (connection === 'open') {
             console.log('✅ WhatsApp QR conectado com sucesso!');
