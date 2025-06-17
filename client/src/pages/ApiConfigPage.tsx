@@ -826,18 +826,18 @@ export default function ApiConfigPage() {
                   <div>
                     <Label htmlFor="testPhone">Número de Teste</Label>
                     <Input
-                      id="testPhone"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
+                      id="clientTestPhone"
+                      value={clientTestPhone}
+                      onChange={(e) => setClientTestPhone(e.target.value)}
                       placeholder="5511999999999"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="testMessage">Mensagem</Label>
+                    <Label htmlFor="clientTestMessage">Mensagem</Label>
                     <Input
-                      id="testMessage"
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
+                      id="clientTestMessage"
+                      value={clientTestMessage}
+                      onChange={(e) => setClientTestMessage(e.target.value)}
                       placeholder="Mensagem de teste"
                     />
                   </div>
@@ -845,7 +845,7 @@ export default function ApiConfigPage() {
 
                 <Button
                   onClick={() => {
-                    if (!testPhone.trim() || !testMessage.trim()) {
+                    if (!clientTestPhone.trim() || !clientTestMessage.trim()) {
                       toast({
                         title: "Campos obrigatórios",
                         description: "Preencha o número e a mensagem para enviar o teste",
@@ -854,8 +854,8 @@ export default function ApiConfigPage() {
                       return;
                     }
                     sendClientTestMutation.mutate({
-                      phoneNumber: testPhone,
-                      message: testMessage
+                      phoneNumber: clientTestPhone,
+                      message: clientTestMessage
                     });
                   }}
                   disabled={sendClientTestMutation.isPending}
@@ -1325,23 +1325,23 @@ export default function ApiConfigPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="testPhone">Número de Teste</Label>
+                    <Label htmlFor="globalTestPhone">Número de Teste</Label>
                     <Input
-                      id="testPhone"
+                      id="globalTestPhone"
                       placeholder="5511999999999"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
+                      value={clientTestPhone}
+                      onChange={(e) => setClientTestPhone(e.target.value)}
                       className="text-sm"
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="testMessage">Mensagem de Teste</Label>
+                    <Label htmlFor="globalTestMessage">Mensagem de Teste</Label>
                     <Input
-                      id="testMessage"
+                      id="globalTestMessage"
                       placeholder="Mensagem de teste..."
-                      value={testMessage}
-                      onChange={(e) => setTestMessage(e.target.value)}
+                      value={clientTestMessage}
+                      onChange={(e) => setClientTestMessage(e.target.value)}
                       className="text-sm"
                     />
                   </div>
@@ -1349,7 +1349,7 @@ export default function ApiConfigPage() {
                 
                 <Button
                   onClick={() => {
-                    if (!testPhone.trim() || !testMessage.trim()) {
+                    if (!clientTestPhone.trim() || !clientTestMessage.trim()) {
                       toast({
                         title: "Campos obrigatórios",
                         description: "Preencha o número e a mensagem de teste",
@@ -1358,8 +1358,8 @@ export default function ApiConfigPage() {
                       return;
                     }
                     testWhatsAppMutation.mutate({
-                      phoneNumber: testPhone,
-                      message: testMessage
+                      phoneNumber: clientTestPhone,
+                      message: clientTestMessage
                     });
                   }}
                   disabled={testWhatsAppMutation.isPending}
