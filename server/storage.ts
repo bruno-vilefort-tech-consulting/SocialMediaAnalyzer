@@ -30,6 +30,12 @@ export interface IStorage {
   getUserById(id: string | number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<User>): Promise<User>;
+  deleteUser(id: number): Promise<void>;
+
+  // Client Users Helper Methods  
+  getClientUsers(clientId: number): Promise<ClientUser[]>;
+  createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
 
   // Clients
   getClients(): Promise<Client[]>;
@@ -176,6 +182,43 @@ export class FirebaseStorage implements IStorage {
     };
     await setDoc(doc(firebaseDb, "users", userId), userData);
     return userData as User;
+  }
+
+  async updateUser(id: number, user: Partial<User>): Promise<User> {
+    const docRef = doc(firebaseDb, "users", String(id));
+    await updateDoc(docRef, user);
+    const updatedDoc = await getDoc(docRef);
+    return { id: updatedDoc.id, ...updatedDoc.data() } as User;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await deleteDoc(doc(firebaseDb, "users", String(id)));
+  }
+
+  // Client Users Helper Methods
+  async getClientUsers(clientId: number): Promise<ClientUser[]> {
+    const usersQuery = query(
+      collection(firebaseDb, "users"), 
+      where("role", "==", "client"),
+      where("clientId", "==", clientId)
+    );
+    const querySnapshot = await getDocs(usersQuery);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ClientUser));
+  }
+
+  async createClientUser(clientUser: InsertClientUser): Promise<ClientUser> {
+    const userId = Date.now().toString();
+    const hashedPassword = await bcrypt.hash(clientUser.password, 10);
+    
+    const userData = {
+      ...clientUser,
+      password: hashedPassword,
+      id: userId,
+      createdAt: new Date()
+    };
+    
+    await setDoc(doc(firebaseDb, "users", userId), userData);
+    return userData as ClientUser;
   }
 
   // Clients

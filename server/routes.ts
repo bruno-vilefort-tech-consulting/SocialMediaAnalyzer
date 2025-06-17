@@ -2436,6 +2436,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client Users Management Endpoints
+  
+  // Get all users for a specific client
+  app.get("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const users = await storage.getClientUsers(clientId);
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching client users:', error);
+      res.status(500).json({ error: 'Failed to fetch client users' });
+    }
+  });
+
+  // Create a new user for a specific client
+  app.post("/api/clients/:clientId/users", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const { name, email, password } = req.body;
+
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Este email já está em uso' });
+      }
+
+      const newUser = await storage.createClientUser({
+        name,
+        email,
+        password,
+        role: 'client',
+        clientId
+      });
+
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error('Error creating client user:', error);
+      res.status(500).json({ error: 'Failed to create client user' });
+    }
+  });
+
+  // Update a client user
+  app.patch("/api/clients/:clientId/users/:userId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const userId = parseInt(req.params.userId);
+      const updateData = req.body;
+
+      // Verify user belongs to this client
+      const user = await storage.getUserById(userId);
+      if (!user || user.clientId !== clientId) {
+        return res.status(404).json({ error: 'Usuário não encontrado para este cliente' });
+      }
+
+      const updatedUser = await storage.updateUser(userId, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating client user:', error);
+      res.status(500).json({ error: 'Failed to update client user' });
+    }
+  });
+
+  // Delete a client user
+  app.delete("/api/clients/:clientId/users/:userId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      const userId = parseInt(req.params.userId);
+
+      // Verify user belongs to this client
+      const user = await storage.getUserById(userId);
+      if (!user || user.clientId !== clientId) {
+        return res.status(404).json({ error: 'Usuário não encontrado para este cliente' });
+      }
+
+      await storage.deleteUser(userId);
+      res.json({ message: 'Usuário removido com sucesso' });
+    } catch (error) {
+      console.error('Error deleting client user:', error);
+      res.status(500).json({ error: 'Failed to delete client user' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
