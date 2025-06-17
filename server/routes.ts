@@ -2332,26 +2332,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/whatsapp-qr/status", async (req, res) => {
     try {
-      // Primeiro verificar conexões do WhatsAppManager (novo sistema)
-      const connectionsSnapshot = await getDocs(collection(firebaseDb, 'whatsappConnections'));
-      let hasActiveConnection = false;
-      let latestConnection = null;
-      
-      connectionsSnapshot.forEach(doc => {
-        const connection = doc.data();
-        if (connection.status === 'connected' && connection.isConnected) {
-          hasActiveConnection = true;
-          latestConnection = connection;
-        }
-      });
-
-      // Se houver conexão ativa no novo sistema, retornar status conectado
-      if (hasActiveConnection && latestConnection) {
+      // Verificar configuração API para detectar conexão persistente
+      const masterConfig = await storage.getApiConfig('master', '1749848502212');
+      if (masterConfig && masterConfig.whatsappQrConnected && masterConfig.whatsappQrPhoneNumber) {
+        console.log(`✅ WhatsApp detectado como conectado via configuração: ${masterConfig.whatsappQrPhoneNumber}`);
         return res.json({
           isConnected: true,
-          qrCode: null, // Não mostrar QR quando conectado
-          phone: latestConnection.phoneNumber,
-          lastConnection: latestConnection.lastConnection
+          qrCode: null,
+          phone: masterConfig.whatsappQrPhoneNumber,
+          lastConnection: masterConfig.whatsappQrLastConnection
         });
       }
 

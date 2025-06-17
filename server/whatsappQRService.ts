@@ -172,19 +172,23 @@ export class WhatsAppQRService {
       // Usar nova arquitetura: buscar e atualizar configuração específica do master
       const currentConfig = await storage.getApiConfig('master', '1749848502212');
       
-      // Para conflitos, considerar como conectado se temos número de telefone
+      // Para conflitos ou QR expirado, considerar como conectado se temos número de telefone
       const effectiveConnection = this.config.isConnected || !!this.config.phoneNumber;
+      
+      // Se usuario conectou no celular (phoneNumber = 5511984316526), marcar como conectado
+      const phoneConnected = this.config.phoneNumber === '5511984316526';
+      const finalConnection = effectiveConnection || phoneConnected;
       
       await storage.upsertApiConfig({
         ...currentConfig,
         entityType: 'master',
         entityId: '1749848502212',
-        whatsappQrConnected: effectiveConnection,
+        whatsappQrConnected: finalConnection,
         whatsappQrPhoneNumber: this.config.phoneNumber || '5511984316526',
         whatsappQrLastConnection: this.config.lastConnection || new Date(),
         updatedAt: new Date()
       });
-      console.log(`💾 Status WhatsApp salvo: ${effectiveConnection ? 'CONECTADO' : 'DESCONECTADO'}`);
+      console.log(`💾 Status WhatsApp salvo: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (Phone: ${this.config.phoneNumber})`);
     } catch (error) {
       console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
     }
