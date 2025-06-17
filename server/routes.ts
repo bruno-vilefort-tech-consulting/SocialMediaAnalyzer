@@ -33,19 +33,31 @@ interface AuthRequest extends Request {
 // Authentication middleware
 const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    // Try to get token from Authorization header first, then from cookies
+    let token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token && req.session?.token) {
+      token = req.session.token;
+    }
+    
     if (!token) {
       return res.status(401).json({ message: 'No token provided' });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as any;
+    console.log('🔑 Decoded JWT:', decoded);
+    
+    // Extract user ID from token (support both 'id' and 'userId' formats)
+    const userId = decoded.id || decoded.userId;
+    console.log('👤 Extracted userId:', userId);
     
     // Try to find user in users table first
-    let user = await storage.getUserById(decoded.id);
+    let user = await storage.getUserById(userId);
+    console.log('👤 Found user in users table:', user);
     
     // If not found in users table, try clients table
     if (!user) {
-      const client = await storage.getClientById(decoded.id);
+      const client = await storage.getClientById(userId);
+      console.log('🏢 Found client:', client);
       if (client) {
         user = {
           id: client.id,
