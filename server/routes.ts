@@ -1849,7 +1849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // WhatsApp Manager Routes - Client-specific connections
-  app.get("/api/whatsapp/connections", authenticate, authorize(['master']), async (req, res) => {
+  app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { whatsappManager } = await import('./whatsappManager');
       const connections = await whatsappManager.getClientConnections();
@@ -1889,7 +1889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/whatsapp/connections/:connectionId", authenticate, authorize(['master']), async (req, res) => {
+  app.delete("/api/whatsapp/connections/:connectionId", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { connectionId } = req.params;
       const { whatsappManager } = await import('./whatsappManager');
@@ -2253,12 +2253,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id})`);
       
       const { collection, getDocs, query, where, doc, getDoc } = await import('firebase/firestore');
-      const { firebaseDb } = await import('./storage');
+      const { storage } = await import('./storage');
       
       let allInterviews: any[] = [];
       
       // Buscar entrevistas com isolamento por cliente
-      const allInterviewsSnapshot = await getDocs(collection(firebaseDb, 'interviews'));
+      const allInterviewsSnapshot = await getDocs(collection(storage.firestore, 'interviews'));
       console.log(`📋 Total de entrevistas encontradas: ${allInterviewsSnapshot.docs.length}`);
       
       // Processar entrevistas com filtro por cliente
@@ -2269,7 +2269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let candidateData = null;
         try {
           if (interviewData.candidateId) {
-            const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', String(interviewData.candidateId)));
+            const candidateDoc = await getDoc(doc(storage.firestore, 'candidates', String(interviewData.candidateId)));
             if (candidateDoc.exists()) {
               candidateData = candidateDoc.data();
               
@@ -2289,7 +2289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Buscar respostas da entrevista
         const responsesQuery = query(
-          collection(firebaseDb, 'responses'),
+          collection(storage.firestore, 'responses'),
           where('interviewId', '==', interviewDoc.id)
         );
         const responsesSnapshot = await getDocs(responsesQuery);
