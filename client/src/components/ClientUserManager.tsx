@@ -21,7 +21,7 @@ import { ptBR } from "date-fns/locale";
 const clientUserSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional(),
   role: z.literal("client"),
   status: z.enum(["active", "inactive"]).default("active"),
 });
@@ -140,9 +140,15 @@ export default function ClientUserManager({ clientId, isVisible }: ClientUserMan
 
   const onSubmit = (data: ClientUserFormData) => {
     if (editingUser) {
+      // For updates, only send password if it's provided
+      const updateData = { ...data };
+      if (!updateData.password || updateData.password.trim() === "") {
+        delete updateData.password;
+      }
+      
       updateUserMutation.mutate({
         userId: editingUser.id,
-        userData: data,
+        userData: updateData,
       });
     } else {
       createUserMutation.mutate(data);

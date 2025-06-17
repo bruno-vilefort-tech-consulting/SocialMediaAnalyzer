@@ -2766,16 +2766,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.userId);
       const updateData = req.body;
 
+      console.log('🔧 Backend: Atualizando usuário do cliente:', {
+        clientId,
+        userId,
+        updateFields: Object.keys(updateData)
+      });
+
       // Verify user belongs to this client
       const user = await storage.getUserById(userId);
       if (!user || user.clientId !== clientId) {
         return res.status(404).json({ error: 'Usuário não encontrado para este cliente' });
       }
 
+      // CRITICAL FIX: Hash password if provided
+      if (updateData.password) {
+        console.log('🔐 Backend: Criptografando nova senha...');
+        const hashedPassword = await bcrypt.hash(updateData.password, 10);
+        updateData.password = hashedPassword;
+        console.log('✅ Backend: Senha criptografada com sucesso');
+      }
+
       const updatedUser = await storage.updateUser(userId, updateData);
+      
+      console.log('✅ Backend: Usuário atualizado:', {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        hasPassword: !!updatedUser.password
+      });
+
       res.json(updatedUser);
     } catch (error) {
-      console.error('Error updating client user:', error);
+      console.error('❌ Backend: Erro ao atualizar usuário:', error);
       res.status(500).json({ error: 'Failed to update client user' });
     }
   });
