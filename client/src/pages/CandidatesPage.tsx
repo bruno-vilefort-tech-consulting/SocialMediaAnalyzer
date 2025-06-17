@@ -591,7 +591,7 @@ export default function CandidatesPage() {
         <>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Gerenciar Candidatos</h1>
+              <h1 className="text-3xl font-bold">Gerenciar Lista dos Candidatos</h1>
               <p className="text-muted-foreground">
                 Organize seus candidatos em listas e gerencie suas informações
               </p>
