@@ -1,4 +1,4 @@
-const { wppConnectClientModule } = require('./server/wppConnectClientModule.ts');
+import { wppConnectClientModule } from './server/wppConnectClientModule.js';
 
 async function testarWppConnectDireto() {
   console.log('🔧 [TESTE DIRETO] Iniciando teste do WPPConnect...');

@@ -350,18 +350,27 @@ export class WppConnectClientModule {
 
   private async updateClientConfig(clientId: string, updates: Partial<WhatsAppClientConfig>) {
     try {
-      console.log(`💾 Atualizando configuração WPPConnect para cliente ${clientId}:`, updates);
+      console.log(`💾 [DEBUG] Atualizando configuração WPPConnect para cliente ${clientId}:`, updates);
       
-      await storage.upsertApiConfig('client', clientId, {
-        whatsappQrConnected: updates.isConnected,
-        whatsappQrQrCode: updates.qrCode,
-        whatsappQrPhoneNumber: updates.phoneNumber,
-        whatsappQrLastConnection: updates.lastConnection
-      });
+      // Buscar configuração existente primeiro
+      const existingConfig = await storage.getApiConfig('client', clientId);
+      console.log(`💾 [DEBUG] Configuração existente:`, existingConfig);
+      
+      // Fazer upsert com dados corretos
+      const configData = {
+        ...existingConfig,
+        whatsappQrConnected: updates.isConnected || false,
+        whatsappQrPhoneNumber: updates.phoneNumber || null,
+        whatsappQrLastConnection: updates.lastConnection || null
+      };
+      
+      console.log(`💾 [DEBUG] Dados para salvar:`, configData);
+      
+      await storage.upsertApiConfig('client', clientId, configData);
 
-      console.log(`✅ Configuração WPPConnect atualizada para cliente ${clientId}`);
+      console.log(`✅ [DEBUG] Configuração WPPConnect atualizada para cliente ${clientId}`);
     } catch (error) {
-      console.error(`❌ Erro ao atualizar configuração cliente ${clientId}:`, error);
+      console.error(`❌ [DEBUG] Erro ao atualizar configuração cliente ${clientId}:`, error);
     }
   }
 
