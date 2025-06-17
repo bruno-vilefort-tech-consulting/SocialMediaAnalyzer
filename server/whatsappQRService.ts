@@ -1143,10 +1143,14 @@ Ou use os botões se disponíveis.`);
         return false;
       }
 
-      // Verificar estado do WebSocket se disponível
-      if (this.socket.ws && this.socket.ws.readyState !== 1) {
-        console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState}`);
-        return false;
+      // Verificar estado do WebSocket de forma mais robusta
+      if (this.socket.ws) {
+        if (this.socket.ws.readyState !== 1) {
+          console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws.readyState}`);
+          return false;
+        }
+      } else {
+        console.log(`⚠️ WebSocket não disponível, mas tentando envio mesmo assim`);
       }
 
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;

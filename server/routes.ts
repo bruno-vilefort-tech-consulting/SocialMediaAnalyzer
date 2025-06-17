@@ -1319,23 +1319,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               normalizedPhone = '55' + normalizedPhone;
             }
             
-            // Debug do WhatsApp service importado
-            console.log(`🔍 [DEBUG] whatsappQRService existe?`, !!whatsappQRService);
-            console.log(`🔍 [DEBUG] whatsappQRService tipo:`, typeof whatsappQRService);
-            
-            // Usar diretamente o serviço importado
+            // Usar diretamente o WhatsApp service importado (sem verificação problemática)
             let whatsappService = whatsappQRService;
-            
-            if (!whatsappService) {
-              console.log(`❌ WhatsApp QR Service não disponível - pulando envio para ${normalizedPhone}`);
-              await storage.createMessageLog({
-                interviewId: interview.id,
-                type: 'whatsapp',
-                channel: 'whatsapp',
-                status: 'skipped'
-              });
-              continue;
-            }
 
             // Inicializar o WhatsApp service se necessário
             try {
