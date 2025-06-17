@@ -77,7 +77,7 @@ export default function JobsPage() {
     },
   });
 
-  // Queries
+  // Queries - filtradas automaticamente baseado no role do usuário
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ["/api/jobs"],
   });
@@ -86,6 +86,11 @@ export default function JobsPage() {
     queryKey: ["/api/clients"],
     enabled: user?.role === 'master',
   });
+
+  // Filtrar vagas baseado no role do usuário
+  const filteredJobs = user?.role === 'master' 
+    ? jobs 
+    : jobs.filter((job: Job) => job.clientId === user?.clientId);
 
   // Mutations
   const createJobMutation = useMutation({
@@ -153,7 +158,7 @@ export default function JobsPage() {
     const jobData: InsertJob = {
       title: "Nova Vaga (não finalizada)",
       description: "Vaga em processo de criação",
-      clientId: user?.role === 'master' ? 1 : user?.clientId || 1,
+      clientId: user?.role === 'master' ? 1 : (user?.clientId || 1),
       status: "not_finished",
     };
 

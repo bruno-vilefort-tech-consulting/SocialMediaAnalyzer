@@ -91,8 +91,11 @@ export default function CandidatesPage() {
     queryFn: async () => {
       let params = '';
       
+      // Para masters: usar filtro selecionado; Para clients: filtrar automaticamente pelo clientId
       if (user?.role === 'master' && selectedClientFilter !== 'all') {
         params = `?clientId=${selectedClientFilter}`;
+      } else if (user?.role === 'client' && user?.clientId) {
+        params = `?clientId=${user.clientId}`;
       }
       
       const token = localStorage.getItem("auth_token");
