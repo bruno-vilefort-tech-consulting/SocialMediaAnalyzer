@@ -538,13 +538,6 @@ export default function ApiConfigPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            {/* Debug temporário */}
-            {/* {console.log('🐛 WhatsApp Status Debug:', { 
-              isConnected: whatsappStatus?.isConnected, 
-              hasQrCode: whatsappStatus?.hasQrCode,
-              qrCodeLength: whatsappStatus?.qrCode?.length
-            })} */}
-            
             {whatsappStatus?.isConnected ? (
               <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="flex items-center gap-3">
@@ -579,7 +572,7 @@ export default function ApiConfigPage() {
                   Desconectar
                 </Button>
               </div>
-            ) : (whatsappStatus?.qrCode && whatsappStatus.qrCode.length > 100) ? (
+            ) : whatsappStatus?.qrCode ? (
               <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
                   <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -593,17 +586,11 @@ export default function ApiConfigPage() {
                 
                 {/* Exibir QR Code */}
                 <div className="bg-white p-4 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                  {whatsappStatus?.qrCode ? (
-                    <img 
-                      src={`data:image/png;base64,${whatsappStatus.qrCode}`}
-                      alt="QR Code WhatsApp" 
-                      className="w-48 h-48 mx-auto"
-                    />
-                  ) : (
-                    <div className="w-48 h-48 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-                      <span className="text-gray-500 dark:text-gray-400">Gerando QR Code...</span>
-                    </div>
-                  )}
+                  <img 
+                    src={whatsappStatus.qrCode.startsWith('data:') ? whatsappStatus.qrCode : `data:image/png;base64,${whatsappStatus.qrCode}`}
+                    alt="QR Code WhatsApp" 
+                    className="w-48 h-48 mx-auto"
+                  />
                 </div>
                 
                 <div className="text-center text-xs text-blue-600 dark:text-blue-400 max-w-sm">
