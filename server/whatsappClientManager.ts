@@ -1,10 +1,4 @@
-import makeWASocket, { 
-  DisconnectReason, 
-  useMultiFileAuthState, 
-  WASocket,
-  ConnectionState,
-  BaileysEventMap
-} from '@whiskeysockets/baileys';
+import type { WASocket, ConnectionState, BaileysEventMap } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
