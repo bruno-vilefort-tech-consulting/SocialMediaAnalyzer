@@ -283,6 +283,8 @@ export default function ApiConfigPage() {
     mutationFn: () => {
       console.log(`🔗 [DEBUG] Chamando endpoint de conexão: ${connectEndpoint}`);
       console.log(`🔗 [DEBUG] isMaster: ${isMaster}, user role: ${user?.role}`);
+      const token = localStorage.getItem("auth_token");
+      console.log(`🔗 [DEBUG] Token no localStorage: ${token?.substring(0, 20)}...`);
       return apiRequest(connectEndpoint, "POST");
     },
     onSuccess: (response: any) => {

@@ -53,6 +53,8 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     }
 
     console.log('🔑 Verificando JWT...');
+    console.log(`🔑 Token recebido: ${token?.substring(0, 20)}...`);
+    console.log(`🔑 JWT_SECRET length: ${JWT_SECRET?.length || 0}`);
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     console.log('🔑 Decoded JWT:', decoded);
     
@@ -1924,7 +1926,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/connect", (req, res, next) => {
+    console.log(`🔗 [INTERCEPTED] Rota /api/client/whatsapp/connect interceptada ANTES do middleware`);
+    console.log(`🔗 [INTERCEPTED] Method: ${req.method}, URL: ${req.url}`);
+    next();
+  }, authenticate, authorize(['client']), async (req, res) => {
     try {
       console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO`);
       console.log(`🔗 [BAILEYS ENDPOINT] Request Headers:`, req.headers);
