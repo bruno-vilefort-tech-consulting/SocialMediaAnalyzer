@@ -53,7 +53,6 @@ class WhatsAppClientManager {
   }
 
   private async loadSavedSessions() {
-    // Carregar sessões salvas do Firebase se necessário
     console.log('🔄 Carregando sessões WhatsApp salvas...');
   }
 
