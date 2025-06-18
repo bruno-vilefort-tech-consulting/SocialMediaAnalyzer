@@ -68,34 +68,21 @@ export default function CandidatesManagementPage() {
     enabled: isMaster,
   });
 
-  // Query para buscar candidatos
+  // Query para buscar candidatos - usa queryFn padrão que já faz json parse
   const { data: candidates = [], isLoading: candidatesLoading } = useQuery({
-    queryKey: selectedClient ? ["/api/candidates", selectedClient, Date.now()] : ["/api/candidates", Date.now()],
-    queryFn: async () => {
-      const params = selectedClient ? `?clientId=${selectedClient}` : '';
-      console.log('🔍 Frontend fazendo requisição:', `/api/candidates${params}`);
-      const result = await apiRequest(`/api/candidates${params}`, "GET");
-      console.log('📋 Candidatos recebidos no frontend:', result?.length || 0);
-      return result;
-    },
-    enabled: isMaster ? true : !!user?.clientId, // Master sempre habilitado, cliente apenas se tiver clientId
-    staleTime: 0, // Força nova requisição sempre
-    gcTime: 0, // Não mantém cache (TanStack Query v5)
-  });
-
-  // Query para buscar listas de candidatos
-  const { data: candidateLists = [] } = useQuery({
-    queryKey: selectedClient ? ["/api/candidate-lists", selectedClient] : ["/api/candidate-lists"],
-    queryFn: async () => {
-      const params = selectedClient ? `?clientId=${selectedClient}` : '';
-      return await apiRequest(`/api/candidate-lists${params}`, "GET");
-    },
+    queryKey: selectedClient ? [`/api/candidates?clientId=${selectedClient}`] : ["/api/candidates"],
     enabled: isMaster ? true : !!user?.clientId,
   });
 
-  // Query para buscar memberships (relacionamentos candidato-lista)
+  // Query para buscar listas de candidatos - usa queryFn padrão que já faz json parse
+  const { data: candidateLists = [] } = useQuery({
+    queryKey: selectedClient ? [`/api/candidate-lists?clientId=${selectedClient}`] : ["/api/candidate-lists"],
+    enabled: isMaster ? true : !!user?.clientId,
+  });
+
+  // Query para buscar memberships (relacionamentos candidato-lista) - usa queryFn padrão
   const { data: memberships = [] } = useQuery({
-    queryKey: selectedClient ? ["/api/candidate-list-memberships", selectedClient] : ["/api/candidate-list-memberships"],
+    queryKey: ["/api/candidate-list-memberships"],
     enabled: isMaster ? true : !!user?.clientId,
   });
 
