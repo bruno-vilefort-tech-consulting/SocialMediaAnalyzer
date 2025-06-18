@@ -1234,9 +1234,9 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidateListMemberships(candidateId: number): Promise<CandidateListMembership[]> {
-    const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    const snapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
     return snapshot.docs
-      .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as CandidateListMembership))
+      .map(doc => ({ id: doc.id, ...doc.data() } as CandidateListMembership))
       .filter(membership => membership.candidateId === candidateId);
   }
 
@@ -1390,7 +1390,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async removeCandidateFromAllLists(candidateId: number): Promise<void> {
-    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const membershipsRef = collection(firebaseDb, 'candidate-list-memberships');
     const q = query(membershipsRef, where('candidateId', '==', candidateId));
     const snapshot = await getDocs(q);
     
@@ -1404,7 +1404,7 @@ export class FirebaseStorage implements IStorage {
     console.log(`🔗 Adicionando candidato ${candidateId} à lista ${listId} do cliente ${clientId}`);
     
     // Check if membership already exists
-    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const membershipsRef = collection(firebaseDb, 'candidate-list-memberships');
     const existingQuery = query(
       membershipsRef,
       where('candidateId', '==', candidateId),
@@ -1434,7 +1434,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async removeCandidateFromList(candidateId: number, listId: number): Promise<void> {
-    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const membershipsRef = collection(firebaseDb, 'candidate-list-memberships');
     const q = query(
       membershipsRef,
       where('candidateId', '==', candidateId),
