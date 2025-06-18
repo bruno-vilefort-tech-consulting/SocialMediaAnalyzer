@@ -80,6 +80,9 @@ export default function CandidatesPage() {
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
+  
+  // Estado para seleção de cliente no upload (apenas para masters)
+  const [uploadClientId, setUploadClientId] = useState<string>('');
 
   // Queries
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
@@ -818,57 +821,84 @@ export default function CandidatesPage() {
     event.target.value = '';
   };
 
-  const handleTopUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Para upload no topo, usar a primeira lista disponível do cliente
-    const clientLists = candidateLists?.filter(list => 
-      user?.role === 'master' ? 
-        (selectedClientFilter === 'all' ? true : list.clientId === parseInt(selectedClientFilter)) :
-        list.clientId === user?.clientId
-    );
-
-    if (!clientLists || clientLists.length === 0) {
-      toast({ 
-        title: "Sem listas disponíveis", 
-        description: "Crie uma lista de candidatos primeiro para importar dados.",
-        variant: "destructive" 
+  // Nova função de upload no topo com seleção de cliente para masters
+  const handleTopUploadWithClientSelection = () => {
+    // Para usuários master, verificar se cliente foi selecionado
+    if (user?.role === 'master' && !uploadClientId) {
+      toast({
+        title: "Selecione um cliente",
+        description: "Escolha o cliente para importar os candidatos",
+        variant: "destructive"
       });
       return;
     }
 
-    // Usar a primeira lista disponível
-    const targetList = clientLists[0];
+    // Trigger file input
+    document.getElementById('top-file-upload')?.click();
+  };
 
-    // Determine clientId based on user role and context
-    let clientId: number;
+  const handleTopUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
+    // Determinar clientId baseado no tipo de usuário
+    let targetClientId: number;
+    
     if (user?.role === 'master') {
-      // Para master: usar clientId da lista ou do filtro selecionado
-      if (selectedClientFilter === 'all') {
-        clientId = targetList.clientId;
-      } else {
-        clientId = parseInt(selectedClientFilter);
+      if (!uploadClientId) {
+        toast({
+          title: "Cliente não selecionado",
+          description: "Selecione um cliente antes de importar",
+          variant: "destructive"
+        });
+        return;
       }
+      targetClientId = parseInt(uploadClientId);
     } else {
-      // Para client: usar próprio clientId
-      clientId = user?.clientId || targetList.clientId;
+      // Para usuário client, usar seu próprio clientId
+      if (!user?.clientId) {
+        toast({
+          title: "Erro de autenticação",
+          description: "ClientId não encontrado",
+          variant: "destructive"
+        });
+        return;
+      }
+      targetClientId = user.clientId;
     }
+
+    // Buscar listas disponíveis para o cliente selecionado
+    const clientLists = candidateLists?.filter(list => list.clientId === targetClientId);
+
+    if (!clientLists || clientLists.length === 0) {
+      const clientName = user?.role === 'master' 
+        ? clients.find(c => c.id === targetClientId)?.companyName || 'Cliente selecionado'
+        : 'sua empresa';
+      
+      toast({
+        title: "Sem listas disponíveis",
+        description: `Crie uma lista de candidatos para ${clientName} primeiro para importar dados.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Usar a primeira lista disponível do cliente
+    const targetList = clientLists[0];
 
     console.log('🎯 Upload Excel no topo:', {
       targetListId: targetList.id,
-      targetListClientId: targetList.clientId,
-      selectedClientFilter,
+      targetListName: targetList.name,
+      targetClientId,
       userRole: user?.role,
-      userClientId: user?.clientId,
-      finalClientId: clientId
+      uploadClientId,
+      availableLists: clientLists.length
     });
 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('listId', targetList.id.toString());
-    formData.append('clientId', clientId.toString());
+    formData.append('clientId', targetClientId.toString());
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -891,33 +921,44 @@ export default function CandidatesPage() {
         // Invalidar caches para atualizar dados
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
         if (targetList?.id) {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
 
-        toast({ 
-          title: "Importação concluída!", 
-          description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}` 
+        const clientName = user?.role === 'master' 
+          ? clients.find(c => c.id === targetClientId)?.companyName || 'cliente'
+          : 'sua lista';
+
+        toast({
+          title: "Importação concluída!",
+          description: `${result.imported} candidatos importados para "${targetList.name}" (${clientName}). ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}`
         });
+
+        // Limpar seleção de cliente após sucesso (apenas para master)
+        if (user?.role === 'master') {
+          setUploadClientId('');
+        }
       } else {
         const error = await response.json();
-        toast({ 
-          title: "Erro na importação", 
+        toast({
+          title: "Erro na importação",
           description: error.message || "Falha ao processar arquivo",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Erro na importação:', error);
-      toast({ 
-        title: "Erro na importação", 
+      toast({
+        title: "Erro na importação",
         description: "Falha ao enviar arquivo. Verifique a conexão.",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
 
     // Limpar input
-    event.target.value = '';  };
+    event.target.value = '';
+  };
 
   if (listsLoading) {
     return <div className="p-6">Carregando listas de candidatos...</div>;
@@ -940,7 +981,7 @@ export default function CandidatesPage() {
                 <div className="flex items-center gap-2">
                   <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
                     <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Selecione um cliente" />
+                      <SelectValue placeholder="Filtrar por cliente" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Clientes</SelectItem>
@@ -953,20 +994,40 @@ export default function CandidatesPage() {
                   </Select>
                 </div>
               )}
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleTopUpload}
-                className="hidden"
-                id="top-file-upload"
-              />
-              <Button
-                variant="outline"
-                onClick={() => document.getElementById('top-file-upload')?.click()}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Importar Excel
-              </Button>
+              
+              {/* Seção de importação Excel */}
+              <div className="flex items-center gap-2">
+                {user?.role === 'master' && (
+                  <Select value={uploadClientId} onValueChange={setUploadClientId}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Cliente para importar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.companyName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleTopUpload}
+                  className="hidden"
+                  id="top-file-upload"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleTopUploadWithClientSelection}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar Excel
+                </Button>
+              </div>
+              
               <Button onClick={() => setShowCreateForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Lista
