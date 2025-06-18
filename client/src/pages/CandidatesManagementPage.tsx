@@ -108,13 +108,6 @@ export default function CandidatesManagementPage() {
     return searchMatch && candidate.clientId === user?.clientId;
   }) : [];
 
-  // Cálculos de paginação
-  const totalCandidates = searchFilteredCandidates.length;
-  const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
-  const startIndex = (currentPage - 1) * candidatesPerPage;
-  const endIndex = startIndex + candidatesPerPage;
-  const paginatedCandidates = searchFilteredCandidates.slice(startIndex, endIndex);
-
   // Reset página quando filtros mudam
   const resetPagination = () => setCurrentPage(1);
 
@@ -378,6 +371,13 @@ export default function CandidatesManagementPage() {
     candidate.whatsapp.includes(searchTerm)
   );
 
+  // Calcular paginação após todos os filtros
+  const totalCandidates = searchFilteredCandidates.length;
+  const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
+  const startIndex = (currentPage - 1) * candidatesPerPage;
+  const endIndex = startIndex + candidatesPerPage;
+  const paginatedCandidates = searchFilteredCandidates.slice(startIndex, endIndex);
+
   if (candidatesLoading) {
     return <div className="p-6">Carregando candidatos...</div>;
   }
@@ -403,14 +403,20 @@ export default function CandidatesManagementPage() {
           <Input
             placeholder="Buscar candidatos..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              resetPagination();
+            }}
             className="pl-10"
           />
         </div>
 
         {/* Filtro por cliente (apenas para master) */}
         {isMaster && (
-          <Select onValueChange={(value) => setSelectedClient(Number(value) || null)}>
+          <Select onValueChange={(value) => {
+            setSelectedClient(value === "all" ? null : Number(value));
+            resetPagination();
+          }}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Filtrar por cliente" />
             </SelectTrigger>
@@ -428,14 +434,14 @@ export default function CandidatesManagementPage() {
 
       {/* Lista de candidatos */}
       <div className="grid gap-4">
-        {searchFilteredCandidates.length === 0 ? (
+        {paginatedCandidates.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-gray-500">
               {candidatesLoading ? "Carregando..." : "Nenhum candidato encontrado"}
             </CardContent>
           </Card>
         ) : (
-          searchFilteredCandidates.map((candidate) => {
+          paginatedCandidates.map((candidate) => {
             const candidateLists = getCandidateLists(candidate.id);
             
             return (
@@ -515,6 +521,49 @@ export default function CandidatesManagementPage() {
           })
         )}
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Mostrando {startIndex + 1} a {Math.min(endIndex, totalCandidates)} de {totalCandidates} candidatos
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(page)}
+                  className="w-8 h-8"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Próximo
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Dialog para editar candidato */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
