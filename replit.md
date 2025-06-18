@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 18, 2025: ✅ INTERFACE LIMPA IMPLEMENTADA - Seções de importação Excel duplicadas removidas conforme solicitado
+  - **Importação do topo removida**: Seção "Importação de Candidatos" sempre visível foi eliminada
+  - **Importação da lista horizontal removida**: Botão "Importar Excel" duplicado removido da visualização de todas as listas
+  - **Funcionalidade preservada**: Importação Excel mantida apenas dentro da visualização de lista individual
+  - **Interface focada**: Página agora concentrada no gerenciamento de listas sem elementos redundantes
+
 - June 18, 2025: ✅ DESIGN COMPACTO E PAGINAÇÃO IMPLEMENTADOS - Layout horizontal conforme solicitado pelo usuário
   - **Layout compacto**: Nome, email e WhatsApp na mesma linha horizontal com espaçamento reduzido
   - **Paginação funcional**: 10 candidatos por página com controles fora da lista

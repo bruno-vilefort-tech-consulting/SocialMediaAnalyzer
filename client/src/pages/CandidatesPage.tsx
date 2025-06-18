@@ -967,48 +967,6 @@ export default function CandidatesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      
-      {/* Seção de importação Excel sempre visível no topo */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
-        <div>
-          <h2 className="text-lg font-semibold">Importação de Candidatos</h2>
-          <p className="text-sm text-muted-foreground">
-            Importe candidatos via Excel para suas listas
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {user?.role === 'master' && (
-            <Select value={uploadClientId} onValueChange={setUploadClientId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.companyName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleTopUpload}
-            className="hidden"
-            id="global-file-upload"
-          />
-          <Button
-            variant="default"
-            onClick={handleTopUploadWithClientSelection}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Importar Excel
-          </Button>
-        </div>
-      </div>
 
       {viewMode === 'all' ? (
         // Visualização de todas as listas (horizontal)
@@ -1038,40 +996,6 @@ export default function CandidatesPage() {
                   </Select>
                 </div>
               )}
-              
-              {/* Seção de importação Excel - disponível para todos os usuários */}
-              <div className="flex items-center gap-2">
-                {user?.role === 'master' && (
-                  <Select value={uploadClientId} onValueChange={setUploadClientId}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Cliente para importar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.companyName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleTopUpload}
-                  className="hidden"
-                  id="top-file-upload"
-                />
-                <Button
-                  variant="outline"
-                  onClick={handleTopUploadWithClientSelection}
-                  title={user?.role === 'master' ? "Selecione um cliente e importe candidatos via Excel" : "Importe candidatos para suas listas via Excel"}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Excel
-                </Button>
-              </div>
               
               <Button onClick={() => setShowCreateForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
