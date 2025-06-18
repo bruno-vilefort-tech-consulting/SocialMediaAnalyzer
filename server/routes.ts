@@ -3296,6 +3296,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Phone auth routes
+  app.post('/api/client/whatsapp/request-code', authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      const clientId = req.user?.clientId?.toString();
+
+      if (!phoneNumber) {
+        return res.status(400).json({ message: 'Número de telefone é obrigatório' });
+      }
+
+      if (!clientId) {
+        return res.status(400).json({ message: 'Cliente não identificado' });
+      }
+
+      console.log(`📱 Solicitando código para ${phoneNumber} - cliente ${clientId}`);
+
+      const { phoneAuthService } = await import('./phoneAuthService');
+      const result = await phoneAuthService.requestVerificationCode(phoneNumber, clientId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: result.message,
+          code: result.code // Em produção, remover esta linha
+        });
+      } else {
+        res.status(400).json({ message: result.message });
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar código:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
+
+  app.post('/api/client/whatsapp/verify-code', authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumber, code } = req.body;
+      const clientId = req.user?.clientId?.toString();
+
+      if (!phoneNumber || !code) {
+        return res.status(400).json({ message: 'Número e código são obrigatórios' });
+      }
+
+      if (!clientId) {
+        return res.status(400).json({ message: 'Cliente não identificado' });
+      }
+
+      console.log(`✅ Verificando código para ${phoneNumber} - cliente ${clientId}`);
+
+      const { phoneAuthService } = await import('./phoneAuthService');
+      const result = await phoneAuthService.verifyCodeAndConnect(phoneNumber, code, clientId);
+
+      if (result.success) {
+        res.json({ success: true, message: result.message });
+      } else {
+        res.status(400).json({ message: result.message });
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao verificar código:', error);
+      res.status(500).json({ message: 'Erro interno do servidor' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
