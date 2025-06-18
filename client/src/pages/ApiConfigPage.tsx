@@ -124,10 +124,23 @@ export default function ApiConfigPage() {
   const whatsappEndpoint = isMaster ? "/api/whatsapp-qr/status" : "/api/client/whatsapp/status";
   const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [whatsappEndpoint],
-    refetchInterval: 15000, // Reduzido para 15 segundos para diminuir refresh
-    refetchOnWindowFocus: false, // Desabilitado para evitar refresh desnecessário
+    refetchInterval: 15000,
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 10000, // Cache por 10 segundos
+    staleTime: 10000,
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(whatsappEndpoint, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    }
   });
 
   // Estados para configurações master
@@ -525,6 +538,13 @@ export default function ApiConfigPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
+            {/* Debug temporário */}
+            {/* {console.log('🐛 WhatsApp Status Debug:', { 
+              isConnected: whatsappStatus?.isConnected, 
+              hasQrCode: whatsappStatus?.hasQrCode,
+              qrCodeLength: whatsappStatus?.qrCode?.length
+            })} */}
+            
             {whatsappStatus?.isConnected ? (
               <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="flex items-center gap-3">
@@ -559,7 +579,7 @@ export default function ApiConfigPage() {
                   Desconectar
                 </Button>
               </div>
-            ) : whatsappStatus?.qrCode ? (
+            ) : (whatsappStatus?.qrCode && whatsappStatus.qrCode.length > 100) ? (
               <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
                   <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -573,11 +593,17 @@ export default function ApiConfigPage() {
                 
                 {/* Exibir QR Code */}
                 <div className="bg-white p-4 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                  <img 
-                    src={`data:image/png;base64,${whatsappStatus.qrCode}`}
-                    alt="QR Code WhatsApp" 
-                    className="w-48 h-48 mx-auto"
-                  />
+                  {whatsappStatus?.qrCode ? (
+                    <img 
+                      src={`data:image/png;base64,${whatsappStatus.qrCode}`}
+                      alt="QR Code WhatsApp" 
+                      className="w-48 h-48 mx-auto"
+                    />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                      <span className="text-gray-500 dark:text-gray-400">Gerando QR Code...</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="text-center text-xs text-blue-600 dark:text-blue-400 max-w-sm">
