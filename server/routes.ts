@@ -12,7 +12,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
-import { wppConnectClientModule } from "./wppConnectClientModule";
+import { wppConnectClientManager } from "./wppConnectClientManager";
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
@@ -1913,8 +1913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📱 [NOVO] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappClientManager } = await import('./whatsappClientManager');
-      const status = await whatsappClientManager.getStatus(user.clientId.toString());
+      const status = await wppConnectClientManager.getStatus(user.clientId.toString());
       
       console.log(`📱 [NOVO] Status encontrado:`, status);
       
@@ -1939,8 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 [NOVO] Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappClientManager } = await import('./whatsappClientManager');
-      const result = await whatsappClientManager.createConnection(user.clientId.toString());
+      const result = await wppConnectClientManager.createConnection(user.clientId.toString());
       
       console.log(`🔗 [NOVO] Resultado da conexão:`, result);
       
@@ -1974,8 +1972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 [NOVO] Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappClientManager } = await import('./whatsappClientManager');
-      const success = await whatsappClientManager.disconnect(user.clientId.toString());
+      const success = await wppConnectClientManager.disconnect(user.clientId.toString());
       
       if (success) {
         res.json({ 
@@ -2015,8 +2012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 [NOVO] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { whatsappClientManager } = await import('./whatsappClientManager');
-      const success = await whatsappClientManager.sendMessage(
+      const success = await wppConnectClientManager.sendMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message

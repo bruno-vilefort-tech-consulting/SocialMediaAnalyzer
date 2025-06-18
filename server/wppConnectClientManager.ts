@@ -133,7 +133,7 @@ class WppConnectClientManager {
             
             const currentSession = this.sessions.get(clientId);
             if (currentSession) {
-              if (statusSession === 'qrReadSuccess' || statusSession === 'chatsAvailable') {
+              if (statusSession === 'qrReadSuccess' || statusSession === 'isLogged') {
                 currentSession.isConnected = true;
                 currentSession.isConnecting = false;
                 currentSession.lastConnection = new Date();
@@ -143,7 +143,7 @@ class WppConnectClientManager {
                 // Salvar status conectado
                 this.saveConnectionStatus(clientId, true, session);
                 console.log(`✅ Cliente ${clientId} conectado com sucesso via WppConnect`);
-              } else if (statusSession === 'disconnected') {
+              } else if (statusSession === 'notLogged' || statusSession === 'browserClose') {
                 currentSession.isConnected = false;
                 currentSession.isConnecting = false;
                 this.sessions.set(clientId, currentSession);
