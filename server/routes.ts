@@ -1951,11 +1951,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService original que funcionava
-      const { whatsappQRService } = await import('./whatsappQRService');
-      whatsappQRService.setClientId(user.clientId.toString());
-      await whatsappQRService.ensureInitialized();
-      const result = { success: true, qrCode: whatsappQRService.getConnectionStatus().qrCode };
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      await whatsappBaileyService.connect(user.clientId.toString());
+      
+      const status = whatsappBaileyService.getStatus(user.clientId.toString());
+      const result = { success: true, qrCode: status.qrCode };
       
       console.log(`🔗 [DEBUG] Resultado da conexão:`, {
         success: result.success,
@@ -1995,9 +1995,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService original que funcionava
-      const { whatsappQRService } = await import('./whatsappQRService');
-      await whatsappQRService.disconnect();
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      await whatsappBaileyService.disconnect(user.clientId.toString());
       const result = { success: true };
       
       if (result.success) {
@@ -2038,9 +2037,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      // Usar o whatsappClientModule para teste isolado por cliente
-      const { whatsappClientModule } = await import('./whatsappClientModule');
-      const result = await whatsappClientModule.sendTestMessage(user.clientId.toString(), phoneNumber, message);
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const success = await whatsappBaileyService.sendMessage(user.clientId.toString(), phoneNumber, message);
+      const result = { success };
       
       if (result.success) {
         res.json({ 
