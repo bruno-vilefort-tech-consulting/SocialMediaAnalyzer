@@ -269,14 +269,22 @@ export default function CandidatesPage() {
     ? listCandidates
     : allCandidates;
 
-  // Função para filtrar candidatos por busca
+  // Função para filtrar e ordenar candidatos por busca
   const filteredCandidates = React.useMemo(() => {
-    if (!searchTerm) return candidatesData;
+    let filtered = candidatesData;
     
-    return candidatesData.filter((candidate: Candidate) =>
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.whatsapp.includes(searchTerm)
+    // Aplicar filtro de busca se houver termo
+    if (searchTerm) {
+      filtered = candidatesData.filter((candidate: Candidate) =>
+        candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        candidate.whatsapp.includes(searchTerm)
+      );
+    }
+    
+    // Ordenar alfabeticamente por nome
+    return filtered.sort((a: Candidate, b: Candidate) => 
+      a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
     );
   }, [candidatesData, searchTerm]);
 
