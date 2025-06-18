@@ -1886,12 +1886,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {
+      console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO`);
+      
       const user = req.user;
       if (!user.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 Conectando WhatsApp Baileys para cliente ${user.clientId}...`);
+      console.log(`🔗 [BAILEYS] Conectando WhatsApp Baileys para cliente ${user.clientId}...`);
       
       // Debug: Verificar se Baileys está disponível
       console.log(`📱 [DEBUG] Importando Baileys...`);
