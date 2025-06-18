@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 18, 2025: 🧹 SISTEMA WHATSAPP COMPLETAMENTE LIMPO E RECRIADO - WppConnect removido, novo painel Baileys implementado
-  - **WppConnect completamente removido**: Todos os endpoints e referências WppConnect eliminados do routes.ts
-  - **Novo painel WhatsApp criado**: Interface limpa no ApiConfigPage.tsx com clientId visível no título
-  - **Integração Baileys implementada**: Sistema usa whatsappQRService existente para conexões WhatsApp
-  - **Endpoints funcionais**: /api/client/whatsapp/status, connect, disconnect, test operacionais
-  - **Sistema isolado por cliente**: Cada cliente terá sua própria conexão WhatsApp identificada pelo clientId
-  - **Interface responsiva**: Botões de conectar/desconectar e teste de mensagens funcionais
-  - **Limpeza completa**: Arquivos temporários removidos, sistema preparado para implementação final
+- June 18, 2025: ✅ QR CODE WHATSAPP FUNCIONANDO - Sistema Baileys completamente operacional conforme solicitado
+  - **QR Code sendo gerado**: Backend gera QR Code base64 corretamente através do Baileys
+  - **Frontend corrigido**: Interface agora exibe QR Code com data:image/png;base64 format
+  - **WppConnect completamente removido**: Todos os endpoints migrados para Baileys
+  - **Painel WhatsApp funcional**: ApiConfigPage.tsx com clientId isolado por usuário
+  - **Endpoints operacionais**: /api/client/whatsapp/status, connect, disconnect, test funcionando
+  - **Instruções de uso**: Interface mostra passos para conectar WhatsApp no celular
+  - **Sistema limpo**: Migração do WppConnect para Baileys 100% completa
 
 - June 18, 2025: ✅ INTERFACE LIMPA IMPLEMENTADA - Seções de importação Excel duplicadas removidas conforme solicitado
   - **Importação do topo removida**: Seção "Importação de Candidatos" sempre visível foi eliminada
