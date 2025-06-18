@@ -245,19 +245,32 @@ export default function ApiConfigPage() {
   const disconnectEndpoint = isMaster ? "/api/whatsapp-qr/disconnect" : "/api/client/whatsapp/disconnect";
   const testEndpoint = isMaster ? "/api/whatsapp-qr/test" : "/api/client/whatsapp/test";
 
+  const [qrCodeFromConnection, setQrCodeFromConnection] = useState<string | null>(null);
+
   const connectWhatsAppMutation = useMutation({
     mutationFn: () => {
       console.log(`🔗 [DEBUG] Chamando endpoint de conexão: ${connectEndpoint}`);
       console.log(`🔗 [DEBUG] isMaster: ${isMaster}, user role: ${user?.role}`);
       return apiRequest(connectEndpoint, "POST");
     },
-    onSuccess: (response) => {
+    onSuccess: (response: any) => {
       console.log(`✅ [DEBUG] Conexão bem-sucedida:`, response);
+      
+      // Se recebeu QR Code na resposta, salvar no estado local
+      if (response.qrCode) {
+        setQrCodeFromConnection(response.qrCode);
+        toast({
+          title: "QR Code gerado!",
+          description: "Escaneie o código com seu WhatsApp",
+        });
+      } else {
+        toast({
+          title: "Gerando QR Code...",
+          description: "Aguarde alguns segundos para o QR Code aparecer",
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
-      toast({
-        title: "Gerando QR Code...",
-        description: "Aguarde alguns segundos para o QR Code aparecer",
-      });
       
       // Atualiza status após um delay para permitir geração do QR
       setTimeout(() => {
@@ -728,8 +741,8 @@ export default function ApiConfigPage() {
                     </Button>
                   </div>
 
-                  {/* QR Code para Conexão */}
-                  {whatsappStatus?.qrCode && (
+                  {/* QR Code para Conexão - Exibe do estado local ou API */}
+                  {(qrCodeFromConnection || whatsappStatus?.qrCode) && (
                     <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="text-center">
                         <QrCode className="w-6 h-6 text-blue-600 mx-auto mb-2" />
@@ -742,11 +755,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="bg-white p-4 rounded-lg border">
-                        <img 
-                          src={whatsappStatus.qrCode} 
-                          alt="QR Code WhatsApp" 
-                          className="w-48 h-48 mx-auto"
-                        />
+                        <QRCodeRenderer qrCode={qrCodeFromConnection || whatsappStatus?.qrCode || ''} />
                       </div>
                       
                       <div className="text-center">
@@ -759,7 +768,10 @@ export default function ApiConfigPage() {
                         </p>
                         
                         <Button
-                          onClick={() => refetchWhatsAppStatus()}
+                          onClick={() => {
+                            queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                            setQrCodeFromConnection(null); // Limpar QR local para forçar nova geração
+                          }}
                           variant="outline"
                           size="sm"
                           className="mt-2"
