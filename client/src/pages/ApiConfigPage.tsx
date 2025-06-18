@@ -773,8 +773,8 @@ export default function ApiConfigPage() {
                     </Button>
                   </div>
 
-                  {/* QR Code para Conexão - Exibe do estado local ou API */}
-                  {(qrCodeFromConnection || whatsappStatus?.qrCode) && (
+                  {/* QR Code para Conexão - Só exibe após clicar em conectar */}
+                  {qrCodeFromConnection && (
                     <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="text-center">
                         <QrCode className="w-6 h-6 text-blue-600 mx-auto mb-2" />
@@ -787,7 +787,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="bg-white p-4 rounded-lg border">
-                        <QRCodeRenderer qrCode={qrCodeFromConnection || whatsappStatus?.qrCode || ''} />
+                        <QRCodeRenderer qrCode={qrCodeFromConnection || ''} />
                       </div>
                       
                       <div className="text-center">
