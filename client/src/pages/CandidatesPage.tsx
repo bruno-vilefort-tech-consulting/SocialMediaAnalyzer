@@ -1184,18 +1184,20 @@ export default function CandidatesPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {filteredCandidates.map((candidate) => (
+                <div className="space-y-2">
+                  {paginatedCandidates.map((candidate) => (
                     <div
                       key={candidate.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
+                      className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50"
                     >
-                      <div>
-                        <h4 className="font-semibold">{candidate.name}</h4>
-                        <p className="text-sm text-muted-foreground">{candidate.email}</p>
-                        <p className="text-sm text-muted-foreground">WhatsApp: {candidate.whatsapp}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4">
+                          <span className="font-medium text-sm">{candidate.name}</span>
+                          <span className="text-sm text-gray-600">{candidate.email}</span>
+                          <span className="text-sm text-gray-600">{candidate.whatsapp}</span>
+                        </div>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-1">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1235,6 +1237,60 @@ export default function CandidatesPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+              
+              {/* Controles de Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <div className="text-sm text-gray-600">
+                    Mostrando {startIndex + 1} a {Math.min(endIndex, totalCandidates)} de {totalCandidates} candidatos
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Anterior
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          // Mostrar páginas próximas à atual
+                          return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 2;
+                        })
+                        .map((page, index, array) => {
+                          // Adicionar "..." se há gap
+                          const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                          return (
+                            <div key={page} className="flex items-center">
+                              {showEllipsis && <span className="px-2 text-gray-400">...</span>}
+                              <Button
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(page)}
+                                className="w-8 h-8"
+                              >
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
