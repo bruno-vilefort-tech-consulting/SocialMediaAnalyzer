@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -75,6 +75,11 @@ export default function CandidatesPage() {
   const [showCandidateForm, setShowCandidateForm] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const candidatesPerPage = 10;
 
   // Queries
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
@@ -260,9 +265,32 @@ export default function CandidatesPage() {
     });
 
   // Candidatos exibidos baseado no modo de visualização
-  const filteredCandidates = viewMode === 'single' && selectedListId 
+  const candidatesData = viewMode === 'single' && selectedListId 
     ? listCandidates
     : allCandidates;
+
+  // Função para filtrar candidatos por busca
+  const filteredCandidates = useMemo(() => {
+    if (!searchTerm) return candidatesData;
+    
+    return candidatesData.filter(candidate =>
+      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.whatsapp.includes(searchTerm)
+    );
+  }, [candidatesData, searchTerm]);
+
+  // Calcular paginação após filtros
+  const totalCandidates = filteredCandidates.length;
+  const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
+  const startIndex = (currentPage - 1) * candidatesPerPage;
+  const endIndex = startIndex + candidatesPerPage;
+  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
+
+  // Reset página quando busca muda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   // Lista selecionada atual
   const selectedList = candidateLists.find(list => list.id === selectedListId);
