@@ -89,8 +89,9 @@ export class ClientWhatsAppService {
 
           if (qr && !resolved) {
             console.log(`📱 QR Code gerado para cliente ${clientId}`);
-            console.log(`🕐 QR Code válido por 45 segundos - escaneie rapidamente`);
+            console.log(`🕐 QR Code válido por 60 segundos - escaneie rapidamente`);
             console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
+            console.log(`📱 IMPORTANTE: Escaneie o QR Code IMEDIATAMENTE para evitar timeout`);
             
             // Atualizar configuração do cliente
             await this.updateClientConfig(clientId, {
@@ -105,7 +106,7 @@ export class ClientWhatsAppService {
             resolve({
               success: true,
               qrCode: qr,
-              message: 'QR Code gerado - escaneie em até 45 segundos'
+              message: 'QR Code gerado - escaneie IMEDIATAMENTE em até 60 segundos'
             });
           }
 
