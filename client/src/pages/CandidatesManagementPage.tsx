@@ -423,41 +423,104 @@ export default function CandidatesManagementPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Verificar se há listas disponíveis para o cliente
-    const targetClientId = user?.role === 'master' ? uploadClientId : user?.clientId?.toString();
-    const availableLists = candidateLists.filter(list => 
-      list.clientId?.toString() === targetClientId
-    );
-
-    if (availableLists.length === 0) {
-      toast({
-        title: "Nenhuma lista encontrada",
-        description: "Crie pelo menos uma lista de candidatos antes de importar",
-        variant: "destructive"
-      });
-      event.target.value = '';
-      return;
-    }
-
     setIsUploadingExcel(true);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('clientId', targetClientId || '');
-
-      uploadExcelMutation.mutate(formData);
-    } catch (error) {
-      setIsUploadingExcel(false);
-      toast({
-        title: "Erro",
-        description: "Falha ao processar arquivo Excel",
-        variant: "destructive"
-      });
+    // Determinar clientId baseado no role do usuário
+    let targetClientId: number;
+    
+    if (user?.role === 'master') {
+      if (!uploadClientId) {
+        toast({
+          title: "Selecione um cliente",
+          description: "Escolha o cliente para importar os candidatos",
+          variant: "destructive"
+        });
+        setIsUploadingExcel(false);
+        event.target.value = '';
+        return;
+      }
+      targetClientId = parseInt(uploadClientId);
+    } else {
+      if (!user?.clientId) {
+        toast({
+          title: "Erro",
+          description: "Cliente não identificado. Verifique suas permissões.",
+          variant: "destructive"
+        });
+        setIsUploadingExcel(false);
+        event.target.value = '';
+        return;
+      }
+      targetClientId = user.clientId;
     }
 
-    // Reset input
-    event.target.value = '';
+    console.log('🎯 Upload Excel direto para candidatos:', {
+      userRole: user?.role,
+      userClientId: user?.clientId,
+      uploadClientId,
+      targetClientId
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('clientId', targetClientId.toString());
+
+    try {
+      // Para FormData, usar fetch diretamente com token de autorização
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+
+      const response = await fetch('/api/candidates/bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Invalidar caches para atualizar a interface
+        queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+
+        // Mostrar mensagem de sucesso
+        if (result.duplicates > 0) {
+          toast({ 
+            title: "Importação parcial",
+            description: `${result.imported} candidatos importados. ${result.duplicates} não foram importados por já existirem no sistema.`,
+            variant: "default"
+          });
+        } else {
+          toast({ 
+            title: "Sucesso!",
+            description: `${result.imported} candidatos importados com sucesso!`
+          });
+        }
+      } else {
+        const error = await response.json();
+        toast({ 
+          title: "Erro na importação", 
+          description: error.message || "Falha na importação",
+          variant: "destructive" 
+        });
+      }
+    } catch (error: any) {
+      console.error('Erro no upload:', error);
+      toast({ 
+        title: "Erro na importação", 
+        description: "Falha no upload do arquivo",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingExcel(false);
+      // Reset input
+      event.target.value = '';
+    }
   };
 
   // Calcular paginação após todos os filtros
@@ -482,11 +545,11 @@ export default function CandidatesManagementPage() {
           {/* Seletor de cliente para masters antes do import */}
           {user?.role === 'master' && (
             <Select value={uploadClientId} onValueChange={setUploadClientId}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Cliente p/ import" />
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecionar cliente" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((client) => (
+                {(clients as Client[]).map((client: Client) => (
                   <SelectItem key={client.id} value={client.id.toString()}>
                     {client.companyName}
                   </SelectItem>
