@@ -288,6 +288,12 @@ export default function ApiConfigPage() {
   // Estados para novo painel WhatsApp com clientId
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState("Olá! Esta é uma mensagem de teste do sistema de entrevistas.");
+  
+  // Phone login states
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [verifyCodeInput, setVerifyCodeInput] = useState('');
 
   // Testar chave OpenAI
   const testOpenAI = async () => {
@@ -617,27 +623,200 @@ export default function ApiConfigPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => {
-                      fetch('/api/client/whatsapp/connect', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                          'Content-Type': 'application/json'
-                        }
-                      }).then(() => {
-                        queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
-                        toast({ title: "Conectando WhatsApp..." });
-                      });
-                    }}
-                    variant="outline"
-                    size="sm"
-                    className="border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
-                  >
-                    <Wifi className="h-4 w-4 mr-2" />
-                    Conectar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setShowPhoneLogin(false);
+                        fetch('/api/client/whatsapp/connect', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                            'Content-Type': 'application/json'
+                          }
+                        }).then(() => {
+                          queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                          toast({ title: "Conectando WhatsApp..." });
+                        });
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      QR Code
+                    </Button>
+                    
+                    <Button
+                      onClick={() => setShowPhoneLogin(!showPhoneLogin)}
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Número + SMS
+                    </Button>
+                  </div>
                 </div>
+              </div>
+            )}
+
+            {/* Phone Number Login Section */}
+            {showPhoneLogin && !whatsappStatus?.isConnected && (
+              <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Conectar via Número de Telefone
+                </h4>
+                
+                {!verificationCode ? (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="phoneNumber">Número do WhatsApp</Label>
+                      <Input
+                        id="phoneNumber"
+                        type="tel"
+                        placeholder="Ex: +5511987654321"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Formato: +55 (código do país) + DDD + número
+                      </p>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => {
+                        if (!phoneNumber) {
+                          toast({
+                            title: "Erro",
+                            description: "Digite um número de telefone",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
+                        fetch('/api/client/whatsapp/request-code', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({ phoneNumber })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            setVerificationCode(data.code);
+                            toast({
+                              title: "Código Enviado",
+                              description: `Código: ${data.code} (demo)`,
+                            });
+                          } else {
+                            toast({
+                              title: "Erro",
+                              description: data.message,
+                              variant: "destructive"
+                            });
+                          }
+                        })
+                        .catch(() => {
+                          toast({
+                            title: "Erro",
+                            description: "Erro ao solicitar código",
+                            variant: "destructive"
+                          });
+                        });
+                      }}
+                      disabled={!phoneNumber}
+                      className="w-full"
+                    >
+                      Enviar Código SMS
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="verifyCode">Código de Verificação</Label>
+                      <Input
+                        id="verifyCode"
+                        type="text"
+                        placeholder="Ex: 123456"
+                        value={verifyCodeInput}
+                        onChange={(e) => setVerifyCodeInput(e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Digite o código recebido: <strong>{verificationCode}</strong>
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => {
+                          if (!verifyCodeInput) {
+                            toast({
+                              title: "Erro",
+                              description: "Digite o código de verificação",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+                          
+                          fetch('/api/client/whatsapp/verify-code', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ phoneNumber, code: verifyCodeInput })
+                          })
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data.success) {
+                              setShowPhoneLogin(false);
+                              setVerificationCode(null);
+                              setVerifyCodeInput('');
+                              setPhoneNumber('');
+                              queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                              toast({
+                                title: "Conectado",
+                                description: "WhatsApp conectado com sucesso!"
+                              });
+                            } else {
+                              toast({
+                                title: "Erro",
+                                description: data.message,
+                                variant: "destructive"
+                              });
+                            }
+                          })
+                          .catch(() => {
+                            toast({
+                              title: "Erro",
+                              description: "Erro ao verificar código",
+                              variant: "destructive"
+                            });
+                          });
+                        }}
+                        disabled={!verifyCodeInput}
+                        className="flex-1"
+                      >
+                        Conectar
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => {
+                          setVerificationCode(null);
+                          setVerifyCodeInput('');
+                        }}
+                        variant="outline"
+                      >
+                        Voltar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
