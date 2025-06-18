@@ -70,11 +70,17 @@ app.use((req, res, next) => {
   // Skip Firebase initialization due to quota issues - system will work with existing data
   console.log('📊 Sistema iniciando com dados existentes (Firebase quota management)');
 
-  // WhatsApp service initialization disabled to prevent startup loops
-  console.log('📱 WhatsApp QR Service: Inicialização desabilitada temporariamente');
+  // Inicializar WhatsApp QR Service
+  console.log('📱 WhatsApp QR Service: Inicializando sistema de entrevistas...');
   
-  // WhatsApp will be initialized on-demand when needed
-  // This prevents startup loops and allows the server to start properly
+  try {
+    const { whatsappQRService } = await import('./whatsappQRService');
+    await whatsappQRService.ensureInitialized();
+    console.log('✅ WhatsApp QR Service inicializado com sucesso');
+  } catch (error) {
+    console.log('⚠️ WhatsApp QR Service: Erro na inicialização -', error.message);
+    console.log('📱 WhatsApp QR Service: Funcionará sob demanda');
+  }
 
   const server = await registerRoutes(app);
 
