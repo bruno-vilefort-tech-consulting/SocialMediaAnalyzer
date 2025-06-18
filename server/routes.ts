@@ -17,6 +17,7 @@ import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
 const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
+console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET ? 'Sim' : 'Não'}, Length: ${JWT_SECRET?.length || 0}`);
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
@@ -1926,6 +1927,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {
       console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO`);
+      console.log(`🔗 [BAILEYS ENDPOINT] Request Headers:`, req.headers);
+      console.log(`🔗 [BAILEYS ENDPOINT] Request Body:`, req.body);
       
       const user = req.user;
       if (!user.clientId) {
