@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Minus, Users } from "lucide-react";
+import { Trash2, Edit, Plus, Minus, Users, Search } from "lucide-react";
 
 interface Candidate {
   id: number;
@@ -51,6 +51,13 @@ export default function CandidatesManagementPage() {
   const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editForm, setEditForm] = useState({ name: "", email: "", whatsapp: "" });
+  const [newCandidateForm, setNewCandidateForm] = useState({ 
+    name: "", 
+    email: "", 
+    whatsapp: "", 
+    clientId: 0, 
+    listId: 0 
+  });
 
   const isMaster = user?.role === 'master';
   const clientId = isMaster ? selectedClient : user?.clientId;
@@ -80,7 +87,7 @@ export default function CandidatesManagementPage() {
   });
 
   // Filtrar candidatos por cliente
-  const filteredCandidates = candidates.filter((candidate: Candidate) => 
+  const filteredCandidates = (candidates as Candidate[]).filter((candidate: Candidate) => 
     !clientId || candidate.clientId === clientId
   );
 
@@ -94,7 +101,7 @@ export default function CandidatesManagementPage() {
       return [];
     }
     
-    const candidateMemberships = memberships.filter((m: CandidateListMembership) => {
+    const candidateMemberships = (memberships as CandidateListMembership[]).filter((m: CandidateListMembership) => {
       const match = m.candidateId === candidateId;
       console.log(`🔍 Comparando ${m.candidateId} === ${candidateId}: ${match}`);
       return match;
@@ -103,13 +110,36 @@ export default function CandidatesManagementPage() {
     console.log(`📋 Memberships do candidato ${candidateId}:`, candidateMemberships);
     
     const lists = candidateMemberships.map((membership: CandidateListMembership) => {
-      const list = candidateLists.find((list: CandidateList) => list.id === membership.listId);
-      return list;
-    }).filter(Boolean);
+      return (candidateLists as CandidateList[]).find((list: CandidateList) => list.id === membership.listId);
+    }).filter(Boolean) as CandidateList[];
     
     console.log(`📋 Listas encontradas:`, lists);
     return lists;
   };
+
+  // Mutation para criar candidato
+  const createCandidateMutation = useMutation({
+    mutationFn: async (data: { name: string; email: string; whatsapp: string; clientId: number; listId: number }) => {
+      return await apiRequest("/api/candidates", "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
+      toast({
+        title: "Sucesso",
+        description: "Candidato criado com sucesso",
+      });
+      setIsNewCandidateDialogOpen(false);
+      setNewCandidateForm({ name: "", email: "", whatsapp: "", clientId: 0, listId: 0 });
+    },
+    onError: () => {
+      toast({
+        title: "Erro", 
+        description: "Falha ao criar candidato",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Mutation para atualizar candidato
   const updateCandidateMutation = useMutation({
@@ -185,21 +215,17 @@ export default function CandidatesManagementPage() {
   // Mutation para adicionar candidato à lista
   const addToListMutation = useMutation({
     mutationFn: async ({ candidateId, listId }: { candidateId: number; listId: number }) => {
-      console.log(`🔗 Frontend: Adicionando candidato ${candidateId} à lista ${listId}`);
-      return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "POST", {});
+      return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "POST");
     },
     onSuccess: () => {
-      console.log("✅ Frontend: Candidato adicionado à lista com sucesso");
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
-      setIsListsDialogOpen(false);
       toast({
         title: "Sucesso",
         description: "Candidato adicionado à lista com sucesso",
       });
     },
-    onError: (error) => {
-      console.error("❌ Frontend: Erro ao adicionar candidato à lista:", error);
+    onError: () => {
       toast({
         title: "Erro",
         description: "Falha ao adicionar candidato à lista",
@@ -208,6 +234,7 @@ export default function CandidatesManagementPage() {
     },
   });
 
+  // Handlers
   const handleEditCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
     setEditForm({
@@ -271,11 +298,18 @@ export default function CandidatesManagementPage() {
   const getAvailableLists = () => {
     if (!selectedCandidate) return [];
     const candidateListIds = getCandidateLists(selectedCandidate.id).map((list: CandidateList) => list.id);
-    return candidateLists.filter((list: CandidateList) => 
+    return (candidateLists as CandidateList[]).filter((list: CandidateList) => 
       !candidateListIds.includes(list.id) && 
       (!clientId || list.clientId === clientId)
     );
   };
+
+  // Filtrar candidatos por termo de busca
+  const searchFilteredCandidates = filteredCandidates.filter(candidate =>
+    candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    candidate.whatsapp.includes(searchTerm)
+  );
 
   if (candidatesLoading) {
     return <div className="p-6">Carregando candidatos...</div>;
@@ -288,125 +322,98 @@ export default function CandidatesManagementPage() {
           <Users className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Gerenciar Candidatos</h1>
         </div>
+        <Button onClick={() => setIsNewCandidateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Candidato
+        </Button>
       </div>
 
-      {/* Seletor de cliente para masters */}
-      {isMaster && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Filtrar por Cliente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select onValueChange={(value) => setSelectedClient(Number(value))}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client: Client) => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.companyName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
+      {/* Filtros */}
+      <div className="flex gap-4 items-center">
+        {/* Campo de busca */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Buscar candidatos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-      {/* Lista de candidatos em cards horizontais pequenos */}
-      {clientId && (
-        <div className="space-y-4">
-          {/* Barra de ações no topo */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Candidatos ({filteredCandidates.length})
-            </h2>
+        {/* Filtro por cliente (apenas para master) */}
+        {isMaster && (
+          <Select onValueChange={(value) => setSelectedClient(Number(value) || null)}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Filtrar por cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os clientes</SelectItem>
+              {(clients as Client[]).map((client: Client) => (
+                <SelectItem key={client.id} value={client.id.toString()}>
+                  {client.companyName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Lista de candidatos */}
+      <div className="grid gap-4">
+        {searchFilteredCandidates.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center text-gray-500">
+              {candidatesLoading ? "Carregando..." : "Nenhum candidato encontrado"}
+            </CardContent>
+          </Card>
+        ) : (
+          searchFilteredCandidates.map((candidate) => {
+            const candidateLists = getCandidateLists(candidate.id);
             
-            <div className="flex items-center space-x-4">
-              {/* Campo de busca */}
-              <div className="relative">
-                <Input
-                  placeholder="Buscar candidatos..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-64"
-                />
-              </div>
-              
-              {/* Botão Novo Candidato */}
-              <Dialog open={isNewCandidateDialogOpen} onOpenChange={setIsNewCandidateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Candidato
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {filteredCandidates.map((candidate: Candidate) => {
-              const candidateListsData = getCandidateLists(candidate.id);
-              
-              return (
-                <Card key={candidate.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    {/* Informações do candidato - lado esquerdo */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm truncate">{candidate.name}</h3>
-                          <p className="text-xs text-gray-600 truncate">{candidate.email}</p>
-                          <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
-                        </div>
-                        
-                        {/* Listas - centro */}
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {candidateListsData.slice(0, 2).map((list: CandidateList) => (
+            return (
+              <Card key={candidate.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-4">
+                        <h3 className="font-semibold text-lg">{candidate.name}</h3>
+                        <span className="text-sm text-gray-600">{candidate.email}</span>
+                        <span className="text-sm text-gray-600">WhatsApp: {candidate.whatsapp}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-sm text-gray-500">Listas:</span>
+                        {candidateLists.length > 0 ? (
+                          candidateLists.map((list) => (
                             <Badge key={list.id} variant="secondary" className="text-xs">
                               {list.name}
                             </Badge>
-                          ))}
-                          {candidateListsData.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{candidateListsData.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400">Nenhuma lista</span>
+                        )}
                       </div>
                     </div>
                     
-                    {/* Ações - lado direito */}
-                    <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center gap-2">
                       <Button
+                        variant="outline" 
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleEditCandidate(candidate)}
-                        className="h-8 w-8 p-0"
-                        title="Editar candidato"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
                         onClick={() => handleManageLists(candidate)}
-                        className="h-8 w-8 p-0"
-                        title="Gerenciar listas"
                       >
                         <Users className="h-4 w-4" />
                       </Button>
-                      
+                      <Button
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditCandidate(candidate)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-8 w-8 p-0"
-                            title="Excluir candidato"
-                          >
+                          <Button variant="outline" size="sm">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -414,15 +421,14 @@ export default function CandidatesManagementPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Tem certeza que deseja excluir o candidato "{candidate.name}"? 
-                              Esta ação não pode ser desfeita.
+                              Tem certeza que deseja excluir o candidato {candidate.name}? Esta ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
+                            <AlertDialogAction 
                               onClick={() => deleteCandidateMutation.mutate(candidate.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              className="bg-red-600 hover:bg-red-700"
                             >
                               Excluir
                             </AlertDialogAction>
@@ -430,13 +436,13 @@ export default function CandidatesManagementPage() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
 
       {/* Dialog para editar candidato */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -444,33 +450,33 @@ export default function CandidatesManagementPage() {
           <DialogHeader>
             <DialogTitle>Editar Candidato</DialogTitle>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="edit-name">Nome</Label>
               <Input
-                id="name"
+                id="edit-name"
                 value={editForm.name}
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Nome completo"
               />
             </div>
-            
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="edit-email">Email</Label>
               <Input
-                id="email"
+                id="edit-email"
                 type="email"
                 value={editForm.email}
                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="email@exemplo.com"
               />
             </div>
-            
             <div>
-              <Label htmlFor="whatsapp">WhatsApp</Label>
+              <Label htmlFor="edit-whatsapp">WhatsApp</Label>
               <Input
-                id="whatsapp"
+                id="edit-whatsapp"
                 value={editForm.whatsapp}
                 onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                placeholder="5511999999999"
               />
             </div>
           </div>
@@ -486,53 +492,65 @@ export default function CandidatesManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para gerenciar listas */}
+      {/* Dialog para gerenciar listas do candidato */}
       <Dialog open={isListsDialogOpen} onOpenChange={setIsListsDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Gerenciar Listas - {selectedCandidate?.name}</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Listas atuais */}
             <div>
-              <h4 className="font-medium mb-2">Listas atuais:</h4>
+              <h3 className="font-semibold mb-3">Listas atuais</h3>
               <div className="space-y-2">
-                {selectedCandidate && getCandidateLists(selectedCandidate.id).map((list: CandidateList, index: number) => (
-                  <div key={`${list.id}-${index}`} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span className="text-sm">{list.name}</span>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleRemoveFromList(list.id)}
-                      disabled={removeFromListMutation.isPending}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                {selectedCandidate && getCandidateLists(selectedCandidate.id).length > 0 ? (
+                  getCandidateLists(selectedCandidate.id).map((list) => (
+                    <div key={list.id} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <span className="font-medium">{list.name}</span>
+                        <p className="text-sm text-gray-600">{list.description}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemoveFromList(list.id)}
+                        disabled={removeFromListMutation.isPending}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Candidato não está em nenhuma lista</p>
+                )}
               </div>
             </div>
-            
-            {/* Adicionar a nova lista */}
+
+            {/* Listas disponíveis */}
             <div>
-              <h4 className="font-medium mb-2">Adicionar à lista:</h4>
+              <h3 className="font-semibold mb-3">Adicionar a listas</h3>
               <div className="space-y-2">
-                {getAvailableLists().map((list: CandidateList) => (
-                  <div key={list.id} className="flex items-center justify-between p-2 bg-green-50 rounded">
-                    <span className="text-sm">{list.name}</span>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => handleAddToList(list.id)}
-                      disabled={addToListMutation.isPending}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                {getAvailableLists().length > 0 ? (
+                  getAvailableLists().map((list) => (
+                    <div key={list.id} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <span className="font-medium">{list.name}</span>
+                        <p className="text-sm text-gray-600">{list.description}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddToList(list.id)}
+                        disabled={addToListMutation.isPending}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 italic">Todas as listas disponíveis já foram atribuídas</p>
+                )}
               </div>
             </div>
           </div>
@@ -551,7 +569,6 @@ export default function CandidatesManagementPage() {
           <DialogHeader>
             <DialogTitle>Novo Candidato</DialogTitle>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
               <Label htmlFor="new-name">Nome *</Label>
@@ -562,7 +579,6 @@ export default function CandidatesManagementPage() {
                 placeholder="Nome completo"
               />
             </div>
-            
             <div>
               <Label htmlFor="new-email">Email *</Label>
               <Input
@@ -573,18 +589,17 @@ export default function CandidatesManagementPage() {
                 placeholder="email@exemplo.com"
               />
             </div>
-            
             <div>
               <Label htmlFor="new-whatsapp">WhatsApp *</Label>
               <Input
                 id="new-whatsapp"
                 value={newCandidateForm.whatsapp}
                 onChange={(e) => setNewCandidateForm({ ...newCandidateForm, whatsapp: e.target.value })}
-                placeholder="11999999999"
+                placeholder="5511999999999"
               />
             </div>
 
-            {/* Seletor de cliente (apenas para masters) */}
+            {/* Seletor de cliente (apenas para master) */}
             {isMaster && (
               <div>
                 <Label htmlFor="new-client">Cliente *</Label>
@@ -593,7 +608,7 @@ export default function CandidatesManagementPage() {
                     <SelectValue placeholder="Selecione um cliente" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map((client: Client) => (
+                    {(clients as Client[]).map((client: Client) => (
                       <SelectItem key={client.id} value={client.id.toString()}>
                         {client.companyName}
                       </SelectItem>
@@ -611,7 +626,7 @@ export default function CandidatesManagementPage() {
                   <SelectValue placeholder="Selecione uma lista" />
                 </SelectTrigger>
                 <SelectContent>
-                  {candidateLists
+                  {(candidateLists as CandidateList[])
                     .filter((list: CandidateList) => 
                       isMaster ? 
                         (newCandidateForm.clientId ? list.clientId === newCandidateForm.clientId : true) :
