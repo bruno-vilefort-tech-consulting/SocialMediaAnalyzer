@@ -657,6 +657,9 @@ export class FirebaseStorage implements IStorage {
   }
 
   async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
+    console.log('📥 createCandidates chamado com', insertCandidates.length, 'candidatos');
+    console.log('🔍 Primeiro candidato para debug:', insertCandidates[0]);
+    
     const batch = writeBatch(firebaseDb);
     const candidates: Candidate[] = [];
 
@@ -666,12 +669,21 @@ export class FirebaseStorage implements IStorage {
       // Extract listId and clientId from insertCandidate
       const { listId, clientId, ...candidateFields } = insertCandidate;
       
+      console.log(`📋 Processando candidato: ${candidateFields.name} - listId: ${listId}, clientId: ${clientId}`);
+      
+      if (!clientId) {
+        console.error(`❌ ERRO CRÍTICO: Candidato ${candidateFields.name} sem clientId!`);
+        throw new Error(`Candidato ${candidateFields.name} deve ter clientId válido`);
+      }
+      
       const candidateData = {
         ...candidateFields,
         clientId: clientId, // CRÍTICO: Incluir clientId no candidato
         id: candidateId,
         createdAt: new Date()
       };
+      
+      console.log(`💾 Salvando candidato ${candidateFields.name} com clientId: ${clientId}`);
       
       const candidateRef = doc(firebaseDb, "candidates", String(candidateId));
       batch.set(candidateRef, candidateData);
@@ -686,12 +698,19 @@ export class FirebaseStorage implements IStorage {
           clientId,
           createdAt: new Date()
         };
+        
+        console.log(`🔗 Preparando membership: candidato ${candidateId} → lista ${listId} → cliente ${clientId}`);
         const membershipRef = doc(firebaseDb, "candidate-list-memberships", membershipId);
         batch.set(membershipRef, membershipData);
+      } else {
+        console.log(`❌ Membership não criada - listId: ${listId}, clientId: ${clientId} para candidato ${candidateId}`);
       }
     }
 
+    console.log(`🚀 Executando batch com ${candidates.length} candidatos`);
     await batch.commit();
+    console.log('✅ Batch commit executado com sucesso');
+    
     return candidates;
   }
 
