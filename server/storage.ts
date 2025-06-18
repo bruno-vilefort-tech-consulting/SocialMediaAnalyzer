@@ -486,8 +486,21 @@ export class FirebaseStorage implements IStorage {
 
   // Candidates
   async getAllCandidates(): Promise<Candidate[]> {
+    console.log('🔍 Storage: Buscando TODOS os candidatos no Firebase...');
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
-    return snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate));
+    const candidates = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || parseInt(doc.id),
+        name: data.name,
+        email: data.email,
+        whatsapp: data.whatsapp,
+        clientId: data.clientId,
+        createdAt: data.createdAt?.toDate() || null
+      } as Candidate;
+    });
+    console.log('📋 Storage: Total candidatos encontrados:', candidates.length);
+    return candidates;
   }
 
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {

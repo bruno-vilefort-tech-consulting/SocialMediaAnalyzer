@@ -80,7 +80,7 @@ export default function CandidatesManagementPage() {
     },
     enabled: isMaster ? true : !!user?.clientId, // Master sempre habilitado, cliente apenas se tiver clientId
     staleTime: 0, // Força nova requisição sempre
-    cacheTime: 0, // Não mantém cache
+    gcTime: 0, // Não mantém cache (TanStack Query v5)
   });
 
   // Query para buscar listas de candidatos
