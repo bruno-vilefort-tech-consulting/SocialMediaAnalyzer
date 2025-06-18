@@ -52,6 +52,10 @@ export default function CandidatesManagementPage() {
   // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
+  
+  // Reset página quando filtros mudam
+  const resetPagination = () => setCurrentPage(1);
+  
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
   const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,8 +95,14 @@ export default function CandidatesManagementPage() {
     enabled: isMaster ? true : !!user?.clientId,
   });
 
-  // Filtrar candidatos por termo de busca
+  // Filtrar candidatos por termo de busca e cliente
   const filteredCandidates = Array.isArray(candidates) ? candidates.filter((candidate: Candidate) => {
+    // Verificar se o ID é válido
+    if (!candidate.clientId || isNaN(candidate.clientId)) {
+      console.log(`⚠️ Candidato ${candidate.name} tem clientId inválido:`, candidate.clientId);
+      return false;
+    }
+
     const searchMatch = !searchTerm || 
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,8 +118,9 @@ export default function CandidatesManagementPage() {
     return searchMatch && candidate.clientId === user?.clientId;
   }) : [];
 
-  // Reset página quando filtros mudam
-  const resetPagination = () => setCurrentPage(1);
+
+
+
 
   // Função para obter listas de um candidato
   const getCandidateLists = (candidateId: number) => {
@@ -364,19 +375,12 @@ export default function CandidatesManagementPage() {
     }
   };
 
-  // Filtrar candidatos por termo de busca
-  const searchFilteredCandidates = filteredCandidates.filter(candidate =>
-    candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.whatsapp.includes(searchTerm)
-  );
-
   // Calcular paginação após todos os filtros
-  const totalCandidates = searchFilteredCandidates.length;
+  const totalCandidates = filteredCandidates.length;
   const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
   const startIndex = (currentPage - 1) * candidatesPerPage;
   const endIndex = startIndex + candidatesPerPage;
-  const paginatedCandidates = searchFilteredCandidates.slice(startIndex, endIndex);
+  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
 
   if (candidatesLoading) {
     return <div className="p-6">Carregando candidatos...</div>;
@@ -446,7 +450,7 @@ export default function CandidatesManagementPage() {
             
             return (
               <Card key={candidate.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-3">
+                <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-4 mb-2">
