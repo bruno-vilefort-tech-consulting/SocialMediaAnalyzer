@@ -35,8 +35,8 @@ class PhoneAuthService {
       // Limpar código anterior se existir
       this.sessions.delete(phoneNumber);
 
-      // Gerar código de 6 dígitos
-      const code = Math.random().toString().slice(2, 8);
+      // Gerar código de 8 dígitos para WhatsApp Business API
+      const code = Math.floor(10000000 + Math.random() * 90000000).toString();
       
       // Armazenar sessão
       this.sessions.set(phoneNumber, {
