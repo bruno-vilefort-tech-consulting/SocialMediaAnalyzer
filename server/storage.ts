@@ -490,28 +490,62 @@ export class FirebaseStorage implements IStorage {
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const candidates = snapshot.docs.map(doc => {
       const data = doc.data();
-      return {
+      console.log(`📋 Candidato ${doc.id}:`, data);
+      
+      // Ensure clientId is properly parsed as number
+      let clientId = data.clientId;
+      if (typeof clientId === 'string') {
+        clientId = parseInt(clientId);
+      }
+      
+      const candidate = {
         id: data.id || parseInt(doc.id),
         name: data.name,
         email: data.email,
         whatsapp: data.whatsapp,
-        clientId: data.clientId,
+        clientId: clientId,
         createdAt: data.createdAt?.toDate() || null
       } as Candidate;
+      
+      console.log(`✅ Candidato processado:`, candidate);
+      return candidate;
     });
     console.log('📋 Storage: Total candidatos encontrados:', candidates.length);
     return candidates;
   }
 
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
+    console.log(`🔍 Storage: Buscando candidatos do cliente ${clientId}`);
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
-    const allCandidates = snapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate));
+    const allCandidates = snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log(`📋 Candidato ${doc.id}:`, data);
+      
+      // Ensure clientId is properly parsed as number
+      let candidateClientId = data.clientId;
+      if (typeof candidateClientId === 'string') {
+        candidateClientId = parseInt(candidateClientId);
+      }
+      
+      return {
+        id: data.id || parseInt(doc.id),
+        name: data.name,
+        email: data.email,
+        whatsapp: data.whatsapp,
+        clientId: candidateClientId,
+        createdAt: data.createdAt?.toDate() || null
+      } as Candidate;
+    });
     
     // Filter candidates by clientId
-    return allCandidates.filter(candidate => {
-      // Check if candidate belongs to this client directly or through a list
-      return candidate.clientId === clientId || candidate.clientId === `clientId=${clientId}`;
+    const filteredCandidates = allCandidates.filter(candidate => {
+      const match = candidate.clientId === clientId;
+      console.log(`🔍 Candidato ${candidate.name} (${candidate.id}) incluído: ${match}`);
+      return match;
     });
+    
+    console.log(`📋 Candidatos encontrados para cliente ${clientId} : ${filteredCandidates.length}`);
+    return filteredCandidates;
   }
 
   async getCandidatesByListId(listId: number): Promise<Candidate[]> {

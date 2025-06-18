@@ -333,9 +333,28 @@ export default function CandidatesManagementPage() {
 
   // Função para obter o nome do cliente pelo ID
   const getClientName = (clientId: number) => {
-    if (!isMaster || !clients || !Array.isArray(clients)) return null;
+    console.log('🏢 getClientName chamado com clientId:', clientId, 'tipo:', typeof clientId);
+    
+    if (!isMaster || !clients || !Array.isArray(clients)) {
+      console.log('❌ Condições não atendidas - isMaster:', isMaster, 'clients:', clients);
+      return null;
+    }
+    
+    if (!clientId || isNaN(clientId)) {
+      console.log('❌ ClientId inválido:', clientId);
+      return `Cliente #undefined`;
+    }
+    
     const client = (clients as Client[]).find((c: Client) => c.id === clientId);
-    return client ? client.companyName : `Cliente #${clientId}`;
+    console.log('🔍 Cliente encontrado:', client);
+    
+    if (client) {
+      return client.companyName;
+    } else {
+      console.log('❌ Cliente não encontrado para ID:', clientId);
+      console.log('📋 Clientes disponíveis:', clients);
+      return `Cliente #${clientId}`;
+    }
   };
 
   // Filtrar candidatos por termo de busca
