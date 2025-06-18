@@ -270,7 +270,7 @@ export default function CandidatesManagementPage() {
     setSelectedCandidate(candidate);
     // Se for master, definir o filtro de cliente para o clientId do candidato
     if (isMaster) {
-      setClientId(candidate.clientId);
+      setSelectedClient(candidate.clientId);
     }
     setIsListsDialogOpen(true);
   };
