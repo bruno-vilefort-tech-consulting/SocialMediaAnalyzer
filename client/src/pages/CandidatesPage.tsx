@@ -382,34 +382,58 @@ export default function CandidatesPage() {
       }
       
       console.log(`🔧 Atualizando candidato ${editingCandidate.id} com dados:`, data);
-      return await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
+      
+      const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+      }
+      
+      return response;
     },
     onSuccess: () => {
+      console.log('✅ Candidato atualizado com sucesso!');
+      
+      // Invalidar todos os caches relevantes
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      if (selectedListId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+      
+      // Limpar estado do formulário
       setEditingCandidate(null);
       setShowCandidateForm(false);
-      candidateForm.reset();
+      candidateForm.reset({
+        name: "",
+        email: "",
+        whatsapp: "",
+        listId: 0,
+        clientId: 0
+      });
+      
       toast({ title: "Candidato atualizado com sucesso!" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('❌ Erro na atualização:', error);
       
       // Se candidato não existe mais, limpar estado
-      if (error.message.includes('não encontrado')) {
+      if (error.message && (error.message.includes('não encontrado') || error.message.includes('404'))) {
         setEditingCandidate(null);
         setShowCandidateForm(false);
         candidateForm.reset();
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+        if (selectedListId) {
+          queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+        }
       }
       
       toast({ 
         title: "Erro ao atualizar candidato", 
-        description: error.message.includes('não encontrado') ? 
+        description: error.message && (error.message.includes('não encontrado') || error.message.includes('404')) ? 
           "Candidato não existe mais no sistema" : 
-          "Falha na atualização",
+          error.message || "Falha na atualização",
         variant: "destructive" 
       });
     }
@@ -462,14 +486,16 @@ export default function CandidatesPage() {
     }
 
     if (editingCandidate) {
-      // Para edição, manter o clientId original do candidato
+      // Para edição, usar apenas os campos editáveis
       const updatedData = {
-        name: data.name,
-        email: data.email,
-        whatsapp: data.whatsapp
+        name: data.name.trim(),
+        email: data.email.trim(),
+        whatsapp: data.whatsapp.trim()
       };
-      console.log('✅ Atualizando candidato com dados:', updatedData);
-      console.log('🔍 Cliente ID mantido:', editingCandidate.clientId);
+      
+      console.log('✅ Atualizando candidato ID:', editingCandidate.id);
+      console.log('✅ Dados de atualização:', updatedData);
+      
       updateCandidateMutation.mutate(updatedData);
     } else {
       // Para criação, precisamos de listId e clientId
