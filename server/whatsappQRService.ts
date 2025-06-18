@@ -238,13 +238,16 @@ export class WhatsAppQRService {
       this.socket = this.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        connectTimeoutMs: 8000, // Reduzido para 8 segundos
-        defaultQueryTimeoutMs: 3000, // Reduzido para 3 segundos
+        connectTimeoutMs: 60000, // Aumentado para 60 segundos
+        defaultQueryTimeoutMs: 10000, // Aumentado para 10 segundos
         keepAliveIntervalMs: 30000,
-        retryRequestDelayMs: 500,
-        maxMsgRetryCount: 2, // Reduzido tentativas
-        qrTimeout: 30000, // Timeout para QR code
-        browser: ['Sistema Entrevistas', 'Chrome', '1.0.0']
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 3,
+        qrTimeout: 60000, // Timeout para QR code aumentado
+        browser: ['Sistema Entrevistas', 'Chrome', '1.0.0'],
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: false,
+        markOnlineOnConnect: true
       });
 
       this.socket.ev.on('connection.update', async (update: any) => {
@@ -252,9 +255,11 @@ export class WhatsAppQRService {
           const { connection, lastDisconnect, qr } = update;
           
           if (qr) {
+            console.log('🔄 Novo QR Code recebido - gerando...');
             await this.generateQRCode(qr).catch(err => 
               console.log('Erro ao gerar QR Code:', err.message)
             );
+            console.log('📱 QR Code atualizado - escaneie com WhatsApp Web ou WhatsApp Desktop');
           }
           
           if (connection === 'close') {
