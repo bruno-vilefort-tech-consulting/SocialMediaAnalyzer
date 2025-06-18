@@ -1,4 +1,3 @@
-import type { WASocket, ConnectionState, BaileysEventMap } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
@@ -6,7 +5,7 @@ import QRCode from 'qrcode';
 import { storage } from './storage';
 
 interface WhatsAppClientSession {
-  socket: WASocket | null;
+  socket: any | null;
   qrCode: string | null;
   isConnected: boolean;
   phoneNumber: string | null;
@@ -79,11 +78,11 @@ class WhatsAppClientManager {
         }
       }
 
-      // Importar Baileys dinamicamente para evitar problemas de importação
-      const { makeWASocket, DisconnectReason, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
-
       const sessionPath = this.getSessionPath(clientId);
       await this.ensureSessionDirectory(clientId);
+      
+      // Importar Baileys usando require direto para evitar problemas ES modules
+      const { makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
       
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
 
@@ -100,6 +99,8 @@ class WhatsAppClientManager {
         emitOwnEvents: true,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
+        logger: { level: 'silent' },
+        markOnlineOnConnect: false,
       });
 
       // Inicializar sessão
@@ -127,10 +128,10 @@ class WhatsAppClientManager {
               error: 'Timeout aguardando QR Code'
             });
           }
-        }, 30000);
+        }, 15000);
 
         // Listener para atualizações de conexão
-        socket.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
+        socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
           
           if (qr && !resolved) {
@@ -166,6 +167,7 @@ class WhatsAppClientManager {
           }
           
           if (connection === 'close') {
+            const { DisconnectReason } = require('@whiskeysockets/baileys');
             const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(`🔌 Conexão fechada para cliente ${clientId}, reconectar:`, shouldReconnect);
             
