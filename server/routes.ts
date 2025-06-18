@@ -1000,12 +1000,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Importar apenas candidatos válidos (não duplicados)
       let importedCandidates = [];
       if (validCandidates.length > 0) {
+        console.log(`📥 Importando ${validCandidates.length} candidatos para lista ${listId}`);
         importedCandidates = await storage.createCandidates(validCandidates);
+        
+        // Criar relacionamentos candidato-lista para cada candidato importado
+        for (const candidate of importedCandidates) {
+          try {
+            await storage.addCandidateToList(candidate.id, parseInt(listId), candidate.clientId);
+            console.log(`✅ Candidato ${candidate.name} (${candidate.id}) adicionado à lista ${listId}`);
+          } catch (membershipError) {
+            console.error(`❌ Erro ao adicionar candidato ${candidate.id} à lista:`, membershipError);
+          }
+        }
       }
 
       // Preparar resposta
       const response: any = {
-        message: `${importedCandidates.length} candidatos importados com sucesso`,
+        message: `${importedCandidates.length} candidatos importados com sucesso na lista`,
         imported: importedCandidates.length,
         duplicates: duplicates.length,
         candidates: importedCandidates

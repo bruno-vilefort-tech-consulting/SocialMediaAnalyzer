@@ -540,6 +540,10 @@ export default function CandidatesPage() {
         // Invalidar caches para atualizar dados
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+        if (targetList?.id) {
+          queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
         
         toast({ 
           title: "Importação concluída!", 
