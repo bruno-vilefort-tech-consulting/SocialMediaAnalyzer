@@ -409,7 +409,7 @@ export default function CandidatesManagementPage() {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              resetPagination();
+              setCurrentPage(1);
             }}
             className="pl-10"
           />
@@ -419,7 +419,7 @@ export default function CandidatesManagementPage() {
         {isMaster && (
           <Select onValueChange={(value) => {
             setSelectedClient(value === "all" ? null : Number(value));
-            resetPagination();
+            setCurrentPage(1);
           }}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Filtrar por cliente" />
