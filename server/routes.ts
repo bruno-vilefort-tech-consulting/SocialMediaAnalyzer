@@ -3044,28 +3044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/whatsapp/connect", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      const { clientId, clientName } = req.body;
-      
-      if (!clientId || !clientName) {
-        return res.status(400).json({ error: 'clientId e clientName são obrigatórios' });
-      }
-
-      // For client users, validate they can only connect their own client
-      if (req.user?.role === 'client' && req.user.clientId?.toString() !== clientId) {
-        return res.status(403).json({ error: 'Acesso negado: você só pode conectar seu próprio cliente' });
-      }
-
-      const { whatsappManager } = await import('./whatsappManager');
-      const connectionId = await whatsappManager.createConnection(clientId, clientName);
-      
-      res.json({ success: true, connectionId });
-    } catch (error) {
-      console.error('Erro ao criar conexão WhatsApp:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
-    }
-  });
+  // Removed duplicate /api/whatsapp/connect endpoint
 
   app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
