@@ -1968,9 +1968,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           qrCode: result.qrCode
         });
       } else {
+        console.log(`❌ [DEBUG] Falha na conexão WhatsApp:`, result.message);
         res.status(500).json({
           success: false,
-          message: result.error || 'Erro ao conectar WhatsApp'
+          message: result.message || 'Erro ao conectar WhatsApp'
         });
       }
     } catch (error) {

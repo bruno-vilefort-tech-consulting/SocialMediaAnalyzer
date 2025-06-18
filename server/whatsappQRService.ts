@@ -238,18 +238,17 @@ export class WhatsAppQRService {
       this.socket = this.makeWASocket({
         auth: state,
         printQRInTerminal: true,
-        connectTimeoutMs: 60000, // 1 minuto - reduzido
-        defaultQueryTimeoutMs: 60000, // 1 minuto
-        keepAliveIntervalMs: 25000, // 25 segundos
-        retryRequestDelayMs: 1000, // 1 segundo
-        maxMsgRetryCount: 3, // Reduzido
-        qrTimeout: 40000, // 40 segundos
-        browser: ['Chrome (Linux)', '', ''], // Browser mais comum
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 3,
+        qrTimeout: 40000,
+        browser: ['Chrome (Linux)', '', ''],
         generateHighQualityLinkPreview: false,
         syncFullHistory: false,
-        markOnlineOnConnect: true, // Ativar para melhor conectividade
+        markOnlineOnConnect: true,
         getMessage: async (key) => {
-          // Implementar getMessage para melhor compatibilidade
           return {
             conversation: 'placeholder'
           };
