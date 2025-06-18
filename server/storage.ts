@@ -809,13 +809,28 @@ export class FirebaseStorage implements IStorage {
 
   // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
   async getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined> {
+    console.log(`🔍 [DEBUG] getApiConfig buscando: entityType=${entityType}, entityId=${entityId}`);
+    
     const configsSnapshot = await getDocs(collection(firebaseDb, "apiConfigs"));
+    console.log(`🔍 [DEBUG] Total de configs no Firebase: ${configsSnapshot.docs.length}`);
+    
     for (const configDoc of configsSnapshot.docs) {
       const data = configDoc.data();
+      console.log(`🔍 [DEBUG] Config encontrada:`, {
+        docId: configDoc.id,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        hasQrCode: !!data.whatsappQrCode,
+        qrCodeLength: data.whatsappQrCode ? data.whatsappQrCode.length : 0
+      });
+      
       if (data.entityType === entityType && data.entityId === entityId) {
+        console.log(`✅ [DEBUG] Match encontrado! Retornando configuração com QR Code:`, !!data.whatsappQrCode);
         return { id: parseInt(configDoc.id) || Date.now(), ...data } as ApiConfig;
       }
     }
+    
+    console.log(`❌ [DEBUG] Nenhuma configuração encontrada para ${entityType}/${entityId}`);
     return undefined;
   }
 

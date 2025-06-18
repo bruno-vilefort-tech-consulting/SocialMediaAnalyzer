@@ -1931,11 +1931,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               // Salvar QR Code no Firebase
               try {
-                await storage.upsertApiConfig('client', user.clientId.toString(), {
+                await storage.upsertApiConfig({
+                  entityType: 'client',
+                  entityId: user.clientId.toString(),
                   whatsappQrConnected: false,
                   whatsappQrCode: qr,
                   whatsappQrPhoneNumber: null,
-                  whatsappQrLastConnection: null
+                  whatsappQrLastConnection: null,
+                  openaiVoice: 'nova',
+                  firebaseProjectId: null,
+                  firebaseServiceAccount: null
                 });
                 console.log(`📱 [DEBUG] QR Code salvo no Firebase com sucesso`);
               } catch (saveError) {
@@ -1953,11 +1958,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`✅ WhatsApp Baileys conectado para cliente ${user.clientId}`);
               
               // Salvar conexão no Firebase
-              await storage.upsertApiConfig('client', user.clientId.toString(), {
+              await storage.upsertApiConfig({
+                entityType: 'client',
+                entityId: user.clientId.toString(),
                 whatsappQrConnected: true,
                 whatsappQrCode: null,
                 whatsappQrPhoneNumber: socket.user?.id?.split(':')[0] || null,
-                whatsappQrLastConnection: new Date()
+                whatsappQrLastConnection: new Date(),
+                openaiVoice: 'nova',
+                firebaseProjectId: null,
+                firebaseServiceAccount: null
               });
               
               if (!connectionResolved) {
