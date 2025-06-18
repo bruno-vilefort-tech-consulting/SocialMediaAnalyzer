@@ -1884,7 +1884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientId } = req.params;
       console.log(`🐛 [DEBUG] Testando WPPConnect para cliente ${clientId}...`);
       
-      const result = await wppConnectClientModule.connectClient(clientId);
+      const result = await wppConnectClientManager.createConnection(clientId);
       
       console.log(`🐛 [DEBUG] Resultado:`, result);
       
@@ -1921,7 +1921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isConnected: status.isConnected,
         phone: status.phoneNumber,
         qrCode: status.qrCode,
-        hasQrCode: status.hasQrCode
+        hasQrCode: !!status.qrCode
       });
     } catch (error) {
       console.error('❌ Erro ao buscar status WhatsApp:', error);
@@ -2051,7 +2051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const result = await wppConnectClientModule.sendTestMessage(
+      const result = await wppConnectClientManager.sendMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message

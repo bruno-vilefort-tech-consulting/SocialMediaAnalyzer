@@ -51,7 +51,7 @@ class WppConnectClientManager {
         updates.whatsappQrCode = null; // Limpar QR quando conectado
       }
 
-      await storage.upsertApiConfig('client', clientId, updates);
+      await storage.upsertApiConfig('client', parseInt(clientId), updates);
       console.log(`💾 Status WhatsApp salvo para cliente ${clientId}: ${isConnected ? 'conectado' : 'desconectado'}`);
     } catch (error) {
       console.error(`❌ Erro ao salvar status WhatsApp para cliente ${clientId}:`, error);
@@ -225,7 +225,7 @@ class WppConnectClientManager {
     if (!session) {
       // Buscar status do banco de dados
       try {
-        const apiConfig = await storage.getApiConfig('client', clientId);
+        const apiConfig = await storage.getApiConfig('client', parseInt(clientId));
         return {
           isConnected: apiConfig?.whatsappQrConnected || false,
           qrCode: apiConfig?.whatsappQrCode || null,
