@@ -1997,8 +1997,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await whatsappClientModule.disconnectClient(user.clientId.toString());
       
       if (result.success) {
-      
-      if (success) {
         res.json({ 
           success: true, 
           message: 'WhatsApp desconectado com sucesso'
@@ -2041,8 +2039,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await whatsappClientModule.sendTestMessage(user.clientId.toString(), phoneNumber, message);
       
       if (result.success) {
-      
-      if (success) {
         res.json({ 
           success: true, 
           message: 'Mensagem enviada com sucesso' 
