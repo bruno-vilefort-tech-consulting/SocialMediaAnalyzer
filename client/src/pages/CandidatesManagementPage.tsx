@@ -316,9 +316,10 @@ export default function CandidatesManagementPage() {
   const getAvailableLists = () => {
     if (!selectedCandidate) return [];
     const candidateListIds = getCandidateLists(selectedCandidate.id).map((list: CandidateList) => list.id);
+    // Usar o clientId do candidato selecionado, não o filtro atual
     return (candidateLists as CandidateList[]).filter((list: CandidateList) => 
       !candidateListIds.includes(list.id) && 
-      (!clientId || list.clientId === clientId)
+      list.clientId === selectedCandidate.clientId
     );
   };
 
