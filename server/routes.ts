@@ -1917,7 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Usar o whatsappQRService original que funcionava
       const { whatsappQRService } = await import('./whatsappQRService');
-      const status = whatsappQRService.getStatus();
+      const status = whatsappQRService.getConnectionStatus();
       
       console.log(`📱 [ORIGINAL] Status encontrado:`, status);
       
@@ -1952,7 +1952,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Usar o whatsappQRService original que funcionava
       const { whatsappQRService } = await import('./whatsappQRService');
-      const result = await whatsappQRService.connect();
+      await whatsappQRService.ensureInitialized();
+      const result = { success: true, qrCode: whatsappQRService.getConnectionStatus().qrCode };
       
       console.log(`🔗 [DEBUG] Resultado da conexão:`, {
         success: result.success,
@@ -1992,9 +1993,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappClientModule para desconexão isolada por cliente
-      const { whatsappClientModule } = await import('./whatsappClientModule');
-      const result = await whatsappClientModule.disconnectClient(user.clientId.toString());
+      // Usar o whatsappQRService original que funcionava
+      const { whatsappQRService } = await import('./whatsappQRService');
+      await whatsappQRService.disconnect();
+      const result = { success: true };
       
       if (result.success) {
         res.json({ 
