@@ -237,17 +237,21 @@ export class WhatsAppQRService {
       
       this.socket = this.makeWASocket({
         auth: state,
-        printQRInTerminal: false,
-        connectTimeoutMs: 60000, // Aumentado para 60 segundos
-        defaultQueryTimeoutMs: 10000, // Aumentado para 10 segundos
-        keepAliveIntervalMs: 30000,
-        retryRequestDelayMs: 1000,
-        maxMsgRetryCount: 3,
-        qrTimeout: 60000, // Timeout para QR code aumentado
-        browser: ['Sistema Entrevistas', 'Chrome', '1.0.0'],
-        generateHighQualityLinkPreview: true,
+        printQRInTerminal: true, // Mostrar QR no terminal também para debug
+        connectTimeoutMs: 120000, // 2 minutos
+        defaultQueryTimeoutMs: 20000, // 20 segundos
+        keepAliveIntervalMs: 10000, // 10 segundos
+        retryRequestDelayMs: 2000,
+        maxMsgRetryCount: 5,
+        qrTimeout: 120000, // 2 minutos para QR
+        browser: ['WhatsApp Sistema', 'Desktop', '1.0.0'], // Nome mais comum
+        generateHighQualityLinkPreview: false,
         syncFullHistory: false,
-        markOnlineOnConnect: true
+        markOnlineOnConnect: false, // Evitar marca online imediata
+        getMessage: async (key) => {
+          // Função necessária para some features
+          return { conversation: '' };
+        }
       });
 
       this.socket.ev.on('connection.update', async (update: any) => {
@@ -256,10 +260,12 @@ export class WhatsAppQRService {
           
           if (qr) {
             console.log('🔄 Novo QR Code recebido - gerando...');
+            console.log('📱 QR RAW:', qr); // Debug do QR raw
             await this.generateQRCode(qr).catch(err => 
               console.log('Erro ao gerar QR Code:', err.message)
             );
-            console.log('📱 QR Code atualizado - escaneie com WhatsApp Web ou WhatsApp Desktop');
+            console.log('📱 QR Code atualizado - escaneie com WhatsApp no CELULAR (não Web/Desktop)');
+            console.log('⚠️  IMPORTANTE: Use WhatsApp do celular -> Menu (⋮) -> Aparelhos conectados -> Conectar um aparelho');
           }
           
           if (connection === 'close') {
@@ -338,20 +344,7 @@ export class WhatsAppQRService {
             } else {
               console.log('❌ Não reconectando devido ao tipo de erro');
             }
-          } else if (connection === 'open') {
-            console.log('✅ WhatsApp QR conectado com sucesso!');
-            this.config.isConnected = true;
-            this.config.qrCode = null;
-            this.config.phoneNumber = this.socket.user?.id?.split(':')[0] || 'Conectado';
-            this.config.lastConnection = new Date();
-            this.notifyQRListeners(null);
-            this.notifyConnectionListeners(true);
-            
-            // Salvar conexão no banco de dados
-            await this.saveConnectionToDB().catch(err => 
-              console.error('Erro ao salvar conexão:', err.message)
-            );
-          }
+
         } catch (updateError) {
           console.error('❌ Erro no handler de conexão:', updateError.message);
         }
