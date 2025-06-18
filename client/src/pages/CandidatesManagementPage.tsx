@@ -70,26 +70,51 @@ export default function CandidatesManagementPage() {
 
   // Query para buscar candidatos
   const { data: candidates = [], isLoading: candidatesLoading } = useQuery({
-    queryKey: ["/api/candidates", clientId],
-    enabled: !!clientId,
+    queryKey: selectedClient ? ["/api/candidates", selectedClient, Date.now()] : ["/api/candidates", Date.now()],
+    queryFn: async () => {
+      const params = selectedClient ? `?clientId=${selectedClient}` : '';
+      console.log('🔍 Frontend fazendo requisição:', `/api/candidates${params}`);
+      const result = await apiRequest(`/api/candidates${params}`, "GET");
+      console.log('📋 Candidatos recebidos no frontend:', result?.length || 0);
+      return result;
+    },
+    enabled: isMaster ? true : !!user?.clientId, // Master sempre habilitado, cliente apenas se tiver clientId
+    staleTime: 0, // Força nova requisição sempre
+    cacheTime: 0, // Não mantém cache
   });
 
   // Query para buscar listas de candidatos
   const { data: candidateLists = [] } = useQuery({
-    queryKey: ["/api/candidate-lists", clientId],
-    enabled: !!clientId,
+    queryKey: selectedClient ? ["/api/candidate-lists", selectedClient] : ["/api/candidate-lists"],
+    queryFn: async () => {
+      const params = selectedClient ? `?clientId=${selectedClient}` : '';
+      return await apiRequest(`/api/candidate-lists${params}`, "GET");
+    },
+    enabled: isMaster ? true : !!user?.clientId,
   });
 
   // Query para buscar memberships (relacionamentos candidato-lista)
   const { data: memberships = [] } = useQuery({
-    queryKey: ["/api/candidate-list-memberships", clientId],
-    enabled: !!clientId,
+    queryKey: selectedClient ? ["/api/candidate-list-memberships", selectedClient] : ["/api/candidate-list-memberships"],
+    enabled: isMaster ? true : !!user?.clientId,
   });
 
-  // Filtrar candidatos por cliente
-  const filteredCandidates = (candidates as Candidate[]).filter((candidate: Candidate) => 
-    !clientId || candidate.clientId === clientId
-  );
+  // Filtrar candidatos por termo de busca
+  const filteredCandidates = Array.isArray(candidates) ? candidates.filter((candidate: Candidate) => {
+    const searchMatch = !searchTerm || 
+      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.whatsapp.includes(searchTerm);
+    
+    // Para master: filtrar por cliente selecionado se houver, senão mostrar todos
+    if (isMaster) {
+      const clientMatch = !selectedClient || candidate.clientId === selectedClient;
+      return searchMatch && clientMatch;
+    }
+    
+    // Para cliente: filtrar por seu próprio clientId
+    return searchMatch && candidate.clientId === user?.clientId;
+  }) : [];
 
   // Função para obter listas de um candidato
   const getCandidateLists = (candidateId: number) => {

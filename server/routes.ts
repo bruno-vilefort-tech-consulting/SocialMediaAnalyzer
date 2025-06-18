@@ -787,14 +787,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user!.role === 'master') {
         // Master pode ver candidatos de todos os clientes OU filtrar por cliente específico
         if (clientIdFilter) {
+          console.log('🔍 Master buscando candidatos do cliente:', clientIdFilter);
           const candidates = await storage.getCandidatesByClientId(parseInt(clientIdFilter));
+          console.log('📋 Candidatos encontrados para cliente', clientIdFilter, ':', candidates.length);
           res.json(candidates);
         } else {
-          // Se não especificar cliente, retornar vazio para evitar confusão
-          res.json([]);
+          // Master sem filtro = ver TODOS os candidatos
+          console.log('🔍 Master buscando TODOS os candidatos');
+          const candidates = await storage.getAllCandidates();
+          console.log('📋 Total de candidatos encontrados:', candidates.length);
+          console.log('📋 Primeiros candidatos:', candidates.slice(0, 3));
+          res.json(candidates);
         }
       } else {
         // Cliente só vê seus próprios candidatos - ISOLAMENTO TOTAL
+        console.log('🔍 Cliente buscando candidatos do clientId:', req.user!.clientId);
         const candidates = await storage.getCandidatesByClientId(req.user!.clientId!);
         res.json(candidates);
       }
