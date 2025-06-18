@@ -1253,11 +1253,25 @@ export class FirebaseStorage implements IStorage {
 
   async getCandidateListMembershipsByClientId(clientId: number): Promise<CandidateListMembership[]> {
     console.log(`🔍 Buscando candidate-list-memberships para clientId: ${clientId}`);
-    const snapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
-    const memberships = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() } as CandidateListMembership))
-      .filter(membership => membership.clientId === clientId);
+    
+    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const q = query(membershipsRef, where('clientId', '==', clientId));
+    const querySnapshot = await getDocs(q);
+    
+    const memberships = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || doc.id,
+        candidateId: data.candidateId,
+        listId: data.listId,
+        clientId: data.clientId,
+        createdAt: data.createdAt?.toDate() || null
+      } as CandidateListMembership;
+    });
+    
     console.log(`📋 Memberships encontrados para cliente ${clientId}: ${memberships.length}`);
+    console.log(`🔍 Cliente danielmoreirabraga@gmail.com buscando memberships do clientId ${clientId}: ${memberships.length} encontrados`);
+    
     return memberships;
   }
 
