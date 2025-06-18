@@ -646,9 +646,9 @@ export class FirebaseStorage implements IStorage {
         clientId,
         createdAt: new Date()
       };
-      console.log('🔗 Criando membership:', membershipData, 'com ID:', membershipId);
+      console.log('🔗 Criando membership automaticamente:', membershipData, 'com ID:', membershipId);
       await setDoc(doc(firebaseDb, "candidate-list-memberships", membershipId), membershipData);
-      console.log('✅ Membership criada com sucesso');
+      console.log('✅ Membership criada automaticamente com sucesso');
     } else {
       console.log('❌ Membership não criada - listId:', listId, 'clientId:', clientId);
     }
