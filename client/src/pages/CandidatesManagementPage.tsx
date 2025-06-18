@@ -299,49 +299,58 @@ export default function CandidatesManagementPage() {
             Candidatos ({filteredCandidates.length})
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="space-y-3">
             {filteredCandidates.map((candidate: Candidate) => {
               const candidateListsData = getCandidateLists(candidate.id);
               
               return (
-                <Card key={candidate.id} className="h-32 cursor-pointer hover:shadow-md transition-shadow">
-                  <CardContent className="p-4 h-full flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-medium text-sm truncate">{candidate.name}</h3>
-                      <p className="text-xs text-gray-600 truncate">{candidate.email}</p>
-                      <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
+                <Card key={candidate.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    {/* Informações do candidato - lado esquerdo */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-sm truncate">{candidate.name}</h3>
+                          <p className="text-xs text-gray-600 truncate">{candidate.email}</p>
+                          <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
+                        </div>
+                        
+                        {/* Listas - centro */}
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {candidateListsData.slice(0, 2).map((list: CandidateList) => (
+                            <Badge key={list.id} variant="secondary" className="text-xs">
+                              {list.name}
+                            </Badge>
+                          ))}
+                          {candidateListsData.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{candidateListsData.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {candidateListsData.slice(0, 2).map((list: CandidateList) => (
-                        <Badge key={list.id} variant="secondary" className="text-xs">
-                          {list.name}
-                        </Badge>
-                      ))}
-                      {candidateListsData.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{candidateListsData.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex justify-end space-x-1 mt-2">
+                    {/* Ações - lado direito */}
+                    <div className="flex items-center space-x-2 ml-4">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleEditCandidate(candidate)}
-                        className="h-6 w-6 p-0"
+                        className="h-8 w-8 p-0"
+                        title="Editar candidato"
                       >
-                        <Edit className="h-3 w-3" />
+                        <Edit className="h-4 w-4" />
                       </Button>
                       
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleManageLists(candidate)}
-                        className="h-6 w-6 p-0"
+                        className="h-8 w-8 p-0"
+                        title="Gerenciar listas"
                       >
-                        <Users className="h-3 w-3" />
+                        <Users className="h-4 w-4" />
                       </Button>
                       
                       <AlertDialog>
@@ -349,9 +358,10 @@ export default function CandidatesManagementPage() {
                           <Button
                             size="sm"
                             variant="destructive"
-                            className="h-6 w-6 p-0"
+                            className="h-8 w-8 p-0"
+                            title="Excluir candidato"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
