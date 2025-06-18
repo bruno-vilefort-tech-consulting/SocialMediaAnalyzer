@@ -929,21 +929,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Validate Brazilian phone format
+          // Validate and format Brazilian phone with country code
           const phoneStr = String(phone);
-          const phoneDigits = phoneStr.replace(/\D/g, '');
-          if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-            errors.push(`Linha ${index + 2}: Celular deve ter 10 ou 11 dígitos - ${phone}`);
+          let phoneDigits = phoneStr.replace(/\D/g, '');
+          
+          // Se número não tem código do país, adicionar 55 (Brasil)
+          if (phoneDigits.length === 10 || phoneDigits.length === 11) {
+            phoneDigits = '55' + phoneDigits;
+          } else if (phoneDigits.length === 12 || phoneDigits.length === 13) {
+            // Já tem código do país, validar se é 55
+            if (!phoneDigits.startsWith('55')) {
+              errors.push(`Linha ${index + 2}: Número deve ter código do país 55 (Brasil) - ${phone}`);
+              continue;
+            }
+          } else {
+            errors.push(`Linha ${index + 2}: Celular deve ter 10-13 dígitos (com/sem código do país) - ${phone}`);
             continue;
           }
 
           const nameStr = String(name).trim();
 
-          // Verificar duplicatas
+          // Verificar duplicatas usando campo whatsapp correto
           const isDuplicate = existingCandidates.some(existing => 
             existing.name.toLowerCase() === nameStr.toLowerCase() ||
             existing.email.toLowerCase() === emailStr ||
-            existing.phone === phoneDigits
+            existing.whatsapp === phoneDigits
           );
 
           if (isDuplicate) {
@@ -952,17 +962,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
               name: nameStr,
               email: emailStr,
               phone: phoneDigits,
-              reason: 'Candidato já existe na lista (nome, email ou celular duplicado)'
+              reason: 'Candidato já existe na lista (nome, email ou WhatsApp duplicado)'
             });
             continue;
           }
 
-          const clientId = req.user!.role === 'master' ? req.body.clientId || 1 : req.user!.clientId!;
+          // Determinar clientId baseado no usuário e contexto
+          const clientId = req.user!.role === 'master' ? 
+            (req.body.clientId ? parseInt(req.body.clientId) : null) : 
+            req.user!.clientId!;
+
+          if (!clientId) {
+            errors.push(`Linha ${index + 2}: ClientId não definido para importação`);
+            continue;
+          }
 
           validCandidates.push({
             name: nameStr,
             email: emailStr,
-            phone: phoneDigits,
+            whatsapp: phoneDigits, // Usar whatsapp em vez de phone
             clientId,
             listId: parseInt(listId)
           });
