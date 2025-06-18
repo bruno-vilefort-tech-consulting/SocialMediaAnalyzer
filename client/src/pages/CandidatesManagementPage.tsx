@@ -48,6 +48,10 @@ export default function CandidatesManagementPage() {
   const [previousSelectedClient, setPreviousSelectedClient] = useState<number | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const candidatesPerPage = 10;
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
   const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -103,6 +107,16 @@ export default function CandidatesManagementPage() {
     // Para cliente: filtrar por seu próprio clientId
     return searchMatch && candidate.clientId === user?.clientId;
   }) : [];
+
+  // Cálculos de paginação
+  const totalCandidates = searchFilteredCandidates.length;
+  const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
+  const startIndex = (currentPage - 1) * candidatesPerPage;
+  const endIndex = startIndex + candidatesPerPage;
+  const paginatedCandidates = searchFilteredCandidates.slice(startIndex, endIndex);
+
+  // Reset página quando filtros mudam
+  const resetPagination = () => setCurrentPage(1);
 
   // Função para obter listas de um candidato
   const getCandidateLists = (candidateId: number) => {
@@ -426,11 +440,11 @@ export default function CandidatesManagementPage() {
             
             return (
               <Card key={candidate.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
+                <CardContent className="p-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-4">
-                        <h3 className="font-semibold text-lg">{candidate.name}</h3>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-4 mb-2">
+                        <h3 className="font-semibold text-base">{candidate.name}</h3>
                         <span className="text-sm text-gray-600">{candidate.email}</span>
                         <span className="text-sm text-gray-600">WhatsApp: {candidate.whatsapp}</span>
                         {isMaster && (
@@ -440,8 +454,8 @@ export default function CandidatesManagementPage() {
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-gray-500">Listas:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">Listas:</span>
                         {candidateLists.length > 0 ? (
                           candidateLists.map((list) => (
                             <Badge key={list.id} variant="secondary" className="text-xs">
