@@ -628,7 +628,7 @@ export default function CandidatesManagementPage() {
                 id="new-whatsapp"
                 value={newCandidateForm.whatsapp}
                 onChange={(e) => setNewCandidateForm({ ...newCandidateForm, whatsapp: e.target.value })}
-                placeholder="5511999999999"
+                placeholder="11987654321 ou 5511987654321"
               />
             </div>
 

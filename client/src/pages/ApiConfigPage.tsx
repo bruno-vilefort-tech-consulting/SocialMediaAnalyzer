@@ -831,7 +831,7 @@ export default function ApiConfigPage() {
                     <Label htmlFor="testPhone">Número de Teste</Label>
                     <Input
                       id="testPhone"
-                      placeholder="5511999999999"
+                      placeholder="11987654321 ou 5511987654321"
                       value={testPhone}
                       onChange={(e) => setTestPhone(e.target.value)}
                       className="text-sm"
