@@ -745,13 +745,13 @@ export default function ApiConfigPage() {
                       <Input
                         id="verifyCode"
                         type="text"
-                        placeholder="Ex: 123456"
+                        placeholder="Ex: 12345678"
                         value={verifyCodeInput}
                         onChange={(e) => setVerifyCodeInput(e.target.value)}
                         className="mt-1"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Digite o código recebido: <strong>{verificationCode}</strong>
+                        Digite o código de 8 dígitos recebido: <strong>{verificationCode}</strong>
                       </p>
                     </div>
                     
