@@ -70,13 +70,18 @@ class WhatsAppClientModule {
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '22.04.4'],
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
+        browser: ['Replit Client Bot', 'Chrome', '1.0.0'],
+        connectTimeoutMs: 30000,
+        defaultQueryTimeoutMs: 30000,
         keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 2000,
+        maxMsgRetryCount: 5,
+        qrTimeout: 60000,
         markOnlineOnConnect: true,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
+        shouldSyncHistoryMessage: () => false,
+        emitOwnEvents: false,
         getMessage: async () => undefined
       });
 
@@ -86,13 +91,21 @@ class WhatsAppClientModule {
       return new Promise((resolve) => {
         // Evento QR Code
         socket.ev.on('connection.update', async (update: any) => {
-          const { connection, lastDisconnect, qr } = update;
+          const { connection, lastDisconnect, qr, receivedPendingNotifications } = update;
+
+          console.log(`📱 [CLIENT ${clientId} UPDATE]:`, { 
+            connection, 
+            hasQR: !!qr,
+            hasDisconnect: !!lastDisconnect,
+            receivedPendingNotifications 
+          });
 
           if (qr && !qrCodeGenerated) {
             try {
               qrCodeString = await qrcode.toDataURL(qr);
               qrCodeGenerated = true;
               console.log(`📱 QR Code gerado para cliente ${clientId}`);
+              console.log(`🔄 Cliente ${clientId}: Use WhatsApp do CELULAR para escanear`);
               
               // Atualizar configuração no Firebase
               await this.updateClientConfig(clientId, {
@@ -111,6 +124,10 @@ class WhatsAppClientModule {
               console.error(`❌ Erro ao gerar QR Code para cliente ${clientId}:`, error);
               resolve({ success: false, message: 'Erro ao gerar QR Code' });
             }
+          }
+          
+          if (connection === 'connecting') {
+            console.log(`🔗 Cliente ${clientId}: WhatsApp conectando...`);
           }
 
           if (connection === 'open') {
