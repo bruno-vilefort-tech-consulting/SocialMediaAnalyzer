@@ -45,6 +45,10 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
       token = req.session.token;
     }
     
+    console.log(`🔑 Authorization header: ${req.headers.authorization?.substring(0, 30)}...`);
+    console.log(`🔑 Request method: ${req.method}`);
+    console.log(`🔑 Request URL: ${req.url}`);
+    
     console.log('🔑 Token encontrado:', token ? 'Sim' : 'Não');
     
     if (!token) {
@@ -93,6 +97,9 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     next();
   } catch (error) {
     console.error('Auth error:', error);
+    console.log(`🔑 Failed token: ${token}`);
+    console.log(`🔑 JWT_SECRET exists: ${!!JWT_SECRET}`);
+    console.log(`🔑 JWT_SECRET length: ${JWT_SECRET?.length || 0}`);
     res.status(401).json({ message: 'Invalid token' });
   }
 };
