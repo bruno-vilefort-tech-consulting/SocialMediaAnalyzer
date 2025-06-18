@@ -1936,7 +1936,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
+      console.log(`🔗 [DEBUG] Usuário autenticado:`, {
+        hasUser: !!user,
+        clientId: user?.clientId,
+        role: user?.role,
+        email: user?.email
+      });
+      
       if (!user?.clientId) {
+        console.log('❌ [DEBUG] Client ID não encontrado');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
@@ -1946,7 +1954,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { whatsappQRService } = await import('./whatsappQRService');
       const result = await whatsappQRService.connect();
       
-      console.log(`🔗 [NOVO] Resultado da conexão:`, result);
+      console.log(`🔗 [DEBUG] Resultado da conexão:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0,
+        message: result.message
+      });
       
       if (result.success) {
         res.json({
