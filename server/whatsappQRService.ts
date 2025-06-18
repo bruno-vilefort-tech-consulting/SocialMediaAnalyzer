@@ -1429,6 +1429,30 @@ Você gostaria de iniciar a entrevista?`;
     this.qrCodeListeners.forEach(callback => callback(qr));
   }
 
+  getStatus() {
+    return {
+      isConnected: this.config.isConnected,
+      phoneNumber: this.config.phoneNumber,
+      qrCode: this.config.qrCode,
+      lastConnection: this.config.lastConnection
+    };
+  }
+
+  async connect(): Promise<{ success: boolean; message: string; qrCode?: string }> {
+    try {
+      console.log('🔗 Iniciando conexão WhatsApp QR...');
+      await this.initializeConnection();
+      return { 
+        success: true, 
+        message: 'Conexão iniciada',
+        qrCode: this.config.qrCode || undefined
+      };
+    } catch (error) {
+      console.error('❌ Erro na conexão WhatsApp QR:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   private notifyConnectionListeners(isConnected: boolean) {
     this.connectionListeners.forEach(callback => callback(isConnected));
   }

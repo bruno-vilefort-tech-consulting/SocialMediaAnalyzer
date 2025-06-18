@@ -1884,7 +1884,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientId } = req.params;
       console.log(`🐛 [DEBUG] Testando WPPConnect para cliente ${clientId}...`);
       
-      const result = await wppConnectClientManager.createConnection(clientId);
+      // WppConnect removido - usando Baileys
+      const { whatsappQRService } = await import('./whatsappQRService');
+      const result = await whatsappQRService.connect();
       
       console.log(`🐛 [DEBUG] Resultado:`, result);
       
@@ -2055,11 +2057,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const result = await wppConnectClientManager.sendMessage(
-        user.clientId.toString(), 
-        phoneNumber, 
-        message
-      );
+      // WppConnect removido - usando Baileys
+      const { whatsappQRService } = await import('./whatsappQRService');
+      const success = await whatsappQRService.sendTextMessage(phoneNumber, message);
+      const result = { success, message: success ? 'Mensagem enviada' : 'Falha ao enviar' };
       
       if (result.success) {
         res.json({ 
