@@ -50,6 +50,17 @@ class WhatsAppClientModule {
     try {
       console.log(`🔗 Iniciando conexão WhatsApp para cliente ${clientId}...`);
 
+      // Verificar se já existe uma sessão ativa para este cliente
+      const existingSession = this.sessions.get(clientId);
+      if (existingSession && existingSession.isConnected) {
+        console.log(`✅ Cliente ${clientId} já possui conexão ativa`);
+        return {
+          success: true,
+          message: `Cliente ${clientId} já conectado`,
+          qrCode: undefined
+        };
+      }
+
       if (!this.baileys) {
         await this.initializeBaileys();
         if (!this.baileys) {
@@ -59,11 +70,11 @@ class WhatsAppClientModule {
 
       const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = this.baileys;
 
-      // Garantir diretório da sessão
+      // Garantir diretório da sessão específico do cliente
       await this.ensureSessionDirectory(clientId);
       const sessionPath = this.getSessionPath(clientId);
 
-      // Configurar autenticação
+      // Configurar autenticação isolada por cliente
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
 
       // Criar socket WhatsApp
@@ -142,9 +153,11 @@ class WhatsAppClientModule {
               lastConnection: new Date()
             };
 
+            // Garantir que a sessão é salva com o clientId correto
             this.sessions.set(clientId, session);
+            console.log(`💾 Sessão salva para cliente ${clientId} com número ${phoneNumber}`);
 
-            // Atualizar configuração no Firebase
+            // Atualizar configuração no Firebase com clientId específico
             await this.updateClientConfig(clientId, {
               isConnected: true,
               qrCode: null,

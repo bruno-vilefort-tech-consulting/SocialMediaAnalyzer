@@ -1915,9 +1915,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService existente que já funciona com Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
-      const status = whatsappQRService.getStatus();
+      // Usar o whatsappClientModule para status isolado por cliente
+      const { whatsappClientModule } = await import('./whatsappClientModule');
+      const status = await whatsappClientModule.getClientStatus(user.clientId.toString());
       
       console.log(`📱 [NOVO] Status encontrado:`, status);
       
@@ -1950,9 +1950,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService existente que já funciona com Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
-      const result = await whatsappQRService.connect();
+      // Usar o whatsappClientModule para conexão isolada por cliente
+      const { whatsappClientModule } = await import('./whatsappClientModule');
+      const result = await whatsappClientModule.connectClient(user.clientId.toString());
       
       console.log(`🔗 [DEBUG] Resultado da conexão:`, {
         success: result.success,
@@ -1992,9 +1992,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService existente que já funciona com Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
-      const success = await whatsappQRService.disconnect();
+      // Usar o whatsappClientModule para desconexão isolada por cliente
+      const { whatsappClientModule } = await import('./whatsappClientModule');
+      const result = await whatsappClientModule.disconnectClient(user.clientId.toString());
+      
+      if (result.success) {
       
       if (success) {
         res.json({ 
@@ -2034,9 +2036,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService existente que já funciona com Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
-      const success = await whatsappQRService.sendTextMessage(phoneNumber, message);
+      // Usar o whatsappClientModule para teste isolado por cliente
+      const { whatsappClientModule } = await import('./whatsappClientModule');
+      const result = await whatsappClientModule.sendTestMessage(user.clientId.toString(), phoneNumber, message);
+      
+      if (result.success) {
       
       if (success) {
         res.json({ 
