@@ -45,6 +45,7 @@ export default function CandidatesManagementPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedClient, setSelectedClient] = useState<number | null>(null);
+  const [previousSelectedClient, setPreviousSelectedClient] = useState<number | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
@@ -268,8 +269,9 @@ export default function CandidatesManagementPage() {
 
   const handleManageLists = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
-    // Se for master, definir o filtro de cliente para o clientId do candidato
+    // Se for master, salvar filtro atual e definir filtro para o clientId do candidato
     if (isMaster) {
+      setPreviousSelectedClient(selectedClient);
       setSelectedClient(candidate.clientId);
     }
     setIsListsDialogOpen(true);
@@ -509,7 +511,13 @@ export default function CandidatesManagementPage() {
       </Dialog>
 
       {/* Dialog para gerenciar listas do candidato */}
-      <Dialog open={isListsDialogOpen} onOpenChange={setIsListsDialogOpen}>
+      <Dialog open={isListsDialogOpen} onOpenChange={(open) => {
+        setIsListsDialogOpen(open);
+        // Se está fechando o diálogo e for master, restaurar filtro anterior
+        if (!open && isMaster) {
+          setSelectedClient(previousSelectedClient);
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Gerenciar Listas - {selectedCandidate?.name}</DialogTitle>
