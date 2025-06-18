@@ -268,6 +268,10 @@ export default function CandidatesManagementPage() {
 
   const handleManageLists = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
+    // Se for master, definir o filtro de cliente para o clientId do candidato
+    if (isMaster) {
+      setClientId(candidate.clientId);
+    }
     setIsListsDialogOpen(true);
   };
 
