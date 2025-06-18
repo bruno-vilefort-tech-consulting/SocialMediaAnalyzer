@@ -70,9 +70,12 @@ export class ClientWhatsAppService {
 
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
+          
+          console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr });
 
           if (qr && !resolved) {
             console.log(`📱 QR Code gerado para cliente ${clientId}`);
+            console.log(`🕐 QR Code válido por 45 segundos - escaneie rapidamente`);
             
             // Atualizar configuração do cliente
             await this.updateClientConfig(clientId, {
@@ -87,7 +90,7 @@ export class ClientWhatsAppService {
             resolve({
               success: true,
               qrCode: qr,
-              message: 'QR Code gerado com sucesso'
+              message: 'QR Code gerado - escaneie em até 45 segundos'
             });
           }
 
