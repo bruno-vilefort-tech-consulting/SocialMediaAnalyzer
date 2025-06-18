@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -270,10 +270,10 @@ export default function CandidatesPage() {
     : allCandidates;
 
   // Função para filtrar candidatos por busca
-  const filteredCandidates = useMemo(() => {
+  const filteredCandidates = React.useMemo(() => {
     if (!searchTerm) return candidatesData;
     
-    return candidatesData.filter(candidate =>
+    return candidatesData.filter((candidate: Candidate) =>
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.whatsapp.includes(searchTerm)
@@ -288,7 +288,7 @@ export default function CandidatesPage() {
   const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
 
   // Reset página quando busca muda
-  useEffect(() => {
+  React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
 
@@ -1213,7 +1213,7 @@ export default function CandidatesPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {paginatedCandidates.map((candidate) => (
+                  {paginatedCandidates.map((candidate: Candidate) => (
                     <div
                       key={candidate.id}
                       className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50"
