@@ -48,6 +48,8 @@ export default function CandidatesManagementPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
+  const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [editForm, setEditForm] = useState({ name: "", email: "", whatsapp: "" });
 
   const isMaster = user?.role === 'master';
@@ -246,6 +248,25 @@ export default function CandidatesManagementPage() {
     });
   };
 
+  const handleCreateCandidate = () => {
+    const candidateData = {
+      ...newCandidateForm,
+      clientId: isMaster ? newCandidateForm.clientId : clientId!
+    };
+    
+    if (!candidateData.name || !candidateData.email || !candidateData.whatsapp || 
+        !candidateData.clientId || !candidateData.listId) {
+      toast({
+        title: "Erro",
+        description: "Todos os campos são obrigatórios",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    createCandidateMutation.mutate(candidateData);
+  };
+
   // Obter listas disponíveis para adicionar (não está no candidato)
   const getAvailableLists = () => {
     if (!selectedCandidate) return [];
@@ -295,9 +316,34 @@ export default function CandidatesManagementPage() {
       {/* Lista de candidatos em cards horizontais pequenos */}
       {clientId && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">
-            Candidatos ({filteredCandidates.length})
-          </h2>
+          {/* Barra de ações no topo */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              Candidatos ({filteredCandidates.length})
+            </h2>
+            
+            <div className="flex items-center space-x-4">
+              {/* Campo de busca */}
+              <div className="relative">
+                <Input
+                  placeholder="Buscar candidatos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-64"
+                />
+              </div>
+              
+              {/* Botão Novo Candidato */}
+              <Dialog open={isNewCandidateDialogOpen} onOpenChange={setIsNewCandidateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Candidato
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            </div>
+          </div>
           
           <div className="space-y-3">
             {filteredCandidates.map((candidate: Candidate) => {
@@ -494,6 +540,99 @@ export default function CandidatesManagementPage() {
           <div className="flex justify-end mt-6">
             <Button onClick={() => setIsListsDialogOpen(false)}>
               Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para novo candidato */}
+      <Dialog open={isNewCandidateDialogOpen} onOpenChange={setIsNewCandidateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Candidato</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-name">Nome *</Label>
+              <Input
+                id="new-name"
+                value={newCandidateForm.name}
+                onChange={(e) => setNewCandidateForm({ ...newCandidateForm, name: e.target.value })}
+                placeholder="Nome completo"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="new-email">Email *</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newCandidateForm.email}
+                onChange={(e) => setNewCandidateForm({ ...newCandidateForm, email: e.target.value })}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="new-whatsapp">WhatsApp *</Label>
+              <Input
+                id="new-whatsapp"
+                value={newCandidateForm.whatsapp}
+                onChange={(e) => setNewCandidateForm({ ...newCandidateForm, whatsapp: e.target.value })}
+                placeholder="11999999999"
+              />
+            </div>
+
+            {/* Seletor de cliente (apenas para masters) */}
+            {isMaster && (
+              <div>
+                <Label htmlFor="new-client">Cliente *</Label>
+                <Select onValueChange={(value) => setNewCandidateForm({ ...newCandidateForm, clientId: Number(value) })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client: Client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.companyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Seletor de lista */}
+            <div>
+              <Label htmlFor="new-list">Lista *</Label>
+              <Select onValueChange={(value) => setNewCandidateForm({ ...newCandidateForm, listId: Number(value) })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma lista" />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidateLists
+                    .filter((list: CandidateList) => 
+                      isMaster ? 
+                        (newCandidateForm.clientId ? list.clientId === newCandidateForm.clientId : true) :
+                        list.clientId === clientId
+                    )
+                    .map((list: CandidateList) => (
+                      <SelectItem key={list.id} value={list.id.toString()}>
+                        {list.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setIsNewCandidateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateCandidate} disabled={createCandidateMutation.isPending}>
+              {createCandidateMutation.isPending ? "Criando..." : "Criar Candidato"}
             </Button>
           </div>
         </DialogContent>

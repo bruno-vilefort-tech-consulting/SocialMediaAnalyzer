@@ -40,9 +40,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const clientMenuItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
+    { path: "/candidatos", label: "Candidatos", icon: Smartphone },
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
     { path: "/candidates", label: "Lista de Candidatos", icon: Users },
-    { path: "/candidatos", label: "Candidatos", icon: Smartphone },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
     { path: "/configuracoes", label: "Configurações", icon: Settings },
