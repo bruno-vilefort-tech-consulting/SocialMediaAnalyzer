@@ -254,10 +254,6 @@ export class WhatsAppQRService {
             conversation: 'placeholder'
           };
         }
-        getMessage: async (key) => {
-          // Função necessária para some features
-          return { conversation: '' };
-        }
       });
 
       this.socket.ev.on('connection.update', async (update: any) => {
