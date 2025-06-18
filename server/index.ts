@@ -4,6 +4,18 @@ import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 
 const app = express();
+
+// Debug middleware ANTES de tudo
+app.use((req, res, next) => {
+  console.log(`🌐 [ALL REQUESTS] ${req.method} ${req.url}`);
+  if (req.method === 'POST' && req.url.includes('whatsapp')) {
+    console.log(`📮 [POST WHATSAPP] Headers:`, Object.keys(req.headers));
+    console.log(`📮 [POST WHATSAPP] Authorization:`, req.headers.authorization?.substring(0, 30) + '...');
+    console.log(`📮 [POST WHATSAPP] Body:`, req.body);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
