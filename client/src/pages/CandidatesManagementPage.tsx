@@ -503,7 +503,7 @@ export default function CandidatesManagementPage() {
                 id="edit-whatsapp"
                 value={editForm.whatsapp}
                 onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })}
-                placeholder="5511999999999"
+                placeholder="11987654321 ou 5511987654321"
               />
             </div>
           </div>

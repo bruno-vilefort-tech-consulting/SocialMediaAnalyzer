@@ -54,7 +54,7 @@ const candidateListSchema = z.object({
 const candidateSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
-  whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)"),
+  whatsapp: z.string().regex(/^(55)?[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve ter formato brasileiro com ou sem código do país (ex: 5511987654321 ou 11987654321)"),
   listId: z.number().positive("Lista é obrigatória"),
   clientId: z.number().positive("Cliente é obrigatório")
 });
@@ -1181,7 +1181,7 @@ export default function CandidatesPage() {
                   <FormItem>
                     <FormLabel>WhatsApp *</FormLabel>
                     <FormControl>
-                      <Input placeholder="5511987654321 (com código do país)" {...field} />
+                      <Input placeholder="11987654321 ou 5511987654321" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

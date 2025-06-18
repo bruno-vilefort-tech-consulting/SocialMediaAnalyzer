@@ -84,42 +84,23 @@ export default function CandidateModal({ isOpen, onClose, candidate }: Candidate
   };
 
   const validateWhatsApp = (whatsapp: string) => {
-    // Brazilian WhatsApp format: +55 DD 9XXXX-XXXX or similar
-    const whatsappRegex = /^\+55\s?\d{2}\s?\d{4,5}-?\d{4}$/;
-    return whatsappRegex.test(whatsapp.replace(/\s/g, ''));
+    // Brazilian WhatsApp format: with or without country code 55
+    const digits = whatsapp.replace(/\D/g, '');
+    // Accept formats: 11987654321 (11 digits) or 5511987654321 (13 digits with country code)
+    return (digits.length === 11 && /^[1-9]{2}[0-9]{8,9}$/.test(digits)) || 
+           (digits.length === 13 && /^55[1-9]{2}[0-9]{8,9}$/.test(digits));
   };
 
   const formatWhatsApp = (value: string) => {
-    // Remove all non-numeric characters except +
-    let cleaned = value.replace(/[^\d+]/g, '');
+    // Remove all non-numeric characters
+    let digits = value.replace(/\D/g, '');
     
-    // Ensure it starts with +55
-    if (!cleaned.startsWith('+55')) {
-      if (cleaned.startsWith('55')) {
-        cleaned = '+' + cleaned;
-      } else if (cleaned.startsWith('0')) {
-        cleaned = '+55' + cleaned.substring(1);
-      } else {
-        cleaned = '+55' + cleaned;
-      }
+    // Limit to maximum 13 digits (55 + 11 digits)
+    if (digits.length > 13) {
+      digits = digits.substring(0, 13);
     }
     
-    // Format the number
-    if (cleaned.length >= 8) {
-      const countryCode = cleaned.substring(0, 3); // +55
-      const areaCode = cleaned.substring(3, 5);
-      const number = cleaned.substring(5);
-      
-      if (number.length <= 4) {
-        return `${countryCode} ${areaCode} ${number}`;
-      } else if (number.length <= 8) {
-        return `${countryCode} ${areaCode} ${number.substring(0, 4)}-${number.substring(4)}`;
-      } else {
-        return `${countryCode} ${areaCode} ${number.substring(0, 5)}-${number.substring(5, 9)}`;
-      }
-    }
-    
-    return cleaned;
+    return digits;
   };
 
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,7 +132,7 @@ export default function CandidateModal({ isOpen, onClose, candidate }: Candidate
     if (!validateWhatsApp(whatsapp)) {
       toast({
         title: "WhatsApp inválido",
-        description: "Digite um número de WhatsApp válido (+55 DD 9XXXX-XXXX)",
+        description: "Digite um número de WhatsApp válido (ex: 11987654321 ou 5511987654321)",
         variant: "destructive",
       });
       return;
