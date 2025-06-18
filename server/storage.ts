@@ -1398,6 +1398,11 @@ export class FirebaseStorage implements IStorage {
     );
     
     const existingSnapshot = await getDocs(existingQuery);
+    console.log(`🔍 Verificação de duplicata: encontrados ${existingSnapshot.docs.length} memberships existentes`);
+    existingSnapshot.docs.forEach(doc => {
+      console.log(`📋 Membership existente:`, doc.data());
+    });
+    
     if (!existingSnapshot.empty) {
       console.log(`⚠️ Membership já existe para candidato ${candidateId} na lista ${listId}`);
       return; // Already exists, no need to add again
