@@ -1917,6 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Usar o whatsappQRService original que funcionava
       const { whatsappQRService } = await import('./whatsappQRService');
+      whatsappQRService.setClientId(user.clientId.toString());
       const status = whatsappQRService.getConnectionStatus();
       
       console.log(`📱 [ORIGINAL] Status encontrado:`, status);
@@ -1952,6 +1953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Usar o whatsappQRService original que funcionava
       const { whatsappQRService } = await import('./whatsappQRService');
+      whatsappQRService.setClientId(user.clientId.toString());
       await whatsappQRService.ensureInitialized();
       const result = { success: true, qrCode: whatsappQRService.getConnectionStatus().qrCode };
       

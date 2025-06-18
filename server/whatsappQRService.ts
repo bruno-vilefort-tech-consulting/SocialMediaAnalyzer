@@ -25,6 +25,7 @@ export class WhatsAppQRService {
   private baileys: any = null;
   private isConnecting: boolean = false;
   private connectionPromise: Promise<void> | null = null;
+  private currentClientId: string | null = null;
 
   constructor() {
     // Adicionar handler global para erros não capturados do Baileys
@@ -171,8 +172,9 @@ export class WhatsAppQRService {
 
   private async saveConnectionToDB() {
     try {
-      // Usar nova arquitetura: buscar e atualizar configuração específica do master
-      const currentConfig = await storage.getApiConfig('master', '1749848502212');
+      // Salvar na configuração do cliente ativo (isolamento por clientId)
+      const clientId = this.currentClientId || '1749849987543'; // Default para Daniel
+      const currentConfig = await storage.getApiConfig('client', clientId);
       
       // Detectar conexão real baseada no status atual
       const finalConnection = this.config.isConnected;
@@ -180,19 +182,20 @@ export class WhatsAppQRService {
       
       await storage.upsertApiConfig({
         ...currentConfig,
-        entityType: 'master',
-        entityId: '1749848502212',
+        entityType: 'client',
+        entityId: clientId,
         whatsappQrConnected: finalConnection,
         whatsappQrPhoneNumber: finalPhoneNumber,
+        whatsappQrCode: this.config.qrCode, // Salvar QR Code também
         whatsappQrLastConnection: finalConnection ? new Date() : this.config.lastConnection,
         updatedAt: new Date()
       });
       
-      console.log(`💾 WhatsApp Status: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (${finalPhoneNumber})`);
+      console.log(`💾 WhatsApp Status Cliente ${clientId}: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (${finalPhoneNumber})`);
       
       // Log adicional para debug
       if (finalConnection && finalPhoneNumber) {
-        console.log(`📱 Número conectado salvo no banco: ${finalPhoneNumber}`);
+        console.log(`📱 Número conectado salvo para cliente ${clientId}: ${finalPhoneNumber}`);
       }
     } catch (error) {
       console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
@@ -1502,6 +1505,11 @@ Você gostaria de iniciar a entrevista?`;
 
   public getConnectionStatus(): WhatsAppQRConfig {
     return { ...this.config };
+  }
+
+  public setClientId(clientId: string) {
+    this.currentClientId = clientId;
+    console.log(`📱 Cliente ID definido para WhatsApp: ${clientId}`);
   }
 
   public onQRCode(callback: (qr: string | null) => void) {
