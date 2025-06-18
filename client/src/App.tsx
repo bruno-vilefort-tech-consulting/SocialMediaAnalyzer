@@ -16,6 +16,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import JobsPage from "@/pages/JobsPage";
 import CadastroVagasPage from "@/pages/CadastroVagasPage";
 import CandidatesPage from "@/pages/CandidatesPage";
+import CandidatesManagementPage from "@/pages/CandidatesManagementPage";
 import SelectionsPage from "@/pages/SelectionsPage";
 import ResultsPage from "@/pages/ResultsPage";
 import InterviewPage from "@/pages/InterviewPage";
@@ -152,6 +153,14 @@ function Router() {
         <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
             <CandidatesPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
+      <Route path="/candidatos">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <CandidatesManagementPage />
           </Layout>
         </PrivateRoute>
       </Route>
