@@ -668,6 +668,7 @@ export class FirebaseStorage implements IStorage {
       
       const candidateData = {
         ...candidateFields,
+        clientId: clientId, // CRÍTICO: Incluir clientId no candidato
         id: candidateId,
         createdAt: new Date()
       };

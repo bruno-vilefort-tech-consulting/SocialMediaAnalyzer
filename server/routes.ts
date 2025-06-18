@@ -978,13 +978,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Determinar clientId baseado no usuário e contexto
-          const clientId = req.user!.role === 'master' ? 
-            (req.body.clientId ? parseInt(req.body.clientId) : null) : 
-            req.user!.clientId!;
+          // Determinar clientId baseado na lista de destino
+          // Buscar a lista para obter o clientId correto
+          const targetList = await storage.getCandidateListById(parseInt(listId));
+          if (!targetList) {
+            errors.push(`Linha ${index + 2}: Lista não encontrada`);
+            continue;
+          }
+          
+          const clientId = targetList.clientId;
+          console.log(`📋 Candidato ${nameStr} será importado para clientId: ${clientId} (da lista ${targetList.name})`);
 
           if (!clientId) {
-            errors.push(`Linha ${index + 2}: ClientId não definido para importação`);
+            errors.push(`Linha ${index + 2}: Lista não possui clientId válido`);
             continue;
           }
 
@@ -1014,14 +1020,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📥 Importando ${validCandidates.length} candidatos para lista ${listId}`);
         importedCandidates = await storage.createCandidates(validCandidates);
         
-        // Criar relacionamentos candidato-lista para cada candidato importado
+        // Log dos candidatos criados para verificar clientId
         for (const candidate of importedCandidates) {
-          try {
-            await storage.addCandidateToList(candidate.id, parseInt(listId), candidate.clientId);
-            console.log(`✅ Candidato ${candidate.name} (${candidate.id}) adicionado à lista ${listId}`);
-          } catch (membershipError) {
-            console.error(`❌ Erro ao adicionar candidato ${candidate.id} à lista:`, membershipError);
-          }
+          console.log(`✅ Candidato criado: ${candidate.name} (ID: ${candidate.id}) com clientId: ${candidate.clientId}`);
         }
       }
 
