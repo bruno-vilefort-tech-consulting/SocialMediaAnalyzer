@@ -816,10 +816,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { name, email, whatsapp, listId, clientId } = req.body;
       
-      // Validar campos obrigatórios
-      if (!name || !email || !whatsapp || !listId || !clientId) {
+      // Validar campos obrigatórios (listId é opcional)
+      if (!name || !email || !whatsapp || !clientId) {
         return res.status(400).json({ 
-          message: 'Campos obrigatórios: name, email, whatsapp, listId, clientId' 
+          message: 'Campos obrigatórios: name, email, whatsapp, clientId' 
         });
       }
       
@@ -835,7 +835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: email.trim().toLowerCase(),
         whatsapp: whatsapp.trim(),
         clientId: parseInt(clientId),
-        listId: parseInt(listId)
+        ...(listId && { listId: parseInt(listId) })
       };
       
       console.log('💾 Criando candidato com dados:', candidateData);
