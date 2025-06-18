@@ -66,14 +66,16 @@ export class ClientWhatsAppService {
         browser: ['WhatsApp Business', 'Chrome', '118.0.0.0'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 30000,
-        connectTimeoutMs: 30000,
-        keepAliveIntervalMs: 25000,
-        qrTimeout: 60000,
-        retryRequestDelayMs: 350,
-        maxMsgRetryCount: 5,
+        defaultQueryTimeoutMs: 45000,
+        connectTimeoutMs: 45000,
+        keepAliveIntervalMs: 30000,
+        qrTimeout: 90000,
+        retryRequestDelayMs: 500,
+        maxMsgRetryCount: 7,
         syncFullHistory: false,
         fireInitQueries: true,
+        shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
+        emitOwnEvents: false,
         getMessage: async (key: any) => {
           return { conversation: 'Hi' };
         }
@@ -89,9 +91,9 @@ export class ClientWhatsAppService {
 
           if (qr && !resolved) {
             console.log(`📱 QR Code gerado para cliente ${clientId}`);
-            console.log(`🕐 QR Code válido por 60 segundos - escaneie rapidamente`);
+            console.log(`🕐 QR Code válido por 90 segundos - tempo estendido`);
             console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
-            console.log(`📱 IMPORTANTE: Escaneie o QR Code IMEDIATAMENTE para evitar timeout`);
+            console.log(`📱 IMPORTANTE: Escaneie o QR Code para conectar seu WhatsApp ao sistema`);
             
             // Atualizar configuração do cliente
             await this.updateClientConfig(clientId, {
@@ -106,7 +108,7 @@ export class ClientWhatsAppService {
             resolve({
               success: true,
               qrCode: qr,
-              message: 'QR Code gerado - escaneie IMEDIATAMENTE em até 60 segundos'
+              message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
             });
           }
 
@@ -168,10 +170,10 @@ export class ClientWhatsAppService {
 
         socket.ev.on('creds.update', saveCreds);
 
-        // Timeout estendido para QR Code
+        // Timeout estendido para QR Code - 90 segundos
         const timeoutId = setTimeout(() => {
           if (!resolved) {
-            console.log(`⏰ [${clientId}] Timeout na conexão WhatsApp (60s)`);
+            console.log(`⏰ [${clientId}] Timeout na conexão WhatsApp (90s)`);
             resolved = true;
             try {
               socket?.end();
@@ -183,7 +185,7 @@ export class ClientWhatsAppService {
               message: 'Timeout - QR Code não foi escaneado a tempo. Tente novamente.'
             });
           }
-        }, 60000);
+        }, 90000);
         
         // Limpar timeout se resolver antes
         socket.ev.on('connection.update', () => {
