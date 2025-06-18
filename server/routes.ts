@@ -58,7 +58,8 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
 
     console.log('🔑 Verificando JWT...');
     console.log(`🔑 Token recebido: ${token?.substring(0, 20)}...`);
-    console.log(`🔑 JWT_SECRET length: ${JWT_SECRET?.length || 0}`);
+    console.log(`🔑 JWT_SECRET usado: ${JWT_SECRET?.substring(0, 10)}... (${JWT_SECRET?.length || 0} chars)`);
+    console.log(`🔑 Request method: ${req.method} - URL: ${req.url}`);
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     console.log('🔑 Decoded JWT:', decoded);
     

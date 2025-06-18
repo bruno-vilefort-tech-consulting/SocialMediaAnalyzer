@@ -29,12 +29,19 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  console.log(`🌐 [FRONTEND] ${method} ${url}`);
+  console.log(`🌐 [FRONTEND] Headers:`, headers);
+  console.log(`🌐 [FRONTEND] Body:`, data);
+
   const res = await fetch(url, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  console.log(`🌐 [FRONTEND] Response status:`, res.status);
+  console.log(`🌐 [FRONTEND] Response headers:`, res.headers);
 
   await throwIfResNotOk(res);
   return res;
