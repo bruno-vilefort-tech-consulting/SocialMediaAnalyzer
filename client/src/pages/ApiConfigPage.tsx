@@ -615,15 +615,7 @@ export default function ApiConfigPage() {
                       QR Code
                     </Button>
                     
-                    <Button
-                      onClick={() => setShowPhoneLogin(!showPhoneLogin)}
-                      variant="outline"
-                      size="sm"
-                      className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                    >
-                      <Phone className="h-4 w-4 mr-2" />
-                      Número + SMS
-                    </Button>
+
                   </div>
                 </div>
 
@@ -642,11 +634,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="bg-white p-4 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                        <img 
-                          src={whatsappStatus.qrCode.startsWith('data:') ? whatsappStatus.qrCode : `data:image/png;base64,${whatsappStatus.qrCode}`}
-                          alt="QR Code WhatsApp" 
-                          className="w-48 h-48 mx-auto"
-                        />
+                        <QRCodeRenderer qrCode={whatsappStatus.qrCode} />
                       </div>
                       
                       <div className="text-center text-xs text-blue-600 dark:text-blue-400 max-w-sm">
