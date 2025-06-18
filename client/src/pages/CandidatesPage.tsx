@@ -1,3 +1,4 @@
+typescript
 import React, { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -76,7 +77,7 @@ export default function CandidatesPage() {
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
@@ -95,26 +96,26 @@ export default function CandidatesPage() {
       : ['/api/candidate-lists'],
     queryFn: async () => {
       let params = '';
-      
+
       // Para masters: usar filtro selecionado; Para clients: filtrar automaticamente pelo clientId
       if (user?.role === 'master' && selectedClientFilter !== 'all') {
         params = `?clientId=${selectedClientFilter}`;
       } else if (user?.role === 'client' && user?.clientId) {
         params = `?clientId=${user.clientId}`;
       }
-      
+
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       const response = await fetch(`/api/candidate-lists${params}`, {
         headers,
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem("auth_token");
@@ -124,7 +125,7 @@ export default function CandidatesPage() {
         }
         throw new Error(`${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     }
@@ -136,16 +137,16 @@ export default function CandidatesPage() {
     queryFn: async () => {
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       const response = await fetch('/api/candidate-list-memberships', {
         headers,
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem("auth_token");
@@ -155,7 +156,7 @@ export default function CandidatesPage() {
         }
         throw new Error(`${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       console.log('🔍 Memberships recebidos do backend:', data);
       console.log('🔍 Total de memberships no frontend:', data?.length || 0);
@@ -174,7 +175,7 @@ export default function CandidatesPage() {
     queryKey: candidatesQueryKey,
     queryFn: async () => {
       let params = '';
-      
+
       if (user?.role === 'master') {
         // Master deve especificar um cliente para ver candidatos
         if (selectedClientFilter !== 'all') {
@@ -187,19 +188,19 @@ export default function CandidatesPage() {
         // Cliente automaticamente filtra por seu próprio ID
         params = `?clientId=${user.clientId}`;
       }
-      
+
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       const response = await fetch(`/api/candidates${params}`, {
         headers,
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem("auth_token");
@@ -209,7 +210,7 @@ export default function CandidatesPage() {
         }
         throw new Error(`${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       // Garantir que sempre retornamos um array
       return Array.isArray(data) ? data : [];
@@ -222,16 +223,16 @@ export default function CandidatesPage() {
     queryFn: async () => {
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       const response = await fetch(`/api/lists/${selectedListId}/candidates`, {
         headers,
         credentials: "include"
       });
-      
+
       if (!response.ok) {
         if (response.status === 401) {
           localStorage.removeItem("auth_token");
@@ -241,7 +242,7 @@ export default function CandidatesPage() {
         }
         throw new Error(`${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     },
@@ -272,7 +273,7 @@ export default function CandidatesPage() {
   // Função para filtrar e ordenar candidatos por busca
   const filteredCandidates = React.useMemo(() => {
     let filtered = candidatesData;
-    
+
     // Aplicar filtro de busca se houver termo
     if (searchTerm) {
       filtered = candidatesData.filter((candidate: Candidate) =>
@@ -281,7 +282,7 @@ export default function CandidatesPage() {
         candidate.whatsapp.includes(searchTerm)
       );
     }
-    
+
     // Ordenar alfabeticamente por nome
     return filtered.sort((a: Candidate, b: Candidate) => 
       a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
@@ -308,23 +309,23 @@ export default function CandidatesPage() {
     if (!candidateListMemberships || candidateListMemberships.length === 0) {
       return 0;
     }
-    
+
     // Buscar memberships da lista específica
     const listMemberships = candidateListMemberships.filter(membership => membership.listId === listId);
-    
+
     // Se master está vendo "Todos os clientes", contar apenas memberships válidos
     // (não temos candidatos carregados neste modo)
     if (user?.role === 'master' && selectedClientFilter === 'all') {
       console.log(`📊 Lista ${listId}: ${listMemberships.length} memberships (modo todos os clientes)`);
       return listMemberships.length;
     }
-    
+
     // Para filtro específico ou usuário cliente, validar contra candidatos reais
     const candidateIdsInList = listMemberships.map(membership => membership.candidateId);
     const realCandidatesCount = allCandidates.filter(candidate => 
       candidateIdsInList.includes(candidate.id)
     ).length;
-    
+
     console.log(`📊 Lista ${listId}: ${candidateIdsInList.length} memberships, ${realCandidatesCount} candidatos reais`);
     return realCandidatesCount;
   };
@@ -416,28 +417,28 @@ export default function CandidatesPage() {
       if (!editingCandidate) {
         throw new Error("Nenhum candidato selecionado para edição");
       }
-      
+
       console.log(`🔧 Atualizando candidato ${editingCandidate.id} com dados:`, data);
-      
+
       const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
         throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
       }
-      
+
       return response;
     },
     onSuccess: () => {
       console.log('✅ Candidato atualizado com sucesso!');
-      
+
       // Invalidar todos os caches relevantes
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
       if (selectedListId) {
         queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
-      
+
       // Limpar estado do formulário
       setEditingCandidate(null);
       setShowCandidateForm(false);
@@ -448,12 +449,12 @@ export default function CandidatesPage() {
         listId: 0,
         clientId: 0
       });
-      
+
       toast({ title: "Candidato atualizado com sucesso!" });
     },
     onError: (error: any) => {
       console.error('❌ Erro na atualização:', error);
-      
+
       // Se candidato não existe mais, limpar estado
       if (error.message && (error.message.includes('não encontrado') || error.message.includes('404'))) {
         setEditingCandidate(null);
@@ -464,7 +465,7 @@ export default function CandidatesPage() {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
         }
       }
-      
+
       toast({ 
         title: "Erro ao atualizar candidato", 
         description: error.message && (error.message.includes('não encontrado') || error.message.includes('404')) ? 
@@ -482,15 +483,15 @@ export default function CandidatesPage() {
     onSuccess: () => {
       // Invalidar cache geral de candidatos
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-      
+
       // Invalidar cache específico da lista se estivermos visualizando uma lista
       if (selectedListId) {
         queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
       }
-      
+
       // Invalidar memberships para atualizar contadores
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
-      
+
       toast({ title: "Candidato removido com sucesso!" });
     },
     onError: () => {
@@ -510,7 +511,7 @@ export default function CandidatesPage() {
   const handleSubmitCandidate = (data: CandidateFormData) => {
     console.log('🚀 handleSubmitCandidate chamado com:', data);
     console.log('🔍 Editando candidato?', !!editingCandidate);
-    
+
     // Validação básica primeiro
     if (!data.name || !data.email || !data.whatsapp) {
       toast({ 
@@ -528,10 +529,10 @@ export default function CandidatesPage() {
         email: data.email.trim(),
         whatsapp: data.whatsapp.trim()
       };
-      
+
       console.log('✅ Atualizando candidato ID:', editingCandidate.id);
       console.log('✅ Dados de atualização:', updatedData);
-      
+
       updateCandidateMutation.mutate(updatedData);
     } else {
       // Para criação, precisamos de listId e clientId
@@ -543,7 +544,7 @@ export default function CandidatesPage() {
           data.clientId = selectedList.clientId;
         }
       }
-      
+
       // Para usuários client, usar automaticamente o clientId do usuário
       if (user?.role === 'client' && user?.clientId && !data.clientId) {
         data.clientId = user.clientId;
@@ -596,10 +597,10 @@ export default function CandidatesPage() {
 
     // Usar a primeira lista disponível
     const targetList = clientLists[0];
-    
+
     // Determine clientId based on user role and context
     let clientId: number;
-    
+
     if (user?.role === 'master') {
       // Para master: usar clientId da lista ou do filtro selecionado
       if (selectedClientFilter === 'all') {
@@ -631,7 +632,7 @@ export default function CandidatesPage() {
       if (!token) {
         throw new Error('Token de autenticação não encontrado');
       }
-      
+
       const response = await fetch('/api/candidates/bulk', {
         method: 'POST',
         headers: {
@@ -643,14 +644,14 @@ export default function CandidatesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Invalidar caches para atualizar dados
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
         if (targetList?.id) {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
-        
+
         toast({ 
           title: "Importação concluída!", 
           description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}` 
@@ -688,7 +689,7 @@ export default function CandidatesPage() {
 
   const handleEditCandidate = (candidate: Candidate) => {
     setEditingCandidate(candidate);
-    
+
     // Preencher todos os campos necessários para edição
     const formData = {
       name: candidate.name,
@@ -697,7 +698,7 @@ export default function CandidatesPage() {
       listId: selectedListId || 0, // Usar lista atual se disponível
       clientId: candidate.clientId || (user?.role === 'client' ? user.clientId : 0)
     };
-    
+
     candidateForm.reset(formData);
     setShowCandidateForm(true);
   };
@@ -729,7 +730,7 @@ export default function CandidatesPage() {
 
     // Determine clientId based on user role and context
     let clientId: number;
-    
+
     if (user?.role === 'master') {
       // Para master: usar clientId da lista selecionada
       clientId = selectedList.clientId;
@@ -745,7 +746,7 @@ export default function CandidatesPage() {
       userClientId: user?.clientId,
       finalClientId: clientId
     });
-    
+
     if (!clientId) {
       toast({ 
         title: "Erro", 
@@ -766,7 +767,7 @@ export default function CandidatesPage() {
       if (!token) {
         throw new Error('Token de autenticação não encontrado');
       }
-      
+
       const response = await fetch('/api/candidates/bulk', {
         method: 'POST',
         headers: {
@@ -781,7 +782,7 @@ export default function CandidatesPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
         queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
-        
+
         // Mostrar mensagem com detalhes sobre duplicatas se existirem
         if (result.duplicates > 0) {
           const duplicateNames = result.duplicatesList?.map((dup: any) => dup.name).join(', ') || '';
@@ -806,7 +807,7 @@ export default function CandidatesPage() {
       }
     } catch (error: any) {
       console.error('Erro no upload:', error);
-      
+
       toast({ 
         title: "Erro na importação", 
         description: "Falha no upload do arquivo",
@@ -840,10 +841,10 @@ export default function CandidatesPage() {
 
     // Usar a primeira lista disponível
     const targetList = clientLists[0];
-    
+
     // Determine clientId based on user role and context
     let clientId: number;
-    
+
     if (user?.role === 'master') {
       // Para master: usar clientId da lista ou do filtro selecionado
       if (selectedClientFilter === 'all') {
@@ -875,7 +876,7 @@ export default function CandidatesPage() {
       if (!token) {
         throw new Error('Token de autenticação não encontrado');
       }
-      
+
       const response = await fetch('/api/candidates/bulk', {
         method: 'POST',
         headers: {
@@ -887,14 +888,14 @@ export default function CandidatesPage() {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Invalidar caches para atualizar dados
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
         if (targetList?.id) {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
-        
+
         toast({ 
           title: "Importação concluída!", 
           description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}` 
@@ -917,8 +918,7 @@ export default function CandidatesPage() {
     }
 
     // Limpar input
-    event.target.value = '';
-  };
+    event.target.value = '';  };
 
   if (listsLoading) {
     return <div className="p-6">Carregando listas de candidatos...</div>;
@@ -1021,6 +1021,7 @@ export default function CandidatesPage() {
                       <TableHead>Nome da Lista</TableHead>
                       <TableHead>Descrição</TableHead>
                       {user?.role === 'master' && <TableHead>Cliente</TableHead>}
+                      <TableHead>Candidatos</TableHead>
                       <TableHead>Data de Criação</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
@@ -1031,21 +1032,12 @@ export default function CandidatesPage() {
                       const candidatesCount = getCandidateCountForList(list.id);
                       console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Candidatos reais:`, candidatesCount);
                       const client = clients.find(c => c.id === list.clientId);
-                      
+
                       return (
                         <TableRow key={list.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               {list.name}
-                              {candidatesCount === 0 ? (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                  Vazia
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                  {candidatesCount} {candidatesCount === 1 ? 'candidato' : 'candidatos'}
-                                </span>
-                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground">
@@ -1056,6 +1048,9 @@ export default function CandidatesPage() {
                               {client ? client.companyName : "Cliente não encontrado"}
                             </TableCell>
                           )}
+                          <TableCell>
+                            {candidatesCount}
+                          </TableCell>
                           <TableCell>
                             {(() => {
                               if (!list.createdAt) return 'N/A';
@@ -1085,7 +1080,7 @@ export default function CandidatesPage() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              
+
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
@@ -1275,14 +1270,14 @@ export default function CandidatesPage() {
                   ))}
                 </div>
               )}
-              
+
               {/* Controles de Paginação */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">
                   <div className="text-sm text-gray-600">
                     Mostrando {startIndex + 1} a {Math.min(endIndex, totalCandidates)} de {totalCandidates} candidatos
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
@@ -1292,7 +1287,7 @@ export default function CandidatesPage() {
                     >
                       Anterior
                     </Button>
-                    
+
                     <div className="flex items-center space-x-1">
                       {Array.from({ length: totalPages }, (_, i) => i + 1)
                         .filter((page) => {
@@ -1317,7 +1312,7 @@ export default function CandidatesPage() {
                           );
                         })}
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -1371,7 +1366,7 @@ export default function CandidatesPage() {
                   )}
                 />
               )}
-              
+
               <FormField
                 control={listForm.control}
                 name="name"
@@ -1431,7 +1426,7 @@ export default function CandidatesPage() {
               {editingCandidate ? "Editar Candidato" : "Novo Candidato"}
             </DialogTitle>
           </DialogHeader>
-          
+
           <Form {...candidateForm}>
             <form onSubmit={candidateForm.handleSubmit(handleSubmitCandidate)} className="space-y-4">
               {/* Campos básicos do candidato */}
@@ -1448,7 +1443,7 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={candidateForm.control}
                 name="email"
@@ -1462,7 +1457,7 @@ export default function CandidatesPage() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={candidateForm.control}
                 name="whatsapp"
@@ -1549,7 +1544,7 @@ export default function CandidatesPage() {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
                   Cancelar
