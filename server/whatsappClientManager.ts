@@ -20,43 +20,41 @@ class WhatsAppClientManager {
   private maxReconnectAttempts = 3;
 
   constructor() {
-    console.log('🔧 WhatsAppClientManager inicializado');
+    this.loadSavedSessions();
   }
 
   private getSessionPath(clientId: string): string {
-    const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
+    return path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
+  }
+
+  private async ensureSessionDirectory(clientId: string) {
+    const sessionPath = this.getSessionPath(clientId);
     if (!fs.existsSync(sessionPath)) {
       fs.mkdirSync(sessionPath, { recursive: true });
     }
-    return sessionPath;
   }
 
   private async saveConnectionStatus(clientId: string, isConnected: boolean, phoneNumber?: string, qrCode?: string) {
     try {
-      console.log(`💾 Salvando status WhatsApp para cliente ${clientId}: ${isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
+      const config = await storage.getApiConfig('client', clientId) || {};
       
-      const configData: any = {
+      await storage.upsertApiConfig('client', clientId, {
+        ...config,
         whatsappQrConnected: isConnected,
+        whatsappQrPhoneNumber: phoneNumber || null,
+        whatsappQrCode: qrCode || null,
         whatsappQrLastConnection: isConnected ? new Date() : null,
-      };
-
-      if (phoneNumber) {
-        configData.whatsappQrPhoneNumber = phoneNumber;
-      }
-
-      if (qrCode) {
-        configData.whatsappQrCode = qrCode;
-      }
-
-      await storage.upsertApiConfig({
-        entityType: 'client',
-        entityId: clientId,
-        ...configData
       });
-      console.log(`✅ Status salvo no Firebase para cliente ${clientId}`);
+
+      console.log(`💾 Status WhatsApp salvo para cliente ${clientId}: conectado=${isConnected}`);
     } catch (error) {
       console.error(`❌ Erro ao salvar status para cliente ${clientId}:`, error);
     }
+  }
+
+  private async loadSavedSessions() {
+    // Carregar sessões salvas do Firebase se necessário
+    console.log('🔄 Carregando sessões WhatsApp salvas...');
   }
 
   async createConnection(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
@@ -82,7 +80,12 @@ class WhatsAppClientManager {
         }
       }
 
+      // Importar Baileys dinamicamente para evitar problemas de importação
+      const { makeWASocket, DisconnectReason, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
+
       const sessionPath = this.getSessionPath(clientId);
+      await this.ensureSessionDirectory(clientId);
+      
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
 
       let qrCodeGenerated = false;
@@ -120,99 +123,80 @@ class WhatsAppClientManager {
           if (!resolved && !qrCodeGenerated) {
             console.log(`⏰ Timeout aguardando QR Code para cliente ${clientId}`);
             resolved = true;
-            resolve({ 
-              success: false, 
-              error: 'Timeout aguardando QR Code' 
+            resolve({
+              success: false,
+              error: 'Timeout aguardando QR Code'
             });
           }
         }, 30000);
 
+        // Listener para atualizações de conexão
         socket.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
           const { connection, lastDisconnect, qr } = update;
-
-          console.log(`📱 Status conexão cliente ${clientId}:`, { connection, hasQR: !!qr });
-
-          if (qr && !qrCodeGenerated) {
+          
+          if (qr && !resolved) {
+            console.log(`📱 QR Code gerado para cliente ${clientId}`);
             try {
-              console.log(`📱 Gerando QR Code para cliente ${clientId}`);
-              currentQR = await QRCode.toDataURL(qr);
-              session.qrCode = currentQR;
+              const qrCodeDataURL = await QRCode.toDataURL(qr);
+              
+              session.qrCode = qrCodeDataURL;
+              currentQR = qrCodeDataURL;
               qrCodeGenerated = true;
-
-              await this.saveConnectionStatus(clientId, false, undefined, currentQR);
-
-              if (!resolved) {
-                clearTimeout(qrTimeout);
-                resolved = true;
-                console.log(`✅ QR Code gerado com sucesso para cliente ${clientId}`);
-                resolve({ success: true, qrCode: currentQR });
-              }
+              
+              // Salvar QR no storage
+              await this.saveConnectionStatus(clientId, false, undefined, qrCodeDataURL);
+              
+              clearTimeout(qrTimeout);
+              resolved = true;
+              resolve({
+                success: true,
+                qrCode: qrCodeDataURL
+              });
+              
             } catch (qrError) {
               console.error(`❌ Erro ao gerar QR Code para cliente ${clientId}:`, qrError);
               if (!resolved) {
                 clearTimeout(qrTimeout);
                 resolved = true;
-                resolve({ success: false, error: 'Erro ao gerar QR Code' });
+                resolve({
+                  success: false,
+                  error: 'Erro ao gerar QR Code'
+                });
               }
             }
           }
-
-          if (connection === 'open') {
-            console.log(`🎉 WhatsApp conectado com sucesso para cliente ${clientId}`);
-            const phoneNumber = socket.user?.id?.split(':')[0] || null;
-            
-            session.isConnected = true;
-            session.phoneNumber = phoneNumber;
-            session.lastConnection = new Date();
-            session.qrCode = null; // Limpar QR após conexão
-
-            await this.saveConnectionStatus(clientId, true, phoneNumber || undefined);
-            
-            this.reconnectAttempts.delete(clientId);
-
-            if (!resolved) {
-              clearTimeout(qrTimeout);
-              resolved = true;
-              resolve({ success: true });
-            }
-          }
-
+          
           if (connection === 'close') {
-            console.log(`❌ Conexão fechada para cliente ${clientId}`);
-            session.isConnected = false;
-            session.phoneNumber = null;
-
-            const shouldReconnect = lastDisconnect?.error instanceof Boom
-              ? lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut
-              : true;
-
-            if (shouldReconnect) {
+            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log(`🔌 Conexão fechada para cliente ${clientId}, reconectar:`, shouldReconnect);
+            
+            if (shouldReconnect && this.reconnectAttempts.get(clientId)! < this.maxReconnectAttempts) {
               const attempts = this.reconnectAttempts.get(clientId) || 0;
-              if (attempts < this.maxReconnectAttempts) {
-                console.log(`🔄 Tentativa de reconexão ${attempts + 1} para cliente ${clientId}`);
-                this.reconnectAttempts.set(clientId, attempts + 1);
-                setTimeout(() => this.createConnection(clientId), 5000);
-              } else {
-                console.log(`⛔ Máximo de tentativas atingido para cliente ${clientId}`);
-                this.reconnectAttempts.delete(clientId);
-              }
+              this.reconnectAttempts.set(clientId, attempts + 1);
+              console.log(`🔄 Tentativa de reconexão ${attempts + 1}/${this.maxReconnectAttempts} para cliente ${clientId}`);
+              setTimeout(() => this.createConnection(clientId), 5000);
             } else {
-              console.log(`🚪 Logout detectado para cliente ${clientId} - limpando sessão`);
-              await this.cleanSession(clientId);
+              await this.saveConnectionStatus(clientId, false);
             }
-
-            await this.saveConnectionStatus(clientId, false);
+          } else if (connection === 'open') {
+            console.log(`✅ WhatsApp conectado para cliente ${clientId}`);
+            session.isConnected = true;
+            session.phoneNumber = socket.user?.id?.split(':')[0] || null;
+            this.reconnectAttempts.set(clientId, 0);
+            
+            await this.saveConnectionStatus(clientId, true, session.phoneNumber);
           }
         });
 
+        // Listener para salvar credenciais
         socket.ev.on('creds.update', saveCreds);
       });
 
     } catch (error) {
       console.error(`❌ Erro ao criar conexão para cliente ${clientId}:`, error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Erro desconhecido' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
       };
     }
   }
@@ -223,51 +207,60 @@ class WhatsAppClientManager {
     qrCode: string | null;
     hasQrCode: boolean;
   }> {
-    const session = this.sessions.get(clientId);
-    
-    // Buscar do Firebase se não tiver na memória
-    if (!session) {
-      try {
-        const config = await storage.getApiConfig('client', clientId);
+    try {
+      // Verificar sessão em memória primeiro
+      const session = this.sessions.get(clientId);
+      if (session) {
         return {
-          isConnected: config?.whatsappQrConnected || false,
-          phoneNumber: config?.whatsappQrPhoneNumber || null,
-          qrCode: config?.whatsappQrCode || null,
-          hasQrCode: !!(config?.whatsappQrCode)
-        };
-      } catch (error) {
-        console.error(`❌ Erro ao buscar status do cliente ${clientId}:`, error);
-        return {
-          isConnected: false,
-          phoneNumber: null,
-          qrCode: null,
-          hasQrCode: false
+          isConnected: session.isConnected,
+          phoneNumber: session.phoneNumber,
+          qrCode: session.qrCode,
+          hasQrCode: !!session.qrCode
         };
       }
-    }
 
-    return {
-      isConnected: session.isConnected,
-      phoneNumber: session.phoneNumber,
-      qrCode: session.qrCode,
-      hasQrCode: !!session.qrCode
-    };
+      // Buscar no storage
+      const config = await storage.getApiConfig('client', clientId);
+      if (config) {
+        return {
+          isConnected: config.whatsappQrConnected || false,
+          phoneNumber: config.whatsappQrPhoneNumber || null,
+          qrCode: config.whatsappQrCode || null,
+          hasQrCode: !!config.whatsappQrCode
+        };
+      }
+
+      return {
+        isConnected: false,
+        phoneNumber: null,
+        qrCode: null,
+        hasQrCode: false
+      };
+    } catch (error) {
+      console.error(`❌ Erro ao buscar status para cliente ${clientId}:`, error);
+      return {
+        isConnected: false,
+        phoneNumber: null,
+        qrCode: null,
+        hasQrCode: false
+      };
+    }
   }
 
   async disconnect(clientId: string): Promise<boolean> {
     try {
-      console.log(`🔌 Desconectando cliente ${clientId}`);
-      
       const session = this.sessions.get(clientId);
       if (session?.socket) {
         session.socket.end(undefined);
+        session.isConnected = false;
+        session.phoneNumber = null;
+        session.qrCode = null;
+        
+        await this.saveConnectionStatus(clientId, false);
+        console.log(`🔌 Cliente ${clientId} desconectado com sucesso`);
+        return true;
       }
-
-      await this.cleanSession(clientId);
-      await this.saveConnectionStatus(clientId, false);
-
-      console.log(`✅ Cliente ${clientId} desconectado com sucesso`);
-      return true;
+      return false;
     } catch (error) {
       console.error(`❌ Erro ao desconectar cliente ${clientId}:`, error);
       return false;
@@ -277,21 +270,17 @@ class WhatsAppClientManager {
   async sendMessage(clientId: string, phoneNumber: string, message: string): Promise<boolean> {
     try {
       const session = this.sessions.get(clientId);
-      
-      if (!session?.isConnected || !session.socket) {
+      if (!session?.socket || !session.isConnected) {
         console.error(`❌ Cliente ${clientId} não está conectado`);
         return false;
       }
 
-      const formattedNumber = phoneNumber.includes('@') 
-        ? phoneNumber 
-        : `${phoneNumber}@s.whatsapp.net`;
+      // Formatar número para WhatsApp
+      const formattedNumber = phoneNumber.replace(/\D/g, '');
+      const jid = `${formattedNumber}@s.whatsapp.net`;
 
-      console.log(`📤 Enviando mensagem para ${formattedNumber} via cliente ${clientId}`);
-      
-      await session.socket.sendMessage(formattedNumber, { text: message });
-      
-      console.log(`✅ Mensagem enviada com sucesso via cliente ${clientId}`);
+      await session.socket.sendMessage(jid, { text: message });
+      console.log(`✅ Mensagem enviada via cliente ${clientId} para ${phoneNumber}`);
       return true;
     } catch (error) {
       console.error(`❌ Erro ao enviar mensagem via cliente ${clientId}:`, error);
@@ -301,53 +290,31 @@ class WhatsAppClientManager {
 
   private async cleanSession(clientId: string): Promise<void> {
     try {
-      // Remover da memória
-      this.sessions.delete(clientId);
-      this.reconnectAttempts.delete(clientId);
-
-      // Limpar arquivos de sessão
       const sessionPath = this.getSessionPath(clientId);
       if (fs.existsSync(sessionPath)) {
         fs.rmSync(sessionPath, { recursive: true, force: true });
         console.log(`🧹 Sessão limpa para cliente ${clientId}`);
       }
     } catch (error) {
-      console.error(`❌ Erro ao limpar sessão do cliente ${clientId}:`, error);
+      console.error(`❌ Erro ao limpar sessão para cliente ${clientId}:`, error);
     }
   }
 
   async cleanAllSessions(): Promise<void> {
-    console.log('🧹 Limpando todas as sessões WhatsApp...');
-    
-    for (const [clientId, session] of Array.from(this.sessions.entries())) {
+    for (const [clientId, session] of this.sessions) {
       if (session.socket) {
         try {
           session.socket.end(undefined);
         } catch (e) {
-          // Ignorar erros de desconexão
+          console.log(`🧹 Limpeza de socket para cliente ${clientId}`);
         }
       }
       await this.cleanSession(clientId);
     }
-
     this.sessions.clear();
     this.reconnectAttempts.clear();
-    
-    console.log('✅ Todas as sessões WhatsApp foram limpas');
+    console.log('🧹 Todas as sessões WhatsApp foram limpas');
   }
 }
 
 export const whatsappClientManager = new WhatsAppClientManager();
-
-// Limpeza ao fechar aplicação
-process.on('SIGINT', async () => {
-  console.log('🛑 Aplicação sendo fechada, limpando sessões WhatsApp...');
-  await whatsappClientManager.cleanAllSessions();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('🛑 Aplicação sendo terminada, limpando sessões WhatsApp...');
-  await whatsappClientManager.cleanAllSessions();
-  process.exit(0);
-});
