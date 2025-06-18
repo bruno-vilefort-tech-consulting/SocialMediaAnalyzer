@@ -166,16 +166,20 @@ export default function CandidatesManagementPage() {
   // Mutation para adicionar candidato à lista
   const addToListMutation = useMutation({
     mutationFn: async ({ candidateId, listId }: { candidateId: number; listId: number }) => {
-      return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "POST");
+      console.log(`🔗 Frontend: Adicionando candidato ${candidateId} à lista ${listId}`);
+      return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "POST", {});
     },
     onSuccess: () => {
+      console.log("✅ Frontend: Candidato adicionado à lista com sucesso");
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
       toast({
         title: "Sucesso",
         description: "Candidato adicionado à lista com sucesso",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("❌ Frontend: Erro ao adicionar candidato à lista:", error);
       toast({
         title: "Erro",
         description: "Falha ao adicionar candidato à lista",

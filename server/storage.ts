@@ -1340,6 +1340,96 @@ export class FirebaseStorage implements IStorage {
     console.log('🔧 Storage: Verificando usuários sem clientId para cliente:', clientId);
   }
 
+  async updateCandidate(candidateId: number, updates: { name?: string; email?: string; whatsapp?: string }): Promise<any> {
+    const candidatesRef = collection(firebaseDb, 'candidates');
+    const q = query(candidatesRef, where('id', '==', candidateId));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      throw new Error('Candidate not found');
+    }
+    
+    const doc = snapshot.docs[0];
+    const candidateData = { ...doc.data(), ...updates };
+    
+    await updateDoc(doc.ref, candidateData);
+    
+    return {
+      id: candidateData.id,
+      name: candidateData.name,
+      email: candidateData.email,
+      whatsapp: candidateData.whatsapp,
+      clientId: candidateData.clientId,
+      createdAt: candidateData.createdAt?.toDate() || null
+    };
+  }
+
+  async deleteCandidate(candidateId: number): Promise<void> {
+    const candidatesRef = collection(firebaseDb, 'candidates');
+    const q = query(candidatesRef, where('id', '==', candidateId));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+    }
+  }
+
+  async removeCandidateFromAllLists(candidateId: number): Promise<void> {
+    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const q = query(membershipsRef, where('candidateId', '==', candidateId));
+    const snapshot = await getDocs(q);
+    
+    if (!snapshot.empty) {
+      const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+    }
+  }
+
+  async addCandidateToList(candidateId: number, listId: number, clientId: number): Promise<void> {
+    console.log(`🔗 Adicionando candidato ${candidateId} à lista ${listId} do cliente ${clientId}`);
+    
+    // Check if membership already exists
+    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const existingQuery = query(
+      membershipsRef,
+      where('candidateId', '==', candidateId),
+      where('listId', '==', listId)
+    );
+    
+    const existingSnapshot = await getDocs(existingQuery);
+    if (!existingSnapshot.empty) {
+      console.log(`⚠️ Membership já existe para candidato ${candidateId} na lista ${listId}`);
+      return; // Already exists, no need to add again
+    }
+
+    const membershipId = `${candidateId}_${listId}`;
+    const membershipData = {
+      id: membershipId,
+      candidateId,
+      listId,
+      clientId,
+      createdAt: Timestamp.now()
+    };
+
+    console.log(`✅ Criando novo membership:`, membershipData);
+    await addDoc(membershipsRef, membershipData);
+    console.log(`✅ Membership criado com sucesso para candidato ${candidateId} na lista ${listId}`);
+  }
+
+  async removeCandidateFromList(candidateId: number, listId: number): Promise<void> {
+    const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
+    const q = query(
+      membershipsRef,
+      where('candidateId', '==', candidateId),
+      where('listId', '==', listId)
+    );
+    
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+  }
+
 
 }
 

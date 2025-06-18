@@ -2116,15 +2116,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const listId = parseInt(req.params.listId);
       const user = req.user;
       
+      console.log(`🔗 Backend: Recebida requisição para adicionar candidato ${candidateId} à lista ${listId}`);
+      console.log(`👤 Usuário: ${user.email}, role: ${user.role}, clientId: ${user.clientId}`);
+      
+      if (!candidateId || !listId) {
+        console.error("❌ IDs inválidos:", { candidateId, listId });
+        return res.status(400).json({ message: 'IDs de candidato e lista são obrigatórios' });
+      }
+      
       // Get clientId from candidate or user
       const candidate = await storage.getCandidateById(candidateId);
+      if (!candidate) {
+        console.error(`❌ Candidato ${candidateId} não encontrado`);
+        return res.status(404).json({ message: 'Candidato não encontrado' });
+      }
+      
       const clientId = user.role === 'client' ? user.clientId : candidate.clientId;
+      console.log(`🔍 ClientId determinado: ${clientId}`);
       
       await storage.addCandidateToList(candidateId, listId, clientId);
       
+      console.log(`✅ Backend: Candidato ${candidateId} adicionado à lista ${listId} com sucesso`);
       res.json({ success: true });
     } catch (error) {
-      console.error('Error adding candidate to list:', error);
+      console.error('❌ Backend: Error adding candidate to list:', error);
       res.status(500).json({ message: 'Failed to add candidate to list' });
     }
   });
