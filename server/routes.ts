@@ -797,7 +797,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const candidates = await storage.getAllCandidates();
           console.log('📋 Total de candidatos encontrados:', candidates.length);
           console.log('📋 Primeiros candidatos:', candidates.slice(0, 3));
-          res.json(candidates);
+          
+          // Ensure all candidates have valid clientId - filter out invalid ones
+          const validCandidates = candidates.filter(candidate => {
+            const isValid = candidate.clientId && !isNaN(candidate.clientId) && candidate.clientId > 0;
+            if (!isValid) {
+              console.log(`❌ Candidato ${candidate.id} (${candidate.name}) tem clientId inválido:`, candidate.clientId);
+            }
+            return isValid;
+          });
+          
+          console.log('📋 Candidatos válidos após filtro:', validCandidates.length);
+          res.json(validCandidates);
         }
       } else {
         // Cliente só vê seus próprios candidatos - ISOLAMENTO TOTAL

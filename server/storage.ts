@@ -503,7 +503,7 @@ export class FirebaseStorage implements IStorage {
         name: data.name,
         email: data.email,
         whatsapp: data.whatsapp,
-        clientId: clientId,
+        clientId: clientId || 0, // Ensure clientId is never undefined
         createdAt: data.createdAt?.toDate() || null
       } as Candidate;
       
@@ -532,7 +532,7 @@ export class FirebaseStorage implements IStorage {
         name: data.name,
         email: data.email,
         whatsapp: data.whatsapp,
-        clientId: candidateClientId,
+        clientId: candidateClientId || 0, // Ensure clientId is never undefined
         createdAt: data.createdAt?.toDate() || null
       } as Candidate;
     });
