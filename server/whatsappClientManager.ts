@@ -172,7 +172,7 @@ class WhatsAppClientManager {
             session.lastConnection = new Date();
             session.qrCode = null; // Limpar QR após conexão
 
-            await this.saveConnectionStatus(clientId, true, phoneNumber, undefined);
+            await this.saveConnectionStatus(clientId, true, phoneNumber || undefined);
             
             this.reconnectAttempts.delete(clientId);
 
@@ -207,7 +207,7 @@ class WhatsAppClientManager {
               await this.cleanSession(clientId);
             }
 
-            await this.saveConnectionStatus(clientId, false, undefined, undefined);
+            await this.saveConnectionStatus(clientId, false);
           }
         });
 
@@ -270,7 +270,7 @@ class WhatsAppClientManager {
       }
 
       await this.cleanSession(clientId);
-      await this.saveConnectionStatus(clientId, false, undefined, undefined);
+      await this.saveConnectionStatus(clientId, false);
 
       console.log(`✅ Cliente ${clientId} desconectado com sucesso`);
       return true;
