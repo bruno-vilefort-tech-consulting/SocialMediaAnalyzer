@@ -376,14 +376,13 @@ export default function CandidatesPage() {
   });
 
   const updateCandidateMutation = useMutation({
-    mutationFn: async (data: CandidateFormData) => {
+    mutationFn: async (data: { name: string; email: string; whatsapp: string }) => {
       if (!editingCandidate) {
         throw new Error("Nenhum candidato selecionado para edição");
       }
       
       console.log(`🔧 Atualizando candidato ${editingCandidate.id} com dados:`, data);
-      const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
-      return await response.json();
+      return await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
@@ -448,8 +447,9 @@ export default function CandidatesPage() {
     createListMutation.mutate(data);
   };
 
-  const handleCreateCandidate = (data: CandidateFormData) => {
-    console.log('🚀 handleCreateCandidate chamado com:', data);
+  const handleSubmitCandidate = (data: CandidateFormData) => {
+    console.log('🚀 handleSubmitCandidate chamado com:', data);
+    console.log('🔍 Editando candidato?', !!editingCandidate);
     
     // Validação básica primeiro
     if (!data.name || !data.email || !data.whatsapp) {
@@ -461,22 +461,44 @@ export default function CandidatesPage() {
       return;
     }
 
-    // Garantir que listId e clientId estão corretos
-    if (!data.listId || !data.clientId) {
-      console.error('❌ IDs ausentes - listId:', data.listId, 'clientId:', data.clientId);
-      toast({ 
-        title: "Erro", 
-        description: "Erro interno: IDs da lista ou cliente não definidos",
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    console.log('✅ Enviando dados finais:', data);
-
     if (editingCandidate) {
-      updateCandidateMutation.mutate(data);
+      // Para edição, manter o clientId original do candidato
+      const updatedData = {
+        name: data.name,
+        email: data.email,
+        whatsapp: data.whatsapp
+      };
+      console.log('✅ Atualizando candidato com dados:', updatedData);
+      console.log('🔍 Cliente ID mantido:', editingCandidate.clientId);
+      updateCandidateMutation.mutate(updatedData);
     } else {
+      // Para criação, precisamos de listId e clientId
+      // Se estamos dentro de uma lista específica, usar seus dados
+      if (selectedListId) {
+        const selectedList = candidateLists?.find(list => list.id === selectedListId);
+        if (selectedList) {
+          data.listId = selectedList.id;
+          data.clientId = selectedList.clientId;
+        }
+      }
+      
+      // Para usuários client, usar automaticamente o clientId do usuário
+      if (user?.role === 'client' && user?.clientId && !data.clientId) {
+        data.clientId = user.clientId;
+      }
+
+      // Garantir que listId e clientId estão corretos
+      if (!data.listId || !data.clientId) {
+        console.error('❌ IDs ausentes - listId:', data.listId, 'clientId:', data.clientId);
+        toast({ 
+          title: "Erro", 
+          description: "Erro interno: IDs da lista ou cliente não definidos",
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      console.log('✅ Criando candidato com dados finais:', data);
       createCandidateMutation.mutate(data);
     }
   };
@@ -1144,7 +1166,7 @@ export default function CandidatesPage() {
           </DialogHeader>
           
           <Form {...candidateForm}>
-            <form onSubmit={candidateForm.handleSubmit(handleCreateCandidate)} className="space-y-4">
+            <form onSubmit={candidateForm.handleSubmit(handleSubmitCandidate)} className="space-y-4">
               {/* Campos básicos do candidato */}
               <FormField
                 control={candidateForm.control}
@@ -1265,7 +1287,7 @@ export default function CandidatesPage() {
                 <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={createCandidateMutation.isPending}>
+                <Button type="submit" disabled={createCandidateMutation.isPending || updateCandidateMutation.isPending}>
                   {editingCandidate ? "Salvar" : "Adicionar"}
                 </Button>
               </div>
