@@ -273,12 +273,18 @@ export default function CandidatesPage() {
       return 0;
     }
     
-    // Buscar IDs de candidatos da lista nos memberships
-    const candidateIdsInList = candidateListMemberships
-      .filter(membership => membership.listId === listId)
-      .map(membership => membership.candidateId);
+    // Buscar memberships da lista específica
+    const listMemberships = candidateListMemberships.filter(membership => membership.listId === listId);
     
-    // Contar apenas candidatos que REALMENTE existem no banco
+    // Se master está vendo "Todos os clientes", contar apenas memberships válidos
+    // (não temos candidatos carregados neste modo)
+    if (user?.role === 'master' && selectedClientFilter === 'all') {
+      console.log(`📊 Lista ${listId}: ${listMemberships.length} memberships (modo todos os clientes)`);
+      return listMemberships.length;
+    }
+    
+    // Para filtro específico ou usuário cliente, validar contra candidatos reais
+    const candidateIdsInList = listMemberships.map(membership => membership.candidateId);
     const realCandidatesCount = allCandidates.filter(candidate => 
       candidateIdsInList.includes(candidate.id)
     ).length;
