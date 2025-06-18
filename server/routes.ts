@@ -1926,17 +1926,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (qr && !qrCodeGenerated) {
               qrCodeGenerated = true;
               console.log(`📱 QR Code Baileys gerado para cliente ${user.clientId}`);
+              console.log(`📱 [DEBUG] QR Code length: ${qr.length}`);
+              console.log(`📱 [DEBUG] Salvando QR Code no Firebase...`);
               
               // Salvar QR Code no Firebase
-              await storage.upsertApiConfig('client', user.clientId.toString(), {
-                whatsappQrConnected: false,
-                whatsappQrCode: qr,
-                whatsappQrPhoneNumber: null,
-                whatsappQrLastConnection: null
-              });
+              try {
+                await storage.upsertApiConfig('client', user.clientId.toString(), {
+                  whatsappQrConnected: false,
+                  whatsappQrCode: qr,
+                  whatsappQrPhoneNumber: null,
+                  whatsappQrLastConnection: null
+                });
+                console.log(`📱 [DEBUG] QR Code salvo no Firebase com sucesso`);
+              } catch (saveError) {
+                console.error(`📱 [ERROR] Falha ao salvar QR Code:`, saveError);
+              }
               
               if (!connectionResolved) {
                 connectionResolved = true;
+                console.log(`📱 [DEBUG] Resolvendo promise com QR Code...`);
                 resolve({ success: true, qrCode: qr, message: 'QR Code gerado - escaneie com seu WhatsApp' });
               }
             }
@@ -1980,6 +1988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         const result = await connectionPromise;
+        console.log(`📱 [DEBUG] Resultado final da conexão:`, result);
         res.json(result);
 
       } catch (error) {
