@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, Minus, Users, Search } from "lucide-react";
+import { Trash2, Edit, Plus, Minus, Users, Search, Upload } from "lucide-react";
 
 interface Candidate {
   id: number;
@@ -67,6 +67,10 @@ export default function CandidatesManagementPage() {
     clientId: 0, 
     listId: undefined as number | undefined
   });
+
+  // Estados para upload Excel
+  const [uploadClientId, setUploadClientId] = useState<string>("");
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
 
   const isMaster = user?.role === 'master';
   const clientId = isMaster ? selectedClient : user?.clientId;
@@ -273,6 +277,30 @@ export default function CandidatesManagementPage() {
     },
   });
 
+  // Mutation para upload Excel
+  const uploadExcelMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      return await apiRequest("/api/candidates/bulk", "POST", formData);
+    },
+    onSuccess: (data: any) => {
+      setIsUploadingExcel(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
+      toast({
+        title: "Sucesso",
+        description: `${data.imported || 0} candidatos importados com sucesso`,
+      });
+    },
+    onError: (error: any) => {
+      setIsUploadingExcel(false);
+      toast({
+        title: "Erro na importação",
+        description: error?.message || "Falha ao importar candidatos do Excel",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Handlers
   const handleEditCandidate = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
@@ -375,6 +403,63 @@ export default function CandidatesManagementPage() {
     }
   };
 
+  // Função de upload Excel com seleção de cliente para masters
+  const handleUploadWithClientSelection = () => {
+    // Para usuários master, verificar se cliente foi selecionado
+    if (user?.role === 'master' && !uploadClientId) {
+      toast({
+        title: "Selecione um cliente",
+        description: "Escolha o cliente para importar os candidatos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Trigger file input
+    document.getElementById('excel-file-upload')?.click();
+  };
+
+  const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Verificar se há listas disponíveis para o cliente
+    const targetClientId = user?.role === 'master' ? uploadClientId : user?.clientId?.toString();
+    const availableLists = candidateLists.filter(list => 
+      list.clientId?.toString() === targetClientId
+    );
+
+    if (availableLists.length === 0) {
+      toast({
+        title: "Nenhuma lista encontrada",
+        description: "Crie pelo menos uma lista de candidatos antes de importar",
+        variant: "destructive"
+      });
+      event.target.value = '';
+      return;
+    }
+
+    setIsUploadingExcel(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('clientId', targetClientId || '');
+
+      uploadExcelMutation.mutate(formData);
+    } catch (error) {
+      setIsUploadingExcel(false);
+      toast({
+        title: "Erro",
+        description: "Falha ao processar arquivo Excel",
+        variant: "destructive"
+      });
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
+
   // Calcular paginação após todos os filtros
   const totalCandidates = filteredCandidates.length;
   const totalPages = Math.ceil(totalCandidates / candidatesPerPage);
@@ -388,6 +473,50 @@ export default function CandidatesManagementPage() {
 
   return (
     <div className="p-6 space-y-6">
+      
+      {/* Seção de importação Excel sempre visível no topo */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold">Importação de Candidatos</h2>
+          <p className="text-sm text-muted-foreground">
+            Importe candidatos via Excel para suas listas
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {user?.role === 'master' && (
+            <Select value={uploadClientId} onValueChange={setUploadClientId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione um cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.companyName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleExcelUpload}
+            className="hidden"
+            id="excel-file-upload"
+          />
+          <Button
+            variant="default"
+            onClick={handleUploadWithClientSelection}
+            disabled={isUploadingExcel}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {isUploadingExcel ? "Importando..." : "Importar Excel"}
+          </Button>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Users className="h-6 w-6" />
