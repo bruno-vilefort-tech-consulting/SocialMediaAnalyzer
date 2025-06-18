@@ -295,13 +295,26 @@ export default function CadastroVagasPage() {
           <p className="text-muted-foreground">Gerencie vagas de emprego e suas perguntas de entrevista</p>
         </div>
         
-        <Button 
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Cadastrar Vaga
-        </Button>
+        <div className="flex items-center gap-4">
+          {/* Contador de vagas para usuários cliente */}
+          {user?.role === 'client' && (
+            <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
+              <Briefcase className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">Suas Vagas:</span>
+              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                {filteredJobs.length}
+              </Badge>
+            </div>
+          )}
+          
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Cadastrar Vaga
+          </Button>
+        </div>
       </div>
 
       {/* Filtro por Cliente - apenas para master */}
@@ -333,22 +346,7 @@ export default function CadastroVagasPage() {
         </Card>
       )}
 
-      {/* Contador de vagas para usuários cliente */}
-      {user?.role === 'client' && (
-        <Card className="bg-blue-50">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-900">Suas Vagas Cadastradas</span>
-              </div>
-              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
-                {filteredJobs.length} {filteredJobs.length === 1 ? 'vaga' : 'vagas'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Formulário de cadastro/edição */}
       {showForm && (
