@@ -62,7 +62,21 @@ export class ClientWhatsAppService {
       const socket = this.baileys.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '22.04.4']
+        logger: console,
+        browser: ['WhatsApp Business', 'Chrome', '118.0.0.0'],
+        markOnlineOnConnect: false,
+        generateHighQualityLinkPreview: false,
+        defaultQueryTimeoutMs: 30000,
+        connectTimeoutMs: 30000,
+        keepAliveIntervalMs: 25000,
+        qrTimeout: 60000,
+        retryRequestDelayMs: 350,
+        maxMsgRetryCount: 5,
+        syncFullHistory: false,
+        fireInitQueries: true,
+        getMessage: async (key: any) => {
+          return { conversation: 'Hi' };
+        }
       });
 
       return new Promise((resolve) => {
@@ -76,6 +90,7 @@ export class ClientWhatsAppService {
           if (qr && !resolved) {
             console.log(`📱 QR Code gerado para cliente ${clientId}`);
             console.log(`🕐 QR Code válido por 45 segundos - escaneie rapidamente`);
+            console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
             
             // Atualizar configuração do cliente
             await this.updateClientConfig(clientId, {
@@ -126,9 +141,19 @@ export class ClientWhatsAppService {
 
           if (connection === 'close') {
             const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log(`🔌 Conexão fechada para cliente ${clientId}, reconectar:`, shouldReconnect);
-
-            if (!shouldReconnect) {
+            const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
+            console.log(`❌ [${clientId}] Conexão fechada - Código: ${reason}, Reconectar: ${shouldReconnect}`);
+            
+            if (reason === 408 || reason === 440) {
+              console.log(`⏰ [${clientId}] Timeout detectado - QR Code expirou`);
+              await this.updateClientConfig(clientId, {
+                isConnected: false,
+                qrCode: null,
+                phoneNumber: null,
+                lastConnection: new Date(),
+                clientId
+              });
+            } else if (!shouldReconnect) {
               await this.updateClientConfig(clientId, {
                 isConnected: false,
                 phoneNumber: null,
@@ -142,16 +167,27 @@ export class ClientWhatsAppService {
 
         socket.ev.on('creds.update', saveCreds);
 
-        // Timeout para QR Code
-        setTimeout(() => {
+        // Timeout estendido para QR Code
+        const timeoutId = setTimeout(() => {
           if (!resolved) {
+            console.log(`⏰ [${clientId}] Timeout na conexão WhatsApp (60s)`);
             resolved = true;
+            try {
+              socket?.end();
+            } catch (e) {
+              console.log('Socket já fechado');
+            }
             resolve({
               success: false,
-              message: 'Timeout ao gerar QR Code'
+              message: 'Timeout - QR Code não foi escaneado a tempo. Tente novamente.'
             });
           }
-        }, 30000);
+        }, 60000);
+        
+        // Limpar timeout se resolver antes
+        socket.ev.on('connection.update', () => {
+          if (resolved) clearTimeout(timeoutId);
+        });
       });
     } catch (error) {
       console.error(`❌ Erro ao conectar WhatsApp para cliente ${clientId}:`, error);
