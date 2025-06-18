@@ -656,7 +656,7 @@ export class FirebaseStorage implements IStorage {
     return candidateData as Candidate;
   }
 
-  async createCandidates(insertCandidates: InsertCandidate[]): Promise<Candidate[]> {
+  async createCandidates(insertCandidates: any[]): Promise<Candidate[]> {
     console.log('📥 createCandidates chamado com', insertCandidates.length, 'candidatos');
     console.log('🔍 Primeiro candidato para debug:', insertCandidates[0]);
     
@@ -666,10 +666,10 @@ export class FirebaseStorage implements IStorage {
     for (const insertCandidate of insertCandidates) {
       const candidateId = Date.now() + Math.floor(Math.random() * 1000) + candidates.length;
       
-      // Extract listId and clientId from insertCandidate
+      // Extract listId (opcional) and clientId from insertCandidate
       const { listId, clientId, ...candidateFields } = insertCandidate;
       
-      console.log(`📋 Processando candidato: ${candidateFields.name} - listId: ${listId}, clientId: ${clientId}`);
+      console.log(`📋 Processando candidato: ${candidateFields.name} - listId: ${listId || 'N/A'}, clientId: ${clientId}`);
       
       if (!clientId) {
         console.error(`❌ ERRO CRÍTICO: Candidato ${candidateFields.name} sem clientId!`);

@@ -473,20 +473,17 @@ export default function CandidatesManagementPage() {
 
   return (
     <div className="p-6 space-y-6">
-      
-      {/* Seção de importação Excel sempre visível no topo */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
-        <div>
-          <h2 className="text-lg font-semibold">Importação de Candidatos</h2>
-          <p className="text-sm text-muted-foreground">
-            Importe candidatos via Excel para suas listas
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Users className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Gerenciar Candidatos</h1>
         </div>
         <div className="flex items-center gap-2">
+          {/* Seletor de cliente para masters antes do import */}
           {user?.role === 'master' && (
             <Select value={uploadClientId} onValueChange={setUploadClientId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecione um cliente" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Cliente p/ import" />
               </SelectTrigger>
               <SelectContent>
                 {clients.map((client) => (
@@ -506,26 +503,18 @@ export default function CandidatesManagementPage() {
             id="excel-file-upload"
           />
           <Button
-            variant="default"
+            variant="outline"
             onClick={handleUploadWithClientSelection}
             disabled={isUploadingExcel}
-            className="bg-blue-600 hover:bg-blue-700"
           >
             <Upload className="h-4 w-4 mr-2" />
             {isUploadingExcel ? "Importando..." : "Importar Excel"}
           </Button>
+          <Button onClick={() => setIsNewCandidateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Candidato
+          </Button>
         </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Users className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Gerenciar Candidatos</h1>
-        </div>
-        <Button onClick={() => setIsNewCandidateDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Candidato
-        </Button>
       </div>
 
       {/* Filtros */}

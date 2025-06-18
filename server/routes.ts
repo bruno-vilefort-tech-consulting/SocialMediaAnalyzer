@@ -862,19 +862,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates/bulk", authenticate, authorize(['client', 'master']), upload.single('file'), async (req: AuthRequest, res) => {
     try {
-      console.log('Arquivo recebido:', req.file);
+      console.log('📂 Request body:', req.body);
+      console.log('📎 Arquivo recebido:', req.file ? 'SIM' : 'NÃO');
+      console.log('📎 File details:', req.file);
       
       if (!req.file) {
+        console.log('❌ Nenhum arquivo foi enviado');
         return res.status(400).json({ message: 'Nenhum arquivo enviado' });
       }
 
       if (!req.file.buffer) {
+        console.log('❌ Buffer do arquivo está vazio');
         return res.status(400).json({ message: 'Arquivo inválido ou corrompido' });
       }
 
-      const { listId } = req.body;
-      if (!listId) {
-        return res.status(400).json({ message: 'Lista de candidatos obrigatória' });
+      const { clientId } = req.body;
+      console.log('🏢 ClientId recebido:', clientId);
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Cliente obrigatório para importação' });
       }
 
       // Verificar se o arquivo tem conteúdo
@@ -900,8 +906,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Arquivo vazio ou formato inválido' });
       }
 
-      // Buscar candidatos existentes na lista para verificar duplicatas
-      const existingCandidates = await storage.getCandidatesByListId(parseInt(listId));
+      // Buscar candidatos existentes do cliente para verificar duplicatas
+      const existingCandidates = await storage.getCandidatesByClientId(parseInt(clientId));
       
       // Validate and transform data
       const validCandidates = [];
@@ -978,28 +984,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          // Determinar clientId baseado na lista de destino
-          // Buscar a lista para obter o clientId correto
-          const targetList = await storage.getCandidateListById(parseInt(listId));
-          if (!targetList) {
-            errors.push(`Linha ${index + 2}: Lista não encontrada`);
-            continue;
-          }
-          
-          const clientId = targetList.clientId;
-          console.log(`📋 Candidato ${nameStr} será importado para clientId: ${clientId} (da lista ${targetList.name})`);
-
-          if (!clientId) {
-            errors.push(`Linha ${index + 2}: Lista não possui clientId válido`);
-            continue;
-          }
+          console.log(`📋 Candidato ${nameStr} será importado para clientId: ${clientId}`);
 
           validCandidates.push({
             name: nameStr,
             email: emailStr,
             whatsapp: phoneDigits, // Usar whatsapp em vez de phone
-            clientId,
-            listId: parseInt(listId)
+            clientId: parseInt(clientId)
           });
         } catch (error) {
           errors.push(`Linha ${index + 2}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
@@ -1017,7 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Importar apenas candidatos válidos (não duplicados)
       let importedCandidates = [];
       if (validCandidates.length > 0) {
-        console.log(`📥 Importando ${validCandidates.length} candidatos para lista ${listId}`);
+        console.log(`📥 Importando ${validCandidates.length} candidatos para cliente ${clientId}`);
         importedCandidates = await storage.createCandidates(validCandidates);
         
         // Log dos candidatos criados para verificar clientId
@@ -1028,7 +1019,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Preparar resposta
       const response: any = {
-        message: `${importedCandidates.length} candidatos importados com sucesso na lista`,
+        message: `${importedCandidates.length} candidatos importados com sucesso`,
         imported: importedCandidates.length,
         duplicates: duplicates.length,
         candidates: importedCandidates
@@ -1036,7 +1027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (duplicates.length > 0) {
         response.duplicatesList = duplicates;
-        response.message += `. ${duplicates.length} candidatos não foram importados por já existirem na lista`;
+        response.message += `. ${duplicates.length} candidatos não foram importados por já existirem no sistema`;
       }
 
       res.status(201).json(response);
