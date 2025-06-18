@@ -2074,6 +2074,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate Management Routes
+  app.patch("/api/candidates/:id", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      const { name, email, whatsapp } = req.body;
+      
+      const updatedCandidate = await storage.updateCandidate(candidateId, {
+        name,
+        email,
+        whatsapp
+      });
+      
+      res.json(updatedCandidate);
+    } catch (error) {
+      console.error('Error updating candidate:', error);
+      res.status(500).json({ message: 'Failed to update candidate' });
+    }
+  });
+
+  app.delete("/api/candidates/:id", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.id);
+      
+      // Remove candidate from all lists first
+      await storage.removeCandidateFromAllLists(candidateId);
+      
+      // Then delete the candidate
+      await storage.deleteCandidate(candidateId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting candidate:', error);
+      res.status(500).json({ message: 'Failed to delete candidate' });
+    }
+  });
+
+  app.post("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const listId = parseInt(req.params.listId);
+      const user = req.user;
+      
+      // Get clientId from candidate or user
+      const candidate = await storage.getCandidateById(candidateId);
+      const clientId = user.role === 'client' ? user.clientId : candidate.clientId;
+      
+      await storage.addCandidateToList(candidateId, listId, clientId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error adding candidate to list:', error);
+      res.status(500).json({ message: 'Failed to add candidate to list' });
+    }
+  });
+
+  app.delete("/api/candidates/:candidateId/lists/:listId", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const listId = parseInt(req.params.listId);
+      
+      await storage.removeCandidateFromList(candidateId, listId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error removing candidate from list:', error);
+      res.status(500).json({ message: 'Failed to remove candidate from list' });
+    }
+  });
+
   // Results routes
   app.get("/api/selections/:id/results", authenticate, authorize(['client']), async (req, res) => {
     try {
