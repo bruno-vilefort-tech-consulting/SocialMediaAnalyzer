@@ -1903,204 +1903,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Sistema Baileys do backup
+  // Client WhatsApp endpoints - Novo sistema isolado
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
-      if (!user.clientId) {
+      if (!user?.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📱 Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`📱 [NOVO] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Buscar configuração do Firebase
-      const apiConfig = await storage.getApiConfig('client', user.clientId.toString());
+      const { whatsappClientManager } = await import('./whatsappClientManager');
+      const status = await whatsappClientManager.getStatus(user.clientId.toString());
       
-      console.log(`📱 [DEBUG] Config encontrada:`, {
-        exists: !!apiConfig,
-        isConnected: apiConfig?.whatsappQrConnected,
-        hasQrCode: !!apiConfig?.whatsappQrCode,
-        qrCodeLength: apiConfig?.whatsappQrCode ? apiConfig.whatsappQrCode.length : 0,
-        phoneNumber: apiConfig?.whatsappQrPhoneNumber
-      });
+      console.log(`📱 [NOVO] Status encontrado:`, status);
       
       res.json({
-        isConnected: apiConfig?.whatsappQrConnected || false,
-        phone: apiConfig?.whatsappQrPhoneNumber || null,
-        lastConnection: apiConfig?.whatsappQrLastConnection || null,
-        qrCode: apiConfig?.whatsappQrCode || null
+        isConnected: status.isConnected,
+        phone: status.phoneNumber,
+        qrCode: status.qrCode,
+        hasQrCode: status.hasQrCode
       });
     } catch (error) {
-      console.error('Client WhatsApp status error:', error);
+      console.error('❌ Erro ao buscar status WhatsApp:', error);
       res.status(500).json({ message: 'Erro ao buscar status WhatsApp' });
     }
   });
 
-  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
-      console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO - CHEGOU AQUI!`);
-      console.log(`🔗 [BAILEYS ENDPOINT] Request Headers:`, req.headers);
-      console.log(`🔗 [BAILEYS ENDPOINT] Request Body:`, req.body);
-      console.log(`🔗 [BAILEYS ENDPOINT] User:`, req.user);
-      
       const user = req.user;
-      if (!user.clientId) {
+      if (!user?.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 [BAILEYS] Conectando WhatsApp Baileys para cliente ${user.clientId}...`);
+      console.log(`🔗 [NOVO] Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Debug: Verificar se Baileys está disponível
-      console.log(`📱 [DEBUG] Importando Baileys...`);
-      console.log(`📱 [DEBUG] ClientId do usuário: ${user.clientId}`);
-      console.log(`📱 [DEBUG] Tipo do clientId: ${typeof user.clientId}`);
+      const { whatsappClientManager } = await import('./whatsappClientManager');
+      const result = await whatsappClientManager.createConnection(user.clientId.toString());
       
-      // Sistema Baileys diretamente no endpoint - ESPECÍFICO POR CLIENTE
-      const { makeWASocket, useMultiFileAuthState } = await import('@whiskeysockets/baileys');
-      const sessionPath = `./whatsapp-sessions/client_${user.clientId}`;
+      console.log(`🔗 [NOVO] Resultado da conexão:`, result);
       
-      console.log(`📱 [DEBUG] Caminho da sessão: ${sessionPath}`);
-      
-      try {
-        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-        
-        const socket = makeWASocket({
-          auth: state,
-          printQRInTerminal: false,
-          browser: ['Chrome (Linux)', '', ''],
-          defaultQueryTimeoutMs: 60000,
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.qrCode ? 'QR Code gerado - escaneie com seu WhatsApp' : 'Conectado com sucesso',
+          qrCode: result.qrCode
         });
-
-        let qrCodeGenerated = false;
-        let connectionResolved = false;
-
-        const connectionPromise = new Promise((resolve) => {
-          console.log(`📱 [DEBUG] Configurando listeners para cliente ${user.clientId}...`);
-          
-          socket.ev.on('connection.update', async (update) => {
-            console.log(`📱 [DEBUG] Connection update recebido:`, { 
-              connection: update.connection, 
-              hasQr: !!update.qr,
-              qrLength: update.qr ? update.qr.length : 0,
-              qrCodeGenerated,
-              connectionResolved
-            });
-            
-            const { connection, lastDisconnect, qr } = update;
-            
-            if (qr && !qrCodeGenerated) {
-              qrCodeGenerated = true;
-              console.log(`📱 QR Code Baileys gerado para cliente ${user.clientId}`);
-              console.log(`📱 [DEBUG] QR Code length: ${qr.length}`);
-              console.log(`📱 [DEBUG] Salvando QR Code no Firebase...`);
-              
-              // Salvar QR Code no Firebase
-              try {
-                await storage.upsertApiConfig({
-                  entityType: 'client',
-                  entityId: user.clientId.toString(),
-                  whatsappQrConnected: false,
-                  whatsappQrCode: qr,
-                  whatsappQrPhoneNumber: null,
-                  whatsappQrLastConnection: null,
-                  openaiVoice: 'nova',
-                  firebaseProjectId: null,
-                  firebaseServiceAccount: null
-                });
-                console.log(`📱 [DEBUG] QR Code salvo no Firebase com sucesso`);
-              } catch (saveError) {
-                console.error(`📱 [ERROR] Falha ao salvar QR Code:`, saveError);
-              }
-              
-              if (!connectionResolved) {
-                connectionResolved = true;
-                console.log(`📱 [DEBUG] Resolvendo promise com QR Code...`);
-                resolve({ success: true, qrCode: qr, message: 'QR Code gerado - escaneie com seu WhatsApp' });
-              }
-            }
-            
-            if (connection === 'open') {
-              console.log(`✅ WhatsApp Baileys conectado para cliente ${user.clientId}`);
-              
-              // Salvar conexão no Firebase
-              await storage.upsertApiConfig({
-                entityType: 'client',
-                entityId: user.clientId.toString(),
-                whatsappQrConnected: true,
-                whatsappQrCode: null,
-                whatsappQrPhoneNumber: socket.user?.id?.split(':')[0] || null,
-                whatsappQrLastConnection: new Date(),
-                openaiVoice: 'nova',
-                firebaseProjectId: null,
-                firebaseServiceAccount: null
-              });
-              
-              if (!connectionResolved) {
-                connectionResolved = true;
-                resolve({ success: true, message: 'WhatsApp conectado com sucesso!' });
-              }
-            }
-            
-            if (connection === 'close') {
-              console.log(`❌ Conexão WhatsApp fechada para cliente ${user.clientId}`);
-              
-              if (!connectionResolved) {
-                connectionResolved = true;
-                resolve({ success: false, message: 'Conexão fechada - tente novamente' });
-              }
-            }
-          });
-
-          socket.ev.on('creds.update', saveCreds);
-          
-          // Timeout após 15 segundos para QR Code
-          setTimeout(() => {
-            if (!connectionResolved && !qrCodeGenerated) {
-              connectionResolved = true;
-              console.log(`⏰ [DEBUG] Timeout esperando QR Code para cliente ${user.clientId}`);
-              resolve({ success: false, message: 'Timeout esperando QR Code - tente novamente' });
-            }
-          }, 15000);
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.error || 'Erro ao conectar WhatsApp'
         });
-
-        const result = await connectionPromise;
-        console.log(`📱 [DEBUG] Resultado final da conexão:`, result);
-        res.json(result);
-
-      } catch (error) {
-        console.error(`❌ Erro ao criar sessão Baileys para cliente ${user.clientId}:`, error);
-        res.status(500).json({ success: false, message: 'Erro ao inicializar WhatsApp' });
       }
-
     } catch (error) {
-      console.error('Client WhatsApp connect error:', error);
-      res.status(500).json({ message: 'Erro ao conectar WhatsApp' });
+      console.error('❌ Erro ao conectar WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno ao conectar WhatsApp'
+      });
     }
   });
 
-  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
-      if (!user.clientId) {
+      if (!user?.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const result = await wppConnectClientModule.disconnectClient(user.clientId.toString());
+      console.log(`🔌 [NOVO] Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      if (result.success) {
+      const { whatsappClientManager } = await import('./whatsappClientManager');
+      const success = await whatsappClientManager.disconnect(user.clientId.toString());
+      
+      if (success) {
         res.json({ 
           success: true, 
-          message: result.message
+          message: 'WhatsApp desconectado com sucesso'
         });
       } else {
-        res.status(400).json({ 
+        res.status(500).json({ 
           success: false, 
-          message: result.message 
+          message: 'Erro ao desconectar WhatsApp' 
         });
       }
     } catch (error) {
-      console.error('Client WhatsApp disconnect error:', error);
-      res.status(500).json({ message: 'Erro ao desconectar WhatsApp' });
+      console.error('❌ Erro ao desconectar WhatsApp:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao desconectar WhatsApp' 
+      });
+    }
+  });
+
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { phoneNumber, message } = req.body;
+      
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'phoneNumber e message são obrigatórios' 
+        });
+      }
+
+      console.log(`📤 [NOVO] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
+      
+      const { whatsappClientManager } = await import('./whatsappClientManager');
+      const success = await whatsappClientManager.sendMessage(
+        user.clientId.toString(), 
+        phoneNumber, 
+        message
+      );
+      
+      if (success) {
+        res.json({ 
+          success: true, 
+          message: 'Mensagem enviada com sucesso' 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar teste WhatsApp:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao enviar mensagem' 
+      });
     }
   });
 
