@@ -560,7 +560,30 @@ export default function CandidatesPage() {
 
     // Usar a primeira lista disponível
     const targetList = clientLists[0];
-    const clientId = parseInt(selectedClientFilter);
+    
+    // Determine clientId based on user role and context
+    let clientId: number;
+    
+    if (user?.role === 'master') {
+      // Para master: usar clientId da lista ou do filtro selecionado
+      if (selectedClientFilter === 'all') {
+        clientId = targetList.clientId;
+      } else {
+        clientId = parseInt(selectedClientFilter);
+      }
+    } else {
+      // Para client: usar próprio clientId
+      clientId = user?.clientId || targetList.clientId;
+    }
+
+    console.log('🎯 Upload Excel no topo:', {
+      targetListId: targetList.id,
+      targetListClientId: targetList.clientId,
+      selectedClientFilter,
+      userRole: user?.role,
+      userClientId: user?.clientId,
+      finalClientId: clientId
+    });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -657,27 +680,35 @@ export default function CandidatesPage() {
       return;
     }
 
+    // Buscar dados da lista selecionada para obter clientId correto
+    const selectedList = candidateLists?.find(list => list.id === selectedListId);
+    if (!selectedList) {
+      toast({ 
+        title: "Erro", 
+        description: "Lista selecionada não encontrada.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     // Determine clientId based on user role and context
-    let clientId: number | undefined;
+    let clientId: number;
     
     if (user?.role === 'master') {
-      // Para master: usar lista selecionada ou filtro de cliente
-      if (selectedList?.clientId) {
-        clientId = selectedList.clientId;
-      } else if (selectedClientFilter !== 'all') {
-        clientId = parseInt(selectedClientFilter);
-      } else {
-        toast({ 
-          title: "Erro", 
-          description: "Selecione um cliente específico antes de importar.",
-          variant: "destructive" 
-        });
-        return;
-      }
+      // Para master: usar clientId da lista selecionada
+      clientId = selectedList.clientId;
     } else {
       // Para client: usar próprio clientId
-      clientId = user?.clientId;
+      clientId = user?.clientId || selectedList.clientId;
     }
+
+    console.log('🎯 Upload Excel dentro da lista:', {
+      selectedListId,
+      selectedListClientId: selectedList.clientId,
+      userRole: user?.role,
+      userClientId: user?.clientId,
+      finalClientId: clientId
+    });
     
     if (!clientId) {
       toast({ 
@@ -712,19 +743,21 @@ export default function CandidatesPage() {
       if (response.ok) {
         const result = await response.json();
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
         
         // Mostrar mensagem com detalhes sobre duplicatas se existirem
         if (result.duplicates > 0) {
           const duplicateNames = result.duplicatesList?.map((dup: any) => dup.name).join(', ') || '';
           toast({ 
             title: "Importação parcial",
-            description: `${result.imported} candidatos importados. ${result.duplicates} não foram importados por já existirem: ${duplicateNames}`,
+            description: `${result.imported} candidatos importados para a lista "${selectedList.name}". ${result.duplicates} não foram importados por já existirem: ${duplicateNames}`,
             variant: "default"
           });
         } else {
           toast({ 
             title: "Sucesso!",
-            description: result.message || "Candidatos importados com sucesso!"
+            description: `${result.imported} candidatos importados para a lista "${selectedList.name}" com sucesso!`
           });
         }
       } else {
@@ -783,6 +816,20 @@ export default function CandidatesPage() {
                   </Select>
                 </div>
               )}
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleTopUpload}
+                className="hidden"
+                id="top-file-upload"
+              />
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById('top-file-upload')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Excel
+              </Button>
               <Button onClick={() => setShowCreateForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Lista
