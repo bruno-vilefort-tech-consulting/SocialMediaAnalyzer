@@ -29,11 +29,9 @@ export async function apiRequest(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  if (url.includes('whatsapp')) {
-    console.log(`🌐 [FRONTEND] ${method} ${url}`);
-    console.log(`🌐 [FRONTEND] Headers:`, headers);
-    console.log(`🌐 [FRONTEND] Body:`, data);
-  }
+  console.log(`🌐 [FRONTEND] ${method} ${url}`);
+  console.log(`🌐 [FRONTEND] Headers:`, headers);
+  console.log(`🌐 [FRONTEND] Body:`, data);
 
   const res = await fetch(url, {
     method,
@@ -42,10 +40,7 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  if (url.includes('whatsapp')) {
-    console.log(`🌐 [FRONTEND] Response status:`, res.status);
-    console.log(`🌐 [FRONTEND] Response headers:`, res.headers);
-  }
+  console.log(`🌐 [FRONTEND] Response status:`, res.status);
 
   await throwIfResNotOk(res);
   return res;
