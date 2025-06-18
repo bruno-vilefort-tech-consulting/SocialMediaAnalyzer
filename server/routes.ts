@@ -40,9 +40,9 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     console.log('🔑 Middleware authenticate: Verificando autenticação para', req.method, req.path);
     
     // Try to get token from Authorization header first, then from cookies
-    let token = req.headers.authorization?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token && req.session?.token) {
-      token = req.session.token;
+      // fallback to session token if needed
     }
     
     console.log(`🔑 Authorization header: ${req.headers.authorization?.substring(0, 30)}...`);
@@ -97,7 +97,8 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
     next();
   } catch (error) {
     console.error('Auth error:', error);
-    console.log(`🔑 Failed token: ${token}`);
+    const tokenToLog = req.headers.authorization?.replace('Bearer ', '') || 'undefined';
+    console.log(`🔑 Failed token: ${tokenToLog}`);
     console.log(`🔑 JWT_SECRET exists: ${!!JWT_SECRET}`);
     console.log(`🔑 JWT_SECRET length: ${JWT_SECRET?.length || 0}`);
     res.status(401).json({ message: 'Invalid token' });
@@ -1933,15 +1934,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/connect", (req, res, next) => {
-    console.log(`🔗 [INTERCEPTED] Rota /api/client/whatsapp/connect interceptada ANTES do middleware`);
-    console.log(`🔗 [INTERCEPTED] Method: ${req.method}, URL: ${req.url}`);
-    next();
-  }, authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req, res) => {
     try {
-      console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO`);
+      console.log(`🔗 [BAILEYS ENDPOINT] POST /api/client/whatsapp/connect CHAMADO - CHEGOU AQUI!`);
       console.log(`🔗 [BAILEYS ENDPOINT] Request Headers:`, req.headers);
       console.log(`🔗 [BAILEYS ENDPOINT] Request Body:`, req.body);
+      console.log(`🔗 [BAILEYS ENDPOINT] User:`, req.user);
       
       const user = req.user;
       if (!user.clientId) {
