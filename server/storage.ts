@@ -1425,7 +1425,7 @@ export class FirebaseStorage implements IStorage {
       candidateId,
       listId,
       clientId,
-      createdAt: Timestamp.now()
+      createdAt: new Date()
     };
 
     console.log(`✅ Criando novo membership:`, membershipData);
