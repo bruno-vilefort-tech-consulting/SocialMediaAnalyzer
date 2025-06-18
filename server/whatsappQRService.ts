@@ -344,7 +344,7 @@ export class WhatsAppQRService {
             } else {
               console.log('❌ Não reconectando devido ao tipo de erro');
             }
-
+          }
         } catch (updateError) {
           console.error('❌ Erro no handler de conexão:', updateError.message);
         }
