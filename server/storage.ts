@@ -838,8 +838,10 @@ export class FirebaseStorage implements IStorage {
     // Busca configuração existente
     const existingConfig = await this.getApiConfig(config.entityType, config.entityId);
     
+    // IMPORTANTE: Preservar campos existentes que não estão sendo atualizados
     const configData = { 
-      ...config, 
+      ...existingConfig, // Preserva todos os campos existentes primeiro
+      ...config,         // Sobrescreve apenas os campos fornecidos
       id: existingConfig?.id || Date.now(), 
       updatedAt: new Date() 
     };
@@ -848,6 +850,13 @@ export class FirebaseStorage implements IStorage {
     const docId = existingConfig ? 
       `${config.entityType}_${config.entityId}` : 
       `${config.entityType}_${config.entityId}_${Date.now()}`;
+    
+    console.log(`💾 [DEBUG] Salvando configuração:`, {
+      docId,
+      hasExisting: !!existingConfig,
+      preservedQrCode: !!configData.whatsappQrCode,
+      qrCodeLength: configData.whatsappQrCode ? configData.whatsappQrCode.length : 0
+    });
     
     await setDoc(doc(firebaseDb, "apiConfigs", docId), configData);
     return configData as ApiConfig;
