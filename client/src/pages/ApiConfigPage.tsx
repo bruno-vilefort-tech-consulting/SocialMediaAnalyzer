@@ -13,6 +13,38 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
+// Componente simples para renderizar QR Code
+const QRCodeRenderer = ({ qrCode }: { qrCode: string }) => {
+  const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (qrCode) {
+      // Usar biblioteca qrcode para gerar imagem
+      import('qrcode').then(QRCode => {
+        QRCode.toDataURL(qrCode, { width: 256, margin: 2 })
+          .then(url => setQrCodeImage(url))
+          .catch(err => console.error('Erro ao gerar QR Code:', err));
+      });
+    }
+  }, [qrCode]);
+
+  if (!qrCodeImage) {
+    return (
+      <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={qrCodeImage} 
+      alt="QR Code WhatsApp" 
+      className="w-48 h-48 mx-auto"
+    />
+  );
+};
+
 interface MasterSettings {
   openaiApiKey?: string | null;
   gptModel?: string;
