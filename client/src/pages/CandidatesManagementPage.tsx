@@ -442,8 +442,8 @@ export default function CandidatesManagementPage() {
             <div>
               <h4 className="font-medium mb-2">Listas atuais:</h4>
               <div className="space-y-2">
-                {selectedCandidate && getCandidateLists(selectedCandidate.id).map((list: CandidateList) => (
-                  <div key={list.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                {selectedCandidate && getCandidateLists(selectedCandidate.id).map((list: CandidateList, index: number) => (
+                  <div key={`${list.id}-${index}`} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                     <span className="text-sm">{list.name}</span>
                     <Button
                       size="sm"

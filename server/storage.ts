@@ -9,7 +9,7 @@ import {
   type MasterSettings, type InsertMasterSettings,
   type MessageLog, type InsertMessageLog
 } from "@shared/schema";
-import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch } from "firebase/firestore";
+import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
 import { firebaseDb } from "./db";
 
