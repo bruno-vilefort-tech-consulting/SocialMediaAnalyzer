@@ -2314,33 +2314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Endpoint duplicado removido - usando apenas a implementação Baileys acima
 
-  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req, res) => {
-    try {
-      const clientId = (req as AuthRequest).user.clientId;
-      if (!clientId) {
-        return res.status(400).json({ error: 'ClientId não encontrado no token' });
-      }
-
-      console.log(`🔌 Desconectando WhatsApp para cliente ${clientId}...`);
-      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
-      const result = await clientWhatsAppService.disconnectClient(clientId.toString());
-
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: result.message 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          error: result.message 
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao desconectar WhatsApp do cliente:', error);
-      res.status(500).json({ error: 'Falha ao desconectar WhatsApp' });
-    }
-  });
+  // Removed duplicate disconnect endpoint - using the main one above
 
   app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req, res) => {
     try {
