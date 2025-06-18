@@ -331,6 +331,13 @@ export default function CandidatesManagementPage() {
     );
   };
 
+  // Função para obter o nome do cliente pelo ID
+  const getClientName = (clientId: number) => {
+    if (!isMaster || !clients || !Array.isArray(clients)) return null;
+    const client = (clients as Client[]).find((c: Client) => c.id === clientId);
+    return client ? client.companyName : `Cliente #${clientId}`;
+  };
+
   // Filtrar candidatos por termo de busca
   const searchFilteredCandidates = filteredCandidates.filter(candidate =>
     candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -407,6 +414,11 @@ export default function CandidatesManagementPage() {
                         <h3 className="font-semibold text-lg">{candidate.name}</h3>
                         <span className="text-sm text-gray-600">{candidate.email}</span>
                         <span className="text-sm text-gray-600">WhatsApp: {candidate.whatsapp}</span>
+                        {isMaster && (
+                          <Badge variant="outline" className="text-xs">
+                            {getClientName(candidate.clientId)}
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2 mt-2">
