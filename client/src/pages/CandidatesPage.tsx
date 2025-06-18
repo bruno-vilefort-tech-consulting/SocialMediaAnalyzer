@@ -782,6 +782,108 @@ export default function CandidatesPage() {
     event.target.value = '';
   };
 
+  const handleTopUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Para upload no topo, usar a primeira lista disponível do cliente
+    const clientLists = candidateLists?.filter(list => 
+      user?.role === 'master' ? 
+        (selectedClientFilter === 'all' ? true : list.clientId === parseInt(selectedClientFilter)) :
+        list.clientId === user?.clientId
+    );
+
+    if (!clientLists || clientLists.length === 0) {
+      toast({ 
+        title: "Sem listas disponíveis", 
+        description: "Crie uma lista de candidatos primeiro para importar dados.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Usar a primeira lista disponível
+    const targetList = clientLists[0];
+    
+    // Determine clientId based on user role and context
+    let clientId: number;
+    
+    if (user?.role === 'master') {
+      // Para master: usar clientId da lista ou do filtro selecionado
+      if (selectedClientFilter === 'all') {
+        clientId = targetList.clientId;
+      } else {
+        clientId = parseInt(selectedClientFilter);
+      }
+    } else {
+      // Para client: usar próprio clientId
+      clientId = user?.clientId || targetList.clientId;
+    }
+
+    console.log('🎯 Upload Excel no topo:', {
+      targetListId: targetList.id,
+      targetListClientId: targetList.clientId,
+      selectedClientFilter,
+      userRole: user?.role,
+      userClientId: user?.clientId,
+      finalClientId: clientId
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('listId', targetList.id.toString());
+    formData.append('clientId', clientId.toString());
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+      
+      const response = await fetch('/api/candidates/bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Invalidar caches para atualizar dados
+        queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+        if (targetList?.id) {
+          queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
+        }
+        
+        toast({ 
+          title: "Importação concluída!", 
+          description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}` 
+        });
+      } else {
+        const error = await response.json();
+        toast({ 
+          title: "Erro na importação", 
+          description: error.message || "Falha ao processar arquivo",
+          variant: "destructive" 
+        });
+      }
+    } catch (error) {
+      console.error('Erro na importação:', error);
+      toast({ 
+        title: "Erro na importação", 
+        description: "Falha ao enviar arquivo. Verifique a conexão.",
+        variant: "destructive" 
+      });
+    }
+
+    // Limpar input
+    event.target.value = '';
+  };
+
   if (listsLoading) {
     return <div className="p-6">Carregando listas de candidatos...</div>;
   }
