@@ -23,6 +23,8 @@ export class WhatsAppQRService {
   private makeWASocket: any = null;
   private useMultiFileAuthState: any = null;
   private baileys: any = null;
+  private isConnecting: boolean = false;
+  private connectionPromise: Promise<void> | null = null;
 
   constructor() {
     // Adicionar handler global para erros não capturados do Baileys
@@ -199,37 +201,78 @@ export class WhatsAppQRService {
 
   private async clearOldSessions() {
     try {
-      // Limpar diretório de autenticação para evitar conflitos
+      // Só limpar sessões se realmente necessário (não a cada inicialização)
+      if (this.socket) {
+        console.log('🔄 Conexão existente detectada - não limpando sessões');
+        return;
+      }
+
       const fs = await import('fs');
       const path = await import('path');
       
       const authDir = './whatsapp-auth';
       if (fs.existsSync(authDir)) {
-        console.log('🧹 Limpando sessões antigas do WhatsApp...');
+        // Verificar se há arquivos de sessão válidos
         const files = fs.readdirSync(authDir);
-        for (const file of files) {
-          try {
-            fs.unlinkSync(path.join(authDir, file));
-          } catch (error) {
-            // Ignorar erros de arquivos em uso
+        const hasValidSession = files.some(file => 
+          file.includes('creds.json') || file.includes('pre-key') || file.includes('session-')
+        );
+
+        if (!hasValidSession) {
+          console.log('🧹 Limpando sessões inválidas do WhatsApp...');
+          for (const file of files) {
+            try {
+              fs.unlinkSync(path.join(authDir, file));
+            } catch (error) {
+              // Ignorar erros de arquivos em uso
+            }
           }
+          console.log('✅ Sessões inválidas removidas');
+        } else {
+          console.log('📱 Sessões válidas encontradas - mantendo autenticação');
         }
-        console.log('✅ Sessões antigas removidas');
       }
     } catch (error) {
-      console.log('⚠️ Não foi possível limpar sessões antigas:', error.message);
+      console.log('⚠️ Erro ao verificar sessões:', error.message);
     }
   }
 
   private async initializeConnection() {
     try {
+      // Prevenir múltiplas conexões simultâneas
+      if (this.isConnecting) {
+        console.log('⚠️ Conexão já em andamento - aguardando...');
+        return this.connectionPromise;
+      }
+
+      if (this.socket && this.config.isConnected) {
+        console.log('✅ WhatsApp já conectado - reutilizando conexão existente');
+        return;
+      }
+
+      this.isConnecting = true;
+      this.connectionPromise = this._doInitializeConnection();
+      
+      try {
+        await this.connectionPromise;
+      } finally {
+        this.isConnecting = false;
+        this.connectionPromise = null;
+      }
+    } catch (error) {
+      console.error('❌ Erro na inicialização:', error.message);
+      this.isConnecting = false;
+      this.connectionPromise = null;
+      throw error;
+    }
+  }
+
+  private async _doInitializeConnection() {
+    try {
       if (!this.makeWASocket || !this.useMultiFileAuthState) {
         console.log('⚠️ Baileys não foi inicializado corretamente - funcionando sem WhatsApp');
         return;
       }
-
-      // Limpar sessões antigas antes de conectar
-      await this.clearOldSessions();
 
       console.log('🔗 Inicializando conexão WhatsApp QR...');
       
@@ -237,13 +280,13 @@ export class WhatsAppQRService {
       
       this.socket = this.makeWASocket({
         auth: state,
-        printQRInTerminal: true,
-        connectTimeoutMs: 30000,
-        defaultQueryTimeoutMs: 30000,
-        keepAliveIntervalMs: 10000,
-        retryRequestDelayMs: 2000,
-        maxMsgRetryCount: 5,
-        qrTimeout: 60000,
+        printQRInTerminal: false, // Desabilitar para evitar spam no console
+        connectTimeoutMs: 60000, // Aumentar timeout
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 30000, // Reduzir frequência de keep-alive
+        retryRequestDelayMs: 5000, // Aumentar delay entre tentativas
+        maxMsgRetryCount: 3, // Reduzir tentativas
+        qrTimeout: 120000, // QR Code válido por 2 minutos
         browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
         generateHighQualityLinkPreview: false,
         syncFullHistory: false,
@@ -269,13 +312,17 @@ export class WhatsAppQRService {
           });
           
           if (qr) {
-            console.log('🔄 Novo QR Code recebido - gerando...');
-            console.log('📱 QR Code para escaneio - Use o WhatsApp do CELULAR');
-            await this.generateQRCode(qr).catch(err => 
-              console.log('Erro ao gerar QR Code:', err.message)
-            );
-            console.log('📱 QR Code atualizado - escaneie com WhatsApp no CELULAR (não Web/Desktop)');
-            console.log('⚠️  IMPORTANTE: Use WhatsApp do celular -> Menu (⋮) -> Aparelhos conectados -> Conectar um aparelho');
+            // Evitar spam de QR codes - só gerar se diferente do anterior
+            if (!this.config.qrCode || this.config.qrCode !== qr) {
+              console.log('🔄 Novo QR Code recebido - gerando...');
+              await this.generateQRCode(qr).catch(err => 
+                console.log('Erro ao gerar QR Code:', err.message)
+              );
+              console.log('📱 QR Code atualizado - escaneie com WhatsApp no CELULAR');
+              console.log('⚠️  IMPORTANTE: Use WhatsApp do celular -> Menu (⋮) -> Aparelhos conectados -> Conectar um aparelho');
+            } else {
+              console.log('📱 QR Code já está atualizado - aguardando escaneamento...');
+            }
           }
           
           if (connection === 'connecting') {
