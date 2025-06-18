@@ -619,32 +619,28 @@ export default function ApiConfigPage() {
                   </div>
                 </div>
 
-                {/* QR Code Section - mostra quando QR disponível e não está em modo telefone */}
-                {whatsappStatus?.qrCode && !showPhoneLogin && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col items-center space-y-4 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
-                        <QrCode className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="text-center">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-100">QR Code Gerado</h4>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                          Escaneie com seu WhatsApp para conectar
-                        </p>
+                {/* QR Code Original - Versão que funcionava */}
+                {whatsappStatus?.qrCode && (
+                  <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="text-center space-y-3">
+                      <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
+                        <QrCode className="h-5 w-5" />
+                        <span className="font-medium">Escaneie o QR Code com seu WhatsApp</span>
                       </div>
                       
-                      <div className="bg-white p-4 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                        <QRCodeRenderer qrCode={whatsappStatus.qrCode} />
+                      <div className="flex justify-center">
+                        <img 
+                          src={whatsappStatus.qrCode} 
+                          alt="QR Code WhatsApp" 
+                          className="border rounded-lg shadow-sm max-w-xs"
+                        />
                       </div>
                       
-                      <div className="text-center text-xs text-blue-600 dark:text-blue-400 max-w-sm">
-                        <p className="mb-2 font-medium">Como conectar:</p>
-                        <ol className="text-left space-y-1">
-                          <li>1. Abra WhatsApp no celular</li>
-                          <li>2. Toque em ⋮ → "Aparelhos conectados"</li>
-                          <li>3. Toque em "Conectar um aparelho"</li>
-                          <li>4. Escaneie este código</li>
-                        </ol>
+                      <div className="text-sm text-blue-600 dark:text-blue-400">
+                        <p>1. Abra o WhatsApp no seu celular</p>
+                        <p>2. Toque em Menu ou Configurações e selecione "Dispositivos conectados"</p>
+                        <p>3. Toque em "Conectar um dispositivo"</p>
+                        <p>4. Aponte seu telefone para esta tela para capturar o código</p>
                       </div>
                     </div>
                   </div>

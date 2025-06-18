@@ -1905,7 +1905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Novo sistema isolado
+  // Client WhatsApp endpoints - Sistema original que funcionava
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -1915,11 +1915,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappClientModule para status isolado por cliente
-      const { whatsappClientModule } = await import('./whatsappClientModule');
-      const status = await whatsappClientModule.getClientStatus(user.clientId.toString());
+      // Usar o whatsappQRService original que funcionava
+      const { whatsappQRService } = await import('./whatsappQRService');
+      const status = whatsappQRService.getStatus();
       
-      console.log(`📱 [NOVO] Status encontrado:`, status);
+      console.log(`📱 [ORIGINAL] Status encontrado:`, status);
       
       res.json({
         isConnected: status.isConnected,
@@ -1950,9 +1950,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappClientModule para conexão isolada por cliente
-      const { whatsappClientModule } = await import('./whatsappClientModule');
-      const result = await whatsappClientModule.connectClient(user.clientId.toString());
+      // Usar o whatsappQRService original que funcionava
+      const { whatsappQRService } = await import('./whatsappQRService');
+      const result = await whatsappQRService.connect();
       
       console.log(`🔗 [DEBUG] Resultado da conexão:`, {
         success: result.success,
