@@ -1959,7 +1959,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let connectionResolved = false;
 
         const connectionPromise = new Promise((resolve) => {
+          console.log(`📱 [DEBUG] Configurando listeners para cliente ${user.clientId}...`);
+          
           socket.ev.on('connection.update', async (update) => {
+            console.log(`📱 [DEBUG] Connection update recebido:`, { 
+              connection: update.connection, 
+              hasQr: !!update.qr,
+              qrLength: update.qr ? update.qr.length : 0,
+              qrCodeGenerated,
+              connectionResolved
+            });
+            
             const { connection, lastDisconnect, qr } = update;
             
             if (qr && !qrCodeGenerated) {
@@ -2027,13 +2037,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           socket.ev.on('creds.update', saveCreds);
           
-          // Timeout após 45 segundos
+          // Timeout após 15 segundos para QR Code
           setTimeout(() => {
-            if (!connectionResolved) {
+            if (!connectionResolved && !qrCodeGenerated) {
               connectionResolved = true;
-              resolve({ success: false, message: 'Timeout - tente novamente' });
+              console.log(`⏰ [DEBUG] Timeout esperando QR Code para cliente ${user.clientId}`);
+              resolve({ success: false, message: 'Timeout esperando QR Code - tente novamente' });
             }
-          }, 45000);
+          }, 15000);
         });
 
         const result = await connectionPromise;
