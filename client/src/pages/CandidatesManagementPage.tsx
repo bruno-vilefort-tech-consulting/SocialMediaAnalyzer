@@ -142,7 +142,7 @@ export default function CandidatesManagementPage() {
         description: "Candidato criado com sucesso",
       });
       setIsNewCandidateDialogOpen(false);
-      setNewCandidateForm({ name: "", email: "", whatsapp: "", clientId: 0, listId: 0 });
+      setNewCandidateForm({ name: "", email: "", whatsapp: "", clientId: 0, listId: undefined });
     },
     onError: () => {
       toast({
