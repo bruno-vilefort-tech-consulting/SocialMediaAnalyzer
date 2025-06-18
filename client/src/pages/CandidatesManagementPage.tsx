@@ -56,7 +56,7 @@ export default function CandidatesManagementPage() {
     email: "", 
     whatsapp: "", 
     clientId: 0, 
-    listId: 0 
+    listId: undefined as number | undefined
   });
 
   const isMaster = user?.role === 'master';
@@ -131,7 +131,7 @@ export default function CandidatesManagementPage() {
 
   // Mutation para criar candidato
   const createCandidateMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; whatsapp: string; clientId: number; listId: number }) => {
+    mutationFn: async (data: { name: string; email: string; whatsapp: string; clientId: number; listId?: number }) => {
       return await apiRequest("/api/candidates", "POST", data);
     },
     onSuccess: () => {
@@ -293,11 +293,11 @@ export default function CandidatesManagementPage() {
       clientId: isMaster ? newCandidateForm.clientId : clientId!
     };
     
-    if (!candidateData.name || !candidateData.email || !candidateData.whatsapp || 
-        !candidateData.clientId || !candidateData.listId) {
+    // Validar apenas campos obrigatórios (nome, email, whatsapp, clientId)
+    if (!candidateData.name || !candidateData.email || !candidateData.whatsapp || !candidateData.clientId) {
       toast({
         title: "Erro",
-        description: "Todos os campos são obrigatórios",
+        description: "Preencha os campos obrigatórios: nome, email, WhatsApp e cliente",
         variant: "destructive",
       });
       return;
@@ -630,14 +630,15 @@ export default function CandidatesManagementPage() {
               </div>
             )}
 
-            {/* Seletor de lista */}
+            {/* Seletor de lista - OPCIONAL */}
             <div>
-              <Label htmlFor="new-list">Lista *</Label>
-              <Select onValueChange={(value) => setNewCandidateForm({ ...newCandidateForm, listId: Number(value) })}>
+              <Label htmlFor="new-list">Lista (opcional)</Label>
+              <Select onValueChange={(value) => setNewCandidateForm({ ...newCandidateForm, listId: value === "0" ? undefined : Number(value) })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma lista" />
+                  <SelectValue placeholder="Selecione uma lista (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="0">Sem lista</SelectItem>
                   {(candidateLists as CandidateList[])
                     .filter((list: CandidateList) => 
                       isMaster ? 
