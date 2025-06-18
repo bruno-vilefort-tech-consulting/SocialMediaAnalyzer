@@ -16,8 +16,9 @@ import { wppConnectClientModule } from "./wppConnectClientModule";
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 
-const JWT_SECRET = process.env.JWT_SECRET || "maximus-interview-secret-key";
-console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET ? 'Sim' : 'Não'}, Length: ${JWT_SECRET?.length || 0}`);
+const JWT_SECRET = "maximus-interview-secret-key-fixed";
+console.log(`🔑 JWT_SECRET FIXO configurado: ${JWT_SECRET}`);
+console.log(`🔑 JWT_SECRET length: ${JWT_SECRET?.length}`);
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
