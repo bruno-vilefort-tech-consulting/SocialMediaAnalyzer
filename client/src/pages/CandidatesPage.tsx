@@ -833,6 +833,7 @@ export default function CandidatesPage() {
       return;
     }
 
+    // Para usuários cliente, não precisa selecionar nada, pode prosseguir direto
     // Trigger file input
     document.getElementById('top-file-upload')?.click();
   };
@@ -995,7 +996,7 @@ export default function CandidatesPage() {
                 </div>
               )}
               
-              {/* Seção de importação Excel */}
+              {/* Seção de importação Excel - disponível para todos os usuários */}
               <div className="flex items-center gap-2">
                 {user?.role === 'master' && (
                   <Select value={uploadClientId} onValueChange={setUploadClientId}>
@@ -1022,6 +1023,7 @@ export default function CandidatesPage() {
                 <Button
                   variant="outline"
                   onClick={handleTopUploadWithClientSelection}
+                  title={user?.role === 'master' ? "Selecione um cliente e importe candidatos via Excel" : "Importe candidatos para suas listas via Excel"}
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Importar Excel
