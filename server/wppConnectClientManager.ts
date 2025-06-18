@@ -225,7 +225,7 @@ class WppConnectClientManager {
     if (!session) {
       // Buscar status do banco de dados
       try {
-        const apiConfig = await storage.getApiConfig('client', parseInt(clientId));
+        const apiConfig = await storage.getApiConfig('client', clientId);
         return {
           isConnected: apiConfig?.whatsappQrConnected || false,
           qrCode: apiConfig?.whatsappQrCode || null,
