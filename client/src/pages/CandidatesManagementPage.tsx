@@ -84,13 +84,29 @@ export default function CandidatesManagementPage() {
 
   // Função para obter listas de um candidato
   const getCandidateLists = (candidateId: number) => {
-    const candidateMemberships = memberships.filter((m: CandidateListMembership) => 
-      m.candidateId === candidateId
-    );
-    return candidateMemberships.map((membership: CandidateListMembership) => {
+    console.log(`🔍 Buscando listas para candidato ${candidateId}`);
+    console.log(`📋 Memberships disponíveis:`, memberships);
+    
+    if (!memberships || !Array.isArray(memberships)) {
+      console.log(`❌ Memberships não disponíveis`);
+      return [];
+    }
+    
+    const candidateMemberships = memberships.filter((m: CandidateListMembership) => {
+      const match = m.candidateId === candidateId;
+      console.log(`🔍 Comparando ${m.candidateId} === ${candidateId}: ${match}`);
+      return match;
+    });
+    
+    console.log(`📋 Memberships do candidato ${candidateId}:`, candidateMemberships);
+    
+    const lists = candidateMemberships.map((membership: CandidateListMembership) => {
       const list = candidateLists.find((list: CandidateList) => list.id === membership.listId);
       return list;
     }).filter(Boolean);
+    
+    console.log(`📋 Listas encontradas:`, lists);
+    return lists;
   };
 
   // Mutation para atualizar candidato
