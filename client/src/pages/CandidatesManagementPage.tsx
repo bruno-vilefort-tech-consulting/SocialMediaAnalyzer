@@ -99,7 +99,7 @@ export default function CandidatesManagementPage() {
     enabled: isMaster ? true : !!user?.clientId,
   });
 
-  // Filtrar candidatos por termo de busca e cliente
+  // Filtrar e ordenar candidatos por termo de busca e cliente
   const filteredCandidates = Array.isArray(candidates) ? candidates.filter((candidate: Candidate) => {
     // Verificar se o ID é válido
     if (!candidate.clientId || isNaN(candidate.clientId)) {
@@ -120,6 +120,24 @@ export default function CandidatesManagementPage() {
     
     // Para cliente: filtrar por seu próprio clientId
     return searchMatch && candidate.clientId === user?.clientId;
+  }).sort((a: Candidate, b: Candidate) => {
+    // Para usuários cliente: ordem alfabética simples
+    if (user?.role === 'client') {
+      return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+    }
+
+    // Para masters: primeiro por cliente, depois alfabética dentro do cliente
+    if (a.clientId !== b.clientId) {
+      // Buscar nomes dos clientes para ordenação
+      const clientA = (clients as Client[]).find(c => c.id === a.clientId);
+      const clientB = (clients as Client[]).find(c => c.id === b.clientId);
+      const nameA = clientA?.companyName || `Cliente ${a.clientId}`;
+      const nameB = clientB?.companyName || `Cliente ${b.clientId}`;
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    }
+
+    // Dentro do mesmo cliente: ordem alfabética por nome do candidato
+    return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
   }) : [];
 
 
