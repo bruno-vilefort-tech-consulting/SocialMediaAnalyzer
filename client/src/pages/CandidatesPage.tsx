@@ -543,7 +543,6 @@ export default function CandidatesPage() {
         if (targetList?.id) {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
-        queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
         
         toast({ 
           title: "Importação concluída!", 

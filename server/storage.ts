@@ -523,12 +523,22 @@ export class FirebaseStorage implements IStorage {
     
     const allMemberships = membershipsSnapshot.docs.map(doc => {
       const data = doc.data();
-      return { id: doc.id, ...data };
+      return { 
+        id: doc.id, 
+        candidateId: Number(data.candidateId),
+        listId: Number(data.listId),
+        clientId: Number(data.clientId),
+        createdAt: data.createdAt
+      };
     });
     
     console.log('🔍 Todos os memberships:', allMemberships);
     
-    const memberships = allMemberships.filter(membership => membership.listId === listId);
+    const memberships = allMemberships.filter(membership => {
+      const match = membership.listId === Number(listId);
+      console.log(`🔍 Comparando ${membership.listId} === ${Number(listId)}: ${match}`);
+      return match;
+    });
     console.log(`🎯 Memberships para lista ${listId}:`, memberships);
     
     // Busca candidatos baseado nos IDs encontrados
@@ -541,10 +551,24 @@ export class FirebaseStorage implements IStorage {
     }
     
     const candidatesSnapshot = await getDocs(collection(firebaseDb, "candidates"));
-    const allCandidates = candidatesSnapshot.docs.map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Candidate));
+    const allCandidates = candidatesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: Number(data.id || doc.id),
+        name: data.name,
+        email: data.email,
+        whatsapp: data.whatsapp,
+        clientId: Number(data.clientId),
+        createdAt: data.createdAt
+      } as Candidate;
+    });
     console.log(`👤 Total de candidatos no banco: ${allCandidates.length}`);
     
-    const filteredCandidates = allCandidates.filter(candidate => candidateIds.includes(candidate.id));
+    const filteredCandidates = allCandidates.filter(candidate => {
+      const isIncluded = candidateIds.includes(candidate.id);
+      console.log(`🔍 Candidato ${candidate.id} (${candidate.name}) incluído: ${isIncluded}`);
+      return isIncluded;
+    });
     console.log(`✅ Candidatos filtrados para lista ${listId}:`, filteredCandidates);
     
     return filteredCandidates;
