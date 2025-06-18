@@ -835,7 +835,7 @@ export default function CandidatesPage() {
 
     // Para usuários cliente, não precisa selecionar nada, pode prosseguir direto
     // Trigger file input
-    document.getElementById('top-file-upload')?.click();
+    document.getElementById('global-file-upload')?.click();
   };
 
   const handleTopUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -967,6 +967,49 @@ export default function CandidatesPage() {
 
   return (
     <div className="p-6 space-y-6">
+      
+      {/* Seção de importação Excel sempre visível no topo */}
+      <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold">Importação de Candidatos</h2>
+          <p className="text-sm text-muted-foreground">
+            Importe candidatos via Excel para suas listas
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {user?.role === 'master' && (
+            <Select value={uploadClientId} onValueChange={setUploadClientId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione um cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.companyName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
+          <input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleTopUpload}
+            className="hidden"
+            id="global-file-upload"
+          />
+          <Button
+            variant="default"
+            onClick={handleTopUploadWithClientSelection}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Excel
+          </Button>
+        </div>
+      </div>
+
       {viewMode === 'all' ? (
         // Visualização de todas as listas (horizontal)
         <>
