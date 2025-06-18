@@ -1235,14 +1235,19 @@ export class FirebaseStorage implements IStorage {
   }
 
   async removeCandidateFromList(candidateId: number, listId: number): Promise<void> {
-    const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+    console.log(`🗑️ Removendo candidato ${candidateId} da lista ${listId}`);
+    const snapshot = await getDocs(collection(firebaseDb, "candidate-list-memberships"));
     const membership = snapshot.docs.find(doc => {
       const data = doc.data();
       return data.candidateId === candidateId && data.listId === listId;
     });
     
     if (membership) {
+      console.log(`✅ Encontrado membership para remover: ${membership.id}`);
       await deleteDoc(membership.ref);
+      console.log(`✅ Membership removido com sucesso: ${membership.id}`);
+    } else {
+      console.log(`⚠️ Nenhum membership encontrado para candidato ${candidateId} na lista ${listId}`);
     }
   }
 
