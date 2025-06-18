@@ -619,7 +619,7 @@ export default function ApiConfigPage() {
                     <div>
                       <h4 className="font-medium text-yellow-900 dark:text-yellow-100">WhatsApp Desconectado</h4>
                       <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Conecte seu WhatsApp para enviar entrevistas automáticas
+                        Escolha o método de conexão preferido
                       </p>
                     </div>
                   </div>
@@ -657,6 +657,25 @@ export default function ApiConfigPage() {
                     </Button>
                   </div>
                 </div>
+
+                {/* QR Code Section - mostra apenas quando QR Code disponível */}
+                {whatsappStatus?.qrCode && !showPhoneLogin && (
+                  <div className="space-y-4">
+                    <div className="flex justify-center p-6 bg-white dark:bg-gray-800 rounded-lg border">
+                      <QRCodeRenderer qrCode={whatsappStatus.qrCode} />
+                    </div>
+
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Como conectar:</h4>
+                      <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+                        <li>1. Abra o WhatsApp no seu celular</li>
+                        <li>2. Toque em ⋮ → "Aparelhos conectados"</li>
+                        <li>3. Toque em "Conectar um aparelho"</li>
+                        <li>4. Escaneie este código</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -817,6 +836,46 @@ export default function ApiConfigPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Mostrar status conectado */}
+            {whatsappStatus?.isConnected && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-green-900 dark:text-green-100">WhatsApp Conectado</h4>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        {whatsappStatus.phone ? `Número: ${whatsappStatus.phone}` : 'Pronto para enviar mensagens'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => {
+                      fetch('/api/client/whatsapp/disconnect', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                          'Content-Type': 'application/json'
+                        }
+                      }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                        toast({ title: "Desconectando WhatsApp..." });
+                      });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Desconectar
+                  </Button>
+                </div>
               </div>
             )}
 
