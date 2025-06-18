@@ -209,8 +209,12 @@ export default function CandidatesManagementPage() {
       return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "DELETE");
     },
     onSuccess: () => {
+      // Invalidar todas as queries relacionadas a memberships
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
+      // Invalidar queries de candidatos para atualizar contadores
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      // Invalidar queries de listas para atualizar contadores
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-lists"] });
       toast({
         title: "Sucesso",
         description: "Candidato removido da lista com sucesso",
@@ -231,8 +235,12 @@ export default function CandidatesManagementPage() {
       return await apiRequest(`/api/candidates/${candidateId}/lists/${listId}`, "POST");
     },
     onSuccess: () => {
+      // Invalidar todas as queries relacionadas a memberships
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
+      // Invalidar queries de candidatos para atualizar contadores
+      queryClient.invalidateQueries({ queryKey: ["/api/candidates"] });
+      // Invalidar queries de listas para atualizar contadores
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-lists"] });
       toast({
         title: "Sucesso",
         description: "Candidato adicionado à lista com sucesso",
