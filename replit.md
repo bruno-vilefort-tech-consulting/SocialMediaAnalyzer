@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 18, 2025: ✅ PÁGINA DE CANDIDATOS CRIADA COM SUCESSO - Sistema completo de gerenciamento de candidatos operacional
+  - **Interface horizontal compacta**: Layout responsivo com cards pequenos conforme solicitado pelo usuário
+  - **CRUD completo funcionando**: Edição, exclusão e gerenciamento de listas de candidatos operacional
+  - **Filtro por cliente implementado**: Masters veem seletor de cliente, usuários cliente veem dados filtrados automaticamente
+  - **Funcionalidade de listas corrigida**: Adicionar/remover candidatos de listas funcionando com logs detalhados
+  - **Backend robusto**: Endpoints com validação completa e logs de debug para troubleshooting
+  - **Sincronização de cache**: Invalidação automática de queries para atualização em tempo real
+  - **Feedback visual**: Toasts de sucesso/erro e fechamento automático de diálogos
+  - **Navegação integrada**: Botão "Candidatos" adicionado ao sidebar com rota /candidatos
+
 - June 17, 2025: 📱 MÓDULO WHATSAPP CLIENTE ISOLADO CRIADO - Sistema totalmente funcional e independente conforme solicitado
   - **Módulo completamente isolado**: whatsappClientModule.ts criado do zero para conexões WhatsApp específicas por cliente
   - **Endpoints funcionais**: /api/client/whatsapp/status, connect, disconnect e test operacionais

@@ -149,6 +149,7 @@ export default function CandidatesManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
       toast({
         title: "Sucesso",
         description: "Candidato removido da lista com sucesso",
@@ -173,6 +174,7 @@ export default function CandidatesManagementPage() {
       console.log("✅ Frontend: Candidato adicionado à lista com sucesso");
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships"] });
       queryClient.invalidateQueries({ queryKey: ["/api/candidate-list-memberships", clientId] });
+      setIsListsDialogOpen(false);
       toast({
         title: "Sucesso",
         description: "Candidato adicionado à lista com sucesso",
