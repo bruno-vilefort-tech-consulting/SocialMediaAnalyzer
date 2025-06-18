@@ -1,5 +1,5 @@
 // Script de teste para QR Code WhatsApp
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 // Gerar token JWT válido para teste
 const payload = {
