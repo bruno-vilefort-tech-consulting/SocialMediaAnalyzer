@@ -171,11 +171,11 @@ class InteractiveInterviewService {
 
     console.log(`👤 [DEBUG_NOVA_SELEÇÃO] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
 
-    // Buscar seleção mais recente ATIVA para este candidato
+    // Buscar seleção mais recente ENVIADO para este candidato
     try {
       const allSelections = await storage.getAllSelections();
       let selection = allSelections
-        .filter(s => s.status === 'active' && (clientId ? s.clientId.toString() === clientId : true))
+        .filter(s => s.status === 'enviado' && (clientId ? s.clientId.toString() === clientId : true))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
       if (!selection) {

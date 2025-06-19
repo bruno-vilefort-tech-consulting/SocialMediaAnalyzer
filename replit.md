@@ -115,14 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🧹 BANCO COMPLETAMENTE LIMPO - Sistema preparado para teste de isolamento
-  - **Firebase limpo**: Todas as respostas antigas deletadas (19 registros removidos)
-  - **Arquivos de áudio removidos**: Uploads antigos deletados para fresh start
-  - **Isolamento validado**: Sistema agora aplica filtro rigoroso por selectionId + candidateId
-  - **Transcrição Whisper**: Integrada no fluxo de salvamento automático
-  - **Logs de debug**: Sistema mostra isolamento correto com mensagens claras
-  - **Próxima seleção**: Ambiente limpo para testar isolamento total
-  - **Status confirmado**: "Retornando array vazio - sem misturar dados de outras seleções"
+- June 19, 2025: 🔧 MAPEAMENTO SELECTIONID CORRIGIDO - Sistema agora usa selectionId correto para salvar respostas
+  - **Root cause identificado**: Sistema buscava status 'active' em vez de 'enviado' para entrevistas
+  - **Correção implementada**: Filtro alterado para buscar seleções com status 'enviado' na busca mais recente
+  - **Debug melhorado**: Log adicional mostra qual selectionId está sendo usado na entrevista
+  - **Teste pendente**: Próxima entrevista deve salvar com selectionId correto (1750313158882)
+  - **Isolamento garantido**: Sistema busca apenas seleções do cliente específico ordenadas por data
+  - **Whisper ativo**: Processamento de transcrição integrado no fluxo
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
