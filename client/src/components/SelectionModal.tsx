@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Calendar, MapPin, Send, Mail, MessageCircle } from "lucide-react";
+import { Calendar, MapPin, Send, MessageCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Selection, InsertSelection, Job, Candidate } from "@shared/schema";
@@ -26,10 +26,8 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
   const [name, setName] = useState("");
   const [jobId, setJobId] = useState<number | null>(null);
   const [selectedCandidates, setSelectedCandidates] = useState<number[]>([]);
-  const [sendVia, setSendVia] = useState<"whatsapp" | "email" | "both">("both");
+  const [sendVia, setSendVia] = useState<"whatsapp">("whatsapp");
   const [whatsappTemplate, setWhatsappTemplate] = useState("");
-  const [emailTemplate, setEmailTemplate] = useState("");
-  const [emailSubject, setEmailSubject] = useState("");
   const [deadline, setDeadline] = useState("");
   const [scheduledFor, setScheduledFor] = useState("");
   
@@ -50,10 +48,8 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
     if (selection) {
       setName(selection.name);
       setJobId(selection.jobId);
-      setSendVia(selection.sendVia as "whatsapp" | "email" | "both");
+      setSendVia("whatsapp");
       setWhatsappTemplate(selection.whatsappTemplate);
-      setEmailTemplate(selection.emailTemplate);
-      setEmailSubject(selection.emailSubject);
       setDeadline(new Date(selection.deadline).toISOString().slice(0, 16));
       setScheduledFor(selection.scheduledFor ? new Date(selection.scheduledFor).toISOString().slice(0, 16) : "");
     } else {
@@ -61,26 +57,16 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
       setName("");
       setJobId(null);
       setSelectedCandidates([]);
-      setSendVia("both");
+      setSendVia("whatsapp");
       setDeadline("");
       setScheduledFor("");
       
-      // Set default templates
+      // Set default WhatsApp template
       setWhatsappTemplate(
         "Olá {{nome}}, você foi convidado pela {{empresa}} para participar de uma entrevista para a vaga {{vaga}}. " +
         "Clique no link para iniciar: {{link_entrevista}} " +
         "Data limite: {{data_limite}}."
       );
-      
-      setEmailTemplate(
-        "Olá {{nome}},\n\n" +
-        "Você foi selecionado para entrevistar para a vaga {{vaga}}.\n\n" +
-        "Por favor, acesse: {{link_entrevista}}\n\n" +
-        "Entrevista disponível até {{data_limite}}.\n\n" +
-        "Atenciosamente,\n{{empresa}}"
-      );
-      
-      setEmailSubject("Convite para entrevista em {{empresa}}");
     }
   }, [selection, isOpen]);
 
@@ -161,19 +147,10 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
       return;
     }
 
-    if ((sendVia === "whatsapp" || sendVia === "both") && !whatsappTemplate.trim()) {
+    if (!whatsappTemplate.trim()) {
       toast({
         title: "Template WhatsApp",
         description: "Preencha o template do WhatsApp",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if ((sendVia === "email" || sendVia === "both") && (!emailTemplate.trim() || !emailSubject.trim())) {
-      toast({
-        title: "Template Email",
-        description: "Preencha o assunto e template do email",
         variant: "destructive",
       });
       return;
@@ -183,8 +160,8 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
       name: name.trim(),
       jobId: jobId,
       whatsappTemplate: whatsappTemplate.trim(),
-      emailTemplate: emailTemplate.trim(),
-      emailSubject: emailSubject.trim(),
+      emailTemplate: "",
+      emailSubject: "",
       sendVia,
       deadline: new Date(deadline).toISOString(),
       scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
@@ -266,7 +243,7 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
             </div>
           </div>
 
-          {/* Send Via Options */}
+          {/* Send Via Options - Fixed to WhatsApp only */}
           <div>
             <Label>Canal de Envio</Label>
             <div className="flex space-x-4 mt-2">
@@ -275,83 +252,30 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
                   type="radio"
                   name="sendVia"
                   value="whatsapp"
-                  checked={sendVia === "whatsapp"}
-                  onChange={(e) => setSendVia(e.target.value as "whatsapp")}
+                  checked={true}
+                  readOnly
                 />
                 <MessageCircle className="h-4 w-4" />
                 <span>WhatsApp</span>
               </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="sendVia"
-                  value="email"
-                  checked={sendVia === "email"}
-                  onChange={(e) => setSendVia(e.target.value as "email")}
-                />
-                <Mail className="h-4 w-4" />
-                <span>Email</span>
-              </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="sendVia"
-                  value="both"
-                  checked={sendVia === "both"}
-                  onChange={(e) => setSendVia(e.target.value as "both")}
-                />
-                <span>Ambos</span>
-              </label>
             </div>
           </div>
 
-          {/* Message Templates */}
-          {(sendVia === "whatsapp" || sendVia === "both") && (
-            <div>
-              <Label htmlFor="whatsapp-template">Template WhatsApp</Label>
-              <Textarea
-                id="whatsapp-template"
-                rows={4}
-                placeholder="Olá {{nome}}, você foi convidado..."
-                value={whatsappTemplate}
-                onChange={(e) => setWhatsappTemplate(e.target.value)}
-                required={sendVia === "whatsapp" || sendVia === "both"}
-              />
-              <div className="text-xs text-slate-500 mt-1">
-                Variáveis disponíveis: {{nome}}, {{empresa}}, {{vaga}}, {{link_entrevista}}, {{data_limite}}
-              </div>
+          {/* WhatsApp Template */}
+          <div>
+            <Label htmlFor="whatsapp-template">Template WhatsApp</Label>
+            <Textarea
+              id="whatsapp-template"
+              rows={4}
+              placeholder="Olá {{nome}}, você foi convidado..."
+              value={whatsappTemplate}
+              onChange={(e) => setWhatsappTemplate(e.target.value)}
+              required
+            />
+            <div className="text-xs text-slate-500 mt-1">
+              Variáveis disponíveis: {{nome}}, {{empresa}}, {{vaga}}, {{link_entrevista}}, {{data_limite}}
             </div>
-          )}
-
-          {(sendVia === "email" || sendVia === "both") && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email-subject">Assunto do Email</Label>
-                <Input
-                  id="email-subject"
-                  placeholder="Convite para entrevista em {{empresa}}"
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                  required={sendVia === "email" || sendVia === "both"}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="email-template">Template Email</Label>
-                <Textarea
-                  id="email-template"
-                  rows={6}
-                  placeholder="Olá {{nome}}, você foi selecionado..."
-                  value={emailTemplate}
-                  onChange={(e) => setEmailTemplate(e.target.value)}
-                  required={sendVia === "email" || sendVia === "both"}
-                />
-                <div className="text-xs text-slate-500 mt-1">
-                  Variáveis disponíveis: {{nome}}, {{empresa}}, {{vaga}}, {{link_entrevista}}, {{data_limite}}
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
 
           {/* Candidate Selection */}
           <div>
@@ -400,7 +324,7 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
               <div className="text-sm text-slate-600 space-y-1">
                 <div>Vaga: {selectedJob.title}</div>
                 <div>Candidatos: {selectedCandidates.length}</div>
-                <div>Canal: {sendVia === "both" ? "WhatsApp e Email" : sendVia === "whatsapp" ? "WhatsApp" : "Email"}</div>
+                <div>Canal: WhatsApp</div>
                 <div>Prazo: {deadline ? new Date(deadline).toLocaleString('pt-BR') : "Não definido"}</div>
                 {scheduledFor && (
                   <div>Envio agendado: {new Date(scheduledFor).toLocaleString('pt-BR')}</div>
