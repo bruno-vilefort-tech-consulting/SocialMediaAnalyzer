@@ -229,13 +229,14 @@ class InteractiveInterviewService {
         interviewDbId: interviewDb.id
       };
       
-      console.log(`✅ [DEBUG_NOVA_SELEÇÃO] ENTREVISTA INICIADA COM ISOLAMENTO:`, {
+      console.log(`✅ [DEBUG_NOVA_SELEÇÃO] ENTREVISTA INICIADA COM ISOLAMENTO TOTAL:`, {
         candidateId: candidate.id,
         candidateName: candidate.name,
         selectionId: selection.id.toString(),
         clientId: selection.clientId,
         jobId: job.id,
-        totalQuestions: job.perguntas.length
+        totalQuestions: job.perguntas.length,
+        timestamp: new Date().toISOString()
       });
 
       this.activeInterviews.set(phone, interview);
