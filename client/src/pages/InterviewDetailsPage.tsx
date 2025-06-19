@@ -180,21 +180,31 @@ export default function InterviewDetailsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {interviews.map((interview: InterviewResponse) => {
-                const status = getCompletionStatus(interview);
+              {interviews.map((interview: any) => {
+                // Usar dados reais do Firebase em vez da interface InterviewResponse
+                const candidateName = interview.candidate?.name || 'Nome não disponível';
+                const candidatePhone = interview.candidate?.whatsapp || interview.candidate?.phone || 'Telefone não disponível';
+                const interviewStatus = interview.interview?.status || 'pending';
+                const responsesCount = interview.responses?.length || 0;
+                
+                const statusText = interviewStatus === 'completed' ? 'Completa' : 
+                                 interviewStatus === 'in_progress' ? 'Em andamento' : 'Pendente';
+                const statusVariant = interviewStatus === 'completed' ? 'default' : 
+                                     interviewStatus === 'in_progress' ? 'secondary' : 'outline';
+                
                 return (
-                  <TableRow key={interview.id}>
-                    <TableCell className="font-medium">{interview.candidateName}</TableCell>
-                    <TableCell>{interview.candidatePhone}</TableCell>
+                  <TableRow key={interview.interview?.id || Math.random()}>
+                    <TableCell className="font-medium">{candidateName}</TableCell>
+                    <TableCell>{candidatePhone}</TableCell>
                     <TableCell>
-                      <Badge variant={status.variant}>{status.text}</Badge>
+                      <Badge variant={statusVariant}>{statusText}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
                           <div 
-                            className={`h-2 rounded-full ${status.color}`}
-                            style={{ width: `${(interview.answeredQuestions / interview.totalQuestions) * 100}%` }}
+                            className={`h-2 rounded-full ${interviewStatus === 'completed' ? 'bg-green-500' : interviewStatus === 'in_progress' ? 'bg-yellow-500' : 'bg-gray-400'}`}
+                            style={{ width: `${interviewStatus === 'completed' ? 100 : responsesCount > 0 ? 50 : 0}%` }}
                           />
                         </div>
                         <span className="text-sm text-gray-600">

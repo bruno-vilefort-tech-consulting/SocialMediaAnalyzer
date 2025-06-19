@@ -2882,6 +2882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Buscar respostas da entrevista
           const responses = await storage.getResponsesByInterviewId(interview.id);
+          console.log(`📋 Total de respostas para entrevista ${interview.id}: ${responses.length}`);
           
           // Buscar vaga da entrevista
           let job = null;
