@@ -109,13 +109,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
 – as perguntas serão enviadas em áudio;
 – você responde também por áudio, no seu ritmo;
-– todo o processo leva apenas alguns minutos.
-
-Você gostaria de iniciar a entrevista?
-
-Para participar, responda:
-1 - Sim, começar agora
-2 - Não quero participar`;
+– todo o processo leva apenas alguns minutos.`;
 
   // Criar seleção
   const createSelectionMutation = useMutation({
@@ -542,7 +536,9 @@ Para participar, responda:
               <div className="space-y-2">
                 <Label htmlFor="mensagemWhatsApp">Mensagem Inicial WhatsApp (até 500 caracteres)</Label>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Use [nome do candidato] no texto abaixo para o sistema escrever o nome do candidato
+                  Use [nome do candidato] no texto abaixo para o sistema escrever o nome do candidato.
+                  O [nome do cliente] será substituído automaticamente pelo nome da empresa.
+                  O sistema adicionará automaticamente a pergunta de confirmação após esta mensagem.
                 </p>
                 <Textarea
                   id="mensagemWhatsApp"

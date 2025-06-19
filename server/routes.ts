@@ -1183,9 +1183,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 let whatsappMessage = selection.whatsappTemplate || '';
                 whatsappMessage = whatsappMessage
                   .replace(/\[nome do candidato\]/g, candidate.name)
+                  .replace(/\[nome do cliente\]/g, client?.companyName || 'Nossa Empresa')
                   .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
                   .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+                  .replace(/\[nome da vaga\]/g, job.nomeVaga)
                   .replace(/\[número de perguntas\]/g, questions.length.toString());
+
+                // Adicionar automaticamente a pergunta de confirmação após a mensagem inicial
+                const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
+                whatsappMessage = whatsappMessage + confirmationText;
 
                 // Garantir que WhatsApp está inicializado e conectado
                 const whatsappService = await ensureWhatsAppReady();
@@ -1408,6 +1414,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Gerar link da entrevista
             const interviewLink = `${process.env.REPLIT_DOMAINS || 'https://your-domain.replit.app'}/entrevista/${token}`;
 
+            // Buscar dados do cliente para substituir placeholder
+            const client = await storage.getClientById(selection.clientId);
+            
             // Personalizar mensagem WhatsApp
             let personalizedMessage = selection.whatsappTemplate || 
               "Olá {nome}, você foi selecionado para uma entrevista virtual da vaga {vaga}. Acesse: {link}";
@@ -1415,10 +1424,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             personalizedMessage = personalizedMessage
               .replace(/\{nome\}/g, candidate.name)
               .replace(/\[nome do candidato\]/g, candidate.name)
+              .replace(/\[nome do cliente\]/g, client?.companyName || 'Nossa Empresa')
+              .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
               .replace(/\{vaga\}/g, job.nomeVaga)
               .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+              .replace(/\[nome da vaga\]/g, job.nomeVaga)
               .replace(/\[número de perguntas\]/g, job.perguntas?.length?.toString() || '3')
               .replace(/\{link\}/g, interviewLink);
+
+            // Adicionar automaticamente a pergunta de confirmação após a mensagem inicial
+            const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
+            personalizedMessage = personalizedMessage + confirmationText;
 
             personalizedMessage += `\n\n🎯 Link da entrevista: ${interviewLink}`;
 
@@ -1548,12 +1564,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Replace all placeholders in WhatsApp message
         whatsappMessage = whatsappMessage
           .replace(/\[nome do candidato\]/g, candidate.name)
+          .replace(/\[nome do cliente\]/g, client?.companyName || 'Nossa Empresa')
           .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
           .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+          .replace(/\[nome da vaga\]/g, job.nomeVaga)
           .replace(/\[número de perguntas\]/g, questions.length.toString())
           .replace(/\{nome\}/g, candidate.name)
           .replace(/\{vaga\}/g, job.nomeVaga)
           .replace(/\{link\}/g, interviewLink);
+
+        // Adicionar automaticamente a pergunta de confirmação após a mensagem inicial
+        const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
+        whatsappMessage = whatsappMessage + confirmationText;
 
         // Replace all placeholders in email message and add interview link
         emailMessage = emailMessage
