@@ -301,7 +301,8 @@ const ReportsHistoryPage: React.FC = () => {
                                       )}
                                       {response.audioFile && (
                                         <div className="mt-2">
-                                          <audio controls className="w-full">
+                                          <audio controls className="w-full" preload="metadata">
+                                            <source src={`/uploads/${response.audioFile}`} type="audio/ogg" />
                                             <source src={`/${response.audioFile}`} type="audio/ogg" />
                                             Seu navegador não suporta o elemento de áudio.
                                           </audio>
