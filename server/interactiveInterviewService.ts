@@ -545,40 +545,28 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Usar versão corrigida conforme especificação
-      const FormData = (await import('form-data')).default;
-      const formData = new FormData();
+      // Usar OpenAI SDK como no simpleInterviewService que funciona
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({
+        apiKey: openaiApiKey
+      });
+
+      console.log(`🚀 [WHISPER] Transcrevendo via OpenAI SDK...`);
+
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(audioPath),
+        model: 'whisper-1',
+        language: 'pt',
+        response_format: 'text'
+      });
+
+      console.log(`✅ [WHISPER] Transcrição via SDK obtida: "${transcription}"`);
       
-      formData.append('file', fs.createReadStream(audioPath), {
-        filename: path.basename(audioPath),
-        contentType: 'audio/ogg'
-      });
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
-
-      console.log(`🚀 [WHISPER] Enviando arquivo para API (versão corrigida)...`);
-
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`
-          // Não definir Content-Type manualmente; deixar form-data gerenciar o boundary
-        },
-        body: formData as any
-      });
-
-      console.log(`📊 [WHISPER] Status da resposta: ${response.status}`);
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.log(`❌ [WHISPER] Erro OpenAI ${response.status}: ${errorBody}`);
-        throw new Error(`OpenAI API error ${response.status}: ${errorBody}`);
+      if (transcription && transcription.trim().length > 0) {
+        return transcription.trim();
       }
-
-      const data = await response.json();
-      const transcription = data.text || '';
-      console.log(`✅ [WHISPER] Transcrição bem-sucedida: "${transcription}"`);
-      return transcription.trim();
+      
+      return '';
       
     } catch (error) {
       console.log(`❌ [WHISPER] Erro na transcrição:`, error.message);
