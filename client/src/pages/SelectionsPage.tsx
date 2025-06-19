@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X } from "lucide-react";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X, Wifi, WifiOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
