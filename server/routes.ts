@@ -2836,7 +2836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectionId = parseInt(req.params.selectionId);
       
       // Verificar se a seleção existe e se o usuário tem acesso
-      const selection = await storage.getSelection(selectionId);
+      const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
         return res.status(404).json({ message: 'Selection not found' });
       }
@@ -2855,6 +2855,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const candidate = await storage.getCandidate(interview.candidateId);
           const responses = await storage.getResponsesByInterviewId(interview.id);
           const questions = await storage.getQuestionsByJobId(selection.jobId);
+          
+          console.log(`📋 Interview ${interview.id} - Responses: ${responses.length}, Questions: ${questions.length}`);
           
           return {
             candidate: {
