@@ -1018,6 +1018,14 @@ export class FirebaseStorage implements IStorage {
         const candidateResponses: any[] = [];
         allResponsesSnapshot.forEach(doc => {
           const data = doc.data();
+          console.log(`🔍 [ISOLAMENTO] Verificando resposta ${doc.id}:`, {
+            selectionId: data.selectionId,
+            candidateId: data.candidateId,
+            buscando_selectionId: selectionId,
+            buscando_candidateId: candidateId.toString(),
+            match: data.selectionId === selectionId && data.candidateId === candidateId.toString()
+          });
+          
           // BUSCAR APENAS respostas da seleção específica E candidato específico
           if (data.selectionId === selectionId && data.candidateId === candidateId.toString()) {
             candidateResponses.push({
