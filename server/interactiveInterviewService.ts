@@ -412,7 +412,7 @@ class InteractiveInterviewService {
     console.log(`🎯 [AUDIO] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
-  private async transcribeAudio(audioBuffer: Buffer, phone: string): Promise<string> {
+  private async transcribeAudio(audioPath: string, phone: string): Promise<string> {
     console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
     try {
@@ -423,25 +423,19 @@ class InteractiveInterviewService {
         return '';
       }
 
-      // Salvar áudio temporariamente para OpenAI Whisper
+      // Usar arquivo já existente para OpenAI Whisper
       const fs = await import('fs');
-      const path = await import('path');
       
-      // Criar diretório se não existir
-      const uploadsDir = './uploads';
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      if (!fs.existsSync(audioPath)) {
+        throw new Error(`Arquivo de áudio não encontrado: ${audioPath}`);
       }
       
-      const tempAudioPath = path.join(uploadsDir, `temp_audio_${phone}_${Date.now()}.ogg`);
-      
-      fs.writeFileSync(tempAudioPath, audioBuffer);
-      console.log(`💾 [WHISPER] Áudio salvo temporariamente: ${tempAudioPath}`);
+      console.log(`💾 [WHISPER] Usando arquivo: ${audioPath}`);
       
       // Transcrever com OpenAI Whisper
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
-      formData.append('file', fs.createReadStream(tempAudioPath));
+      formData.append('file', fs.createReadStream(audioPath));
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
       formData.append('response_format', 'text');
