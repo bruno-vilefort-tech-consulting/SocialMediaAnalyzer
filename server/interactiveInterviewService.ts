@@ -522,6 +522,7 @@ class InteractiveInterviewService {
       const openaiApiKey = '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';
       
       const fs = await import('fs');
+      const path = await import('path');
       
       if (!fs.existsSync(audioPath)) {
         throw new Error(`Arquivo de áudio não encontrado: ${audioPath}`);
@@ -537,41 +538,39 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Usar método Node.js nativo que funciona
+      // Usar versão corrigida conforme especificação
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
       
-      // Método correto com opções de arquivo
       formData.append('file', fs.createReadStream(audioPath), {
-        filename: 'audio.ogg',
+        filename: path.basename(audioPath),
         contentType: 'audio/ogg'
       });
       formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
 
-      console.log(`🚀 [WHISPER] Enviando arquivo para API com headers corretos...`);
+      console.log(`🚀 [WHISPER] Enviando arquivo para API (versão corrigida)...`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          ...formData.getHeaders()
+          'Authorization': `Bearer ${openaiApiKey}`
+          // Não definir Content-Type manualmente; deixar form-data gerenciar o boundary
         },
-        body: formData
+        body: formData as any
       });
 
       console.log(`📊 [WHISPER] Status da resposta: ${response.status}`);
 
-      if (response.ok) {
-        const result = await response.json();
-        const transcription = result.text || '';
-        console.log(`✅ [WHISPER] Transcrição bem-sucedida: "${transcription}"`);
-        return transcription.trim();
-      } else {
-        const errorText = await response.text();
-        console.log(`❌ [WHISPER] Erro na transcrição: ${response.status} - ${errorText}`);
-        return '';
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.log(`❌ [WHISPER] Erro OpenAI ${response.status}: ${errorBody}`);
+        throw new Error(`OpenAI API error ${response.status}: ${errorBody}`);
       }
+
+      const data = await response.json();
+      const transcription = data.text || '';
+      console.log(`✅ [WHISPER] Transcrição bem-sucedida: "${transcription}"`);
+      return transcription.trim();
       
     } catch (error) {
       console.log(`❌ [WHISPER] Erro na transcrição:`, error.message);
