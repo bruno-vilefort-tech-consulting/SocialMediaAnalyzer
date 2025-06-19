@@ -64,7 +64,7 @@ export default function NewReportsPage() {
   const [activeTab, setActiveTab] = useState('candidates');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const itemsPerPage = 12; // Ajustado para layout em grid
 
   const { 
     isPlaying, 
@@ -110,8 +110,10 @@ export default function NewReportsPage() {
   React.useEffect(() => {
     if (user?.role === 'client' && user.clientId) {
       setSelectedClientId(user.clientId.toString());
+    } else if (user?.role === 'master' && clients.length > 0 && !selectedClientId) {
+      // Para master, não selecionar automaticamente - deixar escolher
     }
-  }, [user]);
+  }, [user, clients]);
 
   // Filtrar candidatos por busca
   const filteredCandidates = candidates.filter((candidate: Candidate) =>
@@ -416,7 +418,7 @@ export default function NewReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Lista de Candidatos</span>
+                <span>Candidatos da Seleção</span>
                 <div className="relative w-64">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -429,33 +431,71 @@ export default function NewReportsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {paginatedCandidates.map((candidate: Candidate) => (
-                  <div key={candidate.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="space-y-1">
-                      <h4 className="font-medium">{candidate.name}</h4>
-                      <div className="text-sm text-muted-foreground space-x-4">
-                        <span>{candidate.email}</span>
-                        <span>{candidate.phone}</span>
+                  <div key={candidate.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm truncate">{candidate.name}</h4>
+                        <Badge 
+                          variant={candidate.hasResponded ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {candidate.hasResponded ? 'Respondido' : 'Pendente'}
+                        </Badge>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Badge variant={candidate.hasResponded ? 'default' : 'secondary'}>
-                        {candidate.hasResponded ? 'Respondido' : 'Não'}
-                      </Badge>
+                      
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="truncate">{candidate.email}</div>
+                        <div>{candidate.phone}</div>
+                      </div>
+                      
+                      {candidate.hasResponded && candidate.score !== undefined && (
+                        <div className="text-xs">
+                          <span className="font-medium">Score: </span>
+                          <span className={`font-semibold ${
+                            candidate.score >= 80 ? 'text-green-600' : 
+                            candidate.score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {candidate.score}%
+                          </span>
+                        </div>
+                      )}
+                      
+                      {candidate.category && (
+                        <Badge 
+                          variant="outline" 
+                          className="w-full justify-center text-xs"
+                        >
+                          {candidate.category === 'melhor' ? 'Melhor' : 
+                           candidate.category === 'mediano' ? 'Mediano' : 
+                           candidate.category === 'em_duvida' ? 'Em dúvida' : 'Não'}
+                        </Badge>
+                      )}
+                      
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedCandidate(candidate)}
-                        className="flex items-center space-x-2"
+                        className="w-full text-xs"
                       >
-                        <Eye className="h-4 w-4" />
-                        <span>Visualizar</span>
+                        <Eye className="h-3 w-3 mr-1" />
+                        Visualizar
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {filteredCandidates.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum candidato encontrado</h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm ? 'Tente ajustar sua busca.' : 'Esta seleção não possui candidatos.'}
+                  </p>
+                </div>
+              )}
 
               {/* Paginação */}
               {totalPages > 1 && (
@@ -469,7 +509,7 @@ export default function NewReportsPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages}
+                    Página {currentPage} de {totalPages} ({filteredCandidates.length} candidatos)
                   </span>
                   <Button
                     variant="outline"

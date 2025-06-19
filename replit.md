@@ -122,7 +122,8 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **4 abas funcionais**: Lista vertical de seleções, candidatos, análise por score, selecionados por categoria
   - **Sistema de categorização**: 4 categorias (Melhor, Mediano, Em dúvida, Não) com save no banco
   - **Player de áudio integrado**: Controles play/pause/stop embedados para cada resposta
-  - **Busca e paginação**: Campo de busca por nome/email/telefone, 20 itens por página
+  - **Layout candidatos otimizado**: Grid horizontal responsivo com cards compactos, score e categoria visíveis
+  - **Busca e paginação**: Campo de busca por nome/email/telefone, 12 itens por página em grid
   - **Progress tracking**: Coluna respostas mostra progresso X/Total candidatos
   - **AIComparisonService criado**: Arquivo separado para análise ChatGPT de respostas vs resposta perfeita
   - **APIs backend**: 3 novos endpoints para candidatos, categorias e análise AI
