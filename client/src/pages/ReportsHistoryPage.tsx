@@ -142,205 +142,236 @@ const ReportsHistoryPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Histórico de Relatórios</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Relatórios</h1>
           <p className="text-gray-600">
-            Visualize e gerencie todos os relatórios de entrevistas já realizadas
+            Visualize e analise os dados dos candidatos
           </p>
         </div>
       </div>
 
-      {reports.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum relatório encontrado</h3>
-            <p className="text-gray-600">
-              Os relatórios são gerados automaticamente quando você envia uma seleção via WhatsApp.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {Array.isArray(reports) && reports.length > 0 ? reports
-            .sort((a: Report, b: Report) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .map((report: Report) => (
-              <Card key={report.id} className="border border-gray-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg font-semibold text-gray-900">
-                        {report.selectionName}
-                      </CardTitle>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                        <span>{report.jobName}</span>
-                        <span>•</span>
-                        <span>{report.clientName}</span>
-                        <span>•</span>
-                        <span>{report.candidateListName}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        {expandedReport === report.id ? 'Ocultar Detalhes' : 'Ver Detalhes'}
-                      </Button>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="candidatos">Candidatos</TabsTrigger>
+          <TabsTrigger value="analise">Análise</TabsTrigger>
+          <TabsTrigger value="selecionados">Selecionados</TabsTrigger>
+        </TabsList>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="w-4 h-4" />
+        <TabsContent value="candidatos">
+          {reports.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum relatório encontrado</h3>
+                <p className="text-gray-600">
+                  Os relatórios são gerados automaticamente quando você envia uma seleção via WhatsApp.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {Array.isArray(reports) && reports.length > 0 ? reports
+                .sort((a: Report, b: Report) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((report: Report) => (
+                  <Card key={report.id} className="border border-gray-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900">
+                            {report.selectionName}
+                          </CardTitle>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                            <span>{report.jobName}</span>
+                            <span>•</span>
+                            <span>{report.clientName}</span>
+                            <span>•</span>
+                            <span>{report.candidateListName}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            {expandedReport === report.id ? 'Ocultar Detalhes' : 'Ver Detalhes'}
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Deletar Relatório</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja deletar este relatório? Esta ação não pode ser desfeita.
-                              Todos os dados do relatório, incluindo candidatos e respostas, serão permanentemente removidos.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteReport(report.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Deletar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-6 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span>{report.totalCandidates} candidatos</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>{report.completedInterviews} completadas</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDateTime(report.createdAt)}</span>
-                    </div>
-                  </div>
 
-                  {/* Detalhes Expandidos Inline */}
-                  {expandedReport === report.id && (
-                    <div className="mt-6 space-y-4 border-t pt-4">
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="text-sm text-gray-600">Vaga</p>
-                          <p className="font-medium">{report.jobName}</p>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Deletar Relatório</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja deletar este relatório? Esta ação não pode ser desfeita.
+                                  Todos os dados do relatório, incluindo candidatos e respostas, serão permanentemente removidos.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Deletar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Cliente</p>
-                          <p className="font-medium">{report.clientName}</p>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-6 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          <span>{report.totalCandidates} candidatos</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Lista de Candidatos</p>
-                          <p className="font-medium">{report.candidateListName}</p>
+                        <div className="flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>{report.completedInterviews} completadas</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Gerado em</p>
-                          <p className="font-medium">{formatDateTime(report.createdAt)}</p>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{formatDateTime(report.createdAt)}</span>
                         </div>
                       </div>
 
-                      <div className="space-y-3">
-                        <h4 className="font-semibold">Candidatos ({candidates.length})</h4>
-                        <div className="grid gap-3">
-                          {candidates.map((candidate: ReportCandidate) => (
-                            <div key={candidate.id} className="border rounded-lg">
-                              <div className="flex items-center justify-between p-3">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-3">
-                                    <div>
-                                      <p className="font-medium">{candidate.name}</p>
-                                      <p className="text-sm text-gray-600">{candidate.email}</p>
-                                    </div>
-                                    {getStatusBadge(candidate.status)}
-                                    {candidate.category && getCategoryBadge(candidate.category)}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-medium">Score: {candidate.totalScore}%</p>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-1"
-                                    onClick={() => setExpandedCandidate(expandedCandidate === candidate.id ? null : candidate.id)}
-                                  >
-                                    {expandedCandidate === candidate.id ? 'Ocultar' : 'Ver Respostas'}
-                                  </Button>
-                                </div>
-                              </div>
-                              
-                              {/* Respostas Expandidas Inline */}
-                              {expandedCandidate === candidate.id && (
-                                <div className="border-t bg-gray-50 p-4 space-y-4">
-                                  <h5 className="font-semibold">Respostas de {candidate.name}</h5>
-                                  {responses.map((response: ReportResponse) => (
-                                    <div key={response.id} className="border rounded-lg p-4 bg-white">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
-                                        <Badge variant="outline">Score: {response.score}%</Badge>
-                                      </div>
-                                      <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
-                                      {response.transcription && (
-                                        <div className="bg-gray-50 p-3 rounded mb-3">
-                                          <p className="text-sm"><strong>Transcrição:</strong></p>
-                                          <p className="text-sm">{response.transcription}</p>
-                                        </div>
-                                      )}
-                                      {response.audioFile && (
-                                        <div className="mt-2">
-                                          <audio controls className="w-full" preload="metadata">
-                                            <source src={`/uploads/${response.audioFile}`} type="audio/ogg" />
-                                            <source src={`/${response.audioFile}`} type="audio/ogg" />
-                                            Seu navegador não suporta o elemento de áudio.
-                                          </audio>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                      {/* Detalhes Expandidos Inline */}
+                      {expandedReport === report.id && (
+                        <div className="mt-6 space-y-4 border-t pt-4">
+                          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="text-sm text-gray-600">Vaga</p>
+                              <p className="font-medium">{report.jobName}</p>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )) : (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {Array.isArray(reports) ? 'Nenhum relatório encontrado' : 'Erro ao carregar relatórios'}
-                  </h3>
-                  <p className="text-gray-600">
-                    {Array.isArray(reports) 
-                      ? 'Ainda não há relatórios gerados. Eles aparecerão automaticamente após enviar seleções.'
-                      : 'Houve um problema ao carregar os dados dos relatórios.'
-                    }
-                  </p>
+                            <div>
+                              <p className="text-sm text-gray-600">Cliente</p>
+                              <p className="font-medium">{report.clientName}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Lista de Candidatos</p>
+                              <p className="font-medium">{report.candidateListName}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-600">Gerado em</p>
+                              <p className="font-medium">{formatDateTime(report.createdAt)}</p>
+                            </div>
+                          </div>
 
-                </CardContent>
-              </Card>
-            )}
-        </div>
-      )}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold">Candidatos ({candidates.length})</h4>
+                            <div className="grid gap-3">
+                              {candidates.map((candidate: ReportCandidate) => (
+                                <div key={candidate.id} className="border rounded-lg">
+                                  <div className="flex items-center justify-between p-3">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-3">
+                                        <div>
+                                          <p className="font-medium">{candidate.name}</p>
+                                          <p className="text-sm text-gray-600">{candidate.email}</p>
+                                        </div>
+                                        {getStatusBadge(candidate.status)}
+                                        {candidate.category && getCategoryBadge(candidate.category)}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium">Score: {candidate.totalScore}%</p>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-1"
+                                        onClick={() => setExpandedCandidate(expandedCandidate === candidate.id ? null : candidate.id)}
+                                      >
+                                        {expandedCandidate === candidate.id ? 'Ocultar' : 'Ver Respostas'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Respostas Expandidas Inline */}
+                                  {expandedCandidate === candidate.id && (
+                                    <div className="border-t bg-gray-50 p-4 space-y-4">
+                                      <h5 className="font-semibold">Respostas de {candidate.name}</h5>
+                                      {responses.map((response: ReportResponse) => (
+                                        <div key={response.id} className="border rounded-lg p-4 bg-white">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
+                                            <Badge variant="outline">Score: {response.score}%</Badge>
+                                          </div>
+                                          <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
+                                          {response.transcription && (
+                                            <div className="bg-gray-50 p-3 rounded mb-3">
+                                              <p className="text-sm"><strong>Transcrição:</strong></p>
+                                              <p className="text-sm">{response.transcription}</p>
+                                            </div>
+                                          )}
+                                          {response.audioFile && (
+                                            <div className="mt-2">
+                                              <audio controls className="w-full" preload="metadata">
+                                                <source src={`/uploads/${response.audioFile}`} type="audio/ogg" />
+                                                <source src={`/${response.audioFile}`} type="audio/ogg" />
+                                                Seu navegador não suporta o elemento de áudio.
+                                              </audio>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )) : (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        {Array.isArray(reports) ? 'Nenhum relatório encontrado' : 'Erro ao carregar relatórios'}
+                      </h3>
+                      <p className="text-gray-600">
+                        {Array.isArray(reports) 
+                          ? 'Ainda não há relatórios gerados. Eles aparecerão automaticamente após enviar seleções.'
+                          : 'Houve um problema ao carregar os dados dos relatórios.'
+                        }
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="analise">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Análise de Dados</h3>
+              <p className="text-gray-600">
+                Esta aba conterá análises detalhadas dos candidatos.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="selecionados">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Candidatos Selecionados</h3>
+              <p className="text-gray-600">
+                Esta aba mostrará os candidatos selecionados e aprovados.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
