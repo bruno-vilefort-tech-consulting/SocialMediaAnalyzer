@@ -795,7 +795,20 @@ export default function SelectionsPage() {
                         </Button>
                         
                         {(selection.status === 'draft' || selection.status === 'active') && (
-                          <div className="flex gap-1">{/* Botão WhatsApp removido - envio agora é automático */}
+                          <div className="flex gap-1">
+                            {/* Botão de Reenvio WhatsApp */}
+                            {(selection.sendVia === 'whatsapp' || selection.sendVia === 'both') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => resendWhatsAppMutation.mutate(selection.id)}
+                                disabled={resendWhatsAppMutation.isPending}
+                                title="Reenviar WhatsApp"
+                                className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </Button>
+                            )}
                             
                             {(selection.sendVia === 'email' || selection.sendVia === 'both') && (
                               <Button
