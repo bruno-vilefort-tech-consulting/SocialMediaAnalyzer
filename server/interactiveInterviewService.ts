@@ -245,18 +245,6 @@ class InteractiveInterviewService {
       
       console.log(`💼 [DEBUG_NOVA_SELEÇÃO] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
       
-      // Criar ID único para esta entrevista específica
-      const uniqueInterviewId = `interview_${selection.id}_${candidate.id}_${Date.now()}`;
-      
-      // Criar entrevista no banco de dados com selectionId isolado
-      const interviewDb = await storage.createInterview({
-        id: uniqueInterviewId,
-        selectionId: selection.id,
-        candidateId: candidate.id,
-        token: `whatsapp_${Date.now()}`,
-        status: 'in_progress'
-      });
-
       // NOVA ARQUITETURA: Criar IDs únicos para cada entrevista/seleção
       const uniqueInterviewId = `${selection.id}_${phone.replace(/\D/g, '')}_${Date.now()}`;
       const uniqueCandidateId = `candidate_${selection.id}_${phone.replace(/\D/g, '')}`;
@@ -267,6 +255,15 @@ class InteractiveInterviewService {
       console.log(`   📞 Phone: ${phone}`);
       console.log(`   🏢 Selection: ${selection.name} (${selection.id})`);
       
+      // Criar entrevista no banco de dados com IDs únicos
+      const interviewDb = await storage.createInterview({
+        id: uniqueInterviewId,
+        selectionId: selection.id,
+        candidateId: uniqueCandidateId,
+        token: `whatsapp_${Date.now()}`,
+        status: 'in_progress'
+      });
+
       // Criar entrevista ativa em memória com IDs únicos por seleção
       const interview: ActiveInterview = {
         candidateId: uniqueCandidateId, // ID único por seleção
