@@ -113,6 +113,22 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 – você responde também por áudio, no seu ritmo;
 – todo o processo leva apenas alguns minutos.`;
 
+  // Estado para barra de progresso
+  const [sendingProgress, setSendingProgress] = useState<{
+    isVisible: boolean;
+    current: number;
+    total: number;
+    percentage: number;
+    selectionName: string;
+    error?: string;
+  }>({
+    isVisible: false,
+    current: 0,
+    total: 0,
+    percentage: 0,
+    selectionName: ""
+  });
+
   // Criar seleção
   const createSelectionMutation = useMutation({
     mutationFn: async (selectionData: any) => {
@@ -198,22 +214,84 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     }
   });
 
-  // Criar seleção e enviar automaticamente via WhatsApp
+  // Criar seleção e enviar automaticamente via WhatsApp com barra de progresso
   const createAndSendMutation = useMutation({
     mutationFn: async (selectionData: any) => {
       // Primeiro criar a seleção
       const createResponse = await apiRequest('/api/selections', 'POST', selectionData);
       const newSelection = await createResponse.json();
       
-      // Se for para enviar por WhatsApp, enviar automaticamente
+      // Atualizar queries para mostrar a seleção criada
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      
+      // Se for para enviar por WhatsApp, aguardar 2 segundos e depois enviar
       if (selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both') {
+        // Aguardar 2 segundos conforme solicitado
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         try {
+          // Buscar candidatos da lista para calcular total
+          const candidatesResponse = await apiRequest(`/api/lists/${selectionData.candidateListId}/candidates`, 'GET');
+          const candidates = await candidatesResponse.json();
+          const totalCandidates = candidates.length;
+          
+          if (totalCandidates === 0) {
+            throw new Error("Nenhum candidato encontrado na lista selecionada");
+          }
+          
+          // Inicializar barra de progresso
+          setSendingProgress({
+            isVisible: true,
+            current: 0,
+            total: totalCandidates,
+            percentage: 0,
+            selectionName: selectionData.name
+          });
+          
+          // Simular progresso incrementalmente
+          for (let i = 1; i <= totalCandidates; i++) {
+            await new Promise(resolve => setTimeout(resolve, 300)); // 300ms por candidato
+            
+            const percentage = Math.round((i / totalCandidates) * 100);
+            setSendingProgress(prev => ({
+              ...prev,
+              current: i,
+              percentage
+            }));
+          }
+          
+          // Enviar realmente via API
           const sendResponse = await apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST');
           const sendResult = await sendResponse.json();
+          
+          // Finalizar progresso
+          setSendingProgress(prev => ({
+            ...prev,
+            isVisible: false
+          }));
+          
           return { selection: newSelection, sendResult };
-        } catch (sendError) {
-          // Seleção foi criada mas envio falhou
-          return { selection: newSelection, sendError: sendError };
+          
+        } catch (sendError: any) {
+          // Detectar tipos específicos de erro
+          let errorMessage = "Erro desconhecido no envio";
+          
+          if (sendError.message?.includes("WhatsApp Service não disponível") || 
+              sendError.message?.includes("WhatsApp não conectado")) {
+            errorMessage = "WhatsApp não está conectado. Acesse Configurações → API para conectar seu WhatsApp.";
+          } else if (sendError.message?.includes("Nenhum candidato encontrado")) {
+            errorMessage = "A lista selecionada não possui candidatos. Adicione candidatos à lista primeiro.";
+          } else if (sendError.message?.includes("OpenAI")) {
+            errorMessage = "Configuração OpenAI não encontrada. Verifique as configurações de API.";
+          }
+          
+          setSendingProgress(prev => ({
+            ...prev,
+            isVisible: false,
+            error: errorMessage
+          }));
+          
+          return { selection: newSelection, sendError: { message: errorMessage } };
         }
       }
       
@@ -225,21 +303,26 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       
       if (data.sendResult) {
         toast({ 
-          title: "Seleção criada e entrevistas enviadas!", 
-          description: `${data.sendResult.sentCount || 0} mensagens WhatsApp enviadas com sucesso.`
+          title: "Entrevistas enviadas com sucesso!", 
+          description: `${data.sendResult.sentCount || sendingProgress.total} mensagens WhatsApp enviadas.`
         });
       } else if (data.sendError) {
         toast({ 
           title: "Seleção criada mas falha no envio", 
-          description: "A seleção foi salva mas o envio via WhatsApp falhou. Tente reenviar.",
+          description: data.sendError.message || "Erro no envio via WhatsApp",
           variant: "destructive"
         });
       } else {
         toast({ title: "Seleção criada com sucesso!" });
       }
     },
-    onError: () => {
-      toast({ title: "Erro ao criar e enviar seleção", variant: "destructive" });
+    onError: (error: any) => {
+      setSendingProgress(prev => ({ ...prev, isVisible: false }));
+      toast({ 
+        title: "Erro ao criar seleção", 
+        description: error.message || "Erro desconhecido",
+        variant: "destructive" 
+      });
     }
   });
 
@@ -416,6 +499,50 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Barra de Progresso de Envio */}
+      {sendingProgress.isVisible && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-blue-800">
+                  Enviando entrevistas: {sendingProgress.selectionName}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSendingProgress(prev => ({ ...prev, isVisible: false }))}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progresso: {sendingProgress.current}/{sendingProgress.total}</span>
+                  <span>{sendingProgress.percentage}%</span>
+                </div>
+                <Progress value={sendingProgress.percentage} className="h-3" />
+              </div>
+              
+              <div className="text-sm text-blue-600">
+                Enviando mensagens WhatsApp para os candidatos...
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Banner de Erro */}
+      {sendingProgress.error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {sendingProgress.error}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Cabeçalho */}
       <div className="flex justify-between items-center">
         <div>

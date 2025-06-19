@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 🎤 SISTEMA DE ENTREVISTAS MELHORADO - Experiência de envio aprimorada conforme solicitado
+  - **Texto das perguntas atualizado**: Mudança de "🎤 Responda com áudio ou texto" para "🎤 Responda somente por áudio"
+  - **Barra de progresso visual**: Implementada com contador "X/Total" e porcentagem durante envio de entrevistas
+  - **Delay de 2 segundos**: Após "Salvar e Enviar", seleção aparece no painel antes de iniciar envio
+  - **Tratamento de erros claro**: Banners específicos para WhatsApp desconectado, lista vazia, configuração OpenAI
+  - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
+  - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
+
 - June 19, 2025: ✅ CANDIDATOS EM LISTAS ESPECÍFICAS CORRIGIDO - Bug de visualização resolvido completamente
   - **Problema identificado**: Nomenclatura inconsistente entre "candidate-list-memberships" e "candidateListMemberships" 
   - **Storage.ts unificado**: Todas as 12+ referências padronizadas para "candidateListMemberships"
