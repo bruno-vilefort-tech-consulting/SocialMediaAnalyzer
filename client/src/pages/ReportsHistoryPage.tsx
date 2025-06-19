@@ -337,7 +337,7 @@ const ReportsHistoryPage: React.FC = () => {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                       {candidates.map((candidate: ReportCandidate) => (
                         <Card 
                           key={candidate.id} 
@@ -347,16 +347,18 @@ const ReportsHistoryPage: React.FC = () => {
                             setCurrentView('candidateDetail');
                           }}
                         >
-                          <CardContent className="p-4">
-                            <div className="space-y-2">
-                              <h3 className="font-medium">{candidate.name}</h3>
-                              <p className="text-sm text-gray-600">{candidate.email}</p>
-                              <p className="text-sm text-gray-600">{candidate.whatsapp}</p>
+                          <CardContent className="p-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <h3 className="font-medium text-sm">{candidate.name}</h3>
+                                <span className="text-xs font-medium text-right">Pontuação: {candidate.totalScore}%</span>
+                              </div>
+                              <p className="text-xs text-gray-600">{candidate.email}</p>
+                              <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
                               <div className="flex items-center justify-between">
                                 {getStatusBadge(candidate.status)}
-                                <span className="text-sm font-medium">Score: {candidate.totalScore}%</span>
+                                {candidate.category && getCategoryBadge(candidate.category)}
                               </div>
-                              {candidate.category && getCategoryBadge(candidate.category)}
                             </div>
                           </CardContent>
                         </Card>
@@ -402,7 +404,7 @@ const ReportsHistoryPage: React.FC = () => {
                         <p className="font-medium">{selectedCandidate.whatsapp}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Score Total</p>
+                        <p className="text-sm text-gray-600">Pontuação Total</p>
                         <p className="font-medium">{selectedCandidate.totalScore}%</p>
                       </div>
                     </div>
@@ -424,7 +426,7 @@ const ReportsHistoryPage: React.FC = () => {
                           <div key={response.id} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                               <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
-                              <Badge variant="outline">Score: {response.score}%</Badge>
+                              <Badge variant="outline">Pontuação: {response.score}%</Badge>
                             </div>
                             <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
                             {response.transcription && (
