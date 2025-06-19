@@ -2076,16 +2076,22 @@ export class FirebaseStorage implements IStorage {
           completedAt: status === 'completed' ? new Date() : null
         });
         
-        // Criar respostas do relatório
+        // Criar respostas do relatório com nova nomenclatura de áudio
         if (responses.length > 0) {
           for (const response of responses) {
+            // Nova nomenclatura: audio_[whatsapp]_[selectionId]_R[numero].ogg
+            const cleanPhone = candidate.whatsapp.replace(/\D/g, '');
+            const newAudioFileName = response.audioFile ? 
+              `audio_${cleanPhone}_${selectionId}_R${response.questionId || 1}.ogg` : 
+              '';
+            
             await this.createReportResponse({
               reportId: report.id,
               reportCandidateId: reportCandidate.id,
               questionNumber: response.questionId || 1,
               questionText: response.questionText || `Pergunta ${response.questionId}`,
               transcription: response.transcription,
-              audioFile: response.audioFile,
+              audioFile: newAudioFileName, // Nova nomenclatura aplicada
               score: response.score || 0,
               recordingDuration: response.recordingDuration || 0,
               aiAnalysis: response.aiAnalysis
