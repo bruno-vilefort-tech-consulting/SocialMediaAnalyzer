@@ -798,6 +798,7 @@ export class FirebaseStorage implements IStorage {
       const candidateMemberships = membershipsSnapshot.docs.filter(doc => {
         const data = doc.data();
         return data.candidateId === id;
+```tool_code
       });
 
       if (candidateMemberships.length > 0) {
