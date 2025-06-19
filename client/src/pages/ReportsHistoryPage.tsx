@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, Eye, Calendar, Users, CheckCircle } from 'lucide-react';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -53,6 +54,7 @@ interface ReportResponse {
 const ReportsHistoryPage: React.FC = () => {
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('candidatos');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
