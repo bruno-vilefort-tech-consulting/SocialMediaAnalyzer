@@ -156,17 +156,22 @@ class InteractiveInterviewService {
       console.log(`🔍 [INTERVIEW] Entrevista ativa - seleção: ${activeInterview.selectionId}, candidato: ${activeInterview.candidateId}`);
       
       // VERIFICAÇÃO CRÍTICA: Se a entrevista ativa usa IDs antigos, reiniciar com seleção mais recente
-      const storage = await import('./storage.js');
-      const allSelections = await storage.default.getAllSelections();
-      const latestSelection = allSelections
-        .filter(s => clientId ? s.clientId.toString() === clientId : true)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-        
-      if (latestSelection && activeInterview.selectionId !== latestSelection.id) {
-        console.log(`🔄 [INTERVIEW] CORREÇÃO: Entrevista ativa usa seleção antiga ${activeInterview.selectionId}, mudando para mais recente ${latestSelection.id}`);
-        this.activeInterviews.delete(phone);
-        await this.startInterview(phone, clientId);
-        return;
+      try {
+        const storageModule = await import('./storage.js');
+        const storage = storageModule.default;
+        const allSelections = await storage.getAllSelections();
+        const latestSelection = allSelections
+          .filter(s => clientId ? s.clientId.toString() === clientId : true)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+          
+        if (latestSelection && activeInterview.selectionId !== latestSelection.id) {
+          console.log(`🔄 [INTERVIEW] CORREÇÃO: Entrevista ativa usa seleção antiga ${activeInterview.selectionId}, mudando para mais recente ${latestSelection.id}`);
+          this.activeInterviews.delete(phone);
+          await this.startInterview(phone, clientId);
+          return;
+        }
+      } catch (error) {
+        console.log(`⚠️ [INTERVIEW] Erro na verificação automática, continuando com entrevista atual:`, error.message);
       }
       
       await this.processResponse(from, activeInterview, text, audioMessage);
