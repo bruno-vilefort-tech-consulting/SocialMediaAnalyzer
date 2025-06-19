@@ -115,14 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🎯 SELEÇÃO "CONSULTOR 19" CRIADA - Sistema preparado para teste final de isolamento
-  - **Nova seleção ativa**: ID 1750313392286 criada e convites enviados via WhatsApp
-  - **Filtro corrigido**: Sistema busca seleções com status 'enviado' para mapeamento correto
-  - **Isolamento implementado**: Busca rigorosa por selectionId + candidateId específicos
-  - **Debug logs ativos**: Sistema mostra qual selectionId será usado nas respostas
-  - **Teste final**: Próxima entrevista validará se isolamento está 100% funcional
-  - **Whisper integrado**: Transcrição automática no fluxo de salvamento
-  - **Banco limpo**: Ambiente fresh para teste sem dados antigos
+- June 19, 2025: 🧹 BANCO LIMPO + DEBUG DETALHADO - Sistema preparado para teste final com logs completos
+  - **Firebase limpo**: Todas as respostas deletadas para teste fresh
+  - **Debug completo adicionado**: Logs mostram busca de candidato, seleção e mapeamento de IDs
+  - **Isolamento confirmado funcionando**: Filtro rigoroso por selectionId + candidateId operacional
+  - **Root cause em investigação**: Mapeamento incorreto de candidato/seleção ao iniciar entrevista
+  - **Logs adicionados**: CANDIDATE_SEARCH e SELECTION_MAPPING para rastrear problema
+  - **Teste final**: Próxima entrevista mostrará exatamente onde está o bug de mapeamento
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos

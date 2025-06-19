@@ -168,6 +168,8 @@ class InteractiveInterviewService {
       await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Candidato não encontrado.");
       return;
     }
+    
+    console.log(`👤 [CANDIDATE_MAPPING] Candidato encontrado: ${candidate.name} (ID: ${candidate.id}) para telefone ${phone}`);
 
     console.log(`👤 [DEBUG_NOVA_SELEÇÃO] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
 
@@ -190,7 +192,8 @@ class InteractiveInterviewService {
         return;
       }
 
-      console.log(`🎯 [DEBUG_NOVA_SELEÇÃO] Seleção encontrada: ${selection.name} (ID: ${selection.id})`);
+      console.log(`🎯 [SELECTION_MAPPING] Seleção encontrada: ${selection.name} (ID: ${selection.id}) - Status: ${selection.status}`);
+      console.log(`🎯 [SELECTION_MAPPING] ClientId da seleção: ${selection.clientId}, ClientId do candidato: ${candidate.clientId}`);
 
       // Buscar job da seleção
       const job = await storage.getJobById(selection.jobId);
