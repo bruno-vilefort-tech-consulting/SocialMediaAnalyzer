@@ -68,17 +68,17 @@ const ReportsHistoryPage: React.FC = () => {
   });
 
   // Buscar candidatos de um relatório específico
-  const { data: candidates = [] } = useQuery({
-    queryKey: ['/api/reports', expandedReport, 'candidates'],
-    queryFn: () => apiRequest(`/api/reports/${expandedReport}/candidates`, 'GET'),
-    enabled: !!expandedReport
+  const { data: candidates = [], isLoading: candidatesLoading } = useQuery({
+    queryKey: ['/api/reports', selectedReport?.id, 'candidates'],
+    queryFn: () => apiRequest(`/api/reports/${selectedReport?.id}/candidates`, 'GET'),
+    enabled: !!selectedReport && currentView === 'candidates'
   });
 
   // Buscar respostas de um candidato específico
-  const { data: responses = [] } = useQuery({
-    queryKey: ['/api/reports/candidates', expandedCandidate, 'responses'],
-    queryFn: () => apiRequest(`/api/reports/candidates/${expandedCandidate}/responses`),
-    enabled: !!expandedCandidate
+  const { data: responses = [], isLoading: responsesLoading } = useQuery({
+    queryKey: ['/api/reports/candidates', selectedCandidate?.id, 'responses'],
+    queryFn: () => apiRequest(`/api/reports/candidates/${selectedCandidate?.id}/responses`),
+    enabled: !!selectedCandidate && currentView === 'candidateDetail'
   });
 
   // Mutação para deletar relatório
@@ -300,8 +300,13 @@ const ReportsHistoryPage: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {candidates.map((candidate: ReportCandidate) => (
+                  {candidatesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {candidates.map((candidate: ReportCandidate) => (
                       <Card 
                         key={candidate.id} 
                         className="cursor-pointer hover:shadow-md transition-shadow border"
@@ -323,8 +328,9 @@ const ReportsHistoryPage: React.FC = () => {
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -376,8 +382,13 @@ const ReportsHistoryPage: React.FC = () => {
                     <CardTitle>Respostas da Entrevista</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {responses.map((response: ReportResponse) => (
+                    {responsesLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {responses.map((response: ReportResponse) => (
                         <div key={response.id} className="border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
