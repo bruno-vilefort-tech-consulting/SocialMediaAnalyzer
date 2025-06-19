@@ -115,13 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🎯 CORREÇÃO FINAL IMPLEMENTADA - Sistema escolhe candidato mais recente quando há duplicatas
-  - **Problema identificado**: Dois candidatos (Daniel Moreira e Daniel Braga) com mesmo telefone
-  - **Solução implementada**: Sistema escolhe automaticamente o candidato mais recente por data de criação
-  - **Lógica inteligente**: Quando múltiplos candidatos têm mesmo telefone, usa o criado mais recentemente
-  - **Daniel Braga priorizado**: Sendo mais recente, será escolhido automaticamente nas próximas entrevistas
-  - **Debug expandido**: Logs mostram todos os candidatos encontrados e critério de seleção
-  - **Sistema completo**: SelectionId + CandidateId corretos nas próximas entrevistas
+- June 19, 2025: 🆔 NOVA ARQUITETURA DE IDS ÚNICOS IMPLEMENTADA - Isolamento total por seleção conforme sugestão do usuário
+  - **Candidate ID único**: candidate_SELECTIONID_PHONE gera IDs únicos para cada seleção
+  - **Interview ID único**: SELECTIONID_PHONE_TIMESTAMP para entrevistas específicas
+  - **Response ID único**: SELECTIONID_CANDIDATEID_QUESTION_TIMESTAMP para respostas isoladas
+  - **Eliminação total de conflitos**: Mesmo telefone/email em diferentes seleções = candidatos únicos
+  - **Dados enriquecidos**: Respostas incluem candidateName e candidatePhone para referência
+  - **Storage atualizado**: createResponse expandido para suportar nova estrutura de dados
+  - **Sistema pronto**: Próximas entrevistas usarão arquitetura de isolamento absoluto
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos

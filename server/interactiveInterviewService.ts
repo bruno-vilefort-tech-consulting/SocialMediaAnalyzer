@@ -257,9 +257,19 @@ class InteractiveInterviewService {
         status: 'in_progress'
       });
 
-      // Criar entrevista ativa em memória com selectionId
+      // NOVA ARQUITETURA: Criar IDs únicos para cada entrevista/seleção
+      const uniqueInterviewId = `${selection.id}_${phone.replace(/\D/g, '')}_${Date.now()}`;
+      const uniqueCandidateId = `candidate_${selection.id}_${phone.replace(/\D/g, '')}`;
+      
+      console.log(`🆔 [NEW_ARCHITECTURE] Criando IDs únicos:`);
+      console.log(`   📋 Interview ID: ${uniqueInterviewId}`);
+      console.log(`   👤 Candidate ID: ${uniqueCandidateId}`);
+      console.log(`   📞 Phone: ${phone}`);
+      console.log(`   🏢 Selection: ${selection.name} (${selection.id})`);
+      
+      // Criar entrevista ativa em memória com IDs únicos por seleção
       const interview: ActiveInterview = {
-        candidateId: candidate.id,
+        candidateId: uniqueCandidateId, // ID único por seleção
         candidateName: candidate.name,
         phone: phone,
         jobId: job.id,
@@ -270,7 +280,7 @@ class InteractiveInterviewService {
         responses: [],
         startTime: new Date().toISOString(),
         selectionId: selection.id.toString(),
-        interviewDbId: interviewDb.id
+        interviewDbId: uniqueInterviewId // ID único de entrevista
       };
       
       console.log(`✅ [DEBUG_NOVA_SELEÇÃO] ENTREVISTA INICIADA COM ISOLAMENTO TOTAL:`, {
