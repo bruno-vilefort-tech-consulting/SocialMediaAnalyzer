@@ -144,7 +144,14 @@ export class FirebaseStorage implements IStorage {
   
   private getDb(): admin.firestore.Firestore {
     if (!this.db) {
-      this.db = admin.firestore();
+      try {
+        // Use the already initialized admin from db.ts
+        const admin = require('firebase-admin');
+        this.db = admin.firestore();
+      } catch (error) {
+        console.error('Error initializing Firebase admin in storage:', error);
+        throw error;
+      }
     }
     return this.db;
   }

@@ -168,16 +168,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 19, 2025: 📊 SISTEMA DE RELATÓRIOS DE ENTREVISTAS CORRIGIDO E FUNCIONAL - Interface completa para visualização de entrevistas
-  - **Interface NewReportsPage funcional**: Visualização de seleções → candidatos com entrevistas realizadas
-  - **Modal de entrevista detalhada**: Perguntas, respostas transcritas e player de áudio integrado
-  - **Player de áudio funcional**: Controles play/pause/stop para reproduzir gravações dos candidatos
-  - **Endpoint /api/selections/:selectionId/interview-candidates**: API corrigida para buscar candidatos com entrevistas
-  - **Firebase admin corrigido**: Import e inicialização do admin.firestore() nos métodos storage
+- June 19, 2025: 📊 SISTEMA DE RELATÓRIOS IMPLEMENTADO CONFORME SOLICITADO - Painel mostra candidatos que receberam convites
+  - **Interface NewReportsPage funcional**: Relatórios → selecionar seleção → Ver Candidatos → cards horizontais
+  - **Candidatos que receberam convites**: Sistema mostra todos os candidatos das listas que receberam convites via WhatsApp
+  - **Modal de entrevista detalhada**: Clicando em candidato abre modal com perguntas, respostas e player de áudio
+  - **Player de áudio integrado**: Controles play/pause/stop para reproduzir gravações dos candidatos
+  - **Endpoint /api/selections/:selectionId/interview-candidates**: API busca candidatos da lista da seleção
+  - **Estrutura de entrevista**: Mostra perguntas do job com status de resposta (pendente ou completa)
   - **Autorização por role**: Masters selecionam cliente, clientes veem apenas seus dados
-  - **Busca e paginação**: Filtro por nome/email/telefone com layout em grid responsivo
-  - **Fluxo completo**: Relatórios → seleção → Ver Candidatos → Ver Entrevista → áudios reproduzíveis
-  - **Métodos storage implementados**: getInterviewsBySelection e getResponsesByInterviewId funcionais
+  - **Layout horizontal**: Cards de candidatos dispostos horizontalmente conforme solicitado
+  - **Fluxo completo funcional**: Relatórios → seleção → Ver Candidatos → modal entrevista → áudios
+  - **Firebase exclusivo**: Sistema usa apenas Firebase sem outros bancos de dados
 
 - June 19, 2025: 🎉 SISTEMA DE ENTREVISTAS POR ÁUDIO VIA WHATSAPP 100% FUNCIONAL - Implementação completa finalizada
   - **Download de áudio real**: Handler processAudioMessageWithFix implementado com sucesso

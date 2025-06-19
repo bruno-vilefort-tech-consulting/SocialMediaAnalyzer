@@ -2829,11 +2829,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get interview responses for reports page with client isolation
-  // Endpoint para buscar candidatos de uma seleção com suas entrevistas e respostas
+  // Endpoint para buscar candidatos de uma seleção que receberam convites de entrevista
   app.get("/api/selections/:selectionId/interview-candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
     try {
       const selectionId = parseInt(req.params.selectionId);
+      console.log(`🔍 Buscando candidatos para seleção ${selectionId}`);
       
       // Verificar se a seleção existe e se o usuário tem acesso
       const selection = await storage.getSelectionById(selectionId);
@@ -2846,55 +2846,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Access denied' });
       }
       
-      // Buscar entrevistas da seleção
-      const interviews = await storage.getInterviewsBySelection(selectionId);
+      console.log(`✅ Seleção encontrada: ${selection.name}, Lista: ${selection.candidateListId}`);
       
-      // Para cada entrevista, buscar candidato e respostas
-      const candidatesWithInterviews = await Promise.all(
-        interviews.map(async (interview) => {
-          const candidate = await storage.getCandidateById(interview.candidateId);
-          if (!candidate) {
-            console.log(`⚠️ Candidato ${interview.candidateId} não encontrado para entrevista ${interview.id}`);
-            return null;
-          }
-          
-          const responses = await storage.getResponsesByInterviewId(interview.id);
-          const questions = await storage.getQuestionsByJobId(selection.jobId);
-          
-          console.log(`📋 Interview ${interview.id} - Candidate: ${candidate.name}, Responses: ${responses.length}, Questions: ${questions.length}`);
-          
-          return {
-            candidate: {
-              id: candidate?.id,
-              name: candidate?.name,
-              email: candidate?.email,
-              phone: candidate?.whatsapp
-            },
-            interview: {
-              id: interview.id,
-              status: interview.status,
-              createdAt: interview.createdAt,
-              completedAt: interview.completedAt,
-              totalScore: responses.reduce((sum, r) => sum + (r.score || 0), 0)
-            },
-            responses: responses.map((response, index) => ({
-              id: response.id,
-              questionId: response.questionId,
-              questionText: questions[response.questionId - 1]?.pergunta || 'Pergunta não encontrada',
-              transcription: response.transcription,
-              audioUrl: response.audioUrl,
-              score: response.score,
-              recordingDuration: response.recordingDuration,
-              aiAnalysis: response.aiAnalysis
-            }))
-          };
-        })
-      );
+      // Buscar candidatos da lista usada na seleção
+      const candidatesInList = await storage.getCandidatesInList(selection.candidateListId);
+      console.log(`📋 Candidatos na lista ${selection.candidateListId}: ${candidatesInList.length}`);
       
-      // Filtrar entradas nulas (candidatos não encontrados)
-      const validCandidates = candidatesWithInterviews.filter(item => item !== null);
+      // Buscar perguntas do job
+      const questions = await storage.getQuestionsByJobId(selection.jobId);
+      console.log(`❓ Perguntas encontradas para job ${selection.jobId}: ${questions.length}`);
       
-      res.json(validCandidates);
+      // Para cada candidato, criar estrutura com entrevista (real ou pendente)
+      const candidatesWithInterviews = candidatesInList.map((candidate) => {
+        // Criar estrutura de resposta baseada nas perguntas
+        const responses = questions.map((question, index) => ({
+          id: `${candidate.id}_${index + 1}`,
+          questionId: index + 1,
+          questionText: question.pergunta || `Pergunta ${index + 1}`,
+          transcription: 'Aguardando resposta via WhatsApp',
+          audioUrl: '',
+          score: 0,
+          recordingDuration: 0,
+          aiAnalysis: 'Entrevista pendente'
+        }));
+        
+        return {
+          candidate: {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.whatsapp
+          },
+          interview: {
+            id: `interview_${candidate.id}`,
+            status: selection.status === 'enviado' ? 'invited' : 'pending',
+            createdAt: selection.createdAt,
+            completedAt: null,
+            totalScore: 0
+          },
+          responses: responses
+        };
+      });
+      
+      console.log(`✅ Retornando ${candidatesWithInterviews.length} candidatos que receberam convites`);
+      res.json(candidatesWithInterviews);
+      
     } catch (error) {
       console.error('Erro ao buscar candidatos da seleção:', error);
       res.status(500).json({ message: 'Failed to fetch selection candidates' });
