@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 📦 BACKUP COMPLETO CRIADO - Sistema inteiro documentado em backup_18-06-2025.tar.gz
+  - **Arquivo de backup**: backup_18-06-2025.tar.gz criado com todo o sistema
+  - **Documentação completa**: BACKUP_SISTEMA_18-06-2025.md com análise técnica detalhada
+  - **Problema identificado**: Sistema de relatórios com validInterviews sendo zerado após processamento
+  - **Root cause documentado**: Frontend recebe 22 entrevistas mas após conversão resulta em 0
+  - **Debug implementado**: Logs detalhados no ReportsPage.tsx para rastreamento
+  - **Status preservado**: Sistema operacional exceto painel de relatórios
+
 - June 19, 2025: 📋 MODAL DE DETALHES RESTAURADO - Visualização completa das informações de candidatos implementada
   - **Modal de entrevista detalhada**: Removido da tabela e posicionado como componente independente
   - **Informações completas do candidato**: Nome, email, telefone, pontuação e categoria exibidos
