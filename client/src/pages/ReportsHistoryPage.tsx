@@ -59,18 +59,56 @@ const ReportsHistoryPage = () => {
 
   const { data: reports, isLoading } = useQuery({
     queryKey: ['/api/reports'],
-    queryFn: () => fetch('/api/reports').then(res => res.json())
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/reports', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch reports');
+      }
+      return response.json();
+    }
   });
 
   const { data: candidates } = useQuery({
     queryKey: ['/api/reports', selectedReport?.id, 'candidates'],
-    queryFn: () => selectedReport ? fetch(`/api/reports/${selectedReport.id}/candidates`).then(res => res.json()) : [],
+    queryFn: async () => {
+      if (!selectedReport) return [];
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/reports/${selectedReport.id}/candidates`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch candidates');
+      }
+      return response.json();
+    },
     enabled: !!selectedReport
   });
 
   const { data: responses } = useQuery({
     queryKey: ['/api/reports/candidates', selectedCandidate?.id, 'responses'],
-    queryFn: () => selectedCandidate ? fetch(`/api/reports/candidates/${selectedCandidate.id}/responses`).then(res => res.json()) : [],
+    queryFn: async () => {
+      if (!selectedCandidate) return [];
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/reports/candidates/${selectedCandidate.id}/responses`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch responses');
+      }
+      return response.json();
+    },
     enabled: !!selectedCandidate
   });
 
