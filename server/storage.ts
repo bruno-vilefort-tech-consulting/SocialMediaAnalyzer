@@ -2022,14 +2022,6 @@ export class FirebaseStorage implements IStorage {
       throw error;
     }
   }
-      
-      await batch.commit();
-      console.log(`✅ Relatório ${reportId} deletado completamente`);
-    } catch (error) {
-      console.error('Erro ao deletar relatório:', error);
-      throw error;
-    }
-  }
 
   async generateReportFromSelection(selectionId: string): Promise<string> {
     try {
