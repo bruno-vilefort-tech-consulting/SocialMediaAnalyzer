@@ -223,6 +223,7 @@ export default function CandidatesPage() {
   const { data: listCandidates = [], isLoading: listCandidatesLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/lists', selectedListId, 'candidates'],
     queryFn: async () => {
+      console.log(`🔍 Buscando candidatos para lista ${selectedListId}`);
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
 
@@ -236,6 +237,7 @@ export default function CandidatesPage() {
       });
 
       if (!response.ok) {
+        console.error(`❌ Erro ao buscar candidatos da lista ${selectedListId}:`, response.status, response.statusText);
         if (response.status === 401) {
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user_data");
@@ -246,6 +248,7 @@ export default function CandidatesPage() {
       }
 
       const data = await response.json();
+      console.log(`📋 Candidatos encontrados para lista ${selectedListId}:`, data);
       return Array.isArray(data) ? data : [];
     },
     enabled: !!selectedListId && viewMode === 'single'
@@ -271,6 +274,11 @@ export default function CandidatesPage() {
   const candidatesData = viewMode === 'single' && selectedListId 
     ? listCandidates
     : allCandidates;
+
+  console.log(`📊 Modo de visualização: ${viewMode}, Lista selecionada: ${selectedListId}`);
+  console.log(`📊 Candidatos listCandidates (${listCandidates.length}):`, listCandidates);
+  console.log(`📊 Candidatos allCandidates (${allCandidates.length}):`, allCandidates.slice(0, 3));
+  console.log(`📊 Candidatos candidatesData finais (${candidatesData.length}):`, candidatesData);
 
   // Função para filtrar e ordenar candidatos por busca
   const filteredCandidates = React.useMemo(() => {
@@ -1210,7 +1218,7 @@ export default function CandidatesPage() {
               <CardTitle>Candidatos</CardTitle>
             </CardHeader>
             <CardContent>
-              {candidatesLoading ? (
+              {(candidatesLoading || listCandidatesLoading) ? (
                 <div>Carregando candidatos...</div>
               ) : filteredCandidates.length === 0 ? (
                 <div className="text-center py-8">
