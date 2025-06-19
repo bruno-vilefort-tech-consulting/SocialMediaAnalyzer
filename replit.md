@@ -168,6 +168,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
+- June 19, 2025: 🧹 LIMPEZA COMPLETA DE ARQUIVOS TEMPORÁRIOS - Sistema organizado e otimizado conforme solicitado
+  - **Scripts de debug removidos**: Deletados 100+ arquivos temporários de correções, testes e debug
+  - **Backups antigos removidos**: Arquivos .tar.gz, .zip e documentos de backup desnecessários eliminados
+  - **Arquivos de teste eliminados**: Scripts de verificação, migração e correção pontuais removidos
+  - **Sistema preservado**: Mantidos apenas arquivos essenciais (drizzle.config.ts, vite.config.ts, tailwind.config.ts)
+  - **Estrutura limpa**: Diretórios principais (client/, server/, shared/) intactos e funcionais
+  - **Firebase e WhatsApp protegidos**: Módulos críticos preservados sem alterações
+  - **Funcionalidade mantida**: Sistema de relatórios e todas as features operacionais
+  - **Organização melhorada**: Ambiente de desenvolvimento mais limpo e gerenciável
+
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS IMPLEMENTADO CONFORME SOLICITADO - Painel mostra candidatos que receberam convites
   - **Interface NewReportsPage funcional**: Relatórios → selecionar seleção → Ver Candidatos → cards horizontais
   - **Candidatos que receberam convites**: Sistema mostra todos os candidatos das listas que receberam convites via WhatsApp

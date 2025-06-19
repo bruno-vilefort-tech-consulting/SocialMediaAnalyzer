@@ -1,9 +1,0 @@
-# Este arquivo contém a lista de arquivos para backup
-# Use: tar -czf backup_whatsapp_baileys_arquivos.tar.gz [arquivos listados abaixo]
-
-server/whatsappBaileyService.ts
-server/routes.ts (seções WhatsApp)
-server/index.ts (inicialização Baileys)
-client/src/pages/ApiConfigPage.tsx (interface WhatsApp)
-whatsapp-sessions/ (diretório completo)
-package.json (dependências)
