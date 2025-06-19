@@ -309,11 +309,14 @@ class InteractiveInterviewService {
 
   private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`\n🎯 [AUDIO] ===== PROCESSANDO RESPOSTA =====`);
-    console.log(`📝 [AUDIO] Telefone: ${phone}`);
-    console.log(`📝 [AUDIO] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
-    console.log(`📝 [AUDIO] Texto recebido: "${text}"`);
-    console.log(`🎵 [AUDIO] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
+    console.log(`\n🎯 [DEBUG_NOVA_SELEÇÃO] ===== PROCESSANDO RESPOSTA =====`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Telefone: ${phone}`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Texto recebido: "${text}"`);
+    console.log(`🎵 [DEBUG_NOVA_SELEÇÃO] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
+    console.log(`🏢 [DEBUG_NOVA_SELEÇÃO] ClientId: ${interview.clientId}`);
+    console.log(`📋 [DEBUG_NOVA_SELEÇÃO] SeleçãoId: ${interview.selectionId || 'NÃO_DEFINIDO'}`);
+    console.log(`👤 [DEBUG_NOVA_SELEÇÃO] CandidatoId: ${interview.candidateId}`);
 
     let responseText = text;
     let audioFile: string | undefined;

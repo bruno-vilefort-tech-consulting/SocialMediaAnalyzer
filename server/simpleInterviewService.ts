@@ -284,18 +284,35 @@ class SimpleInterviewService {
         transcriptionSuccess: responseText.length > 0
       };
       
-      // Salvar resposta usando storage interface
-      await storage.createResponse({
+      // Salvar resposta usando storage interface com estrutura completa
+      const responseWithSelection = {
         interviewId: parseInt(interview.candidateId),
-        questionId: interview.currentQuestion + 1, // Usar índice + 1 como ID da pergunta
+        questionId: interview.currentQuestion + 1,
         audioUrl: audioFile || null,
         transcription: responseText,
         score: null,
         aiAnalysis: { rawResponse: responseData },
-        recordingDuration: null
+        recordingDuration: null,
+        selectionId: interview.selectionId || 'unknown',
+        clientId: interview.clientId,
+        candidateId: parseInt(interview.candidateId),
+        questionText: interview.questions[interview.currentQuestion].pergunta
+      };
+      
+      console.log(`💾 [DEBUG_NOVA_SELEÇÃO] Salvando resposta simples com estrutura:`, {
+        candidateId: responseWithSelection.candidateId,
+        selectionId: responseWithSelection.selectionId,
+        clientId: responseWithSelection.clientId,
+        questionId: responseWithSelection.questionId
       });
+      
+      if (storage.createResponseWithSelection) {
+        await storage.createResponseWithSelection(responseWithSelection);
+      } else {
+        await storage.createResponse(responseWithSelection);
+      }
       transcriptionSavedToDB = true;
-      console.log(`✅ [AUDIO] Resposta salva no Firebase:`, responseData.id);
+      console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Resposta simples salva no Firebase:`, responseData.id);
     } catch (saveError) {
       console.log(`❌ [AUDIO] Erro ao salvar no Firebase:`, saveError.message);
     }

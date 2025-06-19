@@ -2864,7 +2864,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           candidate.id, 
           selection.clientId
         );
-        console.log(`🔍 [REAL_DATA] Respostas para ${candidate.name} na seleção ${selection.name}: ${realResponses.length}`);
+        console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] RELATÓRIO - Respostas para ${candidate.name} na seleção ${selection.name}:`, {
+          candidateId: candidate.id,
+          selectionId: selectionId,
+          clientId: selection.clientId,
+          responsesFound: realResponses.length,
+          candidatePhone: candidate.whatsapp
+        });
         
         let responses = [];
         if (realResponses.length > 0) {
@@ -2900,6 +2906,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length)
           : 0;
         const hasRealResponses = realResponses.length > 0;
+        
+        console.log(`📊 [DEBUG_NOVA_SELEÇÃO] SCORE calculado para ${candidate.name}:`, {
+          totalResponses: responses.length,
+          hasRealResponses: hasRealResponses,
+          totalScore: totalScore,
+          status: hasRealResponses ? 'completed' : 'pending'
+        });
         
         return {
           candidate: {
