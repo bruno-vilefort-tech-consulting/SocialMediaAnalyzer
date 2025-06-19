@@ -115,6 +115,25 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
+  - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
+  - **NewReportsPage.tsx criado**: Interface completa com todas as funcionalidades solicitadas
+  - **Permissões implementadas**: Masters selecionam cliente, clientes veem apenas seus dados
+  - **4 abas funcionais**: Lista vertical de seleções, candidatos, análise por score, selecionados por categoria
+  - **Sistema de categorização**: 4 categorias (Melhor, Mediano, Em dúvida, Não) com save no banco
+  - **Player de áudio integrado**: Controles play/pause/stop embedados para cada resposta
+  - **Busca e paginação**: Campo de busca por nome/email/telefone, 20 itens por página
+  - **Progress tracking**: Coluna respostas mostra progresso X/Total candidatos
+  - **AIComparisonService criado**: Arquivo separado para análise ChatGPT de respostas vs resposta perfeita
+  - **APIs backend**: 3 novos endpoints para candidatos, categorias e análise AI
+  - **Storage expandido**: Métodos para entrevistas por seleção/candidato, atualizações, etc.
+
+- June 19, 2025: 🎙️ LÓGICA WHATSAPP MODIFICADA - Respostas apenas por áudio obrigatórias
+  - **Validação implementada**: Sistema rejeita respostas apenas texto durante entrevista
+  - **Mensagem automática**: "Por gentileza, responda por áudio" enviada quando texto detectado
+  - **Fluxo preservado**: Aceitação convite (1/2) ainda funciona via texto
+  - **Sistema protegido**: Módulo WhatsApp não alterado, apenas handler de mensagens
+
 - June 19, 2025: 📦 BACKUP COMPLETO CRIADO - Sistema inteiro documentado em backup_18-06-2025.tar.gz
   - **Arquivo de backup**: backup_18-06-2025.tar.gz criado com todo o sistema
   - **Documentação completa**: BACKUP_SISTEMA_18-06-2025.md com análise técnica detalhada

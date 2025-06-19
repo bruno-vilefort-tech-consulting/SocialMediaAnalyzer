@@ -1,0 +1,59 @@
+Objetivo:
+Permitir que usuários com perfil Master ou Cliente analisem o desempenho dos candidatos após a entrevista, com visualização detalhada de respostas, áudios, classificação e seleção por categoria.
+
+Permissões:
+- Master: pode visualizar seleções de qualquer cliente. Campo obrigatório para selecionar qual cliente visualizar.
+- Cliente: visualiza apenas suas próprias seleções.
+
+Interface e Fluxo:
+
+1. Botão “Relatórios”
+- Localizado abaixo do botão “Seleções”.
+- Exibe lista vertical de todas as seleções cadastradas, ordenadas da mais recente para a mais antiga.
+- Se houver envios ativos de mensagens do WhatsApp, mostrar barra de progresso (0 a 100%) como no painel de Seleções.
+- Mostrar uma coluna Respostas, que vai ter o número de 0 até a quantidade de candidatos da seleção e o progresso disso de quantas pessoas já responderam a entrevista.
+
+2. Ao clicar no nome de uma seleção:
+- Abre a análise da vaga selecionada.
+
+Subtelas da seleção:
+
+A. Aba “Candidatos”
+- Lista com todos os candidatos da seleção.
+- Colunas: Nome, E-mail, WhatsApp, “Respondeu entrevista?” (valores: Respondido / Não), botão “Visualizar” para cada candidato.
+- Campo de busca no topo para localizar candidatos por nome, e-mail ou telefone.
+
+B. Tela de Visualização Individual do Candidato (após clicar “Visualizar”)
+- Exibe todas as perguntas feitas na entrevista.
+- Abaixo de cada pergunta, mostrar:
+  - Resposta do candidato (transcrição).
+  - Player de áudio da resposta, com botão de pause e stop também (embedado).
+- Campo de seleção de categoria com 4 opções:
+  - Melhor, Mediano, Em dúvida, Não.
+- Botão “Salvar” para gravar classificação no banco.
+
+C. Aba “Análise Candidatos”
+- Lista os candidatos que responderam a entrevista, ordenados do score mais alto (mais próximo de 100%) para o menor.
+- Mostrar 20 candidatos por página, com paginação ao final.
+- Cada linha terá botão “Visualizar respostas” (leva para a tela descrita acima).
+
+D. Aba “Selecionados”
+- Exibe as 4 listas separadas com os candidatos que foram classificados nas seguintes categorias:
+  - Melhor
+  - Mediano
+  - Em dúvida
+  - Não
+- Exibição vertical por grupo.
+
+Lógica de Classificação da Assertividade:
+
+- Cada pergunta feita ao candidato tem uma “Resposta Perfeita” cadastrada pelo cliente.
+- A resposta do candidato será comparada com essa resposta perfeita usando API ChatGPT, precisa criar um arquivo separado e vc pode me falar qual é para eu colocar os prompts para poder saber comparar a resposta do candidato para a resposta perfeita, me pergunte isso.
+- O sistema recebe uma nota de 0% a 100% para cada pergunta individual.
+- Após obter os percentuais de todas as respostas, é calculada uma média final:
+  - Exemplo: 10 perguntas, cada uma com 50% de assertividade → média final: 50%.
+- Essa média é usada para classificar os candidatos por proximidade com a resposta ideal.
+
+Armazenamento:
+- Firebase Firestore (dados e classificações).
+- Firebase Storage (áudios das respostas).

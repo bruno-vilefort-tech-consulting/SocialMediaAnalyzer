@@ -23,8 +23,7 @@ import InterviewPage from "@/pages/InterviewPage";
 import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
-import ReportsPage from "@/pages/ReportsPage";
-import InterviewDetailsPage from "@/pages/InterviewDetailsPage";
+import NewReportsPage from "@/pages/NewReportsPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 import NotFound from "@/pages/not-found";
