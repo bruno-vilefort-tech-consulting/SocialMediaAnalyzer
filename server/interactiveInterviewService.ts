@@ -534,13 +534,29 @@ class InteractiveInterviewService {
       
       console.log(`💾 [WHISPER] Usando arquivo: ${audioPath}`);
       
+      // Verificar tamanho do arquivo
+      const stats = fs.statSync(audioPath);
+      console.log(`📊 [WHISPER] Tamanho do arquivo: ${stats.size} bytes`);
+      
+      if (stats.size < 1000) {
+        console.log(`❌ [WHISPER] Arquivo muito pequeno: ${stats.size} bytes`);
+        return '';
+      }
+      
       // Transcrever com OpenAI Whisper
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
-      formData.append('file', fs.createReadStream(audioPath));
+      
+      // Usar readFileSync para garantir que o arquivo seja lido completamente
+      const audioBuffer = fs.readFileSync(audioPath);
+      formData.append('file', audioBuffer, {
+        filename: 'audio.ogg',
+        contentType: 'audio/ogg'
+      });
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
-      formData.append('response_format', 'text');
+
+      console.log(`🚀 [WHISPER] Enviando ${audioBuffer.length} bytes para API...`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
@@ -551,17 +567,16 @@ class InteractiveInterviewService {
         body: formData
       });
 
-      // Limpar arquivo temporário
-      try {
-        fs.unlinkSync(tempAudioPath);
-      } catch {}
+      console.log(`📊 [WHISPER] Status da resposta: ${response.status}`);
 
       if (response.ok) {
-        const transcription = await response.text();
+        const result = await response.json();
+        const transcription = result.text || '';
         console.log(`✅ [WHISPER] Transcrição bem-sucedida: "${transcription}"`);
         return transcription.trim();
       } else {
-        console.log(`❌ [WHISPER] Erro na transcrição:`, response.status);
+        const errorText = await response.text();
+        console.log(`❌ [WHISPER] Erro na transcrição: ${response.status} - ${errorText}`);
         return '';
       }
       
