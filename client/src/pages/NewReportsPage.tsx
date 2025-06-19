@@ -18,6 +18,8 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Volume2,
   Loader2
 } from 'lucide-react';
@@ -118,6 +120,7 @@ export default function NewReportsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const itemsPerPage = 12;
 
