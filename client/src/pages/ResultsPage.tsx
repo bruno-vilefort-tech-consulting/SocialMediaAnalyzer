@@ -67,9 +67,17 @@ export default function ResultsPage() {
   });
 
   // Get all interview results with proper data structure
-  const { data: results = [], isLoading } = useQuery<InterviewResult[]>({
+  const { data: results = [], isLoading, error } = useQuery<InterviewResult[]>({
     queryKey: ["/api/interview-responses"],
     enabled: true,
+  });
+
+  // Debug logs
+  console.log("📊 Dados dos relatórios:", { 
+    results: results?.length, 
+    isLoading, 
+    error: error?.message,
+    firstResult: results?.[0] 
   });
 
   // Filter results based on search and category
@@ -249,7 +257,9 @@ export default function ResultsPage() {
                 </div>
               ) : filteredResults.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  {results.length === 0 ? 'Nenhuma entrevista encontrada' : 'Nenhum resultado encontrado com os filtros aplicados'}
+                  <p>{results.length === 0 ? 'Nenhuma entrevista encontrada' : 'Nenhum resultado encontrado com os filtros aplicados'}</p>
+                  <p className="text-sm mt-2">Total de entrevistas carregadas: {results.length}</p>
+                  {error && <p className="text-red-500 text-sm mt-2">Erro: {error.message}</p>}
                 </div>
               ) : (
                 <Table>
