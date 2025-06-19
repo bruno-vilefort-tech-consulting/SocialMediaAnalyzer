@@ -419,6 +419,19 @@ class InteractiveInterviewService {
           createdAt: new Date().toISOString()
         });
         
+        // Processar transcrição via Whisper se tem áudio
+        let transcricaoWhisper = 'Resposta de áudio processada';
+        if (audioFile && audioFile.includes('.ogg')) {
+          try {
+            const transcricao = await this.transcribeAudio(audioFile, interview.phone);
+            if (transcricao && transcricao.trim() && transcricao !== 'ERRO_TRANSCRICAO') {
+              transcricaoWhisper = transcricao;
+            }
+          } catch (error) {
+            console.log(`⚠️ [WHISPER] Erro na transcrição:`, error.message);
+          }
+        }
+
         console.log(`✅ [DEBUG_NOVA_SELEÇÃO] RESPOSTA SALVA COM ISOLAMENTO TOTAL:`, {
           responseId: responseId,
           selectionId: interview.selectionId || 'unknown',
@@ -426,7 +439,7 @@ class InteractiveInterviewService {
           candidateName: interview.candidateName,
           questionNumber: interview.currentQuestion + 1,
           audioFile: audioFile ? 'SIM' : 'NÃO',
-          transcription: responseText ? responseText.substring(0, 50) + '...' : 'VAZIO',
+          transcription: transcricaoWhisper.substring(0, 50) + '...',
           timestamp: new Date().toISOString(),
           ISOLAMENTO: 'TOTAL_GARANTIDO'
         });

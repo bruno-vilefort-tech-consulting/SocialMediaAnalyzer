@@ -1018,8 +1018,8 @@ export class FirebaseStorage implements IStorage {
         const candidateResponses: any[] = [];
         allResponsesSnapshot.forEach(doc => {
           const data = doc.data();
-          // Buscar respostas de qualquer candidato com áudio da seleção atual
-          if (data.audioFile && data.audioFile.includes('175031')) {
+          // BUSCAR APENAS respostas da seleção específica E candidato específico
+          if (data.selectionId === selectionId && data.candidateId === candidateId.toString()) {
             candidateResponses.push({
               id: doc.id,
               ...data
@@ -1029,23 +1029,10 @@ export class FirebaseStorage implements IStorage {
         
         console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas com áudio da seleção atual:`, candidateResponses.length);
         
-        // Se não encontrou por filtro de áudio, buscar respostas que foram salvas hoje
+        // ISOLAMENTO RIGOROSO: Apenas se não encontrou da seleção específica, retornar vazio
         if (candidateResponses.length === 0) {
-          console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Buscando respostas criadas hoje...`);
-          allResponsesSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.createdAt && data.createdAt.seconds) {
-              const responseDate = new Date(data.createdAt.seconds * 1000);
-              const today = new Date();
-              if (responseDate.toDateString() === today.toDateString()) {
-                candidateResponses.push({
-                  id: doc.id,
-                  ...data
-                });
-              }
-            }
-          });
-          console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas de hoje encontradas:`, candidateResponses.length);
+          console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta encontrada para esta seleção específica`);
+          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Mantendo isolamento total - não misturar dados de outras seleções`);
         }
         candidateResponses.forEach((resp, index) => {
           console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Resposta ${index + 1}:`, {
@@ -1058,39 +1045,27 @@ export class FirebaseStorage implements IStorage {
           });
         });
         
-        // Criar dados de resposta baseados nos áudios salvos se encontrados
+        // Mapear apenas respostas específicas desta seleção
         let recentResponses: any[] = [];
         
         if (candidateResponses.length > 0) {
-          recentResponses = candidateResponses.map(resp => ({
-            id: resp.id,
-            questionId: resp.questionId,
-            questionText: resp.questionText || `Pergunta ${resp.questionId}`,
-            transcription: resp.transcription || resp.responseText || 'Transcrição de áudio processada',
-            audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
-            score: resp.score || 85,
-            recordingDuration: resp.recordingDuration || 30,
-            aiAnalysis: resp.aiAnalysis || 'Análise IA em processamento',
-            ...resp
-          }));
+          recentResponses = candidateResponses
+            .filter(resp => resp.selectionId === selectionId && resp.candidateId === candidateId.toString())
+            .map(resp => ({
+              id: resp.id,
+              questionId: resp.questionId,
+              questionText: resp.questionText || `Pergunta ${resp.questionId}`,
+              transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
+              audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
+              score: resp.score || 0,
+              recordingDuration: resp.recordingDuration || 0,
+              aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
+              ...resp
+            }));
+          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Usando ${recentResponses.length} respostas isoladas desta seleção específica`);
         } else {
-          // Criar respostas baseadas nos arquivos de áudio existentes
-          const audioFiles = ['audio_5511984316526_1750312163015_fixed.ogg', 'audio_5511984316526_1750312190260_fixed.ogg'];
-          recentResponses = audioFiles.map((file, index) => ({
-            id: `${candidateId}_audio_${index + 1}`,
-            questionId: index + 1,
-            questionText: index === 0 ? 'Você é consultor há quanto tempo? Pode me explicar com detalhes e me dar uma resposta longa.' : 'Você já deu consultoria financeira antes?',
-            transcription: 'Transcrição do áudio em processamento - Whisper detectou conteúdo de resposta',
-            audioUrl: `/uploads/${file}`,
-            score: 85,
-            recordingDuration: index === 0 ? 25 : 43,
-            aiAnalysis: 'Análise IA: Resposta relevante detectada no áudio',
-            audioFile: `uploads/${file}`,
-            candidateId: candidateId,
-            selectionId: selectionId,
-            createdAt: new Date().toISOString()
-          }));
-          console.log(`🎯 [DEBUG_NOVA_SELEÇÃO] Criadas respostas baseadas nos arquivos de áudio existentes: ${recentResponses.length}`);
+          // Para próximas seleções: retornar vazio para manter isolamento
+          console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta específica - mantendo isolamento total`);
         }
         
         if (recentResponses.length > 0) {

@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: ✅ ÁUDIOS E TRANSCRIÇÕES CORRIGIDOS NO RELATÓRIO - Sistema de mapeamento de respostas implementado
-  - **Problema identificado**: Respostas salvas no banco não apareciam no relatório por inconsistência de mapeamento
-  - **Correção implementada**: Sistema agora busca respostas por múltiplos critérios (seleção, candidato, timestamp)
-  - **Fallback inteligente**: Quando não encontra dados do banco, mapeia arquivos de áudio existentes
-  - **Áudios exibidos**: Transcrições e players de áudio funcionando no relatório da seleção "Consultor 16"
-  - **Sistema robusto**: Múltiplas camadas de busca garantem que dados não se percam
-  - **Debug completo**: Logs detalhados mostram processo de recuperação de dados
-  - **Isolamento mantido**: Cada seleção continua com dados únicos sem mistura
+- June 19, 2025: ✅ ISOLAMENTO RIGOROSO CORRIGIDO - Sistema agora filtra apenas respostas da seleção específica
+  - **Problema identificado**: Relatório mostrava 18 respostas de múltiplas entrevistas misturadas
+  - **Correção implementada**: Filtro rigoroso por selectionId E candidateId específicos
+  - **Isolamento total**: Sistema busca apenas respostas da seleção atual, sem misturar dados
+  - **Transcrição Whisper**: Integrada no fluxo de salvamento para processar áudios automaticamente  
+  - **Fallback removido**: Eliminado sistema que criava dados de outras seleções
+  - **Sistema limpo**: Próximas seleções mostrarão apenas suas próprias respostas
+  - **Debug melhorado**: Logs mostram isolamento correto por seleção específica
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
