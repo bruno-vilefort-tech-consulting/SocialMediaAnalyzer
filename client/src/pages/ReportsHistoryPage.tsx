@@ -35,6 +35,7 @@ interface ReportCandidate {
   completedAt?: any;
   originalCandidateId: string;
   reportId: string;
+  categorySelection?: string;
 }
 
 interface ReportResponse {
@@ -57,6 +58,37 @@ const ReportsHistoryPage: React.FC = () => {
   const [selectedCandidate, setSelectedCandidate] = useState<ReportCandidate | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Mutação para atualizar categoria do candidato
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ candidateId, reportId, selectionId, category }: { 
+      candidateId: string, 
+      reportId: string, 
+      selectionId: string, 
+      category: string 
+    }) => 
+      apiRequest('/api/reports/candidate-category', 'POST', { 
+        candidateId, 
+        reportId, 
+        selectionId, 
+        category 
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', selectedReport?.id, 'candidates'] });
+      toast({
+        title: "Categoria atualizada",
+        description: "A categoria do candidato foi salva com sucesso.",
+        variant: "default",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a categoria.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: reports = [], isLoading, error } = useQuery({
     queryKey: ['/api/reports'],
@@ -154,6 +186,35 @@ const ReportsHistoryPage: React.FC = () => {
         {config.label}
       </Badge>
     );
+  };
+
+  const getCategoryButtonClass = (category: string, selectedCategory?: string) => {
+    const isSelected = selectedCategory === category;
+    const baseClass = "px-3 py-1 text-xs rounded transition-colors";
+    
+    switch (category) {
+      case 'melhor':
+        return `${baseClass} ${isSelected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-green-100'}`;
+      case 'mediano':
+        return `${baseClass} ${isSelected ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-orange-100'}`;
+      case 'em_duvida':
+        return `${baseClass} ${isSelected ? 'bg-gray-400 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`;
+      case 'nao_contratar':
+        return `${baseClass} ${isSelected ? 'bg-red-400 text-white' : 'bg-gray-100 text-gray-700 hover:bg-red-100'}`;
+      default:
+        return `${baseClass} bg-gray-100 text-gray-700`;
+    }
+  };
+
+  const handleCategorySelection = (candidate: ReportCandidate, category: string) => {
+    if (selectedReport) {
+      updateCategoryMutation.mutate({
+        candidateId: candidate.originalCandidateId,
+        reportId: selectedReport.id,
+        selectionId: selectedReport.selectionId,
+        category
+      });
+    }
   };
 
   if (isLoading) {
@@ -361,8 +422,46 @@ const ReportsHistoryPage: React.FC = () => {
                                 {candidate.category && getCategoryBadge(candidate.category)}
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="flex items-center gap-2">
                               <span className="text-xs font-medium">Pontuação: {candidate.totalScore}%</span>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCategorySelection(candidate, 'melhor');
+                                  }}
+                                  className={getCategoryButtonClass('melhor', candidate.categorySelection)}
+                                >
+                                  Melhor
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCategorySelection(candidate, 'mediano');
+                                  }}
+                                  className={getCategoryButtonClass('mediano', candidate.categorySelection)}
+                                >
+                                  Mediano
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCategorySelection(candidate, 'em_duvida');
+                                  }}
+                                  className={getCategoryButtonClass('em_duvida', candidate.categorySelection)}
+                                >
+                                  Em Dúvida
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCategorySelection(candidate, 'nao_contratar');
+                                  }}
+                                  className={getCategoryButtonClass('nao_contratar', candidate.categorySelection)}
+                                >
+                                  Não Contratar
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
