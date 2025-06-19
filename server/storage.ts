@@ -120,20 +120,111 @@ export class FirebaseStorage implements IStorage {
     return reportId;
   }
 
-  // Basic CRUD methods for compatibility
-  async getAllUsers(): Promise<User[]> { return []; }
-  async getUserById(id: string): Promise<User | null> { return null; }
-  async getUserByEmail(email: string): Promise<User | null> { return null; }
-  async createUser(user: Omit<User, "id">): Promise<User> { throw new Error("Not implemented"); }
-  async updateUser(id: string, userUpdate: Partial<User>): Promise<User> { throw new Error("Not implemented"); }
-  async deleteUser(id: string): Promise<void> { throw new Error("Not implemented"); }
+  // User Authentication Methods
+  async getAllUsers(): Promise<User[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "users"));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    const docRef = doc(firebaseDb, "users", id);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as User : null;
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    const usersQuery = query(collection(firebaseDb, "users"), where("email", "==", email));
+    const snapshot = await getDocs(usersQuery);
+    return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as User;
+  }
+
+  async createUser(user: Omit<User, "id">): Promise<User> {
+    const userId = Date.now().toString();
+    const userData = { ...user, createdAt: new Date() };
+    await setDoc(doc(firebaseDb, "users", userId), userData);
+    return { id: userId, ...userData } as User;
+  }
+
+  async updateUser(id: string, userUpdate: Partial<User>): Promise<User> {
+    const docRef = doc(firebaseDb, "users", id);
+    await updateDoc(docRef, userUpdate);
+    const updatedDoc = await getDoc(docRef);
+    return { id, ...updatedDoc.data() } as User;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await deleteDoc(doc(firebaseDb, "users", id));
+  }
   
-  async getAllClients(): Promise<Client[]> { return []; }
-  async getClientById(id: number): Promise<Client | null> { return null; }
-  async getClientByEmail(email: string): Promise<Client | null> { return null; }
-  async createClient(client: Omit<Client, "id">): Promise<Client> { throw new Error("Not implemented"); }
-  async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> { throw new Error("Not implemented"); }
-  async deleteClient(id: number): Promise<void> { throw new Error("Not implemented"); }
+  async getAllClients(): Promise<Client[]> {
+    const snapshot = await getDocs(collection(firebaseDb, "clients"));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: parseInt(doc.id),
+        ...data,
+        contractStart: data.contractStart?.toDate ? data.contractStart.toDate() : data.contractStart,
+        contractEnd: data.contractEnd?.toDate ? data.contractEnd.toDate() : data.contractEnd,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+      } as Client;
+    });
+  }
+
+  async getClientById(id: number): Promise<Client | null> {
+    const docRef = doc(firebaseDb, "clients", String(id));
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) return null;
+    
+    const data = docSnap.data();
+    return {
+      id,
+      ...data,
+      contractStart: data.contractStart?.toDate ? data.contractStart.toDate() : data.contractStart,
+      contractEnd: data.contractEnd?.toDate ? data.contractEnd.toDate() : data.contractEnd,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+    } as Client;
+  }
+
+  async getClientByEmail(email: string): Promise<Client | null> {
+    const clientsQuery = query(collection(firebaseDb, "clients"), where("email", "==", email));
+    const snapshot = await getDocs(clientsQuery);
+    if (snapshot.empty) return null;
+    
+    const docSnap = snapshot.docs[0];
+    const data = docSnap.data();
+    return {
+      id: parseInt(docSnap.id),
+      ...data,
+      contractStart: data.contractStart?.toDate ? data.contractStart.toDate() : data.contractStart,
+      contractEnd: data.contractEnd?.toDate ? data.contractEnd.toDate() : data.contractEnd,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+    } as Client;
+  }
+
+  async createClient(client: Omit<Client, "id">): Promise<Client> {
+    const clientId = Date.now();
+    const clientData = { ...client, createdAt: new Date() };
+    await setDoc(doc(firebaseDb, "clients", String(clientId)), clientData);
+    return { id: clientId, ...clientData } as Client;
+  }
+
+  async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
+    const docRef = doc(firebaseDb, "clients", String(id));
+    await updateDoc(docRef, clientUpdate);
+    const updatedDoc = await getDoc(docRef);
+    const data = updatedDoc.data();
+    return {
+      id,
+      ...data,
+      contractStart: data?.contractStart?.toDate ? data.contractStart.toDate() : data?.contractStart,
+      contractEnd: data?.contractEnd?.toDate ? data.contractEnd.toDate() : data?.contractEnd,
+      createdAt: data?.createdAt?.toDate ? data.createdAt.toDate() : data?.createdAt
+    } as Client;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await deleteDoc(doc(firebaseDb, "clients", String(id)));
+  }
   
   async getJobsByClientId(clientId: number): Promise<Job[]> { return []; }
   async getAllJobs(): Promise<Job[]> { return []; }
