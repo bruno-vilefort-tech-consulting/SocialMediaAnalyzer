@@ -551,8 +551,7 @@ class InteractiveInterviewService {
       formData.append('file', fs.createReadStream(audioPath));
       formData.append('model', 'whisper-1');
 
-      const stats = fs.statSync(audioPath);
-      console.log(`🚀 [WHISPER] Enviando ${stats.size} bytes para API...`);
+      console.log(`🚀 [WHISPER] Enviando arquivo para API...`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
