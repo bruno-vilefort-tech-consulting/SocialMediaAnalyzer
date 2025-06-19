@@ -2837,35 +2837,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Usar métodos do storage existente
       const allInterviews = await storage.getAllInterviews();
       console.log(`📋 Total de entrevistas encontradas: ${allInterviews.length}`);
-      console.log(`📋 Primeira entrevista exemplo:`, allInterviews[0] || 'Nenhuma encontrada');
+      
+      // Se for master, buscar entrevistas de clientes específicos que têm candidatos
+      if (req.user?.role === 'master') {
+        console.log(`👑 Usuário master - buscando todas as entrevistas válidas`);
+      } else {
+        console.log(`👤 Usuário client ${req.user?.clientId} - filtrando entrevistas`);
+      }
       
       const detailedInterviews = [];
       let processedCount = 0;
       let skippedCount = 0;
       
-      // Processar entrevistas com filtro por cliente
+      // Buscar candidatos válidos primeiro para otimizar
+      const allCandidates = await storage.getAllCandidates();
+      console.log(`👥 Total de candidatos no sistema: ${allCandidates.length}`);
+      
+      const validCandidateIds = new Set();
+      const candidateMap = new Map();
+      
+      for (const candidate of allCandidates) {
+        // Se for cliente, filtrar apenas candidatos do seu clientId
+        if (req.user?.role === 'client' && candidate.clientId !== req.user.clientId) {
+          continue;
+        }
+        validCandidateIds.add(candidate.id);
+        candidateMap.set(candidate.id, candidate);
+      }
+      
+      console.log(`✅ Candidatos válidos para processamento: ${validCandidateIds.size}`);
+      
+      // Processar apenas entrevistas com candidatos válidos
       for (const interview of allInterviews) {
         try {
-          console.log(`🔍 Processando entrevista ${interview.id} - candidateId: ${interview.candidateId}`);
-          
-          // Buscar candidato da entrevista para verificar o clientId
-          const candidate = await storage.getCandidateById(interview.candidateId);
-          if (!candidate) {
-            console.log(`⚠️ Candidato ${interview.candidateId} não encontrado para entrevista ${interview.id}`);
+          // Verificar se candidato existe e é válido
+          if (!validCandidateIds.has(interview.candidateId)) {
             skippedCount++;
             continue;
           }
           
-          console.log(`👤 Candidato encontrado: ${candidate.name} (clientId: ${candidate.clientId})`);
-          
-          // ISOLAMENTO POR CLIENTE: Pular se não for do cliente correto
-          if (req.user?.role === 'client' && candidate.clientId !== req.user.clientId) {
-            console.log(`🚫 Pulando entrevista ${interview.id} - candidato clientId ${candidate.clientId} ≠ usuário clientId ${req.user.clientId}`);
-            skippedCount++;
-            continue; // Pular esta entrevista
-          }
-          
-          console.log(`✅ Entrevista ${interview.id} autorizada para processamento`);
+          const candidate = candidateMap.get(interview.candidateId);
+          console.log(`✅ Processando entrevista ${interview.id} - ${candidate.name} (clientId: ${candidate.clientId})`);
           processedCount++;
           
           // Buscar respostas da entrevista

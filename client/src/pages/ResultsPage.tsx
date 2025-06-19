@@ -72,12 +72,11 @@ export default function ResultsPage() {
     enabled: true,
   });
 
-  // Debug logs
+  // Debug logs para desenvolvimento
   console.log("📊 Dados dos relatórios:", { 
-    results: results?.length, 
+    total: results?.length, 
     isLoading, 
-    error: error?.message,
-    firstResult: results?.[0] 
+    hasError: !!error
   });
 
   // Filter results based on search and category
@@ -315,119 +314,14 @@ export default function ResultsPage() {
                         </TableCell>
                         <TableCell>
                           {result.interview.status === 'completed' && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => setSelectedInterview(result)}
-                                >
-                                  <FileText className="w-4 h-4 mr-1" />
-                                  Ver Detalhes
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-4xl max-h-[80vh]">
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    Entrevista - {result.candidate.name}
-                                  </DialogTitle>
-                                </DialogHeader>
-                                <ScrollArea className="h-[400px] p-6">
-                                  <div className="space-y-6">
-                                    {/* Interview Summary */}
-                                    <div className="border-b pb-4">
-                                      <h3 className="font-semibold text-lg mb-2">Resumo da Entrevista</h3>
-                                      <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                          <span className="text-gray-600">Candidato:</span>
-                                          <p className="font-medium">{selectedInterview?.candidate.name}</p>
-                                        </div>
-                                        <div>
-                                          <span className="text-gray-600">Email:</span>
-                                          <p className="font-medium">{selectedInterview?.candidate.email}</p>
-                                        </div>
-                                        <div>
-                                          <span className="text-gray-600">Telefone:</span>
-                                          <p className="font-medium">{selectedInterview?.candidate.phone || '-'}</p>
-                                        </div>
-                                        <div>
-                                          <span className="text-gray-600">Pontuação Final:</span>
-                                          <p className="font-medium text-lg">{selectedInterview?.interview.totalScore}%</p>
-                                        </div>
-                                        {selectedInterview?.job && (
-                                          <>
-                                            <div>
-                                              <span className="text-gray-600">Vaga:</span>
-                                              <p className="font-medium">{selectedInterview.job.title}</p>
-                                            </div>
-                                            <div>
-                                              <span className="text-gray-600">Categoria:</span>
-                                              <Badge className={getCategoryBadge(selectedInterview.interview.category)}>
-                                                {selectedInterview.interview.category === 'high' ? 'Alto' : 
-                                                 selectedInterview.interview.category === 'medium' ? 'Médio' : 'Baixo'}
-                                              </Badge>
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Responses */}
-                                    <div>
-                                      <h3 className="font-semibold text-lg mb-4">Respostas da Entrevista</h3>
-                                      <div className="space-y-4">
-                                        {selectedInterview?.responses.map((response, index) => (
-                                          <div key={response.id} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                              <h4 className="font-medium text-blue-600">
-                                                Pergunta {index + 1}
-                                              </h4>
-                                              <div className="flex items-center gap-2">
-                                                <Badge variant="outline">
-                                                  <Star className="w-3 h-3 mr-1" />
-                                                  {response.score}%
-                                                </Badge>
-                                                {response.audioUrl && (
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                      const audio = new Audio(response.audioUrl);
-                                                      audio.play();
-                                                    }}
-                                                  >
-                                                    <Play className="w-3 h-3" />
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            </div>
-                                            
-                                            <div className="mb-3">
-                                              <p className="text-sm text-gray-600 mb-1">Pergunta:</p>
-                                              <p className="text-sm">{response.questionText || 'Pergunta não disponível'}</p>
-                                            </div>
-
-                                            <div>
-                                              <p className="text-sm text-gray-600 mb-1">Resposta:</p>
-                                              <p className="text-sm bg-gray-50 p-3 rounded">
-                                                {response.transcription || 'Transcrição não disponível'}
-                                              </p>
-                                            </div>
-
-                                            {response.recordingDuration > 0 && (
-                                              <div className="mt-2 text-xs text-gray-500">
-                                                <Clock className="w-3 h-3 inline mr-1" />
-                                                Duração: {formatDuration(response.recordingDuration)}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </ScrollArea>
-                              </DialogContent>
-                            </Dialog>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setSelectedInterview(result)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Ver Detalhes
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -437,6 +331,144 @@ export default function ResultsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Interview Details Dialog - Moved outside the table */}
+          {selectedInterview && (
+            <Dialog open={!!selectedInterview} onOpenChange={() => setSelectedInterview(null)}>
+              <DialogContent className="max-w-4xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>
+                    Entrevista Detalhada - {selectedInterview.candidate.name}
+                  </DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                  <div className="space-y-6">
+                    {/* Interview Summary Section */}
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <h3 className="font-semibold text-lg mb-3">Resumo da Entrevista</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-sm text-gray-600">Nome do Candidato:</span>
+                            <p className="font-medium">{selectedInterview.candidate.name}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-600">Email:</span>
+                            <p className="font-medium">{selectedInterview.candidate.email}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-600">Telefone:</span>
+                            <p className="font-medium">{selectedInterview.candidate.phone || 'Não informado'}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div>
+                            <span className="text-sm text-gray-600">Pontuação Final:</span>
+                            <p className="font-medium text-xl text-blue-600">{selectedInterview.interview.totalScore}%</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-600">Categoria de Desempenho:</span>
+                            <Badge className={getCategoryBadge(selectedInterview.interview.category)}>
+                              {selectedInterview.interview.category === 'high' ? 'Alto Desempenho' : 
+                               selectedInterview.interview.category === 'medium' ? 'Médio Desempenho' : 'Baixo Desempenho'}
+                            </Badge>
+                          </div>
+                          {selectedInterview.job && (
+                            <div>
+                              <span className="text-sm text-gray-600">Vaga:</span>
+                              <p className="font-medium">{selectedInterview.job.title}</p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-sm text-gray-600">Total de Respostas:</span>
+                            <p className="font-medium">{selectedInterview.responses.length} pergunta(s)</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Responses Section */}
+                    <div>
+                      <h3 className="font-semibold text-lg mb-4">Respostas Detalhadas</h3>
+                      {selectedInterview.responses.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>Nenhuma resposta registrada para esta entrevista</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {selectedInterview.responses.map((response, index) => (
+                            <Card key={response.id} className="border">
+                              <CardContent className="p-4">
+                                <div className="space-y-3">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h4 className="font-medium text-blue-600 text-lg">
+                                        Pergunta {index + 1}
+                                      </h4>
+                                      <p className="text-sm text-gray-600 mt-1">
+                                        {response.questionText || 'Texto da pergunta não disponível'}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="bg-blue-50">
+                                        <Star className="w-3 h-3 mr-1" />
+                                        {response.score}%
+                                      </Badge>
+                                      {response.recordingDuration > 0 && (
+                                        <Badge variant="outline" className="bg-gray-50">
+                                          <Clock className="w-3 h-3 mr-1" />
+                                          {formatDuration(response.recordingDuration)}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="bg-gray-50 rounded-lg p-3">
+                                    <h5 className="text-sm font-medium text-gray-700 mb-2">Transcrição da Resposta:</h5>
+                                    <p className="text-sm text-gray-900 leading-relaxed">
+                                      {response.transcription || 'Transcrição não disponível'}
+                                    </p>
+                                  </div>
+
+                                  {response.audioUrl && (
+                                    <div className="flex items-center gap-2 pt-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const audio = new Audio(response.audioUrl);
+                                          audio.play();
+                                        }}
+                                      >
+                                        <Play className="w-4 h-4 mr-2" />
+                                        Reproduzir Áudio
+                                      </Button>
+                                      <span className="text-sm text-gray-500">
+                                        Áudio da resposta disponível
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {response.aiAnalysis && (
+                                    <div className="bg-blue-50 rounded-lg p-3">
+                                      <h5 className="text-sm font-medium text-blue-700 mb-2">Análise IA:</h5>
+                                      <p className="text-sm text-blue-900">
+                                        {typeof response.aiAnalysis === 'string' ? response.aiAnalysis : JSON.stringify(response.aiAnalysis)}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          )}
         </>
       )}
     </div>

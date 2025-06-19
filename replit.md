@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 📋 MODAL DE DETALHES RESTAURADO - Visualização completa das informações de candidatos implementada
+  - **Modal de entrevista detalhada**: Removido da tabela e posicionado como componente independente
+  - **Informações completas do candidato**: Nome, email, telefone, pontuação e categoria exibidos
+  - **Seção de resumo expandida**: Grid com dados organizados em duas colunas
+  - **Respostas detalhadas**: Cards individuais com pergunta, transcrição, pontuação e áudio
+  - **Reprodução de áudio funcional**: Botão "Reproduzir Áudio" para cada resposta gravada
+  - **Layout responsivo**: ScrollArea com altura adequada e espaçamento otimizado
+  - **Análise IA integrada**: Exibição de insights quando disponíveis
+
 - June 19, 2025: 📊 PAINEL DE RELATÓRIOS RESTAURADO - Funcionalidade completa de visualização de entrevistas implementada
   - **Endpoint interview-responses corrigido**: Sistema agora busca todas as entrevistas com filtro por cliente
   - **Dados detalhados restaurados**: Candidatos, pontuações, respostas, transcrições e análises IA
