@@ -115,13 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🔧 CORREÇÃO PARA FUNCIONALIDADE DUPLICAR - Sistema agora usa seleção mais recente independente do status
-  - **Problema identificado**: Funcionalidade "Duplicar" cria conflitos quando usuario renomeia e reenvia seleção
-  - **Correção implementada**: Sistema busca sempre a seleção mais recente por data de criação
-  - **Lógica melhorada**: Não depende mais do status 'enviado', funciona com qualquer status
-  - **Debug expandido**: Logs mostram últimas 3 seleções do cliente com datas
-  - **Entrevistas ativas**: Limpeza automática antes de iniciar nova entrevista
-  - **Compatibilidade**: Funciona com seleções duplicadas, renomeadas e reenviadas
+- June 19, 2025: 🎯 PROGRESSO PARCIAL - SelectionId correto mas candidatoId ainda errado
+  - **Melhoria confirmada**: Resposta salva com selectionId correto (1750313392286)
+  - **Problema restante**: CandidatoId ainda usa Daniel Moreira em vez de Daniel Braga
+  - **Cache em memória**: Sistema mantém entrevista ativa antiga em cache mesmo após limpeza
+  - **Correção implementada**: Limpeza completa de TODAS entrevistas ativas ao iniciar nova
+  - **Debug melhorado**: Logs mostram qual seleção "SERÁ USADA" nas 3 mais recentes
+  - **Próximo teste**: Deve usar Consultor 21 (1750313997228) + Daniel Braga (1750309705713)
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos

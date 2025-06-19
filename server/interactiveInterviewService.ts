@@ -141,6 +141,9 @@ class InteractiveInterviewService {
 
     if (text === '1' && !activeInterview) {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
+      this.activeInterviews.clear();
+      console.log(`🧹 [INTERVIEW] Cache de entrevistas ativas completamente limpo`);
       await this.startInterview(phone, clientId);
     } else if (text === '2') {
       console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);
@@ -198,7 +201,8 @@ class InteractiveInterviewService {
       if (clientSelections.length > 0) {
         console.log(`📋 [SELECTION_SEARCH] Últimas 3 seleções:`);
         clientSelections.slice(0, 3).forEach((s, i) => {
-          console.log(`  ${i + 1}. ${s.name} (ID: ${s.id}) - Status: ${s.status} - Data: ${new Date(s.createdAt).toLocaleString()}`);
+          const isNewest = i === 0;
+          console.log(`  ${i + 1}. ${s.name} (ID: ${s.id}) - Status: ${s.status} - Data: ${new Date(s.createdAt).toLocaleString()} ${isNewest ? '← SERÁ USADA' : ''}`);
         });
       }
 
