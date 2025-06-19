@@ -209,10 +209,10 @@ class InteractiveInterviewService {
       
       console.log(`🔍 [SELECTION_SEARCH] Total seleções: ${allSelections.length}`);
       
-      // Filtrar por cliente e ordenar por data (mais recente primeiro)
+      // Filtrar por cliente e ordenar por ID (mais recente primeiro - IDs são timestamps)
       const clientSelections = allSelections
         .filter(s => clientId ? s.clientId.toString() === clientId : true)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        .sort((a, b) => parseInt(b.id) - parseInt(a.id));
         
       console.log(`🔍 [SELECTION_SEARCH] Seleções do cliente ${clientId}: ${clientSelections.length}`);
       
@@ -543,15 +543,16 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Transcrever com OpenAI Whisper
+      // Transcrever com OpenAI Whisper usando FormData correto
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
       
-      // Usar readFileSync para garantir que o arquivo seja lido completamente
+      // Usar buffer direto para garantir compatibilidade
       const audioBuffer = fs.readFileSync(audioPath);
       formData.append('file', audioBuffer, {
         filename: 'audio.ogg',
-        contentType: 'audio/ogg'
+        contentType: 'audio/ogg',
+        knownLength: audioBuffer.length
       });
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
