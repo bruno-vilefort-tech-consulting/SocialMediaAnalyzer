@@ -7,10 +7,13 @@ let QRCode: any;
 
 async function initializeDependencies() {
   if (!makeWASocket) {
+    console.log('📦 Carregando dependências Baileys...');
     const baileys = await import('@whiskeysockets/baileys');
     makeWASocket = baileys.default;
     useMultiFileAuthState = baileys.useMultiFileAuthState;
-    QRCode = await import('qrcode');
+    const qrCodeModule = await import('qrcode');
+    QRCode = qrCodeModule.default || qrCodeModule;
+    console.log('📦 Dependências carregadas com sucesso');
   }
 }
 

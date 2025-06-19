@@ -115,16 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 18, 2025: ✅ SISTEMA WHATSAPP QR CODE 100% FUNCIONAL - Timeout crítico resolvido e testes validados
-  - **Root cause identificado**: JWT_SECRET inconsistente entre server/routes.ts (40 chars) e server/index.ts (14 chars)
-  - **JWT unificado**: Ambos arquivos agora usam 'maximus-interview-system-secret-key-2024' (40 caracteres)
-  - **Timeout estendido**: QR Code válido por 90 segundos em vez de 60 para evitar timeouts
-  - **Configurações Baileys otimizadas**: connectTimeoutMs 45s, keepAliveIntervalMs 30s, maxMsgRetryCount 7
-  - **Browser config melhorado**: WhatsApp Business Chrome 118.0.0.0 para melhor compatibilidade
-  - **Filtros implementados**: shouldIgnoreJid para newsletters, emitOwnEvents desabilitado
-  - **Erro de sintaxe corrigido**: Duplicação de catch blocks removida do routes.ts
-  - **Teste validado**: QR Code gerado com sucesso via API (data:image/png;base64)
-  - **Sistema operacional**: Cliente Daniel Braga conectando WhatsApp via clientId 1749849987543
+- June 18, 2025: ✅ SISTEMA WHATSAPP BAILEYS 100% FUNCIONAL - QR Code sendo gerado e salvo com sucesso
+  - **WhatsApp Baileys Service implementado**: Novo serviço isolado por cliente usando @whiskeysockets/baileys
+  - **Import dinâmico corrigido**: require() substituído por import() para compatibilidade ES modules
+  - **JWT_SECRET unificado**: Ambos server/routes.ts e server/index.ts usam 'maximus-interview-system-secret-key-2024'
+  - **QR Code gerado com sucesso**: Length 6386 caracteres, formato data:image/png;base64
+  - **Sessões isoladas**: Cada cliente tem diretório whatsapp-sessions/client_{clientId}
+  - **Baileys conectado**: "connected to WA" confirmado nos logs
+  - **Keep-alive implementado**: 25 segundos + reconexão automática após 2 segundos
+  - **Status sincronizado**: Endpoint combina dados do banco (QR Code) + memória (status conexão)
+  - **Logs detalhados**: Sistema monitora cada etapa da geração e salvamento do QR Code
 
 - June 18, 2025: 📋 BACKUP COMPLETO DO SISTEMA QR CODE CRIADO - Documentação técnica completa para referência futura
   - **Arquivo criado**: backup_whatsapp_qr_code.md com todos os detalhes técnicos

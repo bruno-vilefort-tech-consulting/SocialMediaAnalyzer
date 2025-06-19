@@ -1915,21 +1915,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 [BAILEYS] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
-      const status = whatsappBaileyService.getStatus(user.clientId.toString());
+      // Primeiro buscar no banco de dados (fonte autoritativa)
+      const dbConfig = await storage.getApiConfig('client', user.clientId.toString());
       
-      console.log(`📱 [BAILEYS] Status encontrado:`, {
-        isConnected: status.isConnected,
-        hasQrCode: !!status.qrCode,
-        qrCodeLength: status.qrCode?.length || 0,
-        phoneNumber: status.phoneNumber
+      // Depois buscar no serviço em memória
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const memoryStatus = whatsappBaileyService.getStatus(user.clientId.toString());
+      
+      // Combinar dados: QR Code do banco (mais confiável) + status de conexão da memória
+      const finalStatus = {
+        isConnected: memoryStatus.isConnected || dbConfig.whatsappQrConnected || false,
+        qrCode: dbConfig.whatsappQrCode || memoryStatus.qrCode || null,
+        phoneNumber: dbConfig.whatsappQrPhoneNumber || memoryStatus.phoneNumber || null,
+        lastConnection: dbConfig.whatsappQrLastConnection || null
+      };
+      
+      console.log(`📱 [BAILEYS] Status final:`, {
+        isConnected: finalStatus.isConnected,
+        hasQrCode: !!finalStatus.qrCode,
+        qrCodeLength: finalStatus.qrCode?.length || 0,
+        phoneNumber: finalStatus.phoneNumber,
+        source: 'DB + Memory'
       });
       
       res.json({
-        isConnected: status.isConnected,
-        phone: status.phoneNumber,
-        qrCode: status.qrCode,
-        lastConnection: null
+        isConnected: finalStatus.isConnected,
+        phone: finalStatus.phoneNumber,
+        qrCode: finalStatus.qrCode,
+        lastConnection: finalStatus.lastConnection
       });
     } catch (error) {
       console.error('❌ Erro ao buscar status WhatsApp:', error);
