@@ -127,23 +127,7 @@ function Router() {
       <Route path="/relatorios">
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
-            <ReportsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
-      <Route path="/reports">
-        <PrivateRoute allowedRoles={['master', 'client']}>
-          <Layout>
-            <ReportsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
-      <Route path="/relatorios/:selectionId">
-        <PrivateRoute allowedRoles={['master', 'client']}>
-          <Layout>
-            <InterviewDetailsPage />
+            <NewReportsPage />
           </Layout>
         </PrivateRoute>
       </Route>
