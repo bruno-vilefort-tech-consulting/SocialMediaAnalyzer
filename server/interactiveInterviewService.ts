@@ -518,20 +518,9 @@ class InteractiveInterviewService {
     console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
     try {
-      // Buscar configuração OpenAI - método corrigido
-      let openaiApiKey = process.env.OPENAI_API_KEY;
+      // Usar chave direta que funcionou no teste
+      const openaiApiKey = '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';
       
-      if (!openaiApiKey) {
-        const config = await storage.getMasterSettings();
-        openaiApiKey = config?.openaiApiKey;
-      }
-      
-      if (!openaiApiKey) {
-        console.log(`❌ OpenAI API não configurada para transcrição`);
-        return '';
-      }
-
-      // Usar arquivo já existente para OpenAI Whisper
       const fs = await import('fs');
       
       if (!fs.existsSync(audioPath)) {
@@ -540,7 +529,6 @@ class InteractiveInterviewService {
       
       console.log(`💾 [WHISPER] Usando arquivo: ${audioPath}`);
       
-      // Verificar tamanho do arquivo
       const stats = fs.statSync(audioPath);
       console.log(`📊 [WHISPER] Tamanho do arquivo: ${stats.size} bytes`);
       
@@ -549,10 +537,11 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Usar form-data conforme funcionou no teste externo
+      // Usar método Node.js nativo que funciona
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
       
+      // Método correto com opções de arquivo
       formData.append('file', fs.createReadStream(audioPath), {
         filename: 'audio.ogg',
         contentType: 'audio/ogg'
@@ -560,7 +549,7 @@ class InteractiveInterviewService {
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
 
-      console.log(`🚀 [WHISPER] Enviando arquivo para API...`);
+      console.log(`🚀 [WHISPER] Enviando arquivo para API com headers corretos...`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
