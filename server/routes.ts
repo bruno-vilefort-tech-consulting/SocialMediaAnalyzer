@@ -138,77 +138,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Buscando relatórios para usuário ${userRole} (clientId: ${userClientId})`);
       
       let reports = [];
-      
-      // Por enquanto, vamos gerar relatórios baseados nas seleções existentes
       if (userRole === 'master') {
-        // Master vê seleções de todos os clientes
-        const allSelections = await storage.getAllSelections();
-        console.log(`📋 Seleções encontradas para master: ${allSelections.length}`);
-        
-        for (const selection of allSelections) {
-          if (selection.status === 'enviado') {
-            // Buscar dados da vaga e cliente
-            const job = await storage.getJobById(selection.jobId);
-            const client = await storage.getClientById(selection.clientId);
-            const candidateList = await storage.getCandidateListById(selection.candidateListId);
-            
-            // Contar candidatos e entrevistas completadas
-            const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-            const interviews = await storage.getInterviewsBySelectionId(selection.id);
-            const completedInterviews = interviews.filter(i => i.status === 'completed').length;
-            
-            reports.push({
-              id: `report_${selection.id}`,
-              selectionId: selection.id,
-              selectionName: selection.name,
-              jobName: job?.nomeVaga || 'Vaga não encontrada',
-              clientId: selection.clientId,
-              clientName: client?.companyName || 'Cliente não encontrado',
-              candidateListName: candidateList?.name || 'Lista não encontrada',
-              totalCandidates: candidates.length,
-              completedInterviews: completedInterviews,
-              createdAt: selection.createdAt,
-              generatedAt: selection.createdAt
-            });
-          }
-        }
+        reports = await storage.getAllReports();
       } else if (userRole === 'client' && userClientId) {
-        // Cliente vê apenas suas próprias seleções
-        const clientSelections = await storage.getSelectionsByClientId(userClientId);
-        console.log(`📋 Seleções encontradas para cliente ${userClientId}: ${clientSelections.length}`);
-        
-        for (const selection of clientSelections) {
-          if (selection.status === 'enviado') {
-            // Buscar dados da vaga
-            const job = await storage.getJobById(selection.jobId);
-            const client = await storage.getClientById(selection.clientId);
-            const candidateList = await storage.getCandidateListById(selection.candidateListId);
-            
-            // Contar candidatos e entrevistas completadas
-            const candidates = await storage.getCandidatesByListId(selection.candidateListId);
-            const interviews = await storage.getInterviewsBySelectionId(selection.id);
-            const completedInterviews = interviews.filter(i => i.status === 'completed').length;
-            
-            reports.push({
-              id: `report_${selection.id}`,
-              selectionId: selection.id,
-              selectionName: selection.name,
-              jobName: job?.nomeVaga || 'Vaga não encontrada',
-              clientId: selection.clientId,
-              clientName: client?.companyName || 'Cliente não encontrado',
-              candidateListName: candidateList?.name || 'Lista não encontrada',
-              totalCandidates: candidates.length,
-              completedInterviews: completedInterviews,
-              createdAt: selection.createdAt,
-              generatedAt: selection.createdAt
-            });
-          }
-        }
+        reports = await storage.getReportsByClientId(userClientId);
       } else {
         return res.status(403).json({ error: 'Access denied' });
       }
       
-      console.log(`📊 Relatórios gerados: ${reports.length}`);
+      console.log(`📊 Encontrados ${reports.length} relatórios`);
       res.json(reports);
     } catch (error) {
       console.error('Erro ao buscar relatórios:', error);
