@@ -115,13 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🧹 BANCO LIMPO + DEBUG DETALHADO - Sistema preparado para teste final com logs completos
-  - **Firebase limpo**: Todas as respostas deletadas para teste fresh
-  - **Debug completo adicionado**: Logs mostram busca de candidato, seleção e mapeamento de IDs
-  - **Isolamento confirmado funcionando**: Filtro rigoroso por selectionId + candidateId operacional
-  - **Root cause em investigação**: Mapeamento incorreto de candidato/seleção ao iniciar entrevista
-  - **Logs adicionados**: CANDIDATE_SEARCH e SELECTION_MAPPING para rastrear problema
-  - **Teste final**: Próxima entrevista mostrará exatamente onde está o bug de mapeamento
+- June 19, 2025: 🔧 CORREÇÃO PARA FUNCIONALIDADE DUPLICAR - Sistema agora usa seleção mais recente independente do status
+  - **Problema identificado**: Funcionalidade "Duplicar" cria conflitos quando usuario renomeia e reenvia seleção
+  - **Correção implementada**: Sistema busca sempre a seleção mais recente por data de criação
+  - **Lógica melhorada**: Não depende mais do status 'enviado', funciona com qualquer status
+  - **Debug expandido**: Logs mostram últimas 3 seleções do cliente com datas
+  - **Entrevistas ativas**: Limpeza automática antes de iniciar nova entrevista
+  - **Compatibilidade**: Funciona com seleções duplicadas, renomeadas e reenviadas
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos

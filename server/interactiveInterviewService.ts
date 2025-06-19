@@ -173,18 +173,33 @@ class InteractiveInterviewService {
 
     console.log(`👤 [DEBUG_NOVA_SELEÇÃO] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
 
-    // Buscar seleção mais recente ENVIADO para este candidato
+    // CORREÇÃO CRÍTICA: Limpar entrevista ativa antiga antes de iniciar nova
+    if (this.activeInterviews.has(phone)) {
+      console.log(`🧹 [INTERVIEW] Removendo entrevista ativa antiga para ${phone}`);
+      this.activeInterviews.delete(phone);
+    }
+
+    // CORREÇÃO: Buscar sempre a seleção mais recente independente do status (para suportar duplicação)
     try {
       const allSelections = await storage.getAllSelections();
-      let selection = allSelections
-        .filter(s => s.status === 'enviado' && (clientId ? s.clientId.toString() === clientId : true))
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-      if (!selection) {
-        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] Nenhuma seleção ativa encontrada, usando mais recente`);
-        selection = allSelections
-          .filter(s => clientId ? s.clientId.toString() === clientId : true)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      
+      console.log(`🔍 [SELECTION_SEARCH] Total seleções: ${allSelections.length}`);
+      
+      // Filtrar por cliente e ordenar por data (mais recente primeiro)
+      const clientSelections = allSelections
+        .filter(s => clientId ? s.clientId.toString() === clientId : true)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+      console.log(`🔍 [SELECTION_SEARCH] Seleções do cliente ${clientId}: ${clientSelections.length}`);
+      
+      // Pegar a mais recente independente do status
+      const selection = clientSelections[0];
+      
+      if (clientSelections.length > 0) {
+        console.log(`📋 [SELECTION_SEARCH] Últimas 3 seleções:`);
+        clientSelections.slice(0, 3).forEach((s, i) => {
+          console.log(`  ${i + 1}. ${s.name} (ID: ${s.id}) - Status: ${s.status} - Data: ${new Date(s.createdAt).toLocaleString()}`);
+        });
       }
 
       if (!selection) {
@@ -192,7 +207,8 @@ class InteractiveInterviewService {
         return;
       }
 
-      console.log(`🎯 [SELECTION_MAPPING] Seleção encontrada: ${selection.name} (ID: ${selection.id}) - Status: ${selection.status}`);
+      console.log(`🎯 [SELECTION_MAPPING] Seleção mais recente: ${selection.name} (ID: ${selection.id}) - Status: ${selection.status}`);
+      console.log(`🎯 [SELECTION_MAPPING] Data criação: ${new Date(selection.createdAt).toLocaleString()}`);
       console.log(`🎯 [SELECTION_MAPPING] ClientId da seleção: ${selection.clientId}, ClientId do candidato: ${candidate.clientId}`);
 
       // Buscar job da seleção
