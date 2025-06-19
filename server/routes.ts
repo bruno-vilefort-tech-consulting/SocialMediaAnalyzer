@@ -2834,40 +2834,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id})`);
       
-      const { collection, getDocs, query, where, doc, getDoc } = await import('firebase/firestore');
-      const { storage } = await import('./storage');
+      // Usar métodos do storage existente
+      const allInterviews = await storage.getAllInterviews();
+      console.log(`📋 Total de entrevistas encontradas: ${allInterviews.length}`);
       
-      let allInterviews: any[] = [];
-      
-      // Buscar entrevistas com isolamento por cliente
-      const allInterviewsSnapshot = await getDocs(collection(storage.firestore, 'interviews'));
-      console.log(`📋 Total de entrevistas encontradas: ${allInterviewsSnapshot.docs.length}`);
+      const detailedInterviews = [];
       
       // Processar entrevistas com filtro por cliente
-      for (const interviewDoc of allInterviewsSnapshot.docs) {
-        const interviewData = interviewDoc.data();
-        
-        // Buscar candidato da entrevista para verificar o clientId
-        let candidateData = null;
+      for (const interview of allInterviews) {
         try {
-          if (interviewData.candidateId) {
-            const candidateDoc = await getDoc(doc(storage.firestore, 'candidates', String(interviewData.candidateId)));
-            if (candidateDoc.exists()) {
-              candidateData = candidateDoc.data();
-              
-              // ISOLAMENTO POR CLIENTE: Pular se não for do cliente correto
-              if (req.user?.role === 'client' && candidateData.clientId !== req.user.clientId) {
-                continue; // Pular esta entrevista
-              }
-            }
+          // Buscar candidato da entrevista para verificar o clientId
+          const candidate = await storage.getCandidateById(interview.candidateId);
+          if (!candidate) continue;
+          
+          // ISOLAMENTO POR CLIENTE: Pular se não for do cliente correto
+          if (req.user?.role === 'client' && candidate.clientId !== req.user.clientId) {
+            continue; // Pular esta entrevista
           }
+          
+          // Buscar respostas da entrevista
+          const responses = await storage.getResponsesByInterviewId(interview.id);
+          
+          // Buscar vaga da entrevista
+          let job = null;
+          try {
+            job = await storage.getJobById(interview.jobId);
+          } catch (err) {
+            console.log(`⚠️ Erro ao buscar vaga ${interview.jobId}:`, err);
+          }
+          
+          // Calcular score total e categoria
+          const totalScore = responses.length > 0 
+            ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length)
+            : 0;
+            
+          const category = totalScore >= 80 ? 'high' : totalScore >= 60 ? 'medium' : 'low';
+          
+          detailedInterviews.push({
+            interview: {
+              id: interview.id,
+              status: interview.status,
+              completedAt: interview.completedAt || null,
+              totalScore,
+              category,
+              selectionId: interview.selectionId,
+              candidateId: interview.candidateId,
+              jobId: interview.jobId
+            },
+            candidate: {
+              id: candidate.id,
+              name: candidate.name,
+              email: candidate.email,
+              phone: candidate.whatsapp || candidate.phone || ''
+            },
+            job: job ? {
+              id: job.id,
+              title: job.nomeVaga,
+              description: job.descricaoVaga
+            } : null,
+            responses: responses.map(response => ({
+              id: response.id,
+              questionId: response.questionId,
+              questionText: response.questionText || '',
+              transcription: response.transcription || '',
+              score: response.score || 0,
+              audioUrl: response.audioUrl || '',
+              recordingDuration: response.recordingDuration || 0,
+              aiAnalysis: response.aiAnalysis || {},
+              createdAt: response.createdAt
+            }))
+          });
         } catch (err) {
-          console.log(`⚠️ Erro ao buscar candidato ${interviewData.candidateId}:`, err);
+          console.log(`⚠️ Erro ao processar entrevista ${interview.id}:`, err);
           continue; // Pular em caso de erro
         }
-        
-        // Se não achou candidato ou não é do cliente, pular
-        if (!candidateData) continue;
+      }
         
         // Buscar respostas da entrevista
         const responsesQuery = query(

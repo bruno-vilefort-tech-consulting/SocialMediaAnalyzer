@@ -66,10 +66,10 @@ export default function ResultsPage() {
     queryKey: ["/api/selections"],
   });
 
-  // Fetch results for selected selection
+  // Get all interview results with proper data structure
   const { data: results = [], isLoading } = useQuery<InterviewResult[]>({
-    queryKey: ["/api/selections", selectedSelection, "results"],
-    enabled: !!selectedSelection,
+    queryKey: ["/api/interview-responses"],
+    enabled: true,
   });
 
   // Filter results based on search and category
@@ -117,8 +117,8 @@ export default function ResultsPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Resultados das Entrevistas</h1>
-          <p className="text-gray-600">Análise e resultados dos candidatos</p>
+          <h1 className="text-2xl font-bold text-gray-900">Relatórios de Entrevistas</h1>
+          <p className="text-gray-600">Análise detalhada de todas as entrevistas realizadas</p>
         </div>
         <Button variant="outline" className="gap-2">
           <Download className="w-4 h-4" />
@@ -126,29 +126,37 @@ export default function ResultsPage() {
         </Button>
       </div>
 
-      {/* Selection Filter */}
+      {/* Filters and Search */}
       <Card>
         <CardContent className="p-4">
           <div className="flex gap-4 items-center">
             <div className="flex-1">
-              <Select value={selectedSelection} onValueChange={setSelectedSelection}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma seleção para ver os resultados" />
-                </SelectTrigger>
-                <SelectContent>
-                  {selections.map((selection) => (
-                    <SelectItem key={selection.id} value={selection.id.toString()}>
-                      {selection.nomeSelecao} - {selection.status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Buscar por nome ou email do candidato..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filtrar por categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as categorias</SelectItem>
+                <SelectItem value="high">Alto desempenho</SelectItem>
+                <SelectItem value="medium">Médio desempenho</SelectItem>
+                <SelectItem value="low">Baixo desempenho</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {selectedSelection && (
+      {results.length > 0 && (
         <>
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -158,7 +166,7 @@ export default function ResultsPage() {
                   <User className="w-5 h-5 text-blue-500" />
                   <div>
                     <p className="text-sm text-gray-600">Total de Candidatos</p>
-                    <p className="text-2xl font-bold">{results.length}</p>
+                    <p className="text-2xl font-bold">{filteredResults.length}</p>
                   </div>
                 </div>
               </CardContent>
