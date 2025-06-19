@@ -285,7 +285,7 @@ export class FirebaseStorage implements IStorage {
 
     try {
       await updateDoc(docRef, clientUpdate);
-      console.log(`✅ UpdateDoc executado com sucesso no Firebase`);
+      console.log(` UpdateDoc executado com sucesso no Firebase`);
 
       const updatedDoc = await getDoc(docRef);
       const data = updatedDoc.data();
@@ -310,7 +310,7 @@ export class FirebaseStorage implements IStorage {
 
       return finalData;
     } catch (error) {
-      console.error(`❌ Erro ao atualizar cliente no Firebase:`, error);
+      console.error(` Erro ao atualizar cliente no Firebase:`, error);
       throw error;
     }
   }
@@ -322,20 +322,20 @@ export class FirebaseStorage implements IStorage {
     // Verificar se o documento existe antes de deletar
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
-      console.log(`❌ Cliente ID ${id} não encontrado no Firebase`);
+      console.log(` Cliente ID ${id} não encontrado no Firebase`);
       throw new Error(`Cliente com ID ${id} não encontrado`);
     }
 
-    console.log(`✅ Cliente encontrado, deletando: ${JSON.stringify(docSnap.data())}`);
+    console.log(` Cliente encontrado, deletando: ${JSON.stringify(docSnap.data())}`);
     await deleteDoc(docRef);
-    console.log(`✅ Cliente ID ${id} deletado com sucesso do Firebase`);
+    console.log(` Cliente ID ${id} deletado com sucesso do Firebase`);
   }
 
 
 
   // Jobs
   async getJobsByClientId(clientId: number): Promise<Job[]> {
-    console.log(`🔍 Buscando vagas do cliente ID: ${clientId}`);
+    console.log(` Buscando vagas do cliente ID: ${clientId}`);
     const snapshot = await getDocs(collection(firebaseDb, "jobs"));
     const allJobs = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -355,7 +355,7 @@ export class FirebaseStorage implements IStorage {
       const jobClientId = typeof job.clientId === 'string' ? parseInt(job.clientId) : job.clientId;
       const match = jobClientId === clientId;
       if (match) {
-        console.log(`✅ Vaga matched: ${job.nomeVaga} (clientId: ${job.clientId})`);
+        console.log(` Vaga matched: ${job.nomeVaga} (clientId: ${job.clientId})`);
       }
       return match;
     });
@@ -364,7 +364,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getJobs(): Promise<Job[]> {
-    console.log('🔍 Buscando todas as vagas no Firebase...');
+    console.log(' Buscando todas as vagas no Firebase...');
     const snapshot = await getDocs(collection(firebaseDb, "jobs"));
     const jobs = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -379,7 +379,7 @@ export class FirebaseStorage implements IStorage {
         perguntas: data.perguntas || []
       } as Job;
     });
-    console.log(`📊 Total de vagas encontradas: ${jobs.length}`);
+    console.log(` Total de vagas encontradas: ${jobs.length}`);
     return jobs;
   }
 
@@ -426,7 +426,7 @@ export class FirebaseStorage implements IStorage {
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      console.log(`❌ Vaga ${id} não encontrada no Firebase`);
+      console.log(` Vaga ${id} não encontrada no Firebase`);
       return;
     }
 
@@ -434,14 +434,14 @@ export class FirebaseStorage implements IStorage {
 
     // Deletar do Firebase
     await deleteDoc(docRef);
-    console.log(`✅ Vaga ${id} deletada do Firebase`);
+    console.log(` Vaga ${id} deletada do Firebase`);
 
     // Verificar se foi deletada
     const checkDoc = await getDoc(docRef);
     if (!checkDoc.exists()) {
-      console.log(`✅ Confirmado: Vaga ${id} removida do Firebase`);
+      console.log(` Confirmado: Vaga ${id} removida do Firebase`);
     } else {
-      console.log(`❌ ERRO: Vaga ${id} ainda existe no Firebase após exclusão!`);
+      console.log(` ERRO: Vaga ${id} ainda existe no Firebase após exclusão!`);
     }
   }
 
@@ -525,7 +525,7 @@ export class FirebaseStorage implements IStorage {
 
   // Candidates
   async getAllCandidates(): Promise<Candidate[]> {
-    console.log('🔍 Storage: Buscando TODOS os candidatos no Firebase...');
+    console.log(' Storage: Buscando TODOS os candidatos no Firebase...');
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const candidates = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -546,7 +546,7 @@ export class FirebaseStorage implements IStorage {
         createdAt: data.createdAt?.toDate() || null
       } as Candidate;
 
-      console.log(`✅ Candidato processado:`, candidate);
+      console.log(` Candidato processado:`, candidate);
       return candidate;
     });
     console.log('📋 Storage: Total candidatos encontrados:', candidates.length);
@@ -554,7 +554,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidatesByClientId(clientId: number): Promise<Candidate[]> {
-    console.log(`🔍 Storage: Buscando candidatos do cliente ${clientId}`);
+    console.log(` Storage: Buscando candidatos do cliente ${clientId}`);
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const allCandidates = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -579,7 +579,7 @@ export class FirebaseStorage implements IStorage {
     // Filter candidates by clientId
     const filteredCandidates = allCandidates.filter(candidate => {
       const match = candidate.clientId === clientId;
-      console.log(`🔍 Candidato ${candidate.name} (${candidate.id}) incluído: ${match}`);
+      console.log(` Candidato ${candidate.name} (${candidate.id}) incluído: ${match}`);
       return match;
     });
 
@@ -588,7 +588,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidatesByListId(listId: number): Promise<Candidate[]> {
-    console.log(`🔍 getCandidatesByListId: Buscando candidatos para lista ${listId}`);
+    console.log(` getCandidatesByListId: Buscando candidatos para lista ${listId}`);
 
     // Busca memberships da lista
     const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
@@ -605,21 +605,21 @@ export class FirebaseStorage implements IStorage {
       };
     });
 
-    console.log('🔍 Todos os memberships:', allMemberships);
+    console.log(' Todos os memberships:', allMemberships);
 
     const memberships = allMemberships.filter(membership => {
       const match = membership.listId === Number(listId);
-      console.log(`🔍 Comparando ${membership.listId} === ${Number(listId)}: ${match}`);
+      console.log(` Comparando ${membership.listId} === ${Number(listId)}: ${match}`);
       return match;
     });
-    console.log(`🎯 Memberships para lista ${listId}:`, memberships);
+    console.log(` Memberships para lista ${listId}:`, memberships);
 
     // Busca candidatos baseado nos IDs encontrados
     const candidateIds = memberships.map(m => m.candidateId);
     console.log(`👥 IDs de candidatos encontrados:`, candidateIds);
 
     if (candidateIds.length === 0) {
-      console.log('❌ Nenhum candidato encontrado para esta lista');
+      console.log(' Nenhum candidato encontrado para esta lista');
       return [];
     }
 
@@ -639,10 +639,10 @@ export class FirebaseStorage implements IStorage {
 
     const filteredCandidates = allCandidates.filter(candidate => {
       const isIncluded = candidateIds.includes(candidate.id);
-      console.log(`🔍 Candidato ${candidate.id} (${candidate.name}) incluído: ${isIncluded}`);
+      console.log(` Candidato ${candidate.id} (${candidate.name}) incluído: ${isIncluded}`);
       return isIncluded;
     });
-    console.log(`✅ Candidatos filtrados para lista ${listId}:`, filteredCandidates);
+    console.log(` Candidatos filtrados para lista ${listId}:`, filteredCandidates);
 
     return filteredCandidates;
   }
@@ -654,7 +654,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async createCandidate(insertCandidate: InsertCandidate): Promise<Candidate> {
-    console.log('🔍 createCandidate chamado com dados:', insertCandidate);
+    console.log(' createCandidate chamado com dados:', insertCandidate);
 
     // Generate unique candidate ID
     const candidateId = Date.now() + Math.floor(Math.random() * 1000);
@@ -672,7 +672,7 @@ export class FirebaseStorage implements IStorage {
       createdAt: new Date()
     };
 
-    console.log('💾 Salvando candidato COM clientId:', candidateData);
+    console.log(' Salvando candidato COM clientId:', candidateData);
     // Create candidate
     await setDoc(doc(firebaseDb, "candidates", String(candidateId)), candidateData);
 
@@ -687,9 +687,9 @@ export class FirebaseStorage implements IStorage {
       };
       console.log('🔗 Criando membership automaticamente:', membershipData, 'com ID:', membershipId);
       await setDoc(doc(firebaseDb, "candidateListMemberships", membershipId), membershipData);
-      console.log('✅ Membership criada automaticamente com sucesso');
+      console.log(' Membership criada automaticamente com sucesso');
     } else {
-      console.log('❌ Membership não criada - listId:', listId, 'clientId:', clientId);
+      console.log(' Membership não criada - listId:', listId, 'clientId:', clientId);
     }
 
     return candidateData as Candidate;
@@ -697,7 +697,7 @@ export class FirebaseStorage implements IStorage {
 
   async createCandidates(insertCandidates: any[]): Promise<Candidate[]> {
     console.log('📥 createCandidates chamado com', insertCandidates.length, 'candidatos');
-    console.log('🔍 Primeiro candidato para debug:', insertCandidates[0]);
+    console.log(' Primeiro candidato para debug:', insertCandidates[0]);
 
     const batch = writeBatch(firebaseDb);
     const candidates: Candidate[] = [];
@@ -711,7 +711,7 @@ export class FirebaseStorage implements IStorage {
       console.log(`📋 Processando candidato: ${candidateFields.name} - listId: ${listId || 'N/A'}, clientId: ${clientId}`);
 
       if (!clientId) {
-        console.error(`❌ ERRO CRÍTICO: Candidato ${candidateFields.name} sem clientId!`);
+        console.error(` ERRO CRÍTICO: Candidato ${candidateFields.name} sem clientId!`);
         throw new Error(`Candidato ${candidateFields.name} deve ter clientId válido`);
       }
 
@@ -722,7 +722,7 @@ export class FirebaseStorage implements IStorage {
         createdAt: new Date()
       };
 
-      console.log(`💾 Salvando candidato ${candidateFields.name} com clientId: ${clientId}`);
+      console.log(` Salvando candidato ${candidateFields.name} com clientId: ${clientId}`);
 
       const candidateRef = doc(firebaseDb, "candidates", String(candidateId));
       batch.set(candidateRef, candidateData);
@@ -742,13 +742,13 @@ export class FirebaseStorage implements IStorage {
         const membershipRef = doc(firebaseDb, "candidateListMemberships", membershipId);
         batch.set(membershipRef, membershipData);
       } else {
-        console.log(`❌ Membership não criada - listId: ${listId}, clientId: ${clientId} para candidato ${candidateId}`);
+        console.log(` Membership não criada - listId: ${listId}, clientId: ${clientId} para candidato ${candidateId}`);
       }
     }
 
     console.log(`🚀 Executando batch com ${candidates.length} candidatos`);
     await batch.commit();
-    console.log('✅ Batch commit executado com sucesso');
+    console.log(' Batch commit executado com sucesso');
 
     return candidates;
   }
@@ -777,10 +777,10 @@ export class FirebaseStorage implements IStorage {
       const updatedDoc = await getDoc(docRef);
       const candidate = { id, ...updatedDoc.data() } as Candidate;
 
-      console.log(`✅ Candidato ${id} atualizado com sucesso:`, candidate);
+      console.log(` Candidato ${id} atualizado com sucesso:`, candidate);
       return candidate;
     } catch (error) {
-      console.error(`❌ Erro ao atualizar candidato ${id}:`, error);
+      console.error(` Erro ao atualizar candidato ${id}:`, error);
       throw new Error(`Falha ao atualizar candidato: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -791,7 +791,7 @@ export class FirebaseStorage implements IStorage {
 
       // Deletar candidato
       await deleteDoc(doc(firebaseDb, "candidates", String(id)));
-      console.log(`✅ Candidato ${id} deletado`);
+      console.log(` Candidato ${id} deletado`);
 
       // Deletar todos os memberships do candidato
       const membershipsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
@@ -807,11 +807,11 @@ export class FirebaseStorage implements IStorage {
           batch.delete(doc.ref);
         });
         await batch.commit();
-        console.log(`✅ ${candidateMemberships.length} memberships deletados`);
+        console.log(`${candidateMemberships.length} memberships deletados`);
       }
 
     } catch (error) {
-      console.error(`❌ Erro ao deletar candidato ${id}:`, error);
+      console.error(`Erro ao deletar candidato ${id}:`, error);
       throw error;
     }
   }
@@ -906,7 +906,7 @@ export class FirebaseStorage implements IStorage {
                      response.interviewId === interviewId;
 
         if (match) {
-          console.log(`🎯 Resposta encontrada para entrevista ${interviewId}:`, {
+          console.log(` Resposta encontrada para entrevista ${interviewId}:`, {
             responseId: doc.id,
             interviewId: response.interviewId,
             questionText: response.questionText?.substring(0, 50) + '...'
@@ -950,7 +950,7 @@ export class FirebaseStorage implements IStorage {
         ...doc.data()
       }));
     } catch (error) {
-      console.log('❌ Erro ao buscar entrevistas por seleção:', error.message);
+      console.log(' Erro ao buscar entrevistas por seleção:', error.message);
       return [];
     }
   }
@@ -966,7 +966,7 @@ export class FirebaseStorage implements IStorage {
         ...doc.data()
       }));
     } catch (error) {
-      console.log('❌ Erro ao buscar entrevistas por candidato:', error.message);
+      console.log(' Erro ao buscar entrevistas por candidato:', error.message);
       return [];
     }
   }
@@ -984,7 +984,7 @@ export class FirebaseStorage implements IStorage {
       }
       return null;
     } catch (error) {
-      console.log('❌ Erro ao buscar entrevista por ID:', error.message);
+      console.log(' Erro ao buscar entrevista por ID:', error.message);
       return null;
     }
   }
@@ -994,24 +994,24 @@ export class FirebaseStorage implements IStorage {
       const docRef = doc(firebaseDb, 'interviews', interviewId);
       await updateDoc(docRef, updates);
     } catch (error) {
-      console.log('❌ Erro ao atualizar entrevista:', error.message);
+      console.log(' Erro ao atualizar entrevista:', error.message);
       throw error;
     }
   }
 
   async getResponsesBySelectionAndCandidate(selectionId: string, candidateId: number, clientId: number): Promise<any[]> {
     try {
-      console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] STORAGE - Buscando respostas para seleção ${selectionId}, candidato ${candidateId}, cliente ${clientId}`);
+      console.log(` [DEBUG_NOVA_SELEÇÃO] STORAGE - Buscando respostas para seleção ${selectionId}, candidato ${candidateId}, cliente ${clientId}`);
 
       // Buscar candidato para obter telefone
       const candidate = await this.getCandidateById(candidateId);
       if (!candidate) {
-        console.log(`❌ Candidato ${candidateId} não encontrado`);
+        console.log(` Candidato ${candidateId} não encontrado`);
         return [];
       }
 
       const candidatePhone = candidate.whatsapp;
-      console.log(`📱 Telefone do candidato: ${candidatePhone}`);
+      console.log(` Telefone do candidato: ${candidatePhone}`);
 
       // Formatos possíveis de candidateId:
       // 1. ID real: candidateId (número)
@@ -1021,7 +1021,7 @@ export class FirebaseStorage implements IStorage {
         `candidate_${selectionId}_${candidatePhone}`
       ];
 
-      console.log(`🔍 Buscando por candidateIds possíveis:`, possibleCandidateIds);
+      console.log(` Buscando por candidateIds possíveis:`, possibleCandidateIds);
 
       // Buscar todas as respostas da seleção para verificar matches
       const allResponsesQuery = query(
@@ -1037,7 +1037,7 @@ export class FirebaseStorage implements IStorage {
         // Verificar se candidateId coincide com algum formato possível
         const isMatch = possibleCandidateIds.includes(data.candidateId);
 
-        console.log(`🔍 [ISOLAMENTO] Verificando resposta ${doc.id}:`, {
+        console.log(` [ISOLAMENTO] Verificando resposta ${doc.id}:`, {
           selectionId: data.selectionId,
           candidateId: data.candidateId,
           possibleIds: possibleCandidateIds,
@@ -1056,7 +1056,7 @@ export class FirebaseStorage implements IStorage {
 
       if (matchingResponses.length === 0) {
         console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
-        console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
+        console.log(` [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
         return [];
       }
 
@@ -1073,7 +1073,7 @@ export class FirebaseStorage implements IStorage {
         ...resp
       }));
 
-      console.log(`✅ [ISOLAMENTO] Processadas ${processedResponses.length} respostas da seleção ${selectionId}`);
+      console.log(` [ISOLAMENTO] Processadas ${processedResponses.length} respostas da seleção ${selectionId}`);
       console.log(`📋 [DEBUG_NOVA_SELEÇÃO] STORAGE FINAL - Total de respostas para seleção ${selectionId}:`, {
         candidateId: candidateId,
         responsesCount: processedResponses.length,
@@ -1099,7 +1099,7 @@ export class FirebaseStorage implements IStorage {
         ...doc.data()
       }));
     } catch (error) {
-      console.log('❌ Erro ao buscar respostas por entrevista:', error.message);
+      console.log(' Erro ao buscar respostas por entrevista:', error.message);
       return [];
     }
   }
@@ -1109,21 +1109,21 @@ export class FirebaseStorage implements IStorage {
       const docRef = doc(firebaseDb, 'responses', responseId);
       await updateDoc(docRef, updates);
     } catch (error) {
-      console.log('❌ Erro ao atualizar resposta:', error.message);
+      console.log(' Erro ao atualizar resposta:', error.message);
       throw error;
     }
   }
 
   // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
   async getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined> {
-    console.log(`🔍 [DEBUG] getApiConfig buscando: entityType=${entityType}, entityId=${entityId}`);
+    console.log(` [DEBUG] getApiConfig buscando: entityType=${entityType}, entityId=${entityId}`);
 
     const configsSnapshot = await getDocs(collection(firebaseDb, "apiConfigs"));
-    console.log(`🔍 [DEBUG] Total de configs no Firebase: ${configsSnapshot.docs.length}`);
+    console.log(` [DEBUG] Total de configs no Firebase: ${configsSnapshot.docs.length}`);
 
     for (const configDoc of configsSnapshot.docs) {
       const data = configDoc.data();
-      console.log(`🔍 [DEBUG] Config encontrada:`, {
+      console.log(` [DEBUG] Config encontrada:`, {
         docId: configDoc.id,
         entityType: data.entityType,
         entityId: data.entityId,
@@ -1132,12 +1132,12 @@ export class FirebaseStorage implements IStorage {
       });
 
       if (data.entityType === entityType && data.entityId === entityId) {
-        console.log(`✅ [DEBUG] Match encontrado! Retornando configuração com QR Code:`, !!data.whatsappQrCode);
+        console.log(` [DEBUG] Match encontrado! Retornando configuração com QR Code:`, !!data.whatsappQrCode);
         return { id: parseInt(configDoc.id) || Date.now(), ...data } as ApiConfig;
       }
     }
 
-    console.log(`❌ [DEBUG] Nenhuma configuração encontrada para ${entityType}/${entityId}`);
+    console.log(` [DEBUG] Nenhuma configuração encontrada para ${entityType}/${entityId}`);
     return undefined;
   }
 
@@ -1158,7 +1158,7 @@ export class FirebaseStorage implements IStorage {
       `${config.entityType}_${config.entityId}` : 
       `${config.entityType}_${config.entityId}_${Date.now()}`;
 
-    console.log(`💾 [DEBUG] Salvando configuração:`, {
+    console.log(` [DEBUG] Salvando configuração:`, {
       docId,
       hasExisting: !!existingConfig,
       preservedQrCode: !!configData.whatsappQrCode,
@@ -1283,7 +1283,7 @@ export class FirebaseStorage implements IStorage {
     };
 
     await setDoc(doc(firebaseDb, "apiConfigs", docId), apiConfigData);
-    console.log(`✅ Configuração padrão criada para cliente ${clientId}: ${docId}`);
+    console.log(` Configuração padrão criada para cliente ${clientId}: ${docId}`);
   }
 
   // Statistics
@@ -1537,9 +1537,9 @@ export class FirebaseStorage implements IStorage {
     });
 
     if (membership) {
-      console.log(`✅ Encontrado membership para remover: ${membership.id}`);
+      console.log(` Encontrado membership para remover: ${membership.id}`);
       await deleteDoc(membership.ref);
-      console.log(`✅ Membership removido com sucesso: ${membership.id}`);
+      console.log(` Membership removido com sucesso: ${membership.id}`);
     } else {
       console.log(`⚠️ Nenhum membership encontrado para candidato ${candidateId} na lista ${listId}`);
     }
@@ -1553,7 +1553,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getAllCandidateListMemberships(): Promise<CandidateListMembership[]> {
-    console.log('🔍 Buscando TODOS os candidateListMemberships no Firebase...');
+    console.log(' Buscando TODOS os candidateListMemberships no Firebase...');
     const snapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
     const memberships = snapshot.docs.map(doc => ({ 
       id: doc.id, 
@@ -1564,7 +1564,7 @@ export class FirebaseStorage implements IStorage {
   }
 
   async getCandidateListMembershipsByClientId(clientId: number): Promise<CandidateListMembership[]> {
-    console.log(`🔍 Buscando candidateListMemberships para clientId: ${clientId}`);
+    console.log(` Buscando candidateListMemberships para clientId: ${clientId}`);
 
     const membershipsRef = collection(firebaseDb, 'candidateListMemberships');
     const q = query(membershipsRef, where('clientId', '==', clientId));
@@ -1582,7 +1582,7 @@ export class FirebaseStorage implements IStorage {
     });
 
     console.log(`📋 Memberships encontrados para cliente ${clientId}: ${memberships.length}`);
-    console.log(`🔍 Cliente danielmoreirabraga@gmail.com buscando memberships do clientId ${clientId}: ${memberships.length} encontrados`);
+    console.log(` Cliente danielmoreirabraga@gmail.com buscando memberships do clientId ${clientId}: ${memberships.length} encontrados`);
 
     return memberships;
   }
@@ -1636,15 +1636,15 @@ export class FirebaseStorage implements IStorage {
       updatedAt: new Date()
     };
 
-    console.log('💾 Storage: Salvando usuário no Firebase com ID:', userId);
+    console.log(' Storage: Salvando usuário no Firebase com ID:', userId);
     await setDoc(doc(firebaseDb, 'users', userId), userDoc);
 
-    console.log('✅ Storage: Usuário criado com sucesso');
+    console.log(' Storage: Usuário criado com sucesso');
     return userDoc;
   }
 
   async getClientUsers(clientId: number): Promise<any[]> {
-    console.log('🔍 Storage: Buscando usuários do cliente:', clientId);
+    console.log(' Storage: Buscando usuários do cliente:', clientId);
     const q = query(
       collection(firebaseDb, 'users'),
       where('clientId', '==', clientId),
@@ -1724,7 +1724,7 @@ export class FirebaseStorage implements IStorage {
     );
 
     const existingSnapshot = await getDocs(existingQuery);
-    console.log(`🔍 Verificação de duplicata: encontrados ${existingSnapshot.docs.length} memberships existentes`);
+    console.log(` Verificação de duplicata: encontrados ${existingSnapshot.docs.length} memberships existentes`);
 
     if (!existingSnapshot.empty) {
       console.log(`⚠️ Membership já existe para candidato ${candidateId} na lista ${listId} - retornando sucesso`);
@@ -1740,9 +1740,9 @@ export class FirebaseStorage implements IStorage {
       createdAt: new Date()
     };
 
-    console.log(`✅ Criando novo membership:`, membershipData);
+    console.log(` Criando novo membership:`, membershipData);
     await addDoc(membershipsRef, membershipData);
-    console.log(`✅ Membership criado com sucesso para candidato ${candidateId} na lista ${listId}`);
+    console.log(` Membership criado com sucesso para candidato ${candidateId} na lista ${listId}`);
   }
 
   async removeCandidateFromList(candidateId: number, listId: number): Promise<void> {
@@ -1760,7 +1760,7 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewsBySelection(selectionId: number): Promise<any[]> {
     try {
-      console.log(`🔍 Buscando entrevistas para seleção ${selectionId}`);
+      console.log(` Buscando entrevistas para seleção ${selectionId}`);
 
       const db = this.getDb();
       const interviewsSnapshot = await db.collection('interviews')
@@ -1782,7 +1782,7 @@ export class FirebaseStorage implements IStorage {
 
   async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
     try {
-      console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
+      console.log(` Buscando respostas para entrevista ${interviewId}`);
       const candidateId = interviewId.replace('interview_', '');
 
       // Buscar na coleção responses
@@ -1825,7 +1825,7 @@ export class FirebaseStorage implements IStorage {
 
       // Buscar também por telefone nas coleções de WhatsApp
       if (responses.length === 0) {
-        console.log(`🔍 Buscando por telefone para candidato ${candidateId}`);
+        console.log(` Buscando por telefone para candidato ${candidateId}`);
 
         // Buscar candidato para pegar telefone
         const candidate = await this.getCandidateById(parseInt(candidateId));
@@ -1850,7 +1850,7 @@ export class FirebaseStorage implements IStorage {
             });
           });
 
-          console.log(`📱 Encontradas ${responses.length} respostas por telefone ${candidate.whatsapp}`);
+          console.log(` Encontradas ${responses.length} respostas por telefone ${candidate.whatsapp}`);
         }
       }
 
@@ -1876,7 +1876,7 @@ export class FirebaseStorage implements IStorage {
       };
 
       await setDoc(doc(firebaseDb, "reports", reportId), report);
-      console.log(`✅ Relatório criado: ${reportId}`);
+      console.log(` Relatório criado: ${reportId}`);
       return report;
     } catch (error) {
       console.error('Erro ao criar relatório:', error);
@@ -2018,7 +2018,7 @@ export class FirebaseStorage implements IStorage {
       });
 
       await batch.commit();
-      console.log(`✅ Relatório ${reportId} deletado completamente`);
+      console.log(` Relatório ${reportId} deletado completamente`);
     } catch (error) {
       console.error('Erro ao deletar relatório:', error);
       throw error;
@@ -2040,7 +2040,7 @@ export class FirebaseStorage implements IStorage {
       // Buscar dados do job
       const job = await this.getJobById(selection.jobId);
       if (!job) {
-        console.log(`❌ Job ${selection.jobId} não encontrado`);
+        console.log(` Job ${selection.jobId} não encontrado`);
         throw new Error('Job não encontrado');
       }
 
@@ -2049,7 +2049,7 @@ export class FirebaseStorage implements IStorage {
       // Buscar dados do cliente
       const client = await this.getClientById(selection.clientId);
       if (!client) {
-        console.log(`❌ Cliente ${selection.clientId} não encontrado`);
+        console.log(` Cliente ${selection.clientId} não encontrado`);
         throw new Error('Cliente não encontrado');
       }
 
@@ -2058,7 +2058,7 @@ export class FirebaseStorage implements IStorage {
       // Buscar dados da lista de candidatos
       const candidateList = await this.getCandidateListById(selection.candidateListId);
       if (!candidateList) {
-        console.log(`❌ Lista ${selection.candidateListId} não encontrada`);
+        console.log(` Lista ${selection.candidateListId} não encontrada`);
         throw new Error('Lista de candidatos não encontrada');
       }
 
@@ -2080,7 +2080,7 @@ export class FirebaseStorage implements IStorage {
         completedInterviews: 0 // Será atualizado após processar candidatos
       });
 
-      console.log(`📊 Relatório principal criado: ${report.id}`);
+      console.log(` Relatório principal criado: ${report.id}`);
 
       let completedCount = 0;
 
@@ -2145,11 +2145,11 @@ export class FirebaseStorage implements IStorage {
         completedInterviews: completedCount
       });
 
-      console.log(`✅ Relatório ${report.id} gerado com ${candidates.length} candidatos, ${completedCount} completos`);
+      console.log(` Relatório ${report.id} gerado com ${candidates.length} candidatos, ${completedCount} completos`);
       return report.id;
 
     } catch (error) {
-      console.error('❌ Erro ao gerar relatório:', error);
+      console.error(' Erro ao gerar relatório:', error);
       console.error('Stack trace:', error.stack);
       throw error;
     }
