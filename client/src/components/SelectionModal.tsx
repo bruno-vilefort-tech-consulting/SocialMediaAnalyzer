@@ -44,6 +44,11 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
     enabled: isOpen,
   });
 
+  const { data: clients = [] } = useQuery<any[]>({
+    queryKey: ["/api/clients"],
+    enabled: isOpen,
+  });
+
   useEffect(() => {
     if (selection) {
       setName(selection.name);
@@ -267,14 +272,41 @@ export default function SelectionModal({ isOpen, onClose, selection }: Selection
             <Textarea
               id="whatsapp-template"
               rows={4}
-              placeholder="Olá {{nome}}, você foi convidado..."
+              placeholder="Olá [nome do candidato], você foi convidado para entrevista da vaga [Nome da Vaga] na empresa [nome do cliente]..."
               value={whatsappTemplate}
               onChange={(e) => setWhatsappTemplate(e.target.value)}
               required
             />
             <div className="text-xs text-slate-500 mt-1">
-              Variáveis disponíveis: {{nome}}, {{empresa}}, {{vaga}}, {{link_entrevista}}, {{data_limite}}
+              Placeholders: [nome do candidato], [nome do cliente], [Nome da Vaga], [número de perguntas]
             </div>
+            
+            {/* Template Preview */}
+            {whatsappTemplate && selectedJob && clients.length > 0 && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-lg border">
+                <Label className="text-xs font-medium text-slate-700">Preview do Template:</Label>
+                <div className="mt-2 text-sm text-slate-600 whitespace-pre-wrap">
+                  {(() => {
+                    const client = clients[0]; // Pega o primeiro cliente como exemplo
+                    let preview = whatsappTemplate
+                      .replace(/\[nome do cliente\]/g, client?.companyName || 'Nome da Empresa')
+                      .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nome da Empresa')
+                      .replace(/\[Nome da Vaga\]/g, selectedJob.title || selectedJob.nomeVaga || 'Nome da Vaga')
+                      .replace(/\[nome da vaga\]/g, selectedJob.title || selectedJob.nomeVaga || 'Nome da Vaga')
+                      .replace(/\[número de perguntas\]/g, selectedJob.perguntas?.length?.toString() || '3');
+                    
+                    // Adicionar pergunta de confirmação
+                    preview += `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
+                    
+                    return preview;
+                  })().replace(/\[nome do candidato\]/g, '')}
+                  <span className="bg-yellow-200 px-1 rounded">[nome do candidato]</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  O nome do candidato será substituído automaticamente para cada pessoa.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Candidate Selection */}

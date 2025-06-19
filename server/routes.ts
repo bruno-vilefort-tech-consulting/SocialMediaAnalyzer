@@ -1436,8 +1436,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
             personalizedMessage = personalizedMessage + confirmationText;
 
-            personalizedMessage += `\n\n🎯 Link da entrevista: ${interviewLink}`;
-
             // Enviar via WhatsApp Baileys
             const { whatsappBaileyService } = await import('./whatsappBaileyService');
             const clientIdStr = selection.clientId.toString();

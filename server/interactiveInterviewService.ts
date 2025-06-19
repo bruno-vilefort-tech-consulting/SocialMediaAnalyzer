@@ -402,7 +402,7 @@ class InteractiveInterviewService {
 
     // Mensagem final
     await this.sendMessage(`${phone}@s.whatsapp.net`, 
-      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nObrigado pela participação!`
+      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nNós retornaremos com o resultado o mais breve possível. Obrigado pela participação!`
     );
 
     // Remover entrevista ativa
