@@ -2852,11 +2852,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Para cada entrevista, buscar candidato e respostas
       const candidatesWithInterviews = await Promise.all(
         interviews.map(async (interview) => {
-          const candidate = await storage.getCandidate(interview.candidateId);
+          const candidate = await storage.getCandidateById(interview.candidateId);
+          if (!candidate) {
+            console.log(`⚠️ Candidato ${interview.candidateId} não encontrado para entrevista ${interview.id}`);
+            return null;
+          }
+          
           const responses = await storage.getResponsesByInterviewId(interview.id);
           const questions = await storage.getQuestionsByJobId(selection.jobId);
           
-          console.log(`📋 Interview ${interview.id} - Responses: ${responses.length}, Questions: ${questions.length}`);
+          console.log(`📋 Interview ${interview.id} - Candidate: ${candidate.name}, Responses: ${responses.length}, Questions: ${questions.length}`);
           
           return {
             candidate: {
@@ -2886,7 +2891,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      res.json(candidatesWithInterviews);
+      // Filtrar entradas nulas (candidatos não encontrados)
+      const validCandidates = candidatesWithInterviews.filter(item => item !== null);
+      
+      res.json(validCandidates);
     } catch (error) {
       console.error('Erro ao buscar candidatos da seleção:', error);
       res.status(500).json({ message: 'Failed to fetch selection candidates' });

@@ -1631,14 +1631,21 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewsBySelection(selectionId: number): Promise<any[]> {
     try {
-      const interviewsSnapshot = await this.db.collection('interviews')
+      console.log(`🔍 Buscando entrevistas para seleção ${selectionId}`);
+      
+      // Use the initialized Firebase admin instance
+      const db = admin.firestore();
+      const interviewsSnapshot = await db.collection('interviews')
         .where('selectionId', '==', selectionId)
         .get();
       
-      return interviewsSnapshot.docs.map(doc => ({
+      const interviews = interviewsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      console.log(`📋 Encontradas ${interviews.length} entrevistas para seleção ${selectionId}`);
+      return interviews;
     } catch (error) {
       console.error('Erro ao buscar entrevistas por seleção:', error);
       return [];
@@ -1647,15 +1654,22 @@ export class FirebaseStorage implements IStorage {
 
   async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
     try {
-      const responsesSnapshot = await this.db.collection('responses')
+      console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
+      
+      // Use the initialized Firebase admin instance
+      const db = admin.firestore();
+      const responsesSnapshot = await db.collection('responses')
         .where('interviewId', '==', interviewId)
         .orderBy('questionId', 'asc')
         .get();
       
-      return responsesSnapshot.docs.map(doc => ({
+      const responses = responsesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      console.log(`📋 Encontradas ${responses.length} respostas para entrevista ${interviewId}`);
+      return responses;
     } catch (error) {
       console.error('Erro ao buscar respostas por entrevista:', error);
       return [];
