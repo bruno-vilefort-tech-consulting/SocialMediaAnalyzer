@@ -204,6 +204,16 @@ class WhatsAppBaileyService {
   }
 
   async connect(clientId: string) {
+    const existingConnection = this.connections.get(clientId);
+    if (existingConnection?.isConnected) {
+      console.log(`📱 Cliente ${clientId} já conectado`);
+      return {
+        success: true,
+        qrCode: null,
+        message: 'Já conectado'
+      };
+    }
+    
     return await this.initWhatsApp(clientId);
   }
 
@@ -213,6 +223,35 @@ class WhatsAppBaileyService {
       await connection.socket.logout();
       this.connections.delete(clientId);
       console.log(`🔌 Cliente ${clientId} desconectado`);
+    }
+  }
+
+  async restoreConnections() {
+    try {
+      console.log('🔄 Restaurando conexões WhatsApp após restart...');
+      
+      const fs = await import('fs');
+      if (fs.existsSync('./whatsapp-sessions')) {
+        const sessions = fs.readdirSync('./whatsapp-sessions');
+        
+        for (const sessionDir of sessions) {
+          if (sessionDir.startsWith('client_')) {
+            const clientId = sessionDir.replace('client_', '');
+            const credsPath = `./whatsapp-sessions/${sessionDir}/creds.json`;
+            
+            if (fs.existsSync(credsPath)) {
+              console.log(`📱 Restaurando sessão para cliente ${clientId}...`);
+              try {
+                await this.initWhatsApp(clientId);
+              } catch (error) {
+                console.log(`❌ Erro ao restaurar cliente ${clientId}:`, error.message);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`❌ Erro na restauração:`, error.message);
     }
   }
 }

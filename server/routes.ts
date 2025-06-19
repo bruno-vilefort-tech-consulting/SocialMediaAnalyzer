@@ -1923,11 +1923,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const memoryStatus = whatsappBaileyService.getStatus(user.clientId.toString());
       
       // Combinar dados: QR Code do banco (mais confiável) + status de conexão da memória
+      // Se memória mostra desconectado mas banco mostra conectado, tentar restaurar
+      const shouldRestore = !memoryStatus.isConnected && dbConfig?.whatsappQrConnected && dbConfig?.whatsappQrPhoneNumber;
+      
+      if (shouldRestore) {
+        console.log(`🔄 Tentando restaurar conexão para cliente ${user.clientId}...`);
+        try {
+          await whatsappBaileyService.connect(user.clientId.toString());
+          // Atualizar status após tentativa de restauração
+          const restoredStatus = whatsappBaileyService.getStatus(user.clientId.toString());
+          memoryStatus.isConnected = restoredStatus.isConnected;
+          memoryStatus.phoneNumber = restoredStatus.phoneNumber;
+        } catch (error) {
+          console.log(`❌ Erro ao restaurar conexão:`, error.message);
+        }
+      }
+      
       const finalStatus = {
-        isConnected: memoryStatus.isConnected || dbConfig.whatsappQrConnected || false,
-        qrCode: dbConfig.whatsappQrCode || memoryStatus.qrCode || null,
-        phoneNumber: dbConfig.whatsappQrPhoneNumber || memoryStatus.phoneNumber || null,
-        lastConnection: dbConfig.whatsappQrLastConnection || null
+        isConnected: memoryStatus.isConnected || dbConfig?.whatsappQrConnected || false,
+        qrCode: dbConfig?.whatsappQrCode || memoryStatus.qrCode || null,
+        phoneNumber: dbConfig?.whatsappQrPhoneNumber || memoryStatus.phoneNumber || null,
+        lastConnection: dbConfig?.whatsappQrLastConnection || null
       };
       
       console.log(`📱 [BAILEYS] Status final:`, {
