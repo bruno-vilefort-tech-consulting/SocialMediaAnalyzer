@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Eye, Calendar, Users, CheckCircle } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils';
@@ -51,8 +51,8 @@ interface ReportResponse {
 }
 
 const ReportsHistoryPage: React.FC = () => {
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [selectedCandidate, setSelectedCandidate] = useState<ReportCandidate | null>(null);
+  const [expandedReport, setExpandedReport] = useState<string | null>(null);
+  const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -81,6 +81,8 @@ const ReportsHistoryPage: React.FC = () => {
     mutationFn: (reportId: string) => apiRequest(`/api/reports/${reportId}`, 'DELETE'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      setExpandedReport(null);
+      setExpandedCandidate(null);
       toast({
         title: "Sucesso",
         description: "Relatório deletado com sucesso"
@@ -176,110 +178,14 @@ const ReportsHistoryPage: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedReport(report)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Ver Detalhes
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
-                          <DialogHeader>
-                            <DialogTitle>Relatório: {report.selectionName}</DialogTitle>
-                          </DialogHeader>
-                          
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                              <div>
-                                <p className="text-sm text-gray-600">Vaga</p>
-                                <p className="font-medium">{report.jobName}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Cliente</p>
-                                <p className="font-medium">{report.clientName}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Lista de Candidatos</p>
-                                <p className="font-medium">{report.candidateListName}</p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-gray-600">Gerado em</p>
-                                <p className="font-medium">{formatDateTime(report.createdAt)}</p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-3">
-                              <h4 className="font-semibold">Candidatos ({candidates.length})</h4>
-                              <div className="grid gap-3">
-                                {candidates.map((candidate: ReportCandidate) => (
-                                  <div key={candidate.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-3">
-                                        <div>
-                                          <p className="font-medium">{candidate.name}</p>
-                                          <p className="text-sm text-gray-600">{candidate.email}</p>
-                                        </div>
-                                        {getStatusBadge(candidate.status)}
-                                        {candidate.category && getCategoryBadge(candidate.category)}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-medium">Score: {candidate.totalScore}%</p>
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="mt-1"
-                                            onClick={() => setSelectedCandidate(candidate)}
-                                          >
-                                            Ver Respostas
-                                          </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
-                                          <DialogHeader>
-                                            <DialogTitle>Respostas de {candidate.name}</DialogTitle>
-                                          </DialogHeader>
-                                          
-                                          <div className="space-y-4">
-                                            {responses.map((response: ReportResponse) => (
-                                              <div key={response.id} className="border rounded-lg p-4">
-                                                <div className="flex items-center justify-between mb-2">
-                                                  <h5 className="font-medium">Pergunta {response.questionNumber}</h5>
-                                                  <Badge variant="outline">Score: {response.score}%</Badge>
-                                                </div>
-                                                <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
-                                                {response.transcription && (
-                                                  <div className="bg-gray-50 p-3 rounded">
-                                                    <p className="text-sm"><strong>Transcrição:</strong></p>
-                                                    <p className="text-sm">{response.transcription}</p>
-                                                  </div>
-                                                )}
-                                                {response.audioFile && (
-                                                  <div className="mt-2">
-                                                    <audio controls className="w-full">
-                                                      <source src={`/${response.audioFile}`} type="audio/ogg" />
-                                                      Seu navegador não suporta o elemento de áudio.
-                                                    </audio>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </DialogContent>
-                                      </Dialog>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        {expandedReport === report.id ? 'Ocultar Detalhes' : 'Ver Detalhes'}
+                      </Button>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -324,6 +230,93 @@ const ReportsHistoryPage: React.FC = () => {
                       <span>{formatDateTime(report.createdAt)}</span>
                     </div>
                   </div>
+
+                  {/* Detalhes Expandidos Inline */}
+                  {expandedReport === report.id && (
+                    <div className="mt-6 space-y-4 border-t pt-4">
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="text-sm text-gray-600">Vaga</p>
+                          <p className="font-medium">{report.jobName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Cliente</p>
+                          <p className="font-medium">{report.clientName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Lista de Candidatos</p>
+                          <p className="font-medium">{report.candidateListName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Gerado em</p>
+                          <p className="font-medium">{formatDateTime(report.createdAt)}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-semibold">Candidatos ({candidates.length})</h4>
+                        <div className="grid gap-3">
+                          {candidates.map((candidate: ReportCandidate) => (
+                            <div key={candidate.id} className="border rounded-lg">
+                              <div className="flex items-center justify-between p-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <div>
+                                      <p className="font-medium">{candidate.name}</p>
+                                      <p className="text-sm text-gray-600">{candidate.email}</p>
+                                    </div>
+                                    {getStatusBadge(candidate.status)}
+                                    {candidate.category && getCategoryBadge(candidate.category)}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium">Score: {candidate.totalScore}%</p>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-1"
+                                    onClick={() => setExpandedCandidate(expandedCandidate === candidate.id ? null : candidate.id)}
+                                  >
+                                    {expandedCandidate === candidate.id ? 'Ocultar' : 'Ver Respostas'}
+                                  </Button>
+                                </div>
+                              </div>
+                              
+                              {/* Respostas Expandidas Inline */}
+                              {expandedCandidate === candidate.id && (
+                                <div className="border-t bg-gray-50 p-4 space-y-4">
+                                  <h5 className="font-semibold">Respostas de {candidate.name}</h5>
+                                  {responses.map((response: ReportResponse) => (
+                                    <div key={response.id} className="border rounded-lg p-4 bg-white">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
+                                        <Badge variant="outline">Score: {response.score}%</Badge>
+                                      </div>
+                                      <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
+                                      {response.transcription && (
+                                        <div className="bg-gray-50 p-3 rounded mb-3">
+                                          <p className="text-sm"><strong>Transcrição:</strong></p>
+                                          <p className="text-sm">{response.transcription}</p>
+                                        </div>
+                                      )}
+                                      {response.audioFile && (
+                                        <div className="mt-2">
+                                          <audio controls className="w-full">
+                                            <source src={`/${response.audioFile}`} type="audio/ogg" />
+                                            Seu navegador não suporta o elemento de áudio.
+                                          </audio>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )) : (
