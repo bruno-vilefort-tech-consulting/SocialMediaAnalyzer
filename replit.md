@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 🎵 ÁUDIOS E TRANSCRIÇÕES CONECTADAS AO SISTEMA - Daniel Moreira agora exibe dados reais de entrevista
+  - **Estrutura candidato+seleção+clientId**: Sistema reformulado para associar corretamente áudios/transcrições
+  - **Dados reais mapeados**: 32 arquivos de áudio do telefone 5511984316526 conectados ao candidato
+  - **Transcrições funcionais**: Daniel Moreira exibe respostas reais com scores 85 e 90 pontos
+  - **Player de áudio operacional**: Interface reproduz arquivos reais (.ogg) de entrevistas
+  - **Sistema multi-seleções**: Candidatos podem participar de várias seleções com dados isolados
+  - **Correção Firebase**: Problemas de conexão e queries resolvidos para busca de respostas
+  - **Status atualizado**: Interface mostra "Concluída" para entrevistas com dados reais
+
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
   - **NewReportsPage.tsx criado**: Interface completa com todas as funcionalidades solicitadas
