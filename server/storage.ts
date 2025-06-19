@@ -2017,26 +2017,38 @@ export class FirebaseStorage implements IStorage {
         throw new Error('Seleção não encontrada');
       }
       
+      console.log(`📋 Seleção encontrada: ${selection.name}`);
+      
       // Buscar dados do job
       const job = await this.getJobById(selection.jobId);
       if (!job) {
+        console.log(`❌ Job ${selection.jobId} não encontrado`);
         throw new Error('Job não encontrado');
       }
+      
+      console.log(`💼 Job encontrado: ${job.nomeVaga}`);
       
       // Buscar dados do cliente
       const client = await this.getClientById(selection.clientId);
       if (!client) {
+        console.log(`❌ Cliente ${selection.clientId} não encontrado`);
         throw new Error('Cliente não encontrado');
       }
+      
+      console.log(`🏢 Cliente encontrado: ${client.companyName}`);
       
       // Buscar dados da lista de candidatos
       const candidateList = await this.getCandidateListById(selection.candidateListId);
       if (!candidateList) {
+        console.log(`❌ Lista ${selection.candidateListId} não encontrada`);
         throw new Error('Lista de candidatos não encontrada');
       }
       
+      console.log(`📝 Lista encontrada: ${candidateList.name}`);
+      
       // Buscar candidatos da seleção
       const candidates = await this.getCandidatesInList(selection.candidateListId);
+      console.log(`👥 ${candidates.length} candidatos encontrados na lista`);
       
       // Criar relatório principal
       const report = await this.createReport({
@@ -2050,16 +2062,22 @@ export class FirebaseStorage implements IStorage {
         completedInterviews: 0 // Será atualizado após processar candidatos
       });
       
+      console.log(`📊 Relatório principal criado: ${report.id}`);
+      
       let completedCount = 0;
       
       // Processar cada candidato
       for (const candidate of candidates) {
-        // Buscar respostas do candidato para esta seleção
+        console.log(`👤 Processando candidato: ${candidate.name} (${candidate.id})`);
+        
+        // Buscar respostas do candidato para esta seleção - usando múltiplos formatos de ID
         const responses = await this.getResponsesBySelectionAndCandidate(
           selectionId,
           candidate.id,
           selection.clientId
         );
+        
+        console.log(`📝 ${responses.length} respostas encontradas para ${candidate.name}`);
         
         const status = responses.length > 0 ? 'completed' : 'invited';
         if (status === 'completed') completedCount++;
@@ -2075,6 +2093,8 @@ export class FirebaseStorage implements IStorage {
           totalScore: responses.length > 0 ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length) : 0,
           completedAt: status === 'completed' ? new Date() : null
         });
+        
+        console.log(`👤 Candidato do relatório criado: ${reportCandidate.id}`);
         
         // Criar respostas do relatório com nova nomenclatura de áudio
         if (responses.length > 0) {
@@ -2096,6 +2116,8 @@ export class FirebaseStorage implements IStorage {
               recordingDuration: response.recordingDuration || 0,
               aiAnalysis: response.aiAnalysis
             });
+            
+            console.log(`📝 Resposta do relatório criada: pergunta ${response.questionId}`);
           }
         }
       }
@@ -2109,7 +2131,8 @@ export class FirebaseStorage implements IStorage {
       return report.id;
       
     } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
+      console.error('❌ Erro ao gerar relatório:', error);
+      console.error('Stack trace:', error.stack);
       throw error;
     }
   }

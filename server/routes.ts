@@ -127,6 +127,129 @@ const authorize = (roles: string[]) => {
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Authentication routes
+  // === SISTEMA DE RELATÓRIOS INDEPENDENTES ===
+
+  // Listar todos os relatórios (masters) ou por cliente (clientes)
+  app.get('/api/reports', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const userRole = req.user?.role;
+      const userClientId = req.user?.clientId;
+      
+      console.log(`📊 Buscando relatórios para usuário ${userRole} (clientId: ${userClientId})`);
+      
+      let reports = [];
+      if (userRole === 'master') {
+        reports = await storage.getAllReports();
+      } else if (userRole === 'client' && userClientId) {
+        reports = await storage.getReportsByClientId(userClientId);
+      } else {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      console.log(`📊 Encontrados ${reports.length} relatórios`);
+      res.json(reports);
+    } catch (error) {
+      console.error('Erro ao buscar relatórios:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Gerar relatório a partir de uma seleção
+  app.post('/api/reports/generate/:selectionId', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { selectionId } = req.params;
+      const userRole = req.user?.role;
+      const userClientId = req.user?.clientId;
+      
+      // Verificar se usuário tem acesso à seleção
+      const selection = await storage.getSelectionById(parseInt(selectionId));
+      if (!selection) {
+        return res.status(404).json({ error: 'Seleção não encontrada' });
+      }
+      
+      if (userRole === 'client' && selection.clientId !== userClientId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      
+      const reportId = await storage.generateReportFromSelection(selectionId);
+      
+      res.json({ 
+        success: true, 
+        reportId,
+        message: 'Relatório gerado com sucesso' 
+      });
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Buscar candidatos de um relatório específico
+  app.get('/api/reports/:reportId/candidates', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { reportId } = req.params;
+      const userRole = req.user?.role;
+      const userClientId = req.user?.clientId;
+      
+      // Verificar acesso ao relatório
+      const reports = userRole === 'master' ? 
+        await storage.getAllReports() : 
+        await storage.getReportsByClientId(userClientId);
+      
+      const report = reports.find(r => r.id === reportId);
+      if (!report) {
+        return res.status(404).json({ error: 'Relatório não encontrado' });
+      }
+      
+      const candidates = await storage.getReportCandidates(reportId);
+      res.json(candidates);
+    } catch (error) {
+      console.error('Erro ao buscar candidatos do relatório:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Buscar respostas de um candidato específico no relatório
+  app.get('/api/reports/candidates/:reportCandidateId/responses', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { reportCandidateId } = req.params;
+      const responses = await storage.getReportResponses(reportCandidateId);
+      res.json(responses);
+    } catch (error) {
+      console.error('Erro ao buscar respostas do candidato:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Deletar relatório
+  app.delete('/api/reports/:reportId', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { reportId } = req.params;
+      const userRole = req.user?.role;
+      const userClientId = req.user?.clientId;
+      
+      // Verificar acesso ao relatório
+      const reports = userRole === 'master' ? 
+        await storage.getAllReports() : 
+        await storage.getReportsByClientId(userClientId);
+      
+      const report = reports.find(r => r.id === reportId);
+      if (!report) {
+        return res.status(404).json({ error: 'Relatório não encontrado' });
+      }
+      
+      await storage.deleteReport(reportId);
+      
+      res.json({ 
+        success: true, 
+        message: 'Relatório deletado com sucesso' 
+      });
+    } catch (error) {
+      console.error('Erro ao deletar relatório:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
