@@ -60,7 +60,7 @@ const ReportsHistoryPage = () => {
   const { data: reports, isLoading } = useQuery({
     queryKey: ['/api/reports'],
     queryFn: async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/reports', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -78,7 +78,7 @@ const ReportsHistoryPage = () => {
     queryKey: ['/api/reports', selectedReport?.id, 'candidates'],
     queryFn: async () => {
       if (!selectedReport) return [];
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/reports/${selectedReport.id}/candidates`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -97,7 +97,7 @@ const ReportsHistoryPage = () => {
     queryKey: ['/api/reports/candidates', selectedCandidate?.id, 'responses'],
     queryFn: async () => {
       if (!selectedCandidate) return [];
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/reports/candidates/${selectedCandidate.id}/responses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
