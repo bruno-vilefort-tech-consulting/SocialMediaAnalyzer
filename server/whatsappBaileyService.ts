@@ -75,13 +75,46 @@ class WhatsAppBaileyService {
           connectionState.isConnected = true;
           connectionState.phoneNumber = sock.user?.id?.split(':')[0] || null;
           connectionState.qrCode = '';
-          await this.saveConnectionToDB(clientId, connectionState);
+          
+          // Salvar status CONECTADO no banco
+          try {
+            const config = await storage.getApiConfig('client', clientId) || {};
+            await storage.upsertApiConfig({
+              ...config,
+              entityType: 'client',
+              entityId: clientId,
+              whatsappQrConnected: true,
+              whatsappQrPhoneNumber: connectionState.phoneNumber,
+              whatsappQrCode: null, // Limpar QR Code quando conectado
+              whatsappQrLastConnection: new Date()
+            });
+            console.log(`💾 Status CONECTADO salvo no banco para cliente ${clientId}`);
+          } catch (error) {
+            console.log(`❌ Erro ao salvar status conectado:`, error.message);
+          }
         }
         
         if (connection === 'close') {
           console.log(`🔌 WhatsApp desconectado para cliente ${clientId}`);
           connectionState.isConnected = false;
           connectionState.phoneNumber = null;
+          
+          // Salvar status DESCONECTADO no banco
+          try {
+            const config = await storage.getApiConfig('client', clientId) || {};
+            await storage.upsertApiConfig({
+              ...config,
+              entityType: 'client',
+              entityId: clientId,
+              whatsappQrConnected: false,
+              whatsappQrPhoneNumber: null,
+              whatsappQrLastConnection: new Date()
+            });
+            console.log(`💾 Status DESCONECTADO salvo no banco para cliente ${clientId}`);
+          } catch (error) {
+            console.log(`❌ Erro ao salvar status desconectado:`, error.message);
+          }
+          
           // Reconecta automaticamente após 2 segundos
           setTimeout(() => this.initWhatsApp(clientId), 2000);
         }
