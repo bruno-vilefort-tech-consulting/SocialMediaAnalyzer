@@ -337,31 +337,35 @@ const ReportsHistoryPage: React.FC = () => {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    <div className="space-y-2">
                       {candidates.map((candidate: ReportCandidate) => (
-                        <Card 
+                        <div 
                           key={candidate.id} 
-                          className="cursor-pointer hover:shadow-md transition-shadow border"
+                          className="cursor-pointer hover:bg-gray-50 transition-colors border rounded-lg p-3"
                           onClick={() => {
                             setSelectedCandidate(candidate);
                             setCurrentView('candidateDetail');
                           }}
                         >
-                          <CardContent className="p-3">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-6 flex-1">
+                              <div className="flex-1">
                                 <h3 className="font-medium text-sm">{candidate.name}</h3>
-                                <span className="text-xs font-medium text-right">Pontuação: {candidate.totalScore}%</span>
+                                <p className="text-xs text-gray-600">{candidate.email}</p>
                               </div>
-                              <p className="text-xs text-gray-600">{candidate.email}</p>
-                              <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
-                              <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-xs text-gray-600">{candidate.whatsapp}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
                                 {getStatusBadge(candidate.status)}
                                 {candidate.category && getCategoryBadge(candidate.category)}
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
+                            <div className="text-right">
+                              <span className="text-xs font-medium">Pontuação: {candidate.totalScore}%</span>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
