@@ -1913,24 +1913,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📊 Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`📊 [BAILEYS] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o whatsappQRService original que funcionava
-      const { whatsappQRService } = await import('./whatsappQRService');
-      whatsappQRService.setClientId(user.clientId.toString());
-      const status = whatsappQRService.getConnectionStatus();
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const status = whatsappBaileyService.getStatus(user.clientId.toString());
       
-      console.log(`📱 [ORIGINAL] Status encontrado:`, status);
+      console.log(`📱 [BAILEYS] Status encontrado:`, {
+        isConnected: status.isConnected,
+        hasQrCode: !!status.qrCode,
+        qrCodeLength: status.qrCode?.length || 0,
+        phoneNumber: status.phoneNumber
+      });
       
       res.json({
         isConnected: status.isConnected,
         phone: status.phoneNumber,
         qrCode: status.qrCode,
-        hasQrCode: !!status.qrCode
+        lastConnection: null
       });
     } catch (error) {
       console.error('❌ Erro ao buscar status WhatsApp:', error);
-      res.status(500).json({ message: 'Erro ao buscar status WhatsApp' });
+      res.status(500).json({ message: 'Erro interno' });
     }
   });
 

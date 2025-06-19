@@ -1,7 +1,18 @@
 import { storage } from './storage';
 
-const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const QRCode = require('qrcode');
+// Usar import dinâmico para baileys e qrcode
+let makeWASocket: any;
+let useMultiFileAuthState: any;
+let QRCode: any;
+
+async function initializeDependencies() {
+  if (!makeWASocket) {
+    const baileys = await import('@whiskeysockets/baileys');
+    makeWASocket = baileys.default;
+    useMultiFileAuthState = baileys.useMultiFileAuthState;
+    QRCode = await import('qrcode');
+  }
+}
 
 interface WhatsAppState {
   qrCode: string;
@@ -15,6 +26,9 @@ class WhatsAppBaileyService {
 
   async initWhatsApp(clientId: string) {
     console.log(`🔑 Inicializando WhatsApp para cliente ${clientId}`);
+    
+    // Inicializar dependências primeiro
+    await initializeDependencies();
     
     if (this.connections.has(clientId)) {
       const existing = this.connections.get(clientId)!;
@@ -48,7 +62,8 @@ class WhatsAppBaileyService {
       sock.ev.on('connection.update', async ({ connection, qr }: any) => {
         if (qr) {
           connectionState.qrCode = await QRCode.toDataURL(qr);
-          console.log(`📱 QR Code gerado para cliente ${clientId}`);
+          console.log(`📱 QR Code gerado para cliente ${clientId} - Length: ${connectionState.qrCode.length}`);
+          console.log(`📱 QR Code Preview: ${connectionState.qrCode.substring(0, 50)}...`);
           await this.saveConnectionToDB(clientId, connectionState);
         }
         
@@ -96,11 +111,11 @@ class WhatsAppBaileyService {
         whatsappQrConnected: state.isConnected,
         whatsappQrPhoneNumber: state.phoneNumber,
         whatsappQrCode: state.qrCode,
-        whatsappQrLastConnection: state.isConnected ? new Date() : null,
-        updatedAt: new Date()
+        whatsappQrLastConnection: state.isConnected ? new Date() : null
       });
       
       console.log(`💾 Status WhatsApp salvo para cliente ${clientId}: ${state.isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
+      console.log(`💾 QR Code salvo: ${state.qrCode ? 'SIM' : 'NÃO'} - Length: ${state.qrCode?.length || 0}`);
     } catch (error) {
       console.error('❌ Erro ao salvar no banco:', error);
     }
