@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -39,46 +37,89 @@ interface Selection {
   progressPercentage?: number;
 }
 
-interface Candidate {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  hasResponded: boolean;
-  responses?: Response[];
-  category?: 'melhor' | 'mediano' | 'em_duvida' | 'nao';
-  score?: number;
+interface InterviewCandidate {
+  candidate: {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+  };
+  interview: {
+    id: number;
+    status: string;
+    createdAt: any;
+    completedAt?: any;
+    totalScore: number;
+  };
+  responses: InterviewResponse[];
 }
 
-interface Response {
+interface InterviewResponse {
   id: string;
+  questionId: number;
   questionText: string;
-  responseText: string;
-  audioFile?: string;
+  transcription: string;
+  audioUrl?: string;
   score?: number;
-  timestamp: string;
+  recordingDuration?: number;
+  aiAnalysis?: any;
 }
+
+// Componente para player de áudio
+const AudioPlayer: React.FC<{ audioUrl: string; className?: string }> = ({ audioUrl, className }) => {
+  const { isPlaying, play, pause, stop, setAudioUrl, loading } = useAudio();
+  
+  React.useEffect(() => {
+    if (audioUrl) {
+      setAudioUrl(audioUrl);
+    }
+  }, [audioUrl, setAudioUrl]);
+
+  if (!audioUrl) {
+    return (
+      <div className="flex items-center gap-2 text-gray-400">
+        <Volume2 className="h-4 w-4" />
+        <span className="text-sm">Sem áudio</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      {loading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={isPlaying ? pause : play}
+            className="h-8 w-8 p-0"
+          >
+            {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={stop}
+            className="h-8 w-8 p-0"
+          >
+            <Square className="h-3 w-3" />
+          </Button>
+          <Volume2 className="h-4 w-4 text-gray-500" />
+        </>
+      )}
+    </div>
+  );
+};
 
 export default function NewReportsPage() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
-  const [activeTab, setActiveTab] = useState('candidates');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // Ajustado para layout em grid
-
-  const { 
-    isPlaying, 
-    currentAudioUrl, 
-    isPaused,
-    playAudio: handlePlayAudio, 
-    pauseAudio, 
-    resumeAudio, 
-    stopAudio 
-  } = useAudio();
+  const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
+  const itemsPerPage = 12;
 
   // Buscar clientes (apenas para masters)
   const { data: clients = [] } = useQuery({
@@ -92,70 +133,42 @@ export default function NewReportsPage() {
     enabled: !!selectedClientId || user?.role === 'client'
   });
 
-  // Buscar candidatos da seleção
-  const { data: candidates = [] } = useQuery({
-    queryKey: ['/api/selections', selectedSelection?.id, 'candidates'],
-    enabled: !!selectedSelection,
-    queryFn: () => fetch(`/api/selections/${selectedSelection?.id}/candidates`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    }).then(res => res.json())
-  });
-
-  // Mutation para salvar categoria do candidato
-  const saveCategoryMutation = useMutation({
-    mutationFn: ({ candidateId, category }: { candidateId: number, category: string }) =>
-      apiRequest(`/api/candidates/${candidateId}/category`, {
-        method: 'PATCH',
-        body: JSON.stringify({ category })
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/selections', selectedSelection?.id, 'candidates'] });
-    }
+  // Query para buscar candidatos de uma seleção específica com entrevistas
+  const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
+    queryKey: ['selection-interview-candidates', selectedSelection?.id],
+    queryFn: async () => {
+      if (!selectedSelection) return [];
+      
+      const response = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`);
+      return response as InterviewCandidate[];
+    },
+    enabled: !!selectedSelection
   });
 
   // Efeitos para definir cliente padrão
   React.useEffect(() => {
     if (user?.role === 'client' && user.clientId) {
       setSelectedClientId(user.clientId.toString());
-    } else if (user?.role === 'master' && clients.length > 0 && !selectedClientId) {
-      // Para master, não selecionar automaticamente - deixar escolher
     }
-  }, [user, clients]);
+  }, [user]);
 
-  // Filtrar candidatos por busca
-  const filteredCandidates = candidates.filter((candidate: Candidate) =>
-    candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.phone.includes(searchTerm)
-  );
+  // Filtrar e paginar candidatos
+  const filteredCandidates = interviewCandidates.filter(item => {
+    const candidate = item.candidate;
+    const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate.phone.includes(searchTerm);
+    
+    return matchesSearch;
+  });
 
-  // Paginação
   const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage);
   const paginatedCandidates = filteredCandidates.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Candidatos por categoria
-  const candidatesByCategory = {
-    melhor: candidates.filter((c: Candidate) => c.category === 'melhor'),
-    mediano: candidates.filter((c: Candidate) => c.category === 'mediano'),
-    em_duvida: candidates.filter((c: Candidate) => c.category === 'em_duvida'),
-    nao: candidates.filter((c: Candidate) => c.category === 'nao')
-  };
-
-  const handleSaveCategory = (category: string) => {
-    if (selectedCandidate) {
-      saveCategoryMutation.mutate({
-        candidateId: selectedCandidate.id,
-        category
-      });
-    }
-  };
-
-  // Renderizar lista de seleções
+  // Se ainda não selecionou uma seleção, mostrar lista de seleções
   if (!selectedSelection) {
     return (
       <div className="space-y-6">
@@ -226,17 +239,10 @@ export default function NewReportsPage() {
                       </div>
                       
                       <div className="text-right space-y-2">
-                        <div className="text-sm text-muted-foreground">
-                          Respostas: {selection.responsesCount || 0}/{selection.candidateCount || 0}
-                        </div>
-                        {selection.progressPercentage !== undefined && (
-                          <div className="w-32">
-                            <Progress value={selection.progressPercentage} className="h-2" />
-                            <span className="text-xs text-muted-foreground">
-                              {selection.progressPercentage}%
-                            </span>
-                          </div>
-                        )}
+                        <Button variant="outline">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Candidatos
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -249,154 +255,7 @@ export default function NewReportsPage() {
     );
   }
 
-  // Renderizar detalhes do candidato
-  if (selectedCandidate) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            onClick={() => setSelectedCandidate(null)}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Voltar</span>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{selectedCandidate.name}</h1>
-            <p className="text-muted-foreground">
-              {selectedCandidate.email} • {selectedCandidate.phone}
-            </p>
-          </div>
-        </div>
-
-        {/* Seleção de categoria */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Classificação do Candidato</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Select 
-              value={selectedCandidate.category || ''} 
-              onValueChange={handleSaveCategory}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="melhor">Melhor</SelectItem>
-                <SelectItem value="mediano">Mediano</SelectItem>
-                <SelectItem value="em_duvida">Em dúvida</SelectItem>
-                <SelectItem value="nao">Não</SelectItem>
-              </SelectContent>
-            </Select>
-            {selectedCandidate.score && (
-              <div className="text-sm text-muted-foreground">
-                Score geral: {selectedCandidate.score}%
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Respostas da entrevista */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Respostas da Entrevista</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {selectedCandidate.responses && selectedCandidate.responses.length > 0 ? (
-              selectedCandidate.responses.map((response: Response, index: number) => (
-                <div key={response.id} className="border rounded-lg p-4 space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">
-                      Pergunta {index + 1}
-                    </h4>
-                    <p className="text-muted-foreground mb-4">
-                      {response.questionText}
-                    </p>
-                  </div>
-
-                  <div className="bg-muted rounded-lg p-4">
-                    <h5 className="font-medium mb-2">Resposta:</h5>
-                    <p className="text-sm leading-relaxed">
-                      {response.responseText || 'Sem transcrição disponível'}
-                    </p>
-                    {response.score && (
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        Score: {response.score}%
-                      </div>
-                    )}
-                  </div>
-
-                  {response.audioFile && (
-                    <div className="flex items-center space-x-2">
-                      {!isPlaying || currentAudioUrl !== response.audioFile ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePlayAudio(response.audioFile!)}
-                          className="flex items-center space-x-2"
-                        >
-                          <Play className="h-4 w-4" />
-                          <span>Reproduzir</span>
-                        </Button>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          {isPlaying ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={pauseAudio}
-                              className="flex items-center space-x-2"
-                            >
-                              <Pause className="h-4 w-4" />
-                              <span>Pausar</span>
-                            </Button>
-                          ) : isPaused && currentAudioUrl ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={resumeAudio}
-                              className="flex items-center space-x-2"
-                            >
-                              <Play className="h-4 w-4" />
-                              <span>Continuar</span>
-                            </Button>
-                          ) : null}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={stopAudio}
-                            className="flex items-center space-x-2"
-                          >
-                            <Square className="h-4 w-4" />
-                            <span>Parar</span>
-                          </Button>
-                        </div>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(response.timestamp).toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nenhuma resposta encontrada</h3>
-                <p className="text-muted-foreground">
-                  Este candidato ainda não respondeu a entrevista.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Renderizar tabs da seleção
+  // Mostrar candidatos da seleção
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
@@ -409,90 +268,162 @@ export default function NewReportsPage() {
           <span>Voltar</span>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{selectedSelection.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Candidatos - {selectedSelection.name}</h1>
           <p className="text-muted-foreground">
-            Análise da seleção • {candidates.length} candidatos
+            Vaga: {selectedSelection.jobName || 'Não identificada'}
           </p>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="candidates">Candidatos</TabsTrigger>
-          <TabsTrigger value="analysis">Análise Candidatos</TabsTrigger>
-          <TabsTrigger value="selected">Selecionados</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="candidates" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Candidatos da Seleção</span>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, email ou telefone..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Candidatos da Entrevista</span>
+            <div className="flex items-center space-x-4">
+              <Input
+                placeholder="Buscar por nome, email ou telefone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-md"
+              />
+              <div className="text-sm text-gray-600">
+                Total: {filteredCandidates.length} candidatos
+              </div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingCandidates ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p>Carregando candidatos...</p>
+              </div>
+            </div>
+          ) : (
+            <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {paginatedCandidates.map((candidate: Candidate) => (
-                  <div key={candidate.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm truncate">{candidate.name}</h4>
-                        <Badge 
-                          variant={candidate.hasResponded ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {candidate.hasResponded ? 'Respondido' : 'Pendente'}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="truncate">{candidate.email}</div>
-                        <div>{candidate.phone}</div>
-                      </div>
-                      
-                      {candidate.hasResponded && candidate.score !== undefined && (
-                        <div className="text-xs">
-                          <span className="font-medium">Score: </span>
-                          <span className={`font-semibold ${
-                            candidate.score >= 80 ? 'text-green-600' : 
-                            candidate.score >= 60 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {candidate.score}%
-                          </span>
+                {paginatedCandidates.map((item) => (
+                  <Card key={item.candidate.id} className="hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-medium text-sm">{item.candidate.name}</h3>
+                          <Badge variant={item.interview.status === 'completed' ? "default" : "secondary"}>
+                            {item.interview.status === 'completed' ? "Concluída" : "Em andamento"}
+                          </Badge>
                         </div>
-                      )}
-                      
-                      {candidate.category && (
-                        <Badge 
-                          variant="outline" 
-                          className="w-full justify-center text-xs"
-                        >
-                          {candidate.category === 'melhor' ? 'Melhor' : 
-                           candidate.category === 'mediano' ? 'Mediano' : 
-                           candidate.category === 'em_duvida' ? 'Em dúvida' : 'Não'}
-                        </Badge>
-                      )}
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedCandidate(candidate)}
-                        className="w-full text-xs"
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        Visualizar
-                      </Button>
-                    </div>
-                  </div>
+                        
+                        <div className="space-y-1 text-xs text-gray-600">
+                          <p className="truncate">{item.candidate.email}</p>
+                          <p>{item.candidate.phone}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">Score:</span>
+                          <Badge variant="outline" className="text-xs">
+                            {item.interview.totalScore || 0}pts
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500">Respostas:</span>
+                          <Badge variant="outline" className="text-xs">
+                            {item.responses.length}
+                          </Badge>
+                        </div>
+                        
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="w-full text-xs"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Ver Entrevista
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Entrevista - {item.candidate.name}
+                              </DialogTitle>
+                            </DialogHeader>
+                            
+                            <ScrollArea className="h-[60vh] pr-4">
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                                  <div>
+                                    <h3 className="font-medium text-sm mb-2">Informações do Candidato</h3>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                      <p><strong>Nome:</strong> {item.candidate.name}</p>
+                                      <p><strong>Email:</strong> {item.candidate.email}</p>
+                                      <p><strong>Telefone:</strong> {item.candidate.phone}</p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h3 className="font-medium text-sm mb-2">Status da Entrevista</h3>
+                                    <div className="space-y-1 text-sm text-gray-600">
+                                      <p><strong>Status:</strong> {item.interview.status}</p>
+                                      <p><strong>Score Total:</strong> {item.interview.totalScore || 0} pontos</p>
+                                      <p><strong>Respostas:</strong> {item.responses.length}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <h3 className="font-medium mb-4">Respostas da Entrevista</h3>
+                                  <div className="space-y-4">
+                                    {item.responses.map((response) => (
+                                      <Card key={response.id} className="p-4">
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-start">
+                                            <h4 className="font-medium text-sm">
+                                              Pergunta {response.questionId}
+                                            </h4>
+                                            {response.score && (
+                                              <Badge variant="outline">
+                                                {response.score} pts
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          
+                                          <div className="p-3 bg-blue-50 rounded border-l-4 border-blue-200">
+                                            <p className="text-sm text-blue-800">
+                                              <strong>Pergunta:</strong> {response.questionText}
+                                            </p>
+                                          </div>
+                                          
+                                          <div className="p-3 bg-green-50 rounded border-l-4 border-green-200">
+                                            <p className="text-sm text-green-800">
+                                              <strong>Resposta:</strong> {response.transcription || 'Transcrição não disponível'}
+                                            </p>
+                                          </div>
+                                          
+                                          <div className="flex items-center justify-between">
+                                            <AudioPlayer 
+                                              audioUrl={response.audioUrl || ''} 
+                                              className="flex items-center gap-2"
+                                            />
+                                            {response.recordingDuration && (
+                                              <span className="text-xs text-gray-500">
+                                                Duração: {Math.round(response.recordingDuration)}s
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Card>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </ScrollArea>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
 
@@ -530,84 +461,10 @@ export default function NewReportsPage() {
                   </Button>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analysis" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Candidatos por Score</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {candidates
-                  .filter((c: Candidate) => c.hasResponded)
-                  .sort((a: Candidate, b: Candidate) => (b.score || 0) - (a.score || 0))
-                  .slice(0, 20)
-                  .map((candidate: Candidate) => (
-                    <div key={candidate.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <h4 className="font-medium">{candidate.name}</h4>
-                        <div className="text-sm text-muted-foreground">
-                          Score: {candidate.score || 0}%
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedCandidate(candidate)}
-                        className="flex items-center space-x-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span>Visualizar respostas</span>
-                      </Button>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="selected" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(candidatesByCategory).map(([category, candidateList]) => (
-              <Card key={category}>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Users className="h-5 w-5" />
-                    <span>{category === 'melhor' ? 'Melhor' : 
-                           category === 'mediano' ? 'Mediano' : 
-                           category === 'em_duvida' ? 'Em dúvida' : 'Não'}</span>
-                    <Badge variant="secondary">{candidateList.length}</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {candidateList.map((candidate: Candidate) => (
-                      <div key={candidate.id} className="flex items-center justify-between p-2 border rounded">
-                        <span className="font-medium">{candidate.name}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedCandidate(candidate)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    {candidateList.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        Nenhum candidato nesta categoria
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
