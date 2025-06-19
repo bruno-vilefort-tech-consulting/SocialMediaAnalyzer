@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 🎯 SISTEMA DE ENTREVISTA INTERATIVA RESTAURADO - Fluxo original WhatsApp implementado conforme solicitado
+  - **InteractiveInterviewService criado**: Novo serviço completo para entrevistas via WhatsApp com fluxo 1=sim/2=não
+  - **Handler de mensagens integrado**: WhatsAppBaileyService agora processa mensagens recebidas automaticamente
+  - **Fluxo completo funcionando**: Convite → 1/2 → perguntas texto+áudio → respostas áudio → transcrição → banco
+  - **Sistema de perguntas TTS**: Perguntas enviadas por texto e áudio usando configuração de voz por cliente
+  - **Transcrição automática**: Respostas de áudio processadas via Whisper e salvas no banco de dados
+  - **Estado em memória**: Entrevistas ativas gerenciadas com controle de progresso e timeout
+  - **Importações dinâmicas**: Dependências circulares evitadas com imports condicionais
+  - **Proteção do WhatsApp**: Módulo existente preservado sem modificações estruturais
+
 - June 19, 2025: 📋 BACKUP COMPLETO DO SISTEMA WHATSAPP BAILEYS CRIADO - Documentação técnica completa para referência futura
   - **Arquivo principal**: backup_whatsapp_baileys_completo.md com arquitetura detalhada
   - **Código fonte backup**: backup_whatsapp_codigo_principal.ts com implementação completa

@@ -61,9 +61,7 @@ export default function SelectionsPage() {
   const [candidateListId, setCandidateListId] = useState<number | null>(null);
   const [jobId, setJobId] = useState("");
   const [mensagemWhatsApp, setMensagemWhatsApp] = useState("");
-  const [mensagemEmail, setMensagemEmail] = useState("");
   const [enviarWhatsApp, setEnviarWhatsApp] = useState(true);
-  const [enviarEmail, setEnviarEmail] = useState(false);
   const [agendamento, setAgendamento] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
@@ -104,11 +102,20 @@ export default function SelectionsPage() {
     enabled: user?.role === 'master',
   });
 
-  // Texto padrão para WhatsApp
-  const defaultWhatsAppMessage = "Olá [nome do candidato] somos da [Nome do Cliente] e sou uma assistente virtual, você se cadastrou em nossa vaga de [Nome da Vaga], você foi selecionado(a) para próxima etapa que será uma entrevista virtual. Nessa entrevista nós enviaremos perguntas por áudio e você poderá responder também via áudio em nosso sistema, não será necessário gravar vídeo. Após responder todas as [número de perguntas] perguntas, nossa equipe vai analisar suas respostas e lhe responder o mais breve possível.";
+  // Texto padrão para WhatsApp com novo template
+  const defaultWhatsAppMessage = `Olá [nome do candidato],
 
-  // Texto padrão para E-mail
-  const defaultEmailMessage = "Olá [nome do candidato] Somos da [Nome do Cliente] e sou [Nome do Colaborador da Empresa], você se cadastrou em nossa vaga de [Nome da Vaga], você foi selecionado(a) para próxima etapa que será uma entrevista virtual. Nessa entrevista nós enviaremos perguntas por áudio e você poderá responder também via áudio em nosso sistema, não será necessário gravar vídeo. Após responder todas as [número de perguntas] perguntas, nossa equipe vai analisar suas respostas e lhe responder o mais breve possível.";
+Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [nome da vaga] e foi selecionado(a) para a próxima etapa. Faremos agora uma breve entrevista de voz aqui mesmo pelo WhatsApp:
+
+– as perguntas serão enviadas em áudio;
+– você responde também por áudio, no seu ritmo;
+– todo o processo leva apenas alguns minutos.
+
+Você gostaria de iniciar a entrevista?
+
+Para participar, responda:
+1 - Sim, começar agora
+2 - Não quero participar`;
 
   // Criar seleção
   const createSelectionMutation = useMutation({
@@ -269,22 +276,17 @@ export default function SelectionsPage() {
     setCandidateListId(null);
     setJobId("");
     setMensagemWhatsApp(defaultWhatsAppMessage);
-    setMensagemEmail(defaultEmailMessage);
     setEnviarWhatsApp(true);
-    setEnviarEmail(false);
     setAgendamento("");
     setTipoEnvio("agora");
   };
 
-  // Inicializar textos padrão
+  // Inicializar texto padrão WhatsApp
   useEffect(() => {
     if (!mensagemWhatsApp || mensagemWhatsApp.trim() === "") {
       setMensagemWhatsApp(defaultWhatsAppMessage);
     }
-    if (!mensagemEmail || mensagemEmail.trim() === "") {
-      setMensagemEmail(defaultEmailMessage);
-    }
-  }, [defaultWhatsAppMessage, defaultEmailMessage]);
+  }, [defaultWhatsAppMessage]);
 
   // Iniciar edição
   const startEdit = (selection: Selection) => {
@@ -294,9 +296,7 @@ export default function SelectionsPage() {
     setCandidateListId(selection.candidateListId);
     setJobId(selection.jobId);
     setMensagemWhatsApp(selection.mensagemWhatsApp || defaultWhatsAppMessage);
-    setMensagemEmail(selection.mensagemEmail || defaultEmailMessage);
-    setEnviarWhatsApp(selection.enviarWhatsApp);
-    setEnviarEmail(selection.enviarEmail);
+    setEnviarWhatsApp(true); // Sempre WhatsApp por padrão
     setAgendamento(selection.agendamento ? new Date(selection.agendamento).toISOString().slice(0, 16) : "");
     setTipoEnvio(selection.agendamento ? "agendar" : "agora");
     setShowForm(true);
@@ -310,9 +310,7 @@ export default function SelectionsPage() {
     setCandidateListId(selection.candidateListId);
     setJobId(selection.jobId);
     setMensagemWhatsApp(selection.whatsappTemplate || selection.mensagemWhatsApp || defaultWhatsAppMessage);
-    setMensagemEmail(selection.emailTemplate || selection.mensagemEmail || defaultEmailMessage);
-    setEnviarWhatsApp(selection.sendVia?.includes('whatsapp') || selection.enviarWhatsApp || false);
-    setEnviarEmail(selection.sendVia?.includes('email') || selection.enviarEmail || false);
+    setEnviarWhatsApp(true); // Sempre WhatsApp por padrão
     setAgendamento(""); // Reset agendamento para nova seleção
     setTipoEnvio("agora"); // Default para enviar agora
     setShowForm(true);
@@ -368,8 +366,8 @@ export default function SelectionsPage() {
       return;
     }
 
-    if (!enviarWhatsApp && !enviarEmail) {
-      toast({ title: "Selecione pelo menos um meio de envio", variant: "destructive" });
+    if (!enviarWhatsApp) {
+      toast({ title: "WhatsApp deve estar selecionado", variant: "destructive" });
       return;
     }
 
@@ -386,9 +384,9 @@ export default function SelectionsPage() {
       jobId: jobId, // Keep as string
       candidateListId: candidateListId, // Include the selected candidate list ID
       whatsappTemplate: mensagemWhatsApp.trim(),
-      emailTemplate: enviarEmail ? mensagemEmail.trim() : "Convite para entrevista",
+      emailTemplate: "Convite para entrevista",
       emailSubject: "Convite para Entrevista - {vaga}",
-      sendVia: enviarWhatsApp && enviarEmail ? 'both' : enviarWhatsApp ? 'whatsapp' : 'email',
+      sendVia: 'whatsapp',
       scheduledFor: tipoEnvio === "agendar" && agendamento ? new Date(agendamento) : null,
       deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
       status: tipoEnvio === "agora" ? 'active' : 'draft',
