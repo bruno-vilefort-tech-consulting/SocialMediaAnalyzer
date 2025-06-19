@@ -1,4 +1,5 @@
 import { storage } from './storage';
+import { interactiveInterviewService } from './interactiveInterviewService';
 
 // Usar import dinâmico para baileys e qrcode
 let makeWASocket: any;
@@ -120,6 +121,40 @@ class WhatsAppBaileyService {
         }
       });
 
+      // Adicionar handler de mensagens para entrevistas interativas
+      sock.ev.on('messages.upsert', async ({ messages }: any) => {
+        for (const message of messages) {
+          if (message.key.fromMe || !message.message) continue;
+          
+          const from = message.key.remoteJid;
+          if (!from || !from.includes('@s.whatsapp.net')) continue;
+          
+          console.log(`📨 [INTERVIEW] Nova mensagem de ${from}`);
+          
+          // Extrair texto da mensagem
+          let messageText = '';
+          if (message.message.conversation) {
+            messageText = message.message.conversation;
+          } else if (message.message.extendedTextMessage?.text) {
+            messageText = message.message.extendedTextMessage.text;
+          }
+          
+          // Verificar se há áudio
+          let audioMessage = null;
+          if (message.message.audioMessage) {
+            audioMessage = message.message.audioMessage;
+            console.log(`🎵 [INTERVIEW] Mensagem de áudio detectada`);
+          }
+          
+          // Processar via serviço de entrevistas
+          try {
+            await interactiveInterviewService.handleMessage(from, messageText, audioMessage, clientId);
+          } catch (error) {
+            console.log(`❌ [INTERVIEW] Erro ao processar mensagem:`, error.message);
+          }
+        }
+      });
+
       sock.ev.on('creds.update', saveCreds);
 
       // Keep-alive a cada 25 segundos
@@ -170,6 +205,10 @@ class WhatsAppBaileyService {
   getPhoneNumber(clientId: string): string | null {
     const connection = this.connections.get(clientId);
     return connection?.phoneNumber || null;
+  }
+
+  getConnection(clientId: string): WhatsAppState | undefined {
+    return this.connections.get(clientId);
   }
 
   async sendMessage(clientId: string, phone: string, text: string): Promise<boolean> {
