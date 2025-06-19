@@ -115,13 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🔧 ERRO DE IMPORTAÇÃO CORRIGIDO - Sistema de verificação automática funcional
-  - **Erro identificado**: Importação incorreta do storage causando falha na verificação automática
-  - **Correção aplicada**: Try/catch implementado com importação correta do módulo storage
-  - **Sistema resiliente**: Se verificação falhar, continua com entrevista atual sem quebrar
-  - **Teste necessário**: Digite 'parar' no WhatsApp para encerrar entrevista atual, depois '1' para nova
-  - **Seleção correta**: Nova entrevista deve usar "Consultor GM" (1750314347922) + Daniel Braga
-  - **Fallback seguro**: Sistema não quebra mais quando há erro na verificação
+- June 19, 2025: 🎯 CORREÇÃO FINAL IMPLEMENTADA - Sistema escolhe candidato mais recente quando há duplicatas
+  - **Problema identificado**: Dois candidatos (Daniel Moreira e Daniel Braga) com mesmo telefone
+  - **Solução implementada**: Sistema escolhe automaticamente o candidato mais recente por data de criação
+  - **Lógica inteligente**: Quando múltiplos candidatos têm mesmo telefone, usa o criado mais recentemente
+  - **Daniel Braga priorizado**: Sendo mais recente, será escolhido automaticamente nas próximas entrevistas
+  - **Debug expandido**: Logs mostram todos os candidatos encontrados e critério de seleção
+  - **Sistema completo**: SelectionId + CandidateId corretos nas próximas entrevistas
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
