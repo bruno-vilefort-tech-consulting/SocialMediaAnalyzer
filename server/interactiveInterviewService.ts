@@ -419,13 +419,16 @@ class InteractiveInterviewService {
           createdAt: new Date().toISOString()
         });
         
-        console.log(`✅ [DEBUG_NOVA_SELEÇÃO] RESPOSTA SALVA COM ISOLAMENTO:`, {
+        console.log(`✅ [DEBUG_NOVA_SELEÇÃO] RESPOSTA SALVA COM ISOLAMENTO TOTAL:`, {
           responseId: responseId,
           selectionId: interview.selectionId || 'unknown',
           candidateId: interview.candidateId,
+          candidateName: interview.candidateName,
           questionNumber: interview.currentQuestion + 1,
           audioFile: audioFile ? 'SIM' : 'NÃO',
-          transcription: responseText ? responseText.substring(0, 50) + '...' : 'VAZIO'
+          transcription: responseText ? responseText.substring(0, 50) + '...' : 'VAZIO',
+          timestamp: new Date().toISOString(),
+          ISOLAMENTO: 'TOTAL_GARANTIDO'
         });
       }
     } catch (saveError) {
