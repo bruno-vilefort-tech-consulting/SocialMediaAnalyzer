@@ -85,7 +85,9 @@ export interface IStorage {
 
   // Responses
   getResponsesByInterviewId(interviewId: number): Promise<Response[]>;
+  getResponsesBySelectionAndCandidate(selectionId: string, candidateId: number, clientId: number): Promise<Response[]>;
   createResponse(response: InsertResponse): Promise<Response>;
+  createResponseWithSelection(response: InsertResponse & { selectionId: string; clientId: number }): Promise<Response>;
   updateResponse(id: number, response: Partial<Response>): Promise<Response>;
 
   // Master Settings - configurações OpenAI globais compartilhadas entre todos os masters
@@ -1674,6 +1676,7 @@ export class FirebaseStorage implements IStorage {
   async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
     try {
       console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
+      const candidateId = interviewId.replace('interview_', '');
       
       // Buscar na coleção responses
       const responsesQuery = query(
@@ -1690,11 +1693,11 @@ export class FirebaseStorage implements IStorage {
         });
       });
       
-      // Se não encontrou na coleção responses, buscar na interview_responses
+      // Se não encontrou na coleção responses, buscar na interview_responses por candidateId
       if (responses.length === 0) {
         const interviewResponsesQuery = query(
           collection(firebaseDb, 'interview_responses'),
-          where('candidateId', '==', interviewId.replace('interview_', ''))
+          where('candidateId', '==', candidateId)
         );
         const interviewResponsesSnapshot = await getDocs(interviewResponsesQuery);
         
@@ -1713,7 +1716,38 @@ export class FirebaseStorage implements IStorage {
         });
       }
       
-      console.log(`📋 Encontradas ${responses.length} respostas para entrevista ${interviewId}`);
+      // Buscar também por telefone nas coleções de WhatsApp
+      if (responses.length === 0) {
+        console.log(`🔍 Buscando por telefone para candidato ${candidateId}`);
+        
+        // Buscar candidato para pegar telefone
+        const candidate = await this.getCandidateById(parseInt(candidateId));
+        if (candidate?.whatsapp) {
+          const whatsappQuery = query(
+            collection(firebaseDb, 'interview_responses'),
+            where('numero', '==', candidate.whatsapp)
+          );
+          const whatsappSnapshot = await getDocs(whatsappQuery);
+          
+          whatsappSnapshot.forEach(doc => {
+            const data = doc.data();
+            responses.push({
+              id: doc.id,
+              questionId: data.questionNumber || 1,
+              questionText: data.pergunta || data.question,
+              transcription: data.respostaTexto || data.transcription,
+              audioUrl: data.respostaAudioUrl || data.audioFile,
+              score: data.score || 0,
+              recordingDuration: data.recordingDuration || 0,
+              aiAnalysis: data.aiAnalysis || ''
+            });
+          });
+          
+          console.log(`📱 Encontradas ${responses.length} respostas por telefone ${candidate.whatsapp}`);
+        }
+      }
+      
+      console.log(`📋 Total de respostas encontradas para ${interviewId}: ${responses.length}`);
       return responses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
     } catch (error) {
       console.error('Erro ao buscar respostas por entrevista:', error);

@@ -2858,9 +2858,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Para cada candidato, criar estrutura com entrevista (real ou pendente)
       const candidatesWithInterviews = await Promise.all(candidatesInList.map(async (candidate) => {
-        // Buscar respostas reais do Firebase primeiro
-        const realResponses = await storage.getResponsesByInterviewId(`interview_${candidate.id}`);
-        console.log(`🔍 [REAL_DATA] Respostas encontradas para ${candidate.name}: ${realResponses.length}`);
+        // Buscar respostas reais específicas por seleção + candidato + cliente
+        const realResponses = await storage.getResponsesBySelectionAndCandidate(
+          selectionId, 
+          candidate.id, 
+          selection.clientId
+        );
+        console.log(`🔍 [REAL_DATA] Respostas para ${candidate.name} na seleção ${selection.name}: ${realResponses.length}`);
         
         let responses = [];
         if (realResponses.length > 0) {
