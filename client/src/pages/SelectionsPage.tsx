@@ -424,7 +424,7 @@ Para participar, responda:
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Seleção de Candidatos</h1>
-          <p className="text-muted-foreground">Configure e agende entrevistas por voz via WhatsApp e E-mail</p>
+          <p className="text-muted-foreground">Configure e agende entrevistas por voz via WhatsApp</p>
         </div>
         <div className="flex items-center gap-4">
           {/* Selecionador de Cliente (apenas para master) */}
@@ -537,10 +537,13 @@ Para participar, responda:
               </div>
             </div>
 
-            {/* Mensagens */}
+            {/* Mensagem WhatsApp */}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="mensagemWhatsApp">Mensagem Inicial WhatsApp (até 500 caracteres)</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Use [nome do candidato] no texto abaixo para o sistema escrever o nome do candidato
+                </p>
                 <Textarea
                   id="mensagemWhatsApp"
                   value={mensagemWhatsApp}
@@ -552,50 +555,9 @@ Para participar, responda:
                   }}
                   placeholder={defaultWhatsAppMessage}
                   maxLength={500}
-                  rows={6}
+                  rows={8}
                 />
                 <p className="text-xs text-muted-foreground">{mensagemWhatsApp.length}/500 caracteres</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="mensagemEmail">Mensagem para E-mail (até 500 caracteres) - Opcional</Label>
-                <Textarea
-                  id="mensagemEmail"
-                  value={mensagemEmail}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    if (newValue.length <= 500) {
-                      setMensagemEmail(newValue);
-                    }
-                  }}
-                  placeholder={defaultEmailMessage}
-                  maxLength={500}
-                  rows={6}
-                />
-                <p className="text-xs text-muted-foreground">{mensagemEmail.length}/500 caracteres</p>
-              </div>
-            </div>
-
-            {/* Opções de envio */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Opções de Envio</h3>
-              <div className="flex space-x-6">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enviarWhatsApp"
-                    checked={enviarWhatsApp}
-                    onCheckedChange={(checked) => setEnviarWhatsApp(checked === true)}
-                  />
-                  <Label htmlFor="enviarWhatsApp">Enviar por WhatsApp</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enviarEmail"
-                    checked={enviarEmail}
-                    onCheckedChange={(checked) => setEnviarEmail(checked === true)}
-                  />
-                  <Label htmlFor="enviarEmail">Enviar por E-mail</Label>
-                </div>
               </div>
             </div>
 
@@ -650,7 +612,7 @@ Para participar, responda:
                 className="bg-green-600 hover:bg-green-700"
               >
                 {createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending ? (
-                  createAndSendMutation.isPending ? "Salvando e enviando..." : "Salvando..."
+                  createAndSendMutation.isPending ? "Enviando WhatsApp..." : "Salvando..."
                 ) : (
                   tipoEnvio === "agora" 
                     ? (editingSelection ? "Salvar e Enviar" : "Salvar e Enviar")
@@ -735,14 +697,7 @@ Para participar, responda:
                     <TableCell>
                       <div className="space-y-2">
                         <div className="flex gap-1 mb-1">
-                          {selection.sendVia === 'whatsapp' && <Badge variant="outline">WhatsApp</Badge>}
-                          {selection.sendVia === 'email' && <Badge variant="outline">E-mail</Badge>}
-                          {selection.sendVia === 'both' && (
-                            <>
-                              <Badge variant="outline">WhatsApp</Badge>
-                              <Badge variant="outline">E-mail</Badge>
-                            </>
-                          )}
+                          <Badge variant="outline">WhatsApp</Badge>
                         </div>
                         <div className="w-full">
                           <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -793,34 +748,16 @@ Para participar, responda:
                         </Button>
                         
                         {(selection.status === 'draft' || selection.status === 'active') && (
-                          <div className="flex gap-1">
-                            {/* Botão de Reenvio WhatsApp */}
-                            {(selection.sendVia === 'whatsapp' || selection.sendVia === 'both') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => resendWhatsAppMutation.mutate(selection.id)}
-                                disabled={resendWhatsAppMutation.isPending}
-                                title="Reenviar WhatsApp"
-                                className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                              </Button>
-                            )}
-                            
-                            {(selection.sendVia === 'email' || selection.sendVia === 'both') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => sendInterviewsMutation.mutate(selection.id)}
-                                disabled={sendInterviewsMutation.isPending}
-                                title="Enviar via E-mail"
-                                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                              >
-                                <Mail className="w-4 h-4 text-blue-600" />
-                              </Button>
-                            )}
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resendWhatsAppMutation.mutate(selection.id)}
+                            disabled={resendWhatsAppMutation.isPending}
+                            title="Reenviar WhatsApp"
+                            className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
                         )}
 
                         <AlertDialog>
