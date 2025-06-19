@@ -549,12 +549,13 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Transcrever com OpenAI Whisper - método corrigido
-      const FormData = (await import('form-data')).default;
+      // Usar método nativo FormData do browser/Node.js
+      const audioBuffer = fs.readFileSync(audioPath);
       const formData = new FormData();
       
-      // Adicionar arquivo com nome correto
-      formData.append('file', fs.createReadStream(audioPath), 'audio.ogg');
+      // Criar Blob do áudio
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
+      formData.append('file', audioBlob, 'audio.ogg');
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
 
@@ -563,8 +564,7 @@ class InteractiveInterviewService {
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          ...formData.getHeaders()
+          'Authorization': `Bearer ${openaiApiKey}`
         },
         body: formData
       });
