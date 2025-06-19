@@ -59,19 +59,8 @@ const ReportsHistoryPage: React.FC = () => {
   // Buscar todos os relatórios
   const { data: reports = [], isLoading, error } = useQuery({
     queryKey: ['/api/reports'],
-    queryFn: async () => {
-      console.log('🔍 Fazendo requisição para /api/reports');
-      const result = await apiRequest('/api/reports');
-      console.log('🔍 Resultado recebido:', result);
-      console.log('🔍 Tipo do resultado:', typeof result);
-      console.log('🔍 É array?', Array.isArray(result));
-      return result;
-    }
+    queryFn: () => apiRequest('/api/reports')
   });
-
-  console.log('🔍 Reports no componente:', reports);
-  console.log('🔍 IsLoading:', isLoading);
-  console.log('🔍 Error:', error);
 
   // Buscar candidatos de um relatório específico
   const { data: candidates = [] } = useQuery({
