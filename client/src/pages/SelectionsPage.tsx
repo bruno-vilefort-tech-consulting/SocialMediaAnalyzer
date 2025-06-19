@@ -56,6 +56,12 @@ export default function SelectionsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  // Verificar status do WhatsApp
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ['/api/client/whatsapp/status'],
+    refetchInterval: 30000, // Verificar a cada 30 segundos
+  });
+
   // Estados do formulário
   const [showForm, setShowForm] = useState(false);
   const [editingSelection, setEditingSelection] = useState<Selection | null>(null);
@@ -217,6 +223,11 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
   // Criar seleção e enviar automaticamente via WhatsApp com barra de progresso
   const createAndSendMutation = useMutation({
     mutationFn: async (selectionData: any) => {
+      // Verificar se WhatsApp está conectado antes de criar e enviar
+      if ((selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both') && !whatsappStatus?.isConnected) {
+        throw new Error('WhatsApp não está conectado');
+      }
+      
       // Primeiro criar a seleção
       const createResponse = await apiRequest('/api/selections', 'POST', selectionData);
       const newSelection = await createResponse.json();
