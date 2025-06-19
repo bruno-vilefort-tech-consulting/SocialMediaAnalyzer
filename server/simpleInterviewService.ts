@@ -150,7 +150,7 @@ class SimpleInterviewService {
     const questionNum = interview.currentQuestion + 1;
     const total = interview.questions.length;
     
-    const message = `📝 Pergunta ${questionNum}/${total}:\n\n${question.pergunta}\n\n🎤 Responda com áudio ou texto`;
+    const message = `📝 Pergunta ${questionNum}/${total}:\n\n${question.pergunta}\n\n🎤 Responda somente por áudio`;
 
     await this.sendMessage(`${phone}@s.whatsapp.net`, message);
 
