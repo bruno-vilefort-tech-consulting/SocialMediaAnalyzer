@@ -145,10 +145,10 @@ export class FirebaseStorage implements IStorage {
   private getDb(): admin.firestore.Firestore {
     if (!this.db) {
       try {
-        // Use the already initialized admin from db.ts
-        this.db = admin.firestore();
+        // Use firebaseDb from db.ts which is already initialized
+        return firebaseDb as any;
       } catch (error) {
-        console.error('Error initializing Firebase admin in storage:', error);
+        console.error('Error getting Firebase db:', error);
         throw error;
       }
     }
@@ -1675,19 +1675,46 @@ export class FirebaseStorage implements IStorage {
     try {
       console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
       
-      const db = this.getDb();
-      const responsesSnapshot = await db.collection('responses')
-        .where('interviewId', '==', interviewId)
-        .orderBy('questionId', 'asc')
-        .get();
+      // Buscar na coleção responses
+      const responsesQuery = query(
+        collection(firebaseDb, 'responses'),
+        where('interviewId', '==', interviewId)
+      );
+      const responsesSnapshot = await getDocs(responsesQuery);
       
-      const responses = responsesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const responses: any[] = [];
+      responsesSnapshot.forEach(doc => {
+        responses.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Se não encontrou na coleção responses, buscar na interview_responses
+      if (responses.length === 0) {
+        const interviewResponsesQuery = query(
+          collection(firebaseDb, 'interview_responses'),
+          where('candidateId', '==', interviewId.replace('interview_', ''))
+        );
+        const interviewResponsesSnapshot = await getDocs(interviewResponsesQuery);
+        
+        interviewResponsesSnapshot.forEach(doc => {
+          const data = doc.data();
+          responses.push({
+            id: doc.id,
+            questionId: data.questionNumber || 1,
+            questionText: data.pergunta || data.question,
+            transcription: data.respostaTexto || data.transcription,
+            audioUrl: data.respostaAudioUrl || data.audioFile,
+            score: data.score || 0,
+            recordingDuration: data.recordingDuration || 0,
+            aiAnalysis: data.aiAnalysis || ''
+          });
+        });
+      }
       
       console.log(`📋 Encontradas ${responses.length} respostas para entrevista ${interviewId}`);
-      return responses;
+      return responses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
     } catch (error) {
       console.error('Erro ao buscar respostas por entrevista:', error);
       return [];

@@ -2857,18 +2857,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`❓ Perguntas encontradas para job ${selection.jobId}: ${questions.length}`);
       
       // Para cada candidato, criar estrutura com entrevista (real ou pendente)
-      const candidatesWithInterviews = candidatesInList.map((candidate) => {
-        // Criar estrutura de resposta baseada nas perguntas
-        const responses = questions.map((question, index) => ({
-          id: `${candidate.id}_${index + 1}`,
-          questionId: index + 1,
-          questionText: question.pergunta || `Pergunta ${index + 1}`,
-          transcription: 'Aguardando resposta via WhatsApp',
-          audioUrl: '',
-          score: 0,
-          recordingDuration: 0,
-          aiAnalysis: 'Entrevista pendente'
-        }));
+      const candidatesWithInterviews = await Promise.all(candidatesInList.map(async (candidate) => {
+        // Buscar respostas reais do Firebase primeiro
+        const realResponses = await storage.getResponsesByInterviewId(`interview_${candidate.id}`);
+        console.log(`🔍 [REAL_DATA] Respostas encontradas para ${candidate.name}: ${realResponses.length}`);
+        
+        let responses = [];
+        if (realResponses.length > 0) {
+          // Usar respostas reais do Firebase
+          responses = realResponses.map((r, index) => ({
+            id: r.id || `${candidate.id}_${index + 1}`,
+            questionId: r.questionId || (index + 1),
+            questionText: r.questionText || questions[index]?.pergunta || 'Pergunta não encontrada',
+            transcription: r.transcription || r.respostaTexto || 'Transcrição não disponível',
+            audioUrl: r.audioUrl || r.respostaAudioUrl || '',
+            score: r.score || 0,
+            recordingDuration: r.recordingDuration || 0,
+            aiAnalysis: r.aiAnalysis || 'Análise não disponível'
+          }));
+          console.log(`✅ [REAL_DATA] Usando ${responses.length} respostas reais para ${candidate.name}`);
+        } else {
+          // Gerar respostas simuladas baseadas nas perguntas do job
+          responses = questions.map((question, index) => ({
+            id: `${candidate.id}_${index + 1}`,
+            questionId: index + 1,
+            questionText: question.pergunta || `Pergunta ${index + 1}`,
+            transcription: 'Aguardando resposta via WhatsApp',
+            audioUrl: '',
+            score: 0,
+            recordingDuration: 0,
+            aiAnalysis: 'Entrevista pendente'
+          }));
+          console.log(`📝 [FALLBACK] Usando respostas padrão para ${candidate.name} - não encontrou dados reais`);
+        }
+        
+        // Calcular score total e status baseado nas respostas reais
+        const totalScore = responses.length > 0 
+          ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length)
+          : 0;
+        const hasRealResponses = realResponses.length > 0;
         
         return {
           candidate: {
@@ -2879,14 +2906,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           interview: {
             id: `interview_${candidate.id}`,
-            status: selection.status === 'enviado' ? 'invited' : 'pending',
+            status: hasRealResponses ? 'completed' : (selection.status === 'enviado' ? 'invited' : 'pending'),
             createdAt: selection.createdAt,
-            completedAt: null,
-            totalScore: 0
+            completedAt: hasRealResponses ? new Date() : null,
+            totalScore: totalScore
           },
           responses: responses
         };
-      });
+      }));
       
       console.log(`✅ Retornando ${candidatesWithInterviews.length} candidatos que receberam convites`);
       res.json(candidatesWithInterviews);
