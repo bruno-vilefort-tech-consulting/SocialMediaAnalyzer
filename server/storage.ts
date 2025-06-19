@@ -12,6 +12,7 @@ import {
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
 import { firebaseDb } from "./db";
+import admin from "firebase-admin";
 
 export interface IStorage {
   // Users
@@ -134,6 +135,19 @@ export interface IStorage {
 }
 
 export class FirebaseStorage implements IStorage {
+  private db: admin.firestore.Firestore;
+  
+  constructor() {
+    // Initialize db lazily to avoid initialization order issues
+    this.db = null as any;
+  }
+  
+  private getDb(): admin.firestore.Firestore {
+    if (!this.db) {
+      this.db = admin.firestore();
+    }
+    return this.db;
+  }
   
   // Users
   async getUserById(id: string | number): Promise<User | undefined> {
@@ -1633,8 +1647,7 @@ export class FirebaseStorage implements IStorage {
     try {
       console.log(`🔍 Buscando entrevistas para seleção ${selectionId}`);
       
-      // Use the initialized Firebase admin instance
-      const db = admin.firestore();
+      const db = this.getDb();
       const interviewsSnapshot = await db.collection('interviews')
         .where('selectionId', '==', selectionId)
         .get();
@@ -1656,8 +1669,7 @@ export class FirebaseStorage implements IStorage {
     try {
       console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
       
-      // Use the initialized Firebase admin instance
-      const db = admin.firestore();
+      const db = this.getDb();
       const responsesSnapshot = await db.collection('responses')
         .where('interviewId', '==', interviewId)
         .orderBy('questionId', 'asc')

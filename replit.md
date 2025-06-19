@@ -168,15 +168,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 19, 2025: 📊 SISTEMA DE RELATÓRIOS DE ENTREVISTAS IMPLEMENTADO - Interface completa conforme solicitado
-  - **Interface criada do zero**: NewReportsPage.tsx com visualização de seleções e candidatos
+- June 19, 2025: 📊 SISTEMA DE RELATÓRIOS DE ENTREVISTAS CORRIGIDO E FUNCIONAL - Interface completa para visualização de entrevistas
+  - **Interface NewReportsPage funcional**: Visualização de seleções → candidatos com entrevistas realizadas
   - **Modal de entrevista detalhada**: Perguntas, respostas transcritas e player de áudio integrado
   - **Player de áudio funcional**: Controles play/pause/stop para reproduzir gravações dos candidatos
-  - **Endpoints backend**: API para buscar candidatos com entrevistas e respostas por seleção
+  - **Endpoint /api/selections/:selectionId/interview-candidates**: API corrigida para buscar candidatos com entrevistas
+  - **Firebase admin corrigido**: Import e inicialização do admin.firestore() nos métodos storage
   - **Autorização por role**: Masters selecionam cliente, clientes veem apenas seus dados
   - **Busca e paginação**: Filtro por nome/email/telefone com layout em grid responsivo
-  - **Acesso via Relatórios**: Fluxo completo seleção → candidatos → modal entrevista → áudios
-  - **Métodos storage**: getInterviewsBySelection e getResponsesByInterviewId implementados
+  - **Fluxo completo**: Relatórios → seleção → Ver Candidatos → Ver Entrevista → áudios reproduzíveis
+  - **Métodos storage implementados**: getInterviewsBySelection e getResponsesByInterviewId funcionais
 
 - June 19, 2025: 🎉 SISTEMA DE ENTREVISTAS POR ÁUDIO VIA WHATSAPP 100% FUNCIONAL - Implementação completa finalizada
   - **Download de áudio real**: Handler processAudioMessageWithFix implementado com sucesso
