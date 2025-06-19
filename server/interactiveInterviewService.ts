@@ -18,7 +18,8 @@ interface ActiveInterview {
     timestamp: string;
   }>;
   startTime: string;
-  interviewDbId?: number;
+  selectionId: string;
+  interviewDbId?: string;
 }
 
 class InteractiveInterviewService {
@@ -159,7 +160,7 @@ class InteractiveInterviewService {
   }
 
   private async startInterview(phone: string, clientId?: string): Promise<void> {
-    console.log(`🚀 Iniciando entrevista para ${phone}`);
+    console.log(`🚀 [DEBUG_NOVA_SELEÇÃO] INICIANDO ENTREVISTA para ${phone}`);
 
     // Buscar candidato
     const candidate = await this.findCandidate(phone, clientId);
@@ -168,23 +169,28 @@ class InteractiveInterviewService {
       return;
     }
 
-    // Buscar seleção ativa para este candidato
+    console.log(`👤 [DEBUG_NOVA_SELEÇÃO] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
+
+    // Buscar seleção mais recente ATIVA para este candidato
     try {
       const allSelections = await storage.getAllSelections();
-      let selection = allSelections.find(s => 
-        s.status === 'enviado' && 
-        (clientId ? s.clientId.toString() === clientId : true)
-      );
+      let selection = allSelections
+        .filter(s => s.status === 'enviado' && (clientId ? s.clientId.toString() === clientId : true))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
       if (!selection) {
-        console.log(`⚠️ Nenhuma seleção ativa encontrada, usando primeira seleção disponível`);
-        selection = allSelections.find(s => clientId ? s.clientId.toString() === clientId : true);
+        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] Nenhuma seleção ativa encontrada, usando mais recente`);
+        selection = allSelections
+          .filter(s => clientId ? s.clientId.toString() === clientId : true)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
       }
 
       if (!selection) {
         await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.");
         return;
       }
+
+      console.log(`🎯 [DEBUG_NOVA_SELEÇÃO] Seleção encontrada: ${selection.name} (ID: ${selection.id})`);
 
       // Buscar job da seleção
       const job = await storage.getJobById(selection.jobId);
@@ -193,10 +199,14 @@ class InteractiveInterviewService {
         return;
       }
       
-      console.log(`✅ Vaga encontrada: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
+      console.log(`💼 [DEBUG_NOVA_SELEÇÃO] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
       
-      // Criar entrevista no banco de dados
+      // Criar ID único para esta entrevista específica
+      const uniqueInterviewId = `interview_${selection.id}_${candidate.id}_${Date.now()}`;
+      
+      // Criar entrevista no banco de dados com selectionId isolado
       const interviewDb = await storage.createInterview({
+        id: uniqueInterviewId,
         selectionId: selection.id,
         candidateId: candidate.id,
         token: `whatsapp_${Date.now()}`,
