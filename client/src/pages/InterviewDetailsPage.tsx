@@ -208,11 +208,11 @@ export default function InterviewDetailsPage() {
                           />
                         </div>
                         <span className="text-sm text-gray-600">
-                          {interview.answeredQuestions}/{interview.totalQuestions}
+                          {interviewStatus === 'completed' ? '100%' : responsesCount > 0 ? '50%' : '0%'}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{interview.responses.length} respostas</TableCell>
+                    <TableCell>{responsesCount} respostas</TableCell>
                     <TableCell>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -220,65 +220,72 @@ export default function InterviewDetailsPage() {
                             variant="outline" 
                             size="sm"
                             onClick={() => setSelectedCandidate(interview)}
-                            disabled={interview.responses.length === 0}
+                            disabled={responsesCount === 0}
                           >
                             Ver Detalhes
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                           <DialogHeader>
-                            <DialogTitle>Entrevista - {interview.candidateName}</DialogTitle>
+                            <DialogTitle>Entrevista - {candidateName}</DialogTitle>
                             <DialogDescription>
-                              Respostas detalhadas da entrevista
+                              Status: {statusText} | Respostas: {responsesCount}
                             </DialogDescription>
                           </DialogHeader>
                           
-                          {selectedCandidate && (
-                            <div className="space-y-6">
-                              {selectedCandidate.responses.map((response, index) => (
-                                <Card key={index}>
-                                  <CardHeader>
-                                    <CardTitle className="text-lg">
-                                      Pergunta {index + 1}
-                                    </CardTitle>
-                                    <CardDescription className="text-base">
-                                      {response.questionText}
-                                    </CardDescription>
-                                  </CardHeader>
-                                  <CardContent>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <h4 className="font-medium text-gray-900 mb-2">Resposta:</h4>
-                                        <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
-                                          {response.responseText || "Sem transcrição disponível"}
-                                        </p>
-                                      </div>
-                                      
-                                      {response.audioUrl && (
-                                        <div className="flex items-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => playAudio(response.audioUrl!)}
-                                          >
-                                            <Play className="h-4 w-4 mr-2" />
-                                            Ouvir Áudio
-                                          </Button>
-                                          <span className="text-sm text-gray-500">
-                                            {new Date(response.timestamp).toLocaleString('pt-BR')}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                              
-                              {selectedCandidate.responses.length === 0 && (
-                                <div className="text-center py-8">
-                                  <p className="text-gray-500">Nenhuma resposta registrada para este candidato.</p>
+                          {/* Resumo da entrevista */}
+                          <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                              <h4 className="font-semibold mb-2">Informações do Candidato</h4>
+                              <p><strong>Nome:</strong> {candidateName}</p>
+                              <p><strong>Telefone:</strong> {candidatePhone}</p>
+                              <p><strong>Email:</strong> {interview.candidate?.email || 'Não informado'}</p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Status da Entrevista</h4>
+                              <p><strong>Status:</strong> {statusText}</p>
+                              <p><strong>Total de Respostas:</strong> {responsesCount}</p>
+                              <p><strong>ID da Entrevista:</strong> {interview.interview?.id}</p>
+                            </div>
+                          </div>
+
+                          {/* Lista de respostas */}
+                          {responsesCount > 0 ? (
+                            <div className="space-y-4">
+                              <h4 className="font-semibold">Respostas da Entrevista</h4>
+                              {interview.responses.map((response: any, index: number) => (
+                                <div key={response.id || index} className="border rounded-lg p-4">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <h5 className="font-medium">Pergunta {index + 1}</h5>
+                                    {response.audioUrl && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => playAudio(response.audioUrl)}
+                                      >
+                                        <Play className="h-4 w-4 mr-1" />
+                                        Reproduzir Áudio
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Pergunta:</strong> {response.questionText || 'Pergunta não disponível'}
+                                  </p>
+                                  <p className="text-sm mb-2">
+                                    <strong>Transcrição:</strong> {response.transcription || 'Transcrição não disponível'}
+                                  </p>
+                                  {response.score && (
+                                    <p className="text-sm text-blue-600">
+                                      <strong>Pontuação:</strong> {response.score}/100
+                                    </p>
+                                  )}
                                 </div>
-                              )}
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                              <p className="text-gray-500">Nenhuma resposta registrada para esta entrevista</p>
                             </div>
                           )}
                         </DialogContent>
@@ -289,14 +296,21 @@ export default function InterviewDetailsPage() {
               })}
             </TableBody>
           </Table>
-          
-          {interviews.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Nenhuma entrevista encontrada para esta seleção.</p>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Modal de Detalhes - fora da tabela */}
+      {interviews.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <User className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhuma entrevista encontrada</h3>
+            <p className="text-muted-foreground text-center">
+              Não há entrevistas registradas para esta seleção.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
