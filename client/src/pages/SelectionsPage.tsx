@@ -773,6 +773,46 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           </div>
         </CardHeader>
         <CardContent>
+          {/* Banner de status do WhatsApp */}
+          {whatsappStatus && !whatsappStatus.isConnected && (
+            <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <WifiOff className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                    WhatsApp Desconectado
+                  </h3>
+                  <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                    Para enviar entrevistas via WhatsApp, você precisa conectar seu WhatsApp primeiro.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/configuracoes'}
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  Conectar WhatsApp
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {whatsappStatus && whatsappStatus.isConnected && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-green-800 dark:text-green-200">
+                    WhatsApp Conectado
+                  </h3>
+                  <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                    {whatsappStatus.phone ? `Conectado como: ${whatsappStatus.phone}` : 'Pronto para enviar entrevistas'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           {isLoading ? (
             <p>Carregando seleções...</p>
           ) : (
@@ -877,9 +917,13 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                             variant="outline"
                             size="sm"
                             onClick={() => resendWhatsAppMutation.mutate(selection.id)}
-                            disabled={resendWhatsAppMutation.isPending}
-                            title="Reenviar WhatsApp"
-                            className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                            disabled={resendWhatsAppMutation.isPending || !whatsappStatus?.isConnected}
+                            title={!whatsappStatus?.isConnected ? "WhatsApp desconectado - vá em Configurações" : "Reenviar WhatsApp"}
+                            className={`${
+                              !whatsappStatus?.isConnected 
+                                ? "text-gray-400 border-gray-300 cursor-not-allowed" 
+                                : "text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                            }`}
                           >
                             <MessageCircle className="w-4 h-4" />
                           </Button>
