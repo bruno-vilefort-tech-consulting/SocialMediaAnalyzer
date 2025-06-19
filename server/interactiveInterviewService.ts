@@ -456,21 +456,20 @@ class InteractiveInterviewService {
         
         await storage.createResponse({
           id: responseId,
-          interviewId: interview.interviewDbId,
+          selectionId: interview.selectionId,
+          candidateId: interview.candidateId, // ID único por seleção
           questionId: interview.currentQuestion + 1,
-          audioUrl: audioFile || null,
+          questionText: currentQuestion.pergunta,
+          responseText: responseText,
+          audioFile: audioFile || '',
           transcription: responseText,
-          score: null,
-          selectionId: interview.selectionId || 'unknown',
-          candidateId: interview.candidateId.toString(),
-          clientId: parseInt(interview.clientId),
-          aiAnalysis: { 
-            rawResponse: response,
-            hasAudio: !!audioMessage,
-            transcriptionSuccess: responseText.length > 0
-          },
-          recordingDuration: null,
-          createdAt: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          score: 0,
+          aiAnalysis: '',
+          recordingDuration: 0,
+          // Dados do candidato real para referência
+          candidateName: interview.candidateName,
+          candidatePhone: interview.phone
         });
         
         // Processar transcrição via Whisper se tem áudio
