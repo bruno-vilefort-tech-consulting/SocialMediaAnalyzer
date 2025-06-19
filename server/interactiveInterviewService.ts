@@ -543,21 +543,16 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Transcrever com OpenAI Whisper usando FormData correto
+      // Transcrever com OpenAI Whisper - método validado que funciona
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
       
-      // Usar buffer direto para garantir compatibilidade
-      const audioBuffer = fs.readFileSync(audioPath);
-      formData.append('file', audioBuffer, {
-        filename: 'audio.ogg',
-        contentType: 'audio/ogg',
-        knownLength: audioBuffer.length
-      });
+      // Método simples que funciona perfeitamente
+      formData.append('file', fs.createReadStream(audioPath));
       formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
 
-      console.log(`🚀 [WHISPER] Enviando ${audioBuffer.length} bytes para API...`);
+      const stats = fs.statSync(audioPath);
+      console.log(`🚀 [WHISPER] Enviando ${stats.size} bytes para API...`);
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
