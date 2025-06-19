@@ -985,108 +985,85 @@ export class FirebaseStorage implements IStorage {
     try {
       console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] STORAGE - Buscando respostas para seleção ${selectionId}, candidato ${candidateId}, cliente ${clientId}`);
       
-      // Buscar respostas específicas por seleção + candidato + cliente
-      const responsesQuery = query(
-        collection(firebaseDb, 'responses'),
-        where('selectionId', '==', selectionId),
-        where('candidateId', '==', candidateId),
-        where('clientId', '==', clientId)
-      );
-      const responsesSnapshot = await getDocs(responsesQuery);
-      
-      const responses: any[] = [];
-      responsesSnapshot.forEach(doc => {
-        responses.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-      
-      // SISTEMA ISOLADO POR SELEÇÃO - Dados exclusivos por seleção
-      console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] ISOLAMENTO TOTAL - Seleção ${selectionId}, Candidato ${candidateId}, Cliente ${clientId}`);
-      console.log(`📊 [DEBUG_NOVA_SELEÇÃO] Respostas específicas encontradas:`, responses.length);
-      
-      // Se não encontrou por seleção específica, buscar por candidato com timestamp da seleção atual
-      if (responses.length === 0) {
-        console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Buscando respostas por candidato com timestamp da seleção...`);
-        
-        // Buscar por todos os possíveis candidateIds relacionados ao telefone
-        const allCandidateResponsesQuery = collection(firebaseDb, 'responses');
-        console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Buscando todas as respostas para investigar mapeamento de candidatos...`);
-        const allResponsesSnapshot = await getDocs(allCandidateResponsesQuery);
-        
-        const candidateResponses: any[] = [];
-        allResponsesSnapshot.forEach(doc => {
-          const data = doc.data();
-          console.log(`🔍 [ISOLAMENTO] Verificando resposta ${doc.id}:`, {
-            selectionId: data.selectionId,
-            candidateId: data.candidateId,
-            buscando_selectionId: selectionId,
-            buscando_candidateId: candidateId.toString(),
-            match: data.selectionId === selectionId && data.candidateId === candidateId.toString()
-          });
-          
-          // BUSCAR APENAS respostas da seleção específica E candidato específico
-          if (data.selectionId === selectionId && data.candidateId === candidateId.toString()) {
-            candidateResponses.push({
-              id: doc.id,
-              ...data
-            });
-          }
-        });
-        
-        console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas específicas da seleção ${selectionId}:`, candidateResponses.length);
-        
-        // ISOLAMENTO RIGOROSO: Aplicar imediatamente se não há respostas específicas
-        if (candidateResponses.length === 0) {
-          console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
-          console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
-          return [];
-        }
-        
-        // Log apenas das respostas válidas da seleção específica
-        candidateResponses.forEach((resp, index) => {
-          console.log(`✅ [ISOLAMENTO] Resposta válida ${index + 1}:`, {
-            id: resp.id,
-            selectionId: resp.selectionId,
-            candidateId: resp.candidateId,
-            audioFile: resp.audioFile ? 'SIM' : 'NÃO',
-            questionId: resp.questionId
-          });
-        });
-        
-        // Processar respostas já filtradas da seleção específica
-        const recentResponses = candidateResponses.map(resp => ({
-          id: resp.id,
-          questionId: resp.questionId,
-          questionText: resp.questionText || `Pergunta ${resp.questionId}`,
-          transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
-          audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
-          score: resp.score || 0,
-          recordingDuration: resp.recordingDuration || 0,
-          aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
-          ...resp
-        }));
-        
-        console.log(`✅ [ISOLAMENTO] Processadas ${recentResponses.length} respostas da seleção ${selectionId}`);
-        
-        if (recentResponses.length > 0) {
-          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Encontradas ${recentResponses.length} respostas recentes para o candidato`);
-          return recentResponses;
-        }
-        
-        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta encontrada - retornando array vazio`);
+      // Buscar candidato para obter telefone
+      const candidate = await this.getCandidateById(candidateId);
+      if (!candidate) {
+        console.log(`❌ Candidato ${candidateId} não encontrado`);
         return [];
       }
       
-      console.log(`📋 [DEBUG_NOVA_SELEÇÃO] STORAGE FINAL - Total de respostas para seleção ${selectionId}:`, {
-        candidateId: candidateId,
-        responsesCount: responses.length,
-        withAudio: responses.filter(r => r.audioUrl).length,
-        withTranscription: responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length
+      const candidatePhone = candidate.whatsapp;
+      console.log(`📱 Telefone do candidato: ${candidatePhone}`);
+      
+      // Formatos possíveis de candidateId:
+      // 1. ID real: candidateId (número)
+      // 2. Formato isolado: candidate_selectionId_phone
+      const possibleCandidateIds = [
+        candidateId.toString(),
+        `candidate_${selectionId}_${candidatePhone}`
+      ];
+      
+      console.log(`🔍 Buscando por candidateIds possíveis:`, possibleCandidateIds);
+      
+      // Buscar todas as respostas da seleção para verificar matches
+      const allResponsesQuery = query(
+        collection(firebaseDb, 'responses'),
+        where('selectionId', '==', selectionId)
+      );
+      const allResponsesSnapshot = await getDocs(allResponsesQuery);
+      
+      const matchingResponses: any[] = [];
+      allResponsesSnapshot.forEach(doc => {
+        const data = doc.data();
+        
+        // Verificar se candidateId coincide com algum formato possível
+        const isMatch = possibleCandidateIds.includes(data.candidateId);
+        
+        console.log(`🔍 [ISOLAMENTO] Verificando resposta ${doc.id}:`, {
+          selectionId: data.selectionId,
+          candidateId: data.candidateId,
+          possibleIds: possibleCandidateIds,
+          match: isMatch
+        });
+        
+        if (isMatch) {
+          matchingResponses.push({
+            id: doc.id,
+            ...data
+          });
+        }
       });
       
-      return responses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
+      console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas para seleção ${selectionId}:`, matchingResponses.length);
+      
+      if (matchingResponses.length === 0) {
+        console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
+        console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
+        return [];
+      }
+      
+      // Processar respostas encontradas
+      const processedResponses = matchingResponses.map(resp => ({
+        id: resp.id,
+        questionId: resp.questionId,
+        questionText: resp.questionText || `Pergunta ${resp.questionId}`,
+        transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
+        audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
+        score: resp.score || 0,
+        recordingDuration: resp.recordingDuration || 0,
+        aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
+        ...resp
+      }));
+      
+      console.log(`✅ [ISOLAMENTO] Processadas ${processedResponses.length} respostas da seleção ${selectionId}`);
+      console.log(`📋 [DEBUG_NOVA_SELEÇÃO] STORAGE FINAL - Total de respostas para seleção ${selectionId}:`, {
+        candidateId: candidateId,
+        responsesCount: processedResponses.length,
+        withAudio: processedResponses.filter(r => r.audioUrl).length,
+        withTranscription: processedResponses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length
+      });
+      
+      return processedResponses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
     } catch (error) {
       console.error('Erro ao buscar respostas por seleção/candidato:', error);
       return [];
