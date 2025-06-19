@@ -157,7 +157,7 @@ const ReportsHistoryPage: React.FC = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {Array.isArray(reports) ? reports
+          {Array.isArray(reports) && reports.length > 0 ? reports
             .sort((a: Report, b: Report) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .map((report: Report) => (
               <Card key={report.id} className="border border-gray-200">
@@ -330,10 +330,20 @@ const ReportsHistoryPage: React.FC = () => {
               <Card>
                 <CardContent className="py-8 text-center">
                   <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar relatórios</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {Array.isArray(reports) ? 'Nenhum relatório encontrado' : 'Erro ao carregar relatórios'}
+                  </h3>
                   <p className="text-gray-600">
-                    Houve um problema ao carregar os dados dos relatórios.
+                    {Array.isArray(reports) 
+                      ? 'Ainda não há relatórios gerados. Eles aparecerão automaticamente após enviar seleções.'
+                      : 'Houve um problema ao carregar os dados dos relatórios.'
+                    }
                   </p>
+                  {!Array.isArray(reports) && (
+                    <div className="mt-4 p-4 bg-gray-100 rounded text-sm text-left">
+                      <strong>Debug:</strong> {JSON.stringify(reports)}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
