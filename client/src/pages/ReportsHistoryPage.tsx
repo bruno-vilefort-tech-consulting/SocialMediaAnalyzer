@@ -55,6 +55,9 @@ const ReportsHistoryPage: React.FC = () => {
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [expandedCandidate, setExpandedCandidate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('candidatos');
+  const [currentView, setCurrentView] = useState<'reports' | 'candidates' | 'candidateDetail'>('reports');
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<ReportCandidate | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -157,18 +160,21 @@ const ReportsHistoryPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="candidatos">
-          {reports.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum relatório encontrado</h3>
-                <p className="text-gray-600">
-                  Os relatórios são gerados automaticamente quando você envia uma seleção via WhatsApp.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
+          {/* VIEW: Lista de Relatórios */}
+          {currentView === 'reports' && (
+            <>
+              {reports.length === 0 ? (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum relatório encontrado</h3>
+                    <p className="text-gray-600">
+                      Os relatórios são gerados automaticamente quando você envia uma seleção via WhatsApp.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
               {Array.isArray(reports) && reports.length > 0 ? reports
                 .sort((a: Report, b: Report) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((report: Report) => (
@@ -191,10 +197,13 @@ const ReportsHistoryPage: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)}
+                            onClick={() => {
+                              setSelectedReport(report);
+                              setCurrentView('candidates');
+                            }}
                           >
                             <Eye className="w-4 h-4 mr-2" />
-                            {expandedReport === report.id ? 'Ocultar Detalhes' : 'Ver Detalhes'}
+                            Ver Detalhes
                           </Button>
 
                           <AlertDialog>
@@ -241,93 +250,7 @@ const ReportsHistoryPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Detalhes Expandidos Inline */}
-                      {expandedReport === report.id && (
-                        <div className="mt-6 space-y-4 border-t pt-4">
-                          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="text-sm text-gray-600">Vaga</p>
-                              <p className="font-medium">{report.jobName}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Cliente</p>
-                              <p className="font-medium">{report.clientName}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Lista de Candidatos</p>
-                              <p className="font-medium">{report.candidateListName}</p>
-                            </div>
-                            <div>
-                              <p className="text-sm text-gray-600">Gerado em</p>
-                              <p className="font-medium">{formatDateTime(report.createdAt)}</p>
-                            </div>
-                          </div>
 
-                          <div className="space-y-3">
-                            <h4 className="font-semibold">Candidatos ({candidates.length})</h4>
-                            <div className="grid gap-3">
-                              {candidates.map((candidate: ReportCandidate) => (
-                                <div key={candidate.id} className="border rounded-lg">
-                                  <div className="flex items-center justify-between p-3">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-3">
-                                        <div>
-                                          <p className="font-medium">{candidate.name}</p>
-                                          <p className="text-sm text-gray-600">{candidate.email}</p>
-                                        </div>
-                                        {getStatusBadge(candidate.status)}
-                                        {candidate.category && getCategoryBadge(candidate.category)}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-medium">Score: {candidate.totalScore}%</p>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="mt-1"
-                                        onClick={() => setExpandedCandidate(expandedCandidate === candidate.id ? null : candidate.id)}
-                                      >
-                                        {expandedCandidate === candidate.id ? 'Ocultar' : 'Ver Respostas'}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Respostas Expandidas Inline */}
-                                  {expandedCandidate === candidate.id && (
-                                    <div className="border-t bg-gray-50 p-4 space-y-4">
-                                      <h5 className="font-semibold">Respostas de {candidate.name}</h5>
-                                      {responses.map((response: ReportResponse) => (
-                                        <div key={response.id} className="border rounded-lg p-4 bg-white">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
-                                            <Badge variant="outline">Score: {response.score}%</Badge>
-                                          </div>
-                                          <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
-                                          {response.transcription && (
-                                            <div className="bg-gray-50 p-3 rounded mb-3">
-                                              <p className="text-sm"><strong>Transcrição:</strong></p>
-                                              <p className="text-sm">{response.transcription}</p>
-                                            </div>
-                                          )}
-                                          {response.audioFile && (
-                                            <div className="mt-2">
-                                              <audio controls className="w-full" preload="metadata">
-                                                <source src={`/uploads/${response.audioFile}`} type="audio/ogg" />
-                                                <source src={`/${response.audioFile}`} type="audio/ogg" />
-                                                Seu navegador não suporta o elemento de áudio.
-                                              </audio>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 )) : (
@@ -345,7 +268,143 @@ const ReportsHistoryPage: React.FC = () => {
                       </p>
                     </CardContent>
                   </Card>
-                )}
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* VIEW: Lista de Candidatos */}
+          {currentView === 'candidates' && selectedReport && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentView('reports')}
+                >
+                  ← Voltar aos Relatórios
+                </Button>
+                <h2 className="text-xl font-semibold">{selectedReport.selectionName}</h2>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Candidatos da Seleção</CardTitle>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>{selectedReport.jobName}</span>
+                    <span>•</span>
+                    <span>{selectedReport.clientName}</span>
+                    <span>•</span>
+                    <span>{selectedReport.candidateListName}</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {candidates.map((candidate: ReportCandidate) => (
+                      <Card 
+                        key={candidate.id} 
+                        className="cursor-pointer hover:shadow-md transition-shadow border"
+                        onClick={() => {
+                          setSelectedCandidate(candidate);
+                          setCurrentView('candidateDetail');
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <h3 className="font-medium">{candidate.name}</h3>
+                            <p className="text-sm text-gray-600">{candidate.email}</p>
+                            <p className="text-sm text-gray-600">{candidate.whatsapp}</p>
+                            <div className="flex items-center justify-between">
+                              {getStatusBadge(candidate.status)}
+                              <span className="text-sm font-medium">Score: {candidate.totalScore}%</span>
+                            </div>
+                            {candidate.category && getCategoryBadge(candidate.category)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* VIEW: Detalhes do Candidato */}
+          {currentView === 'candidateDetail' && selectedCandidate && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentView('candidates')}
+                >
+                  ← Voltar aos Candidatos
+                </Button>
+                <h2 className="text-xl font-semibold">Entrevista de {selectedCandidate.name}</h2>
+              </div>
+
+              <div className="grid gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informações do Candidato</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Nome</p>
+                        <p className="font-medium">{selectedCandidate.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Email</p>
+                        <p className="font-medium">{selectedCandidate.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">WhatsApp</p>
+                        <p className="font-medium">{selectedCandidate.whatsapp}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Score Total</p>
+                        <p className="font-medium">{selectedCandidate.totalScore}%</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Respostas da Entrevista</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {responses.map((response: ReportResponse) => (
+                        <div key={response.id} className="border rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h6 className="font-medium">Pergunta {response.questionNumber}</h6>
+                            <Badge variant="outline">Score: {response.score}%</Badge>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-3">{response.questionText}</p>
+                          {response.transcription && (
+                            <div className="bg-gray-50 p-3 rounded mb-3">
+                              <p className="text-sm"><strong>Transcrição:</strong></p>
+                              <p className="text-sm">{response.transcription}</p>
+                            </div>
+                          )}
+                          {response.audioFile && (
+                            <div className="mt-2">
+                              <audio controls className="w-full" preload="metadata">
+                                <source src={`/uploads/${response.audioFile}`} type="audio/ogg" />
+                                <source src={`/${response.audioFile}`} type="audio/ogg" />
+                                Seu navegador não suporta o elemento de áudio.
+                              </audio>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
         </TabsContent>
