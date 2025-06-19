@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 📊 PAINEL DE RELATÓRIOS RESTAURADO - Funcionalidade completa de visualização de entrevistas implementada
+  - **Endpoint interview-responses corrigido**: Sistema agora busca todas as entrevistas com filtro por cliente
+  - **Dados detalhados restaurados**: Candidatos, pontuações, respostas, transcrições e análises IA
+  - **Interface completa**: Busca, filtros por categoria, estatísticas e visualização detalhada
+  - **Modal de detalhes**: Resumo da entrevista + todas as respostas com áudio reproduzível
+  - **Isolamento por cliente**: Masters veem tudo, clientes veem apenas suas entrevistas
+  - **Estrutura robusta**: Score total, categorização automática e dados de todas as fontes
+
 - June 19, 2025: 🎤 SISTEMA DE ENTREVISTAS MELHORADO - Experiência de envio aprimorada conforme solicitado
   - **Texto das perguntas atualizado**: Mudança de "🎤 Responda com áudio ou texto" para "🎤 Responda somente por áudio"
   - **Barra de progresso visual**: Implementada com contador "X/Total" e porcentagem durante envio de entrevistas

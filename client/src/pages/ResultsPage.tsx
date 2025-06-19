@@ -249,7 +249,7 @@ export default function ResultsPage() {
                 </div>
               ) : filteredResults.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  {results.length === 0 ? 'Nenhuma entrevista encontrada para esta seleção' : 'Nenhum resultado encontrado com os filtros aplicados'}
+                  {results.length === 0 ? 'Nenhuma entrevista encontrada' : 'Nenhum resultado encontrado com os filtros aplicados'}
                 </div>
               ) : (
                 <Table>
@@ -322,60 +322,97 @@ export default function ResultsPage() {
                                     Entrevista - {result.candidate.name}
                                   </DialogTitle>
                                 </DialogHeader>
-                                <ScrollArea className="h-[60vh]">
+                                <ScrollArea className="h-[400px] p-6">
                                   <div className="space-y-6">
-                                    {/* Candidate Info */}
-                                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                                      <div>
-                                        <h4 className="font-semibold text-gray-900">Informações do Candidato</h4>
-                                        <p><strong>Nome:</strong> {result.candidate.name}</p>
-                                        <p><strong>Email:</strong> {result.candidate.email}</p>
-                                        <p><strong>Telefone:</strong> {result.candidate.phone}</p>
-                                      </div>
-                                      <div>
-                                        <h4 className="font-semibold text-gray-900">Resultado Geral</h4>
-                                        <p><strong>Pontuação:</strong> {result.interview.totalScore}%</p>
-                                        <p><strong>Categoria:</strong> {
-                                          result.interview.category === 'high' ? 'Alto Desempenho' : 
-                                          result.interview.category === 'medium' ? 'Médio Desempenho' : 'Baixo Desempenho'
-                                        }</p>
+                                    {/* Interview Summary */}
+                                    <div className="border-b pb-4">
+                                      <h3 className="font-semibold text-lg mb-2">Resumo da Entrevista</h3>
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <span className="text-gray-600">Candidato:</span>
+                                          <p className="font-medium">{selectedInterview?.candidate.name}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600">Email:</span>
+                                          <p className="font-medium">{selectedInterview?.candidate.email}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600">Telefone:</span>
+                                          <p className="font-medium">{selectedInterview?.candidate.phone || '-'}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-gray-600">Pontuação Final:</span>
+                                          <p className="font-medium text-lg">{selectedInterview?.interview.totalScore}%</p>
+                                        </div>
+                                        {selectedInterview?.job && (
+                                          <>
+                                            <div>
+                                              <span className="text-gray-600">Vaga:</span>
+                                              <p className="font-medium">{selectedInterview.job.title}</p>
+                                            </div>
+                                            <div>
+                                              <span className="text-gray-600">Categoria:</span>
+                                              <Badge className={getCategoryBadge(selectedInterview.interview.category)}>
+                                                {selectedInterview.interview.category === 'high' ? 'Alto' : 
+                                                 selectedInterview.interview.category === 'medium' ? 'Médio' : 'Baixo'}
+                                              </Badge>
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
 
                                     {/* Responses */}
-                                    <div className="space-y-4">
-                                      <h4 className="font-semibold text-gray-900">Respostas por Pergunta</h4>
-                                      {result.responses.map((response, index) => (
-                                        <Card key={response.id}>
-                                          <CardContent className="p-4">
-                                            <div className="space-y-3">
-                                              <div className="flex justify-between items-start">
-                                                <h5 className="font-medium">Pergunta {index + 1}</h5>
-                                                <div className="flex items-center gap-2">
-                                                  <Badge className={getScoreColor(response.score)}>
-                                                    {response.score}%
-                                                  </Badge>
-                                                  <span className="text-sm text-gray-500">
-                                                    {formatDuration(response.recordingDuration)}
-                                                  </span>
-                                                </div>
+                                    <div>
+                                      <h3 className="font-semibold text-lg mb-4">Respostas da Entrevista</h3>
+                                      <div className="space-y-4">
+                                        {selectedInterview?.responses.map((response, index) => (
+                                          <div key={response.id} className="border rounded-lg p-4">
+                                            <div className="flex justify-between items-start mb-2">
+                                              <h4 className="font-medium text-blue-600">
+                                                Pergunta {index + 1}
+                                              </h4>
+                                              <div className="flex items-center gap-2">
+                                                <Badge variant="outline">
+                                                  <Star className="w-3 h-3 mr-1" />
+                                                  {response.score}%
+                                                </Badge>
+                                                {response.audioUrl && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                      const audio = new Audio(response.audioUrl);
+                                                      audio.play();
+                                                    }}
+                                                  >
+                                                    <Play className="w-3 h-3" />
+                                                  </Button>
+                                                )}
                                               </div>
-                                              
-                                              <div className="bg-gray-50 p-3 rounded">
-                                                <h6 className="text-sm font-medium text-gray-700 mb-2">Transcrição:</h6>
-                                                <p className="text-sm text-gray-900">{response.transcription || 'Transcrição não disponível'}</p>
-                                              </div>
-
-                                              {response.audioUrl && (
-                                                <div className="flex items-center gap-2">
-                                                  <Play className="w-4 h-4" />
-                                                  <span className="text-sm text-gray-600">Áudio disponível</span>
-                                                </div>
-                                              )}
                                             </div>
-                                          </CardContent>
-                                        </Card>
-                                      ))}
+                                            
+                                            <div className="mb-3">
+                                              <p className="text-sm text-gray-600 mb-1">Pergunta:</p>
+                                              <p className="text-sm">{response.questionText || 'Pergunta não disponível'}</p>
+                                            </div>
+
+                                            <div>
+                                              <p className="text-sm text-gray-600 mb-1">Resposta:</p>
+                                              <p className="text-sm bg-gray-50 p-3 rounded">
+                                                {response.transcription || 'Transcrição não disponível'}
+                                              </p>
+                                            </div>
+
+                                            {response.recordingDuration > 0 && (
+                                              <div className="mt-2 text-xs text-gray-500">
+                                                <Clock className="w-3 h-3 inline mr-1" />
+                                                Duração: {formatDuration(response.recordingDuration)}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
                                 </ScrollArea>

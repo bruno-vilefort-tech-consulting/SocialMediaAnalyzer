@@ -2909,53 +2909,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue; // Pular em caso de erro
         }
       }
-        
-        // Buscar respostas da entrevista
-        const responsesQuery = query(
-          collection(storage.firestore, 'responses'),
-          where('interviewId', '==', interviewDoc.id)
-        );
-        const responsesSnapshot = await getDocs(responsesQuery);
-        
-        const responses = responsesSnapshot.docs.map(responseDoc => {
-          const responseData = responseDoc.data();
-          return {
-            questionId: responseData.questionId || 1,
-            questionText: responseData.questionText || 'Pergunta não disponível',
-            responseText: responseData.transcription || responseData.responseText || 'Sem transcrição',
-            audioFile: responseData.audioUrl || responseData.audioFile || null,
-            timestamp: responseData.timestamp || responseData.createdAt
-          };
-        });
-        
-        // Criar registro de entrevista para relatórios
-        allInterviews.push({
-          id: interviewDoc.id,
-          selectionId: interviewData.selectionId || 'N/A',
-          selectionName: `Entrevista ${interviewDoc.id}`,
-          candidateId: interviewData.candidateId,
-          candidateName: candidateData.name || 'Candidato desconhecido',
-          candidatePhone: candidateData.whatsapp || candidateData.phone || 'N/A',
-          candidateEmail: candidateData.email || 'N/A',
-          jobName: interviewData.jobName || 'Vaga não identificada',
-          status: interviewData.status || 'completed',
-          startTime: interviewData.startTime || interviewData.createdAt || null,
-          endTime: interviewData.endTime || interviewData.completedAt || null,
-          responses: responses,
-          totalQuestions: responses.length,
-          answeredQuestions: responses.length,
-          clientId: candidateData.clientId // Adicionar para auditoria
-        });
-        
-        console.log(`✅ Entrevista processada: ${candidateData.name} (Cliente: ${candidateData.clientId}) - ${responses.length} respostas`);
-      }
       
-      console.log(`✅ Total de entrevistas processadas para usuário ${req.user?.role}: ${allInterviews.length}`);
-      res.json(allInterviews);
+      console.log(`📊 Entrevistas processadas para ${req.user?.role}: ${detailedInterviews.length}`);
+      res.json(detailedInterviews);
       
     } catch (error) {
-      console.error('Erro ao buscar entrevistas:', error);
-      res.status(500).json({ message: 'Erro ao buscar dados das entrevistas' });
+      console.error('Erro ao buscar dados de entrevistas:', error);
+      res.status(500).json({ message: 'Erro ao buscar dados das entrevistas', error: error.message });
     }
   });
 
