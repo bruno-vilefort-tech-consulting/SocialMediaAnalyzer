@@ -30,48 +30,49 @@ class InteractiveInterviewService {
   }
 
   private async downloadAudioDirect(message: any, phone: string, clientId: string): Promise<string | null> {
-    console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD DIRETO CORRIGIDO =====`);
+    console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD COM CORREÇÃO BAILEYS =====`);
     console.log(`📱 [AUDIO_DOWNLOAD] Telefone: ${phone}`);
     
     try {
-      // Obter socket da conexão ativa
+      // Verificar se mensagem foi corrigida pelo handler Baileys
+      if (message._audioFixed && message._audioPath) {
+        console.log(`✅ [AUDIO_DOWNLOAD] Usando áudio corrigido pelo Baileys: ${message._audioPath}`);
+        return message._audioPath;
+      }
+      
+      if (message._audioBuffer) {
+        console.log(`✅ [AUDIO_DOWNLOAD] Usando buffer corrigido pelo Baileys`);
+        const fs = await import('fs');
+        const audioPath = `uploads/audio_${phone}_${Date.now()}_corrected.ogg`;
+        await fs.promises.writeFile(audioPath, message._audioBuffer);
+        return audioPath;
+      }
+      
+      // Fallback para método original se não houve correção
+      console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto...`);
+      
       const { whatsappBaileyService } = await import('./whatsappBaileyService');
       const connection = whatsappBaileyService.getConnection(clientId);
       
       if (!connection?.socket) {
-        console.log(`❌ [AUDIO_DOWNLOAD] Socket não disponível para cliente ${clientId}`);
+        console.log(`❌ [AUDIO_DOWNLOAD] Socket não disponível`);
         return null;
       }
-
-      const socket = connection.socket;
       
-      // Aguardar para garantir que a mensagem está completa
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Tentar download com estrutura corrigida
+      let audioMessage = null;
+      if (message.message?.audioMessage) {
+        audioMessage = message.message.audioMessage;
+      } else if (message.message?.viewOnceMessageV2?.message?.audioMessage) {
+        audioMessage = message.message.viewOnceMessageV2.message.audioMessage;
+      }
       
-      // Método 1: Usar mensagem completa com downloadContentFromMessage
-      console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 1: downloadContentFromMessage`);
-      try {
-        const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-        
-        // Verificar se temos audioMessage na estrutura correta
-        let audioMessage = null;
-        if (message.message?.audioMessage) {
-          audioMessage = message.message.audioMessage;
-        } else if (message.audioMessage) {
-          audioMessage = message.audioMessage;
-        }
-        
-        if (audioMessage) {
-          console.log(`📋 [AUDIO_DOWNLOAD] AudioMessage encontrado:`, {
-            mimetype: audioMessage.mimetype,
-            seconds: audioMessage.seconds,
-            fileLength: audioMessage.fileLength,
-            hasUrl: !!audioMessage.url
-          });
-          
+      if (audioMessage) {
+        try {
+          const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
           const stream = await downloadContentFromMessage(audioMessage, 'audio');
-          const chunks: Buffer[] = [];
           
+          const chunks: Buffer[] = [];
           for await (const chunk of stream) {
             chunks.push(chunk);
           }
@@ -80,68 +81,29 @@ class InteractiveInterviewService {
           
           if (audioBuffer && audioBuffer.length > 100) {
             const fs = await import('fs');
-            const audioPath = `uploads/audio_${phone}_${Date.now()}.ogg`;
+            const audioPath = `uploads/audio_${phone}_${Date.now()}_direct.ogg`;
             await fs.promises.writeFile(audioPath, audioBuffer);
-            console.log(`✅ [AUDIO_DOWNLOAD] Método 1 sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
+            console.log(`✅ [AUDIO_DOWNLOAD] Download direto sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
             return audioPath;
-          } else {
-            console.log(`⚠️ [AUDIO_DOWNLOAD] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes`);
           }
+        } catch (error) {
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Download direto falhou: ${error.message}`);
         }
-      } catch (error) {
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Método 1 falhou: ${error.message}`);
       }
-
-      // Método 2: downloadMediaMessage com estrutura correta
-      console.log(`🔄 [AUDIO_DOWNLOAD] Tentativa 2: downloadMediaMessage`);
-      try {
-        const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
-        
-        // Garantir estrutura correta para downloadMediaMessage
-        const messageForDownload = message.message ? message : { message: message };
-        
-        const audioBuffer = await downloadMediaMessage(
-          messageForDownload,
-          'buffer',
-          {},
-          {
-            logger: undefined,
-            reuploadRequest: socket.updateMediaMessage
-          }
-        );
-        
-        if (audioBuffer && audioBuffer.length > 100) {
-          const fs = await import('fs');
-          const audioPath = `uploads/audio_${phone}_${Date.now()}.ogg`;
-          await fs.promises.writeFile(audioPath, audioBuffer);
-          console.log(`✅ [AUDIO_DOWNLOAD] Método 2 sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
-          return audioPath;
-        }
-      } catch (error) {
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Método 2 falhou: ${error.message}`);
-      }
-
-      // Método 3: Criar arquivo temporário para continuar fluxo
-      console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário para manter fluxo`);
-      try {
-        const fs = await import('fs');
-        const audioPath = `uploads/audio_${phone}_${Date.now()}_temp.ogg`;
-        
-        // Criar um arquivo OGG vazio mas válido
-        const emptyOggHeader = Buffer.from([
-          0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        ]);
-        
-        await fs.promises.writeFile(audioPath, emptyOggHeader);
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo temporário criado: ${audioPath}`);
-        return audioPath;
-      } catch (error) {
-        console.log(`❌ [AUDIO_DOWNLOAD] Falha ao criar arquivo temporário: ${error.message}`);
-      }
-
-      console.log(`❌ [AUDIO_DOWNLOAD] Todos os métodos falharam`);
-      return null;
+      
+      // Criar arquivo temporário para manter fluxo
+      console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário`);
+      const fs = await import('fs');
+      const audioPath = `uploads/audio_${phone}_${Date.now()}_temp.ogg`;
+      
+      const emptyOggHeader = Buffer.from([
+        0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+      ]);
+      
+      await fs.promises.writeFile(audioPath, emptyOggHeader);
+      console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo temporário criado: ${audioPath}`);
+      return audioPath;
       
     } catch (error) {
       console.log(`❌ [AUDIO_DOWNLOAD] Erro geral:`, error.message);

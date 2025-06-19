@@ -121,7 +121,7 @@ class WhatsAppBaileyService {
         }
       });
 
-      // Adicionar handler de mensagens para entrevistas interativas
+      // Handler de mensagens com correção para download de áudio
       sock.ev.on('messages.upsert', async ({ messages }: any) => {
         for (const message of messages) {
           if (message.key.fromMe || !message.message) continue;
@@ -139,18 +139,18 @@ class WhatsAppBaileyService {
             messageText = message.message.extendedTextMessage.text;
           }
           
-          // Verificar se há áudio
-          let audioMessage = null;
-          if (message.message.audioMessage) {
-            audioMessage = message.message.audioMessage;
-            console.log(`🎵 [INTERVIEW] Mensagem de áudio detectada`);
-          }
-          
-          // Processar via serviço de entrevistas
-          try {
-            await interactiveInterviewService.handleMessage(from, messageText, audioMessage, clientId);
-          } catch (error) {
-            console.log(`❌ [INTERVIEW] Erro ao processar mensagem:`, error.message);
+          // Processar áudio com correção de payload
+          if (message.message.audioMessage || message.message.viewOnceMessageV2) {
+            console.log(`🎵 [INTERVIEW] Mensagem de áudio detectada - processando com correção`);
+            await this.processAudioMessageWithFix(message, from, messageText, clientId, sock);
+          } else {
+            // Processar mensagem de texto normalmente
+            try {
+              const { interactiveInterviewService } = await import('./interactiveInterviewService');
+              await interactiveInterviewService.handleMessage(from, messageText, null, clientId);
+            } catch (error) {
+              console.log(`❌ [INTERVIEW] Erro ao processar mensagem de texto:`, error.message);
+            }
           }
         }
       });
@@ -254,6 +254,119 @@ class WhatsAppBaileyService {
     }
     
     return await this.initWhatsApp(clientId);
+  }
+
+  private async processAudioMessageWithFix(message: any, from: string, messageText: string, clientId: string, sock: any) {
+    try {
+      console.log(`🔄 [AUDIO_FIX] Iniciando processamento de áudio corrigido`);
+      
+      // Aguardar para garantir que o payload está completo
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Recarregar mensagem completa se necessário
+      let fullMessage = message;
+      if (!message.message?.audioMessage && !message.message?.viewOnceMessageV2) {
+        console.log(`🔄 [AUDIO_FIX] Recarregando mensagem completa...`);
+        try {
+          // Tentar buscar mensagem completa
+          const reloadedMessage = await sock.loadMessage?.(message.key.remoteJid, message.key.id);
+          if (reloadedMessage) {
+            fullMessage = reloadedMessage;
+            console.log(`✅ [AUDIO_FIX] Mensagem recarregada com sucesso`);
+          }
+        } catch (reloadError) {
+          console.log(`⚠️ [AUDIO_FIX] Falha ao recarregar, usando mensagem original`);
+        }
+      }
+      
+      // Verificar novamente se temos áudio após reload
+      if (!fullMessage.message?.audioMessage && !fullMessage.message?.viewOnceMessageV2) {
+        console.log(`⚠️ [AUDIO_FIX] Áudio ainda não disponível, agendando retry em 2s`);
+        setTimeout(() => {
+          this.processAudioMessageWithFix(message, from, messageText, clientId, sock);
+        }, 2000);
+        return;
+      }
+      
+      // Desembrulhar viewOnce/ephemeral se necessário
+      let audioNode = fullMessage.message.audioMessage;
+      if (fullMessage.message.viewOnceMessageV2?.message?.audioMessage) {
+        audioNode = fullMessage.message.viewOnceMessageV2.message.audioMessage;
+        console.log(`📦 [AUDIO_FIX] Áudio viewOnce detectado`);
+      }
+      
+      if (!audioNode) {
+        console.log(`❌ [AUDIO_FIX] AudioNode não encontrado após processamento`);
+        // Fallback para processamento normal
+        const { interactiveInterviewService } = await import('./interactiveInterviewService');
+        await interactiveInterviewService.handleMessage(from, messageText, fullMessage, clientId);
+        return;
+      }
+      
+      console.log(`📋 [AUDIO_FIX] AudioNode encontrado:`, {
+        mimetype: audioNode.mimetype,
+        seconds: audioNode.seconds,
+        fileLength: audioNode.fileLength,
+        hasUrl: !!audioNode.url
+      });
+      
+      // Download do áudio com método corrigido
+      let audioBuffer: Buffer | null = null;
+      try {
+        const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+        const stream = await downloadContentFromMessage(audioNode, 'audio');
+        
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+        }
+        
+        audioBuffer = Buffer.concat(chunks);
+        
+        if (audioBuffer && audioBuffer.length > 100) {
+          console.log(`✅ [AUDIO_FIX] Áudio baixado com sucesso: ${audioBuffer.length} bytes`);
+          
+          // Salvar áudio em arquivo temporário
+          const fs = await import('fs');
+          const audioPath = `uploads/audio_${from.replace('@s.whatsapp.net', '')}_${Date.now()}_fixed.ogg`;
+          await fs.promises.writeFile(audioPath, audioBuffer);
+          
+          // Criar estrutura de mensagem corrigida para o handler
+          const correctedMessage = {
+            ...fullMessage,
+            _audioBuffer: audioBuffer,
+            _audioPath: audioPath,
+            _audioFixed: true
+          };
+          
+          // Processar via serviço de entrevistas com áudio corrigido
+          const { interactiveInterviewService } = await import('./interactiveInterviewService');
+          await interactiveInterviewService.handleMessage(from, messageText, correctedMessage, clientId);
+          
+        } else {
+          console.log(`⚠️ [AUDIO_FIX] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes`);
+          throw new Error('Buffer inválido');
+        }
+        
+      } catch (downloadError) {
+        console.log(`❌ [AUDIO_FIX] Erro no download: ${downloadError.message}`);
+        
+        // Fallback para processamento normal
+        const { interactiveInterviewService } = await import('./interactiveInterviewService');
+        await interactiveInterviewService.handleMessage(from, messageText, fullMessage, clientId);
+      }
+      
+    } catch (error) {
+      console.log(`❌ [AUDIO_FIX] Erro geral no processamento:`, error.message);
+      
+      // Fallback final
+      try {
+        const { interactiveInterviewService } = await import('./interactiveInterviewService');
+        await interactiveInterviewService.handleMessage(from, messageText, message, clientId);
+      } catch (fallbackError) {
+        console.log(`❌ [AUDIO_FIX] Fallback também falhou:`, fallbackError.message);
+      }
+    }
   }
 
   async disconnect(clientId: string) {

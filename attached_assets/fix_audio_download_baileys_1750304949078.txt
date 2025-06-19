@@ -1,0 +1,67 @@
+📋 CORREÇÃO URGENTE – PROBLEMA DE DOWNLOAD DE ÁUDIO NO BAILEYS
+
+Status do Sistema de Áudio:
+- Detecção de mensagens de áudio funciona.
+- Fluxo completo da entrevista funciona.
+- Salvamento no banco de dados ocorre (fallback).
+- Porém, download real do áudio falha: “message is not a media message”.
+- Arquivos temporários vazios são criados.
+- Transcrição Whisper retorna erro 400 (arquivo inválido).
+
+🔍 CAUSA RAIZ:
+O Baileys recebe primeiro um “stub” (payload incompleto) e só depois o conteúdo real do áudio. Os métodos downloadContentFromMessage e downloadMediaMessage são chamados antes do payload completo, resultando em falha.
+
+🔧 PASSOS PARA RESOLVER:
+
+
+2. Forçar recarga do payload antes de baixar:
+   ```js
+   const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+
+   sock.ev.on('messages.upsert', async ({ messages }) => {
+     const msg = messages[0];
+     if (msg.key.fromMe) return;
+
+     // Recarregar mensagem completa
+     const full = msg.message?.audioMessage
+       ? msg
+       : await sock.messageStore.loadMessage(msg.key.remoteJid, msg.key.id);
+
+     if (!full?.message?.audioMessage && !full.message.viewOnceMessageV2) {
+       console.warn('Áudio ainda não disponível, retry em 2s');
+       return setTimeout(() =>
+         sock.ev.emit('messages.upsert', { messages: [msg] }), 2000);
+     }
+
+     // Desembrulhar viewOnce/ephemeral
+     const audioNode = full.message.viewOnceMessageV2
+       ? full.message.viewOnceMessageV2.message.audioMessage
+       : full.message.audioMessage;
+
+     // Download da mídia
+     const stream = await downloadContentFromMessage(audioNode, 'audio');
+     const chunks = [];
+     for await (const chunk of stream) chunks.push(chunk);
+     const buffer = Buffer.concat(chunks);
+
+     // 3. Salvar buffer no Firebase Storage e obter URL
+     // 4. Transcrever com Whisper
+     // 5. Salvar transcrição e metadados no Firestore
+     // 6. Prosseguir com o fluxo da entrevista
+   });
+   ```
+
+3. Implementar keep-alive e retry:
+   ```js
+   setInterval(() => sock.sendPresenceUpdate('available'), 25000);
+   ```
+
+4. Testar:
+      - Responda em áudio
+   - Verifique que:
+     • O áudio é salvo corretamente no Firebase Storage  
+     • A transcrição aparece no Firestore sem erro 400  
+     • O fluxo da entrevista continua normalmente  
+     • Relatórios exibem as respostas de áudio processadas  
+
+⚠️ Alterar apenas os arquivos de conexão WhatsApp e de processamento de áudio/Firebase. O restante do sistema deve permanecer intacto.
