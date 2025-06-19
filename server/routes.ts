@@ -1483,6 +1483,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (messagesSent > 0) {
         await storage.updateSelection(selection.id, { status: 'enviado' });
         console.log(`✅ Seleção atualizada para "enviado"`);
+        
+        // Gerar relatório automaticamente após envio
+        try {
+          const reportId = await storage.generateReportFromSelection(selection.id.toString());
+          console.log(`✅ Relatório gerado automaticamente: ${reportId}`);
+        } catch (reportError) {
+          console.error('Erro ao gerar relatório automático:', reportError);
+          // Não interromper o fluxo se falhar a geração do relatório
+        }
       }
 
       res.json({
