@@ -549,13 +549,14 @@ class InteractiveInterviewService {
         return '';
       }
       
-      // Usar método nativo FormData do browser/Node.js
-      const audioBuffer = fs.readFileSync(audioPath);
+      // Usar form-data conforme funcionou no teste externo
+      const FormData = (await import('form-data')).default;
       const formData = new FormData();
       
-      // Criar Blob do áudio
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
-      formData.append('file', audioBlob, 'audio.ogg');
+      formData.append('file', fs.createReadStream(audioPath), {
+        filename: 'audio.ogg',
+        contentType: 'audio/ogg'
+      });
       formData.append('model', 'whisper-1');
       formData.append('language', 'pt');
 
@@ -564,7 +565,8 @@ class InteractiveInterviewService {
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`
+          'Authorization': `Bearer ${openaiApiKey}`,
+          ...formData.getHeaders()
         },
         body: formData
       });
