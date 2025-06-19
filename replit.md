@@ -168,6 +168,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
+- June 19, 2025: 🎯 SISTEMA DE ÁUDIO PARCIALMENTE FUNCIONAL - Download e fluxo implementados mas transcrição com limitações
+  - **Download implementado**: Método downloadAudioDirect criado com múltiplas tentativas de download
+  - **Fluxo preservado**: Sistema cria arquivos temporários para manter entrevista funcionando
+  - **Estrutura corrigida**: Mensagem completa do Baileys agora passada para handler
+  - **Problema identificado**: Baileys não consegue acessar conteúdo real do áudio ("message is not a media message")
+  - **Fallback funcional**: Sistema usa arquivos temporários e resposta padrão quando download falha
+  - **Transcrição limitada**: Whisper retorna erro 400 com arquivos temporários vazios
+  - **Banco atualizado**: Respostas são salvas com status do processamento de áudio
+  - **Entrevista completa**: Fluxo de entrevista 100% funcional mesmo com limitações de áudio
+
 - June 19, 2025: 🔧 CORREÇÃO CRÍTICA BAILEYS IMPLEMENTADA - Sistema de download de áudio corrigido conforme especificações
   - **Baileys atualizado**: Versão latest instalada com downloadContentFromMessage
   - **Download corrigido**: Implementado recarregamento de mensagem antes do download
