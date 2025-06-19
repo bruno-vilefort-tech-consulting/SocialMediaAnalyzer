@@ -78,7 +78,7 @@ const ReportsHistoryPage: React.FC = () => {
 
   // Mutação para deletar relatório
   const deleteReportMutation = useMutation({
-    mutationFn: (reportId: string) => apiRequest(`/api/reports/${reportId}`, { method: 'DELETE' }),
+    mutationFn: (reportId: string) => apiRequest(`/api/reports/${reportId}`, 'DELETE'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       toast({

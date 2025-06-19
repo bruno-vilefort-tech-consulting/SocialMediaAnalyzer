@@ -1971,33 +1971,57 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  async getReportById(reportId: string): Promise<any | null> {
+    try {
+      const docRef = doc(firebaseDb, "reports", reportId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar relatório por ID:', error);
+      return null;
+    }
+  }
+
   async deleteReport(reportId: string): Promise<void> {
     try {
-      // Deletar o relatório principal
-      await deleteDoc(doc(firebaseDb, "reports", reportId));
+      console.log(`🗑️ Iniciando deleção do relatório ${reportId}`);
       
-      // Deletar todos os candidatos do relatório
-      const candidatesQuery = query(
-        collection(firebaseDb, "report_candidates"),
-        where("reportId", "==", reportId)
-      );
-      const candidatesSnapshot = await getDocs(candidatesQuery);
-      
-      const batch = writeBatch(firebaseDb);
-      candidatesSnapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      
-      // Deletar todas as respostas do relatório
+      // 1. Deletar todas as respostas relacionadas
       const responsesQuery = query(
-        collection(firebaseDb, "report_responses"),
+        collection(firebaseDb, "reportResponses"),
         where("reportId", "==", reportId)
       );
       const responsesSnapshot = await getDocs(responsesQuery);
+      console.log(`🗑️ Encontradas ${responsesSnapshot.docs.length} respostas para deletar`);
       
-      responsesSnapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
+      const responseDeletePromises = responsesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(responseDeletePromises);
+      
+      // 2. Deletar todos os candidatos relacionados
+      const candidatesQuery = query(
+        collection(firebaseDb, "reportCandidates"),
+        where("reportId", "==", reportId)
+      );
+      const candidatesSnapshot = await getDocs(candidatesQuery);
+      console.log(`🗑️ Encontrados ${candidatesSnapshot.docs.length} candidatos para deletar`);
+      
+      const candidateDeletePromises = candidatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(candidateDeletePromises);
+      
+      // 3. Deletar o relatório principal
+      const reportRef = doc(firebaseDb, "reports", reportId);
+      await deleteDoc(reportRef);
+      
+      console.log(`✅ Relatório ${reportId} e todos os dados relacionados foram deletados`);
+    } catch (error) {
+      console.error('❌ Erro ao deletar relatório:', error);
+      throw error;
+    }
+  }
       
       await batch.commit();
       console.log(`✅ Relatório ${reportId} deletado completamente`);
