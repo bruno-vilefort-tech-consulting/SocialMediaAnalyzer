@@ -142,12 +142,29 @@ export default function NewReportsPage() {
       try {
         const response = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`);
         console.log('🔍 Interview candidates response:', response);
+        console.log('🔍 Response type:', typeof response);
+        console.log('🔍 Is array:', Array.isArray(response));
         
         // Garantir que sempre retornamos um array
         if (Array.isArray(response)) {
+          console.log('✅ Returning array with', response.length, 'candidates');
           return response as InterviewCandidate[];
         } else {
           console.warn('⚠️ Response is not an array:', typeof response, response);
+          console.log('🔄 Attempting to extract data from response...');
+          
+          // Tentar extrair dados se response for um objeto com propriedades
+          if (response && typeof response === 'object') {
+            // Se response tem uma propriedade que é um array
+            const keys = Object.keys(response);
+            for (const key of keys) {
+              if (Array.isArray(response[key])) {
+                console.log(`✅ Found array in response.${key} with`, response[key].length, 'items');
+                return response[key] as InterviewCandidate[];
+              }
+            }
+          }
+          
           return [];
         }
       } catch (error) {
