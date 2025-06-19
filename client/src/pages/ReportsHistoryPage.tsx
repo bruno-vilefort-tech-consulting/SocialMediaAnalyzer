@@ -64,16 +64,16 @@ const ReportsHistoryPage: React.FC = () => {
 
   // Buscar candidatos de um relatório específico
   const { data: candidates = [] } = useQuery({
-    queryKey: ['/api/reports', selectedReport?.id, 'candidates'],
-    queryFn: () => apiRequest(`/api/reports/${selectedReport?.id}/candidates`),
-    enabled: !!selectedReport?.id
+    queryKey: ['/api/reports', expandedReport, 'candidates'],
+    queryFn: () => apiRequest(`/api/reports/${expandedReport}/candidates`, 'GET'),
+    enabled: !!expandedReport
   });
 
   // Buscar respostas de um candidato específico
   const { data: responses = [] } = useQuery({
-    queryKey: ['/api/reports/candidates', selectedCandidate?.id, 'responses'],
-    queryFn: () => apiRequest(`/api/reports/candidates/${selectedCandidate?.id}/responses`),
-    enabled: !!selectedCandidate?.id
+    queryKey: ['/api/reports/candidates', expandedCandidate, 'responses'],
+    queryFn: () => apiRequest(`/api/reports/candidates/${expandedCandidate}/responses`),
+    enabled: !!expandedCandidate
   });
 
   // Mutação para deletar relatório
