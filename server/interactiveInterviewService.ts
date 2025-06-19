@@ -175,7 +175,7 @@ class InteractiveInterviewService {
     try {
       const allSelections = await storage.getAllSelections();
       let selection = allSelections
-        .filter(s => s.status === 'enviado' && (clientId ? s.clientId.toString() === clientId : true))
+        .filter(s => s.status === 'active' && (clientId ? s.clientId.toString() === clientId : true))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
       if (!selection) {

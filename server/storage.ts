@@ -1027,46 +1027,40 @@ export class FirebaseStorage implements IStorage {
           }
         });
         
-        console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas com áudio da seleção atual:`, candidateResponses.length);
+        console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas específicas da seleção ${selectionId}:`, candidateResponses.length);
         
-        // ISOLAMENTO RIGOROSO: Apenas se não encontrou da seleção específica, retornar vazio
+        // ISOLAMENTO RIGOROSO: Aplicar imediatamente se não há respostas específicas
         if (candidateResponses.length === 0) {
-          console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta encontrada para esta seleção específica`);
-          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Mantendo isolamento total - não misturar dados de outras seleções`);
+          console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
+          console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
+          return [];
         }
+        
+        // Log apenas das respostas válidas da seleção específica
         candidateResponses.forEach((resp, index) => {
-          console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Resposta ${index + 1}:`, {
+          console.log(`✅ [ISOLAMENTO] Resposta válida ${index + 1}:`, {
             id: resp.id,
             selectionId: resp.selectionId,
             candidateId: resp.candidateId,
             audioFile: resp.audioFile ? 'SIM' : 'NÃO',
-            transcription: resp.transcription || resp.responseText || 'VAZIO',
-            timestamp: resp.createdAt || resp.timestamp
+            questionId: resp.questionId
           });
         });
         
-        // Mapear apenas respostas específicas desta seleção
-        let recentResponses: any[] = [];
+        // Processar respostas já filtradas da seleção específica
+        const recentResponses = candidateResponses.map(resp => ({
+          id: resp.id,
+          questionId: resp.questionId,
+          questionText: resp.questionText || `Pergunta ${resp.questionId}`,
+          transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
+          audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
+          score: resp.score || 0,
+          recordingDuration: resp.recordingDuration || 0,
+          aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
+          ...resp
+        }));
         
-        if (candidateResponses.length > 0) {
-          recentResponses = candidateResponses
-            .filter(resp => resp.selectionId === selectionId && resp.candidateId === candidateId.toString())
-            .map(resp => ({
-              id: resp.id,
-              questionId: resp.questionId,
-              questionText: resp.questionText || `Pergunta ${resp.questionId}`,
-              transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
-              audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
-              score: resp.score || 0,
-              recordingDuration: resp.recordingDuration || 0,
-              aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
-              ...resp
-            }));
-          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Usando ${recentResponses.length} respostas isoladas desta seleção específica`);
-        } else {
-          // Para próximas seleções: retornar vazio para manter isolamento
-          console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta específica - mantendo isolamento total`);
-        }
+        console.log(`✅ [ISOLAMENTO] Processadas ${recentResponses.length} respostas da seleção ${selectionId}`);
         
         if (recentResponses.length > 0) {
           console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Encontradas ${recentResponses.length} respostas recentes para o candidato`);
