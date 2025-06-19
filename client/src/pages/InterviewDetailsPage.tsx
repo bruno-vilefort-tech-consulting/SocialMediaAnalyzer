@@ -42,6 +42,8 @@ export default function InterviewDetailsPage() {
     enabled: !!selectionId,
   });
 
+  console.log("📊 Dados da seleção:", { selectionId, interviews: interviews?.length, firstInterview: interviews?.[0] });
+
   const playAudio = (audioUrl: string) => {
     if (currentAudio) {
       currentAudio.pause();
