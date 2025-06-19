@@ -115,15 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: 🎵 SISTEMA DE DEBUG E ÁUDIOS FINALIZADO - Nova seleção testada com sucesso e relatórios funcionais
-  - **Debug completo implementado**: Logs [DEBUG_NOVA_SELEÇÃO] rastreiam todo o fluxo de entrevista
-  - **Nova seleção validada**: "Consultor 12" criada e testada com 2 áudios processados
-  - **Método storage corrigido**: getResponsesBySelectionAndCandidate implementado corretamente
-  - **AudioPlayer corrigido**: Componente redesenhado para evitar erro setAudioUrl
-  - **Status "completed"**: Sistema detecta entrevistas finalizadas e exibe score total
-  - **Estrutura candidato+seleção+clientId**: Dados isolados por seleção funcionando
-  - **Player de áudio funcional**: Interface reproduz arquivos reais (.ogg) sem erros
-  - **Sistema operacional**: Fluxo completo desde criação até relatórios funcionando
+- June 19, 2025: 🔧 SISTEMA ISOLADO POR SELEÇÃO IMPLEMENTADO - Correções críticas para evitar mistura de dados
+  - **Problema identificado**: Sistema misturava transcrições de entrevistas diferentes do mesmo candidato
+  - **Solução implementada**: Isolamento total por selectionId para cada entrevista
+  - **IDs únicos criados**: {selectionId}_{candidateId}_{pergunta}_{timestamp} para cada resposta
+  - **Correções em progresso**: SelectionId obrigatório em startInterview, processResponse e finishInterview
+  - **Método transcribeAudio corrigido**: Chamada correta para transcrição de áudio
+  - **Sistema de debug expandido**: [DEBUG_NOVA_SELEÇÃO] rastreia isolamento de dados
+  - **Dados permanentes**: Relatórios mantêm dados mesmo com candidato deletado/modificado
+  - **Zero mistura garantida**: Cada seleção tem dados únicos e isolados
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos

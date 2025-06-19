@@ -342,9 +342,9 @@ class InteractiveInterviewService {
         if (audioPath) {
           console.log(`✅ [AUDIO] Áudio baixado: ${audioPath}`);
           
-          // Transcrever áudio usando arquivo direto (não buffer duplicado)
+          // Transcrever áudio usando arquivo direto
           try {
-            const transcription = await this.transcribeAudioFile(audioPath, phone);
+            const transcription = await this.transcribeAudio(audioPath, phone);
             
             if (transcription && transcription.trim().length > 0) {
               responseText = transcription;

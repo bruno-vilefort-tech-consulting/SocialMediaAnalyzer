@@ -1002,16 +1002,17 @@ export class FirebaseStorage implements IStorage {
         });
       });
       
-      // SISTEMA ISOLADO POR SELEÇÃO - NÃO buscar dados de outras seleções
-      console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] ISOLAMENTO POR SELEÇÃO - Buscando APENAS dados específicos da seleção ${selectionId}`);
-      console.log(`📊 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas na coleção 'responses':`, responses.length);
+      // SISTEMA ISOLADO POR SELEÇÃO - Dados exclusivos por seleção
+      console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] ISOLAMENTO TOTAL - Seleção ${selectionId}, Candidato ${candidateId}, Cliente ${clientId}`);
+      console.log(`📊 [DEBUG_NOVA_SELEÇÃO] Respostas específicas encontradas:`, responses.length);
       
-      // Se não encontrou respostas específicas desta seleção, NÃO misturar com outras
+      // Garantir que só retorna dados específicos desta seleção
       if (responses.length === 0) {
-        console.log(`ℹ️ [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
-        console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] SISTEMA ISOLADO - Não buscando dados de outras seleções para evitar mistura`);
+        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] SELEÇÃO SEM DADOS - Nenhuma resposta específica encontrada`);
+        console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] Retornando array vazio - sistema completamente isolado`);
         
-        // Retornar array vazio - cada seleção tem seus próprios dados únicos
+        // Retornar vazio - cada seleção deve ter seus próprios dados únicos
+        // NÃO buscar dados históricos ou de outras seleções
         return [];
       }
       
