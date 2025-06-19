@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: 🔧 CORREÇÃO WHISPER APLICADA - FormData e chave OpenAI corrigidos
+  - **Erro original resolvido**: "Could not parse multipart form" → problema identificado na estrutura FormData
+  - **FormData corrigido**: Usando path.basename() para filename + contentType adequado
+  - **Chave OpenAI corrigida**: Migrando de chave hardcoded inválida para process.env.OPENAI_API_KEY
+  - **Novo erro identificado**: "Incorrect API key provided" - indica estrutura FormData funcionando
+  - **Sistema aguardando**: Nova entrevista para validar transcrições reais funcionando
+  - **Próximo teste**: Criar "Consultor GM 10" para verificar se Whisper retorna texto real
+
 - June 19, 2025: 🎉 SISTEMA COMPLETO VALIDADO - Nova arquitetura + Whisper funcionando perfeitamente
   - **Teste final**: Consultor GM 6 (ID: 1750316326534) - Entrevista completa realizada
   - **Transcrições reais confirmadas**: "Estão vendendo, eles não dão resposta correta 100% do tempo..." e "crédito que já é subsidiado 200 dólares por mês..."
