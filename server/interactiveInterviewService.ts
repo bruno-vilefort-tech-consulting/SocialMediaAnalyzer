@@ -518,9 +518,15 @@ class InteractiveInterviewService {
     console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
     try {
-      // Buscar configuração OpenAI
-      const config = await storage.getMasterSettings();
-      if (!config?.openaiApiKey) {
+      // Buscar configuração OpenAI - método corrigido
+      let openaiApiKey = process.env.OPENAI_API_KEY;
+      
+      if (!openaiApiKey) {
+        const config = await storage.getMasterSettings();
+        openaiApiKey = config?.openaiApiKey;
+      }
+      
+      if (!openaiApiKey) {
         console.log(`❌ OpenAI API não configurada para transcrição`);
         return '';
       }
@@ -557,7 +563,7 @@ class InteractiveInterviewService {
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${config.openaiApiKey}`,
+          'Authorization': `Bearer ${openaiApiKey}`,
           ...formData.getHeaders()
         },
         body: formData
