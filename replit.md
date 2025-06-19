@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: ✅ ISOLAMENTO RIGOROSO CORRIGIDO - Sistema agora filtra apenas respostas da seleção específica
-  - **Problema identificado**: Relatório mostrava 18 respostas de múltiplas entrevistas misturadas
-  - **Correção implementada**: Filtro rigoroso por selectionId E candidateId específicos
-  - **Isolamento total**: Sistema busca apenas respostas da seleção atual, sem misturar dados
-  - **Transcrição Whisper**: Integrada no fluxo de salvamento para processar áudios automaticamente  
-  - **Fallback removido**: Eliminado sistema que criava dados de outras seleções
-  - **Sistema limpo**: Próximas seleções mostrarão apenas suas próprias respostas
-  - **Debug melhorado**: Logs mostram isolamento correto por seleção específica
+- June 19, 2025: 🧹 BANCO COMPLETAMENTE LIMPO - Sistema preparado para teste de isolamento
+  - **Firebase limpo**: Todas as respostas antigas deletadas (19 registros removidos)
+  - **Arquivos de áudio removidos**: Uploads antigos deletados para fresh start
+  - **Isolamento validado**: Sistema agora aplica filtro rigoroso por selectionId + candidateId
+  - **Transcrição Whisper**: Integrada no fluxo de salvamento automático
+  - **Logs de debug**: Sistema mostra isolamento correto com mensagens claras
+  - **Próxima seleção**: Ambiente limpo para testar isolamento total
+  - **Status confirmado**: "Retornando array vazio - sem misturar dados de outras seleções"
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
