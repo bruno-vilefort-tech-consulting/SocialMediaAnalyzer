@@ -139,8 +139,21 @@ export default function NewReportsPage() {
     queryFn: async () => {
       if (!selectedSelection) return [];
       
-      const response = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`);
-      return response as InterviewCandidate[];
+      try {
+        const response = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`);
+        console.log('🔍 Interview candidates response:', response);
+        
+        // Garantir que sempre retornamos um array
+        if (Array.isArray(response)) {
+          return response as InterviewCandidate[];
+        } else {
+          console.warn('⚠️ Response is not an array:', typeof response, response);
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Error fetching interview candidates:', error);
+        return [];
+      }
     },
     enabled: !!selectedSelection
   });
@@ -153,7 +166,7 @@ export default function NewReportsPage() {
   }, [user]);
 
   // Filtrar e paginar candidatos
-  const filteredCandidates = interviewCandidates.filter(item => {
+  const filteredCandidates = (interviewCandidates || []).filter(item => {
     const candidate = item.candidate;
     const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||

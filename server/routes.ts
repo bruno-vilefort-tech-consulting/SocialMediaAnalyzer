@@ -2830,6 +2830,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get interview responses for reports page with client isolation
+  // Endpoint para buscar candidatos de uma seleção com suas entrevistas e respostas
+  app.get("/api/selections/:selectionId/interview-candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
+    try {
+      const selectionId = parseInt(req.params.selectionId);
+      
+      // Verificar se a seleção existe e se o usuário tem acesso
+      const selection = await storage.getSelection(selectionId);
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+      
+      // Verificar autorização
+      if (req.user!.role === 'client' && req.user!.clientId !== selection.clientId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Buscar entrevistas da seleção
+      const interviews = await storage.getInterviewsBySelection(selectionId);
+      
+      // Para cada entrevista, buscar candidato e respostas
+      const candidatesWithInterviews = await Promise.all(
+        interviews.map(async (interview) => {
+          const candidate = await storage.getCandidate(interview.candidateId);
+          const responses = await storage.getResponsesByInterviewId(interview.id);
+          const questions = await storage.getQuestionsByJobId(selection.jobId);
+          
+          return {
+            candidate: {
+              id: candidate?.id,
+              name: candidate?.name,
+              email: candidate?.email,
+              phone: candidate?.whatsapp
+            },
+            interview: {
+              id: interview.id,
+              status: interview.status,
+              createdAt: interview.createdAt,
+              completedAt: interview.completedAt,
+              totalScore: responses.reduce((sum, r) => sum + (r.score || 0), 0)
+            },
+            responses: responses.map((response, index) => ({
+              id: response.id,
+              questionId: response.questionId,
+              questionText: questions[response.questionId - 1]?.pergunta || 'Pergunta não encontrada',
+              transcription: response.transcription,
+              audioUrl: response.audioUrl,
+              score: response.score,
+              recordingDuration: response.recordingDuration,
+              aiAnalysis: response.aiAnalysis
+            }))
+          };
+        })
+      );
+      
+      res.json(candidatesWithInterviews);
+    } catch (error) {
+      console.error('Erro ao buscar candidatos da seleção:', error);
+      res.status(500).json({ message: 'Failed to fetch selection candidates' });
+    }
+  });
+
   app.get("/api/interview-responses", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       console.log(`🔍 Buscando entrevistas para relatórios - Usuário: ${req.user?.role} (ID: ${req.user?.id}) - ClientId: ${req.user?.clientId}`);
