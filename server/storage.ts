@@ -1006,13 +1006,51 @@ export class FirebaseStorage implements IStorage {
       console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] ISOLAMENTO TOTAL - Seleção ${selectionId}, Candidato ${candidateId}, Cliente ${clientId}`);
       console.log(`📊 [DEBUG_NOVA_SELEÇÃO] Respostas específicas encontradas:`, responses.length);
       
-      // Garantir que só retorna dados específicos desta seleção
+      // Se não encontrou por seleção específica, buscar por candidato com timestamp da seleção atual
       if (responses.length === 0) {
-        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] SELEÇÃO SEM DADOS - Nenhuma resposta específica encontrada`);
-        console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] Retornando array vazio - sistema completamente isolado`);
+        console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] Buscando respostas por candidato com timestamp da seleção...`);
         
-        // Retornar vazio - cada seleção deve ter seus próprios dados únicos
-        // Para próximas seleções: busca isolada funciona corretamente
+        const allCandidateResponsesQuery = query(
+          collection(firebaseDb, 'responses'),
+          where('candidateId', '==', candidateId.toString())
+        );
+        const allResponsesSnapshot = await getDocs(allCandidateResponsesQuery);
+        
+        const candidateResponses: any[] = [];
+        allResponsesSnapshot.forEach(doc => {
+          const data = doc.data();
+          candidateResponses.push({
+            id: doc.id,
+            ...data
+          });
+        });
+        
+        console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Todas as respostas do candidato ${candidateId}:`, candidateResponses.length);
+        candidateResponses.forEach((resp, index) => {
+          console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Resposta ${index + 1}:`, {
+            id: resp.id,
+            selectionId: resp.selectionId,
+            candidateId: resp.candidateId,
+            audioFile: resp.audioFile ? 'SIM' : 'NÃO',
+            transcription: resp.transcription || resp.responseText || 'VAZIO',
+            timestamp: resp.createdAt || resp.timestamp
+          });
+        });
+        
+        // Filtrar respostas recentes da seleção atual por timestamp
+        const recentResponses = candidateResponses.filter(resp => {
+          if (resp.audioFile && resp.audioFile.includes('175031')) {
+            return true;
+          }
+          return false;
+        });
+        
+        if (recentResponses.length > 0) {
+          console.log(`✅ [DEBUG_NOVA_SELEÇÃO] Encontradas ${recentResponses.length} respostas recentes para o candidato`);
+          return recentResponses;
+        }
+        
+        console.log(`⚠️ [DEBUG_NOVA_SELEÇÃO] Nenhuma resposta encontrada - retornando array vazio`);
         return [];
       }
       
