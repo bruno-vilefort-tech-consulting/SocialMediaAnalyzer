@@ -554,6 +554,7 @@ class InteractiveInterviewService {
         contentType: 'audio/ogg'
       });
       formData.append('model', 'whisper-1');
+      formData.append('language', 'pt');
 
       console.log(`🚀 [WHISPER] Enviando arquivo para API (versão corrigida)...`);
 
