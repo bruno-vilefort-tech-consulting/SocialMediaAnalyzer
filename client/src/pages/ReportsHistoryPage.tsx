@@ -208,11 +208,14 @@ const ReportsHistoryPage: React.FC = () => {
 
   const handleCategorySelection = (candidate: ReportCandidate, category: string) => {
     if (selectedReport) {
+      // Se já está selecionado, desseleciona (envia null/empty)
+      const newCategory = candidate.categorySelection === category ? '' : category;
+      
       updateCategoryMutation.mutate({
         candidateId: candidate.originalCandidateId,
         reportId: selectedReport.id,
         selectionId: selectedReport.selectionId,
-        category
+        category: newCategory
       });
     }
   };
