@@ -898,6 +898,93 @@ export class FirebaseStorage implements IStorage {
     return { id, ...updatedDoc.data() } as Response;
   }
 
+  // Métodos adicionais para o sistema de relatórios
+  async getInterviewsBySelectionId(selectionId: number): Promise<any[]> {
+    try {
+      const interviewsRef = collection(this.db, 'interviews');
+      const q = query(interviewsRef, where('selectionId', '==', selectionId));
+      const snapshot = await getDocs(q);
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.log('❌ Erro ao buscar entrevistas por seleção:', error.message);
+      return [];
+    }
+  }
+
+  async getInterviewsByCandidateId(candidateId: number): Promise<any[]> {
+    try {
+      const interviewsRef = collection(this.db, 'interviews');
+      const q = query(interviewsRef, where('candidateId', '==', candidateId));
+      const snapshot = await getDocs(q);
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.log('❌ Erro ao buscar entrevistas por candidato:', error.message);
+      return [];
+    }
+  }
+
+  async getInterviewById(interviewId: string): Promise<any | null> {
+    try {
+      const docRef = doc(this.db, 'interviews', interviewId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        };
+      }
+      return null;
+    } catch (error) {
+      console.log('❌ Erro ao buscar entrevista por ID:', error.message);
+      return null;
+    }
+  }
+
+  async updateInterview(interviewId: string, updates: any): Promise<void> {
+    try {
+      const docRef = doc(this.db, 'interviews', interviewId);
+      await updateDoc(docRef, updates);
+    } catch (error) {
+      console.log('❌ Erro ao atualizar entrevista:', error.message);
+      throw error;
+    }
+  }
+
+  async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
+    try {
+      const responsesRef = collection(this.db, 'responses');
+      const q = query(responsesRef, where('interviewId', '==', interviewId));
+      const snapshot = await getDocs(q);
+      
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.log('❌ Erro ao buscar respostas por entrevista:', error.message);
+      return [];
+    }
+  }
+
+  async updateResponse(responseId: string, updates: any): Promise<void> {
+    try {
+      const docRef = doc(this.db, 'responses', responseId);
+      await updateDoc(docRef, updates);
+    } catch (error) {
+      console.log('❌ Erro ao atualizar resposta:', error.message);
+      throw error;
+    }
+  }
+
   // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
   async getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined> {
     console.log(`🔍 [DEBUG] getApiConfig buscando: entityType=${entityType}, entityId=${entityId}`);

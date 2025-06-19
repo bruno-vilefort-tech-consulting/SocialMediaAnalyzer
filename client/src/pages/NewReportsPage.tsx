@@ -91,7 +91,12 @@ export default function NewReportsPage() {
   // Buscar candidatos da seleção
   const { data: candidates = [] } = useQuery({
     queryKey: ['/api/selections', selectedSelection?.id, 'candidates'],
-    enabled: !!selectedSelection
+    enabled: !!selectedSelection,
+    queryFn: () => fetch(`/api/selections/${selectedSelection?.id}/candidates`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    }).then(res => res.json())
   });
 
   // Mutation para salvar categoria do candidato
