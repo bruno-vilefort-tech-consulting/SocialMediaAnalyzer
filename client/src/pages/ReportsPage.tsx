@@ -100,9 +100,21 @@ export default function ReportsPage() {
   };
 
   const getSelectionCandidates = (selectionId: number) => {
+    console.log('🔍 getSelectionCandidates - Buscando candidatos para seleção:', selectionId);
+    console.log('🔍 validInterviews disponíveis:', validInterviews.length);
+    
     // Filtrar todas as entrevistas da seleção específica
-    return validInterviews.filter(interview => {
+    const filtered = validInterviews.filter(interview => {
       const isCorrectSelection = interview.selectionId === selectionId;
+      
+      console.log('🔍 Analisando entrevista:', {
+        interviewId: interview.id,
+        selectionId: interview.selectionId,
+        targetSelectionId: selectionId,
+        isCorrectSelection,
+        candidateName: interview.candidateName,
+        candidatePhone: interview.candidatePhone
+      });
       
       // Aceitar candidatos com dados válidos
       const hasValidData = interview.candidateName && 
@@ -111,8 +123,14 @@ export default function ReportsPage() {
                           interview.candidatePhone &&
                           interview.candidatePhone !== 'undefined';
       
-      return isCorrectSelection && hasValidData;
+      const shouldInclude = isCorrectSelection && hasValidData;
+      console.log('🔍 Incluir entrevista?', shouldInclude);
+      
+      return shouldInclude;
     });
+    
+    console.log('🔍 Total de candidatos filtrados:', filtered.length);
+    return filtered;
   };
 
   const formatDate = (timestamp: any) => {
@@ -220,7 +238,10 @@ export default function ReportsPage() {
               <Card 
                 key={selection.id} 
                 className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setSelectedSelection(selection.id)}
+                onClick={() => {
+                  console.log('🎯 Clicou na seleção:', selection.id, selection.name);
+                  setSelectedSelection(selection.id);
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between w-full">
@@ -298,8 +319,11 @@ export default function ReportsPage() {
 
   // Vista: Lista de candidatos da seleção
   if (selectedSelection && !selectedCandidate) {
+    console.log('🎯 Mostrando candidatos da seleção:', selectedSelection);
     const selection = validSelections.find((s: any) => s.id === selectedSelection);
+    console.log('🎯 Seleção encontrada:', selection);
     const candidates = getSelectionCandidates(selectedSelection);
+    console.log('🎯 Candidatos encontrados:', candidates.length);
     
     return (
       <div className="space-y-6">
