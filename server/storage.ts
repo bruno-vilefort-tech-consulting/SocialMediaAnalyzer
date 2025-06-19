@@ -279,7 +279,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateClient(id: number, clientUpdate: Partial<Client>): Promise<Client> {
     console.log("debug");
-    console.log("📝 Dados para atualização:", JSON.stringify(clientUpdate, null, 2));
+    console.log("Dados para atualização:", JSON.stringify(clientUpdate, null, 2));
 
     const docRef = doc(firebaseDb, "clients", String(id));
 
@@ -323,7 +323,7 @@ export class FirebaseStorage implements IStorage {
     const docSnap = await getDoc(docRef);
     if (!docSnap.exists()) {
       console.log("debug");
-      throw new Error("Cliente com ID ${id} não encontrado");
+      throw new Error("Cliente com ID  não encontrado");
     }
 
     console.log("debug");
@@ -529,7 +529,7 @@ export class FirebaseStorage implements IStorage {
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const candidates = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log("📋 Candidato ${doc.id}:", data);
+      console.log("📋 Candidato :", data);
 
       // Ensure clientId is properly parsed as number
       let clientId = data.clientId;
@@ -558,7 +558,7 @@ export class FirebaseStorage implements IStorage {
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const allCandidates = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log("📋 Candidato ${doc.id}:", data);
+      console.log("📋 Candidato :", data);
 
       // Ensure clientId is properly parsed as number
       let candidateClientId = data.clientId;
@@ -612,7 +612,7 @@ export class FirebaseStorage implements IStorage {
       console.log("debug");
       return match;
     });
-    console.log(" Memberships para lista ${listId}:", memberships);
+    console.log(" Memberships para lista :", memberships);
 
     // Busca candidatos baseado nos IDs encontrados
     const candidateIds = memberships.map(m => m.candidateId);
@@ -642,7 +642,7 @@ export class FirebaseStorage implements IStorage {
       console.log("debug");
       return isIncluded;
     });
-    console.log(" Candidatos filtrados para lista ${listId}:", filteredCandidates);
+    console.log(" Candidatos filtrados para lista :", filteredCandidates);
 
     return filteredCandidates;
   }
@@ -678,7 +678,7 @@ export class FirebaseStorage implements IStorage {
 
     // Create membership automatically para relacionamento muitos-para-muitos
     if (listId && clientId) {
-      const membershipId = "${candidateId}_${listId}";
+      const membershipId = "_";
       const membershipData = {
         candidateId,
         listId,
@@ -711,8 +711,8 @@ export class FirebaseStorage implements IStorage {
       console.log("debug");
 
       if (!clientId) {
-        console.error(" ERRO CRÍTICO: Candidato ${candidateFields.name} sem clientId!");
-        throw new Error("Candidato ${candidateFields.name} deve ter clientId válido");
+        console.error(" ERRO CRÍTICO: Candidato  sem clientId!");
+        throw new Error("Candidato  deve ter clientId válido");
       }
 
       const candidateData = {
@@ -730,7 +730,7 @@ export class FirebaseStorage implements IStorage {
 
       // Create membership automatically
       if (listId && clientId) {
-        const membershipId = "${candidateId}_${listId}";
+        const membershipId = "_";
         const membershipData = {
           candidateId,
           listId,
@@ -755,14 +755,14 @@ export class FirebaseStorage implements IStorage {
 
   async updateCandidate(id: number, candidateUpdate: Partial<Candidate>): Promise<Candidate> {
     try {
-      console.log("🔧 Atualizando candidato ${id} com dados:", candidateUpdate);
+      console.log("🔧 Atualizando candidato  com dados:", candidateUpdate);
 
       const docRef = doc(firebaseDb, "candidates", String(id));
 
       // Verificar se o candidato existe
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
-        throw new Error("Candidato com ID ${id} não encontrado");
+        throw new Error("Candidato com ID  não encontrado");
       }
 
       // Atualizar com timestamp
@@ -777,11 +777,11 @@ export class FirebaseStorage implements IStorage {
       const updatedDoc = await getDoc(docRef);
       const candidate = { id, ...updatedDoc.data() } as Candidate;
 
-      console.log(" Candidato ${id} atualizado com sucesso:", candidate);
+      console.log(" Candidato  atualizado com sucesso:", candidate);
       return candidate;
     } catch (error) {
-      console.error(" Erro ao atualizar candidato ${id}:", error);
-      throw new Error("Falha ao atualizar candidato: ${error instanceof Error ? error.message : String(error)}");
+      console.error(" Erro ao atualizar candidato :", error);
+      throw new Error("Falha ao atualizar candidato: ");
     }
   }
 
@@ -906,7 +906,7 @@ export class FirebaseStorage implements IStorage {
                      response.interviewId === interviewId;
 
         if (match) {
-          console.log(" Resposta encontrada para entrevista ${interviewId}:", {
+          console.log(" Resposta encontrada para entrevista :", {
             responseId: doc.id,
             interviewId: response.interviewId,
             questionText: response.questionText?.substring(0, 50) + '...'
@@ -1018,7 +1018,7 @@ export class FirebaseStorage implements IStorage {
       // 2. Formato isolado: candidate_selectionId_phone
       const possibleCandidateIds = [
         candidateId.toString(),
-        "candidate_${selectionId}_${candidatePhone}"
+        "candidate__"
       ];
 
       console.log(" Buscando por candidateIds possíveis:", possibleCandidateIds);
@@ -1037,7 +1037,7 @@ export class FirebaseStorage implements IStorage {
         // Verificar se candidateId coincide com algum formato possível
         const isMatch = possibleCandidateIds.includes(data.candidateId);
 
-        console.log(" [ISOLAMENTO] Verificando resposta ${doc.id}:", {
+        console.log(" [ISOLAMENTO] Verificando resposta :", {
           selectionId: data.selectionId,
           candidateId: data.candidateId,
           possibleIds: possibleCandidateIds,
@@ -1052,7 +1052,7 @@ export class FirebaseStorage implements IStorage {
         }
       });
 
-      console.log("📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas para seleção ${selectionId}:", matchingResponses.length);
+      console.log("📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas para seleção :", matchingResponses.length);
 
       if (matchingResponses.length === 0) {
         console.log("debug");
@@ -1064,9 +1064,9 @@ export class FirebaseStorage implements IStorage {
       const processedResponses = matchingResponses.map(resp => ({
         id: resp.id,
         questionId: resp.questionId,
-        questionText: resp.questionText || "Pergunta ${resp.questionId}",
+        questionText: resp.questionText || "Pergunta ",
         transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
-        audioUrl: resp.audioFile ? "/uploads/${resp.audioFile.split('/').pop()}" : '',
+        audioUrl: resp.audioFile ? "/uploads/" : '',
         score: resp.score || 0,
         recordingDuration: resp.recordingDuration || 0,
         aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
@@ -1074,7 +1074,7 @@ export class FirebaseStorage implements IStorage {
       }));
 
       console.log("debug");
-      console.log("📋 [DEBUG_NOVA_SELEÇÃO] STORAGE FINAL - Total de respostas para seleção ${selectionId}:", {
+      console.log("📋 [DEBUG_NOVA_SELEÇÃO] STORAGE FINAL - Total de respostas para seleção :", {
         candidateId: candidateId,
         responsesCount: processedResponses.length,
         withAudio: processedResponses.filter(r => r.audioUrl).length,
@@ -1155,8 +1155,8 @@ export class FirebaseStorage implements IStorage {
 
     // Se existe, usa mesmo documento. Se não existe, cria novo
     const docId = existingConfig ? 
-      "${config.entityType}_${config.entityId}" : 
-      "${config.entityType}_${config.entityId}_${Date.now()}";
+      "_" : 
+      "__";
 
     console.log(" [DEBUG] Salvando configuração:", {
       docId,
@@ -1268,7 +1268,7 @@ export class FirebaseStorage implements IStorage {
 
   // Criar configuração padrão de API para novo cliente
   async createDefaultClientApiConfig(clientId: string): Promise<void> {
-    const docId = "client_${clientId}";
+    const docId = "client_";
     const apiConfigData = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       entityType: "client",
@@ -1867,7 +1867,7 @@ export class FirebaseStorage implements IStorage {
 
   async createReport(reportData: any): Promise<any> {
     try {
-      const reportId = "report_${reportData.selectionId}_${Date.now()}";
+      const reportId = "report__";
       const report = {
         ...reportData,
         id: reportId,
@@ -1886,7 +1886,7 @@ export class FirebaseStorage implements IStorage {
 
   async createReportCandidate(candidateData: any): Promise<any> {
     try {
-      const candidateId = "${candidateData.reportId}_${candidateData.originalCandidateId}";
+      const candidateId = "_";
       const candidate = {
         ...candidateData,
         id: candidateId,
@@ -1903,7 +1903,7 @@ export class FirebaseStorage implements IStorage {
 
   async createReportResponse(responseData: any): Promise<any> {
     try {
-      const responseId = "${responseData.reportId}_${responseData.reportCandidateId}_R${responseData.questionNumber}";
+      const responseId = "__R";
       const response = {
         ...responseData,
         id: responseId,
@@ -2120,14 +2120,14 @@ export class FirebaseStorage implements IStorage {
             // Nova nomenclatura: audio_[whatsapp]_[selectionId]_R[numero].ogg
             const cleanPhone = candidate.whatsapp.replace(/\D/g, '');
             const newAudioFileName = response.audioFile ? 
-              "audio_${cleanPhone}_${selectionId}_R${response.questionId || 1}.ogg" : 
+              "audio_" + cleanPhone + "_" + selectionId + "_R" + (response.questionId || 1) + ".ogg" : 
               '';
 
             await this.createReportResponse({
               reportId: report.id,
               reportCandidateId: reportCandidate.id,
               questionNumber: response.questionId || 1,
-              questionText: response.questionText || "Pergunta ${response.questionId}",
+              questionText: response.questionText || "Pergunta " + response.questionId,
               transcription: response.transcription,
               audioFile: newAudioFileName, // Nova nomenclatura aplicada
               score: response.score || 0,
