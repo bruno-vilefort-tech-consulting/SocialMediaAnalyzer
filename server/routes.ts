@@ -765,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint para buscar todos os relacionamentos candidato-lista-memberships
+  // Endpoint para buscar todos os relacionamentos candidateListMemberships
   app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       if (req.user!.role === 'master') {
