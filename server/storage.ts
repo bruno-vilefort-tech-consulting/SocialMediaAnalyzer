@@ -901,7 +901,7 @@ export class FirebaseStorage implements IStorage {
   // Métodos adicionais para o sistema de relatórios
   async getInterviewsBySelectionId(selectionId: number): Promise<any[]> {
     try {
-      const interviewsRef = collection(this.db, 'interviews');
+      const interviewsRef = collection(firebaseDb, 'interviews');
       const q = query(interviewsRef, where('selectionId', '==', selectionId));
       const snapshot = await getDocs(q);
       
@@ -917,7 +917,7 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewsByCandidateId(candidateId: number): Promise<any[]> {
     try {
-      const interviewsRef = collection(this.db, 'interviews');
+      const interviewsRef = collection(firebaseDb, 'interviews');
       const q = query(interviewsRef, where('candidateId', '==', candidateId));
       const snapshot = await getDocs(q);
       
@@ -933,7 +933,7 @@ export class FirebaseStorage implements IStorage {
 
   async getInterviewById(interviewId: string): Promise<any | null> {
     try {
-      const docRef = doc(this.db, 'interviews', interviewId);
+      const docRef = doc(firebaseDb, 'interviews', interviewId);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
@@ -951,7 +951,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateInterview(interviewId: string, updates: any): Promise<void> {
     try {
-      const docRef = doc(this.db, 'interviews', interviewId);
+      const docRef = doc(firebaseDb, 'interviews', interviewId);
       await updateDoc(docRef, updates);
     } catch (error) {
       console.log('❌ Erro ao atualizar entrevista:', error.message);
@@ -961,7 +961,7 @@ export class FirebaseStorage implements IStorage {
 
   async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
     try {
-      const responsesRef = collection(this.db, 'responses');
+      const responsesRef = collection(firebaseDb, 'responses');
       const q = query(responsesRef, where('interviewId', '==', interviewId));
       const snapshot = await getDocs(q);
       
@@ -977,7 +977,7 @@ export class FirebaseStorage implements IStorage {
 
   async updateResponse(responseId: string, updates: any): Promise<void> {
     try {
-      const docRef = doc(this.db, 'responses', responseId);
+      const docRef = doc(firebaseDb, 'responses', responseId);
       await updateDoc(docRef, updates);
     } catch (error) {
       console.log('❌ Erro ao atualizar resposta:', error.message);
