@@ -334,129 +334,138 @@ export default function NewReportsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {paginatedCandidates.map((item) => (
-                  <Card key={item.candidate.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-medium text-sm">{item.candidate.name}</h3>
-                          <Badge variant={item.interview.status === 'completed' ? "default" : "secondary"}>
-                            {item.interview.status === 'completed' ? "Concluída" : "Em andamento"}
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-1 text-xs text-gray-600">
-                          <p className="truncate">{item.candidate.email}</p>
-                          <p>{item.candidate.phone}</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Score:</span>
-                          <Badge variant="outline" className="text-xs">
-                            {item.interview.totalScore || 0}pts
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">Respostas:</span>
-                          <Badge variant="outline" className="text-xs">
-                            {item.responses.length}
-                          </Badge>
-                        </div>
-                        
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="w-full text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              Ver Entrevista
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-                            <DialogHeader>
-                              <DialogTitle>
-                                Entrevista - {item.candidate.name}
-                              </DialogTitle>
-                            </DialogHeader>
+              <div className="space-y-3">
+                {paginatedCandidates.map((item) => {
+                  const isExpanded = expandedCandidate === item.candidate.id.toString();
+                  
+                  return (
+                    <div key={item.candidate.id} className="space-y-2">
+                      {/* Card principal horizontal */}
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => setExpandedCandidate(isExpanded ? null : item.candidate.id.toString())}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            {/* Informações principais em linha horizontal */}
+                            <div className="flex items-center space-x-6 flex-1">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-medium text-sm truncate">{item.candidate.name}</h3>
+                                <p className="text-xs text-gray-500 truncate">{item.candidate.email}</p>
+                              </div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">Tel:</span>
+                                <span className="text-xs">{item.candidate.phone}</span>
+                              </div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">Score:</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {item.interview.totalScore || 0}pts
+                                </Badge>
+                              </div>
+                              
+                              <div className="flex items-center space-x-1">
+                                <span className="text-xs text-gray-500">Respostas:</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {item.responses.length}
+                                </Badge>
+                              </div>
+                              
+                              <Badge variant={item.interview.status === 'completed' ? "default" : "secondary"} className="text-xs">
+                                {item.interview.status === 'completed' ? "Concluída" : "Em andamento"}
+                              </Badge>
+                            </div>
                             
-                            <ScrollArea className="h-[60vh] pr-4">
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                                  <div>
-                                    <h3 className="font-medium text-sm mb-2">Informações do Candidato</h3>
-                                    <div className="space-y-1 text-sm text-gray-600">
-                                      <p><strong>Nome:</strong> {item.candidate.name}</p>
-                                      <p><strong>Email:</strong> {item.candidate.email}</p>
-                                      <p><strong>Telefone:</strong> {item.candidate.phone}</p>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <h3 className="font-medium text-sm mb-2">Status da Entrevista</h3>
-                                    <div className="space-y-1 text-sm text-gray-600">
-                                      <p><strong>Status:</strong> {item.interview.status}</p>
-                                      <p><strong>Score Total:</strong> {item.interview.totalScore || 0} pontos</p>
-                                      <p><strong>Respostas:</strong> {item.responses.length}</p>
-                                    </div>
+                            {/* Botão de expandir */}
+                            <Button variant="ghost" size="sm" className="ml-4">
+                              {isExpanded ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Detalhes expandidos inline */}
+                      {isExpanded && (
+                        <Card className="ml-4 border-l-4 border-blue-200">
+                          <CardContent className="p-4">
+                            <div className="space-y-4">
+                              {/* Informações resumidas */}
+                              <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                  <h4 className="font-medium text-sm mb-2 text-gray-700">Informações do Candidato</h4>
+                                  <div className="space-y-1 text-sm text-gray-600">
+                                    <p><span className="font-medium">Nome:</span> {item.candidate.name}</p>
+                                    <p><span className="font-medium">Email:</span> {item.candidate.email}</p>
+                                    <p><span className="font-medium">Telefone:</span> {item.candidate.phone}</p>
                                   </div>
                                 </div>
-                                
                                 <div>
-                                  <h3 className="font-medium mb-4">Respostas da Entrevista</h3>
-                                  <div className="space-y-4">
-                                    {item.responses.map((response) => (
-                                      <Card key={response.id} className="p-4">
-                                        <div className="space-y-3">
-                                          <div className="flex justify-between items-start">
-                                            <h4 className="font-medium text-sm">
-                                              Pergunta {response.questionId}
-                                            </h4>
-                                            {response.score && (
-                                              <Badge variant="outline">
-                                                {response.score} pts
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          
-                                          <div className="p-3 bg-blue-50 rounded border-l-4 border-blue-200">
-                                            <p className="text-sm text-blue-800">
-                                              <strong>Pergunta:</strong> {response.questionText}
-                                            </p>
-                                          </div>
-                                          
-                                          <div className="p-3 bg-green-50 rounded border-l-4 border-green-200">
-                                            <p className="text-sm text-green-800">
-                                              <strong>Resposta:</strong> {response.transcription || 'Transcrição não disponível'}
-                                            </p>
-                                          </div>
-                                          
-                                          <div className="flex items-center justify-between">
-                                            <AudioPlayer 
-                                              audioUrl={response.audioUrl || ''} 
-                                              className="flex items-center gap-2"
-                                            />
-                                            {response.recordingDuration && (
-                                              <span className="text-xs text-gray-500">
-                                                Duração: {Math.round(response.recordingDuration)}s
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </Card>
-                                    ))}
+                                  <h4 className="font-medium text-sm mb-2 text-gray-700">Status da Entrevista</h4>
+                                  <div className="space-y-1 text-sm text-gray-600">
+                                    <p><span className="font-medium">Status:</span> {item.interview.status === 'completed' ? 'Concluída' : 'Em andamento'}</p>
+                                    <p><span className="font-medium">Score Total:</span> {item.interview.totalScore || 0} pontos</p>
+                                    <p><span className="font-medium">Respostas:</span> {item.responses.length}</p>
                                   </div>
                                 </div>
                               </div>
-                            </ScrollArea>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                              
+                              {/* Respostas da entrevista */}
+                              <div>
+                                <h4 className="font-medium mb-3 text-gray-700">Respostas da Entrevista</h4>
+                                <div className="space-y-3">
+                                  {item.responses.map((response) => (
+                                    <Card key={response.id} className="p-3 bg-white border">
+                                      <div className="space-y-3">
+                                        <div className="flex justify-between items-start">
+                                          <h5 className="font-medium text-sm text-gray-800">
+                                            Pergunta {response.questionId}
+                                          </h5>
+                                          {response.score > 0 && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {response.score} pts
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        
+                                        <div className="p-2 bg-blue-50 rounded border-l-2 border-blue-300">
+                                          <p className="text-sm text-blue-800">
+                                            <span className="font-medium">Pergunta:</span> {response.questionText}
+                                          </p>
+                                        </div>
+                                        
+                                        <div className="p-2 bg-green-50 rounded border-l-2 border-green-300">
+                                          <p className="text-sm text-green-800">
+                                            <span className="font-medium">Resposta:</span> {response.transcription || 'Aguardando resposta via WhatsApp'}
+                                          </p>
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between pt-2">
+                                          <AudioPlayer 
+                                            audioUrl={response.audioUrl || ''} 
+                                            className="flex items-center gap-2"
+                                          />
+                                          {response.recordingDuration > 0 && (
+                                            <span className="text-xs text-gray-500">
+                                              Duração: {Math.round(response.recordingDuration)}s
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               {filteredCandidates.length === 0 && (
