@@ -59,7 +59,7 @@ const ReportsHistoryPage: React.FC = () => {
   // Buscar todos os relatórios
   const { data: reports = [], isLoading, error } = useQuery({
     queryKey: ['/api/reports'],
-    queryFn: () => apiRequest('/api/reports')
+    queryFn: () => apiRequest('/api/reports', 'GET')
   });
 
   // Buscar candidatos de um relatório específico
@@ -339,11 +339,7 @@ const ReportsHistoryPage: React.FC = () => {
                       : 'Houve um problema ao carregar os dados dos relatórios.'
                     }
                   </p>
-                  {!Array.isArray(reports) && (
-                    <div className="mt-4 p-4 bg-gray-100 rounded text-sm text-left">
-                      <strong>Debug:</strong> {JSON.stringify(reports)}
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
             )}
