@@ -518,8 +518,15 @@ class InteractiveInterviewService {
     console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
     try {
-      // Usar chave direta que funcionou no teste
-      const openaiApiKey = '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';
+      // Usar chave do ambiente que está funcionando
+      const openaiApiKey = process.env.OPENAI_API_KEY;
+      
+      if (!openaiApiKey) {
+        console.log(`❌ OpenAI API não configurada para transcrição`);
+        return '';
+      }
+      
+      console.log(`🔑 [WHISPER] Usando chave OpenAI do ambiente`);
       
       const fs = await import('fs');
       const path = await import('path');
