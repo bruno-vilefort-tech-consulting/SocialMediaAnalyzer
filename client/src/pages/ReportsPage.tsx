@@ -76,21 +76,39 @@ export default function ReportsPage() {
     return true;
   }) : [];
 
-  const validInterviews = Array.isArray(interviews) ? interviews.filter((interview: Interview) => 
+  const validInterviews = Array.isArray(interviews) ? interviews.map((item: any) => {
+    // Converter estrutura do backend para a interface Interview esperada
+    return {
+      id: item.interview?.id?.toString() || Math.random().toString(),
+      selectionId: item.interview?.selectionId || 0,
+      candidateId: item.interview?.candidateId || 0,
+      candidateName: item.candidate?.name || 'Nome não disponível',
+      candidatePhone: item.candidate?.whatsapp || item.candidate?.phone || 'Telefone não disponível',
+      jobName: item.job?.title || item.job?.nomeVaga || 'Vaga não identificada',
+      status: item.interview?.status || 'pending',
+      responses: item.responses || [],
+      totalQuestions: 2, // Default baseado na vaga de consultor
+      answeredQuestions: item.responses?.length || 0
+    };
+  }).filter((interview: Interview) => 
     interview && 
     interview.candidateName && 
     interview.candidateName !== 'Candidato não identificado' && 
     interview.candidateName !== 'undefined' &&
     interview.candidatePhone && 
-    interview.candidatePhone !== 'undefined' &&
-    interview.jobName &&
-    interview.jobName !== 'Vaga não identificada'
+    interview.candidatePhone !== 'undefined'
   ) : [];
+
+  console.log('🔍 Dados originais interviews:', interviews?.length || 0);
+  console.log('🔍 Após conversão validInterviews:', validInterviews.length);
+  console.log('🔍 Primeiro validInterview:', validInterviews[0]);
 
   const getSelectionStats = (selectionId: number) => {
     const selectionInterviews = validInterviews.filter(interview => 
       interview.selectionId === selectionId
     );
+    
+    console.log(`📊 Stats para seleção ${selectionId}:`, selectionInterviews.length, 'entrevistas');
     
     const completed = selectionInterviews.filter(i => i.status === 'completed').length;
     const inProgress = selectionInterviews.filter(i => i.status === 'in_progress').length;
