@@ -173,25 +173,70 @@ export default function SelectionsPage() {
 
 
 
-  // Enviar campanha WhatsApp QR
-  const sendWhatsAppQRCampaignMutation = useMutation({
+  // Enviar campanha WhatsApp Baileys (novo sistema isolado por cliente)
+  const sendWhatsAppBaileysCampaignMutation = useMutation({
     mutationFn: async (selectionId: number) => {
-      const response = await apiRequest('/api/whatsapp-qr/send-campaign', 'POST', { selectionId });
+      const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp`, 'POST');
       return await response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       toast({ 
-        title: "Campanha WhatsApp QR enviada!", 
-        description: `${data.sentCount} mensagens enviadas com sucesso via QR. ${data.errorCount} erros.`
+        title: "Entrevistas WhatsApp enviadas!", 
+        description: `${data.sentCount || 0} mensagens enviadas com sucesso. ${data.errorCount || 0} erros.`
       });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Erro ao enviar campanha WhatsApp QR", 
-        description: error?.message || "Verifique se o WhatsApp está conectado via QR Code",
+        title: "Erro ao enviar entrevistas WhatsApp", 
+        description: error?.message || "Verifique se o WhatsApp está conectado",
         variant: "destructive" 
       });
+    }
+  });
+
+  // Criar seleção e enviar automaticamente via WhatsApp
+  const createAndSendMutation = useMutation({
+    mutationFn: async (selectionData: any) => {
+      // Primeiro criar a seleção
+      const createResponse = await apiRequest('/api/selections', 'POST', selectionData);
+      const newSelection = await createResponse.json();
+      
+      // Se for para enviar por WhatsApp, enviar automaticamente
+      if (selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both') {
+        try {
+          const sendResponse = await apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST');
+          const sendResult = await sendResponse.json();
+          return { selection: newSelection, sendResult };
+        } catch (sendError) {
+          // Seleção foi criada mas envio falhou
+          return { selection: newSelection, sendError: sendError };
+        }
+      }
+      
+      return { selection: newSelection };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      resetForm();
+      
+      if (data.sendResult) {
+        toast({ 
+          title: "Seleção criada e entrevistas enviadas!", 
+          description: `${data.sendResult.sentCount || 0} mensagens WhatsApp enviadas com sucesso.`
+        });
+      } else if (data.sendError) {
+        toast({ 
+          title: "Seleção criada mas falha no envio", 
+          description: "A seleção foi salva mas o envio via WhatsApp falhou. Tente reenviar.",
+          variant: "destructive"
+        });
+      } else {
+        toast({ title: "Seleção criada com sucesso!" });
+      }
+    },
+    onError: () => {
+      toast({ title: "Erro ao criar e enviar seleção", variant: "destructive" });
     }
   });
 
@@ -334,7 +379,12 @@ export default function SelectionsPage() {
     if (editingSelection) {
       updateSelectionMutation.mutate(selectionData);
     } else {
-      createSelectionMutation.mutate(selectionData);
+      // Para novas seleções, use createAndSendMutation que cria E envia automaticamente
+      if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
+        createAndSendMutation.mutate(selectionData);
+      } else {
+        createSelectionMutation.mutate(selectionData);
+      }
     }
   };
 
@@ -579,11 +629,11 @@ export default function SelectionsPage() {
             <div className="flex gap-2 pt-4 border-t">
               <Button 
                 onClick={salvarSelecao}
-                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending}
+                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                {createSelectionMutation.isPending || updateSelectionMutation.isPending ? (
-                  "Salvando..."
+                {createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending ? (
+                  createAndSendMutation.isPending ? "Salvando e enviando..." : "Salvando..."
                 ) : (
                   tipoEnvio === "agora" 
                     ? (editingSelection ? "Salvar e Enviar" : "Salvar e Enviar")
@@ -593,7 +643,7 @@ export default function SelectionsPage() {
               <Button 
                 variant="outline" 
                 onClick={resetForm}
-                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending}
+                disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending}
               >
                 Cancelar
               </Button>

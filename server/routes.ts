@@ -1344,6 +1344,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enviar entrevistas via WhatsApp Baileys (novo sistema isolado por cliente)
+  app.post("/api/selections/:id/send-whatsapp", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = parseInt(req.params.id);
+      console.log(`🚀 Iniciando envio WhatsApp Baileys para seleção ${selectionId}`);
+      
+      const selection = await storage.getSelection(selectionId);
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+
+      // Verificar autorização por clientId
+      if (req.user!.role === 'client' && selection.clientId !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou enviar seleção ${selectionId} que pertence ao clientId ${selection.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only send selections for your own client' });
+      }
+
+      console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
+
+      // Buscar candidatos da lista
+      const candidateListMembers = await storage.getCandidateListMembershipsByListId(selection.candidateListId);
+      console.log(`👥 Membros da lista encontrados: ${candidateListMembers.length}`);
+
+      // Buscar dados completos dos candidatos
+      const candidateIds = candidateListMembers.map(member => member.candidateId);
+      const candidates = [];
+      for (const candidateId of candidateIds) {
+        const candidate = await storage.getCandidate(candidateId);
+        if (candidate) {
+          candidates.push(candidate);
+        }
+      }
+      console.log(`🎯 Candidatos encontrados: ${candidates.length}`);
+
+      // Buscar vaga
+      const job = await storage.getJob(selection.jobId);
+      if (!job) {
+        return res.status(404).json({ message: 'Job not found' });
+      }
+      console.log(`💼 Vaga encontrada: ${job.nomeVaga} (${job.perguntas?.length || 0} perguntas)`);
+
+      let messagesSent = 0;
+      let messagesError = 0;
+
+      // Enviar via WhatsApp usando o sistema Baileys isolado por cliente
+      for (const candidate of candidates) {
+        if (candidate.whatsapp) {
+          try {
+            console.log(`📱 Enviando WhatsApp para ${candidate.name} (${candidate.whatsapp})`);
+            
+            // Criar entrevista
+            const interview = await storage.createInterview({
+              candidateId: candidate.id,
+              jobId: selection.jobId,
+              selectionId: selection.id,
+              status: 'pending',
+              clientId: selection.clientId
+            });
+
+            console.log(`🎤 Entrevista criada: ID ${interview.id}`);
+
+            // Gerar token único
+            const token = `interview_${interview.id}_${Date.now()}`;
+            await storage.updateInterview(interview.id, { token });
+
+            // Gerar link da entrevista
+            const interviewLink = `${process.env.REPLIT_DOMAINS || 'https://your-domain.replit.app'}/entrevista/${token}`;
+
+            // Personalizar mensagem WhatsApp
+            let personalizedMessage = selection.whatsappTemplate || 
+              "Olá {nome}, você foi selecionado para uma entrevista virtual da vaga {vaga}. Acesse: {link}";
+            
+            personalizedMessage = personalizedMessage
+              .replace(/\{nome\}/g, candidate.name)
+              .replace(/\[nome do candidato\]/g, candidate.name)
+              .replace(/\{vaga\}/g, job.nomeVaga)
+              .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+              .replace(/\[número de perguntas\]/g, job.perguntas?.length?.toString() || '3')
+              .replace(/\{link\}/g, interviewLink);
+
+            personalizedMessage += `\n\n🎯 Link da entrevista: ${interviewLink}`;
+
+            // Enviar via WhatsApp Baileys
+            const { whatsappBaileyService } = await import('./whatsappBaileyService');
+            const clientIdStr = selection.clientId.toString();
+            
+            console.log(`📲 Enviando via WhatsApp Baileys para cliente ${clientIdStr}`);
+            const sendResult = await whatsappBaileyService.sendMessage(
+              clientIdStr,
+              candidate.whatsapp,
+              personalizedMessage
+            );
+
+            if (sendResult) {
+              messagesSent++;
+              console.log(`✅ WhatsApp enviado com sucesso para ${candidate.name}`);
+              
+              // Registrar log de mensagem
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'invitation',
+                channel: 'whatsapp',
+                status: 'sent'
+              });
+            } else {
+              messagesError++;
+              console.log(`❌ Falha no envio WhatsApp para ${candidate.name}`);
+              
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'invitation',
+                channel: 'whatsapp',
+                status: 'failed'
+              });
+            }
+          } catch (error) {
+            messagesError++;
+            console.error(`❌ Erro no envio WhatsApp para ${candidate.name}:`, error);
+          }
+        } else {
+          console.log(`⚠️ Candidato ${candidate.name} sem WhatsApp`);
+          messagesError++;
+        }
+      }
+
+      // Atualizar status da seleção
+      if (messagesSent > 0) {
+        await storage.updateSelection(selection.id, { status: 'enviado' });
+        console.log(`✅ Seleção atualizada para "enviado"`);
+      }
+
+      res.json({
+        success: true,
+        sentCount: messagesSent,
+        errorCount: messagesError,
+        message: `${messagesSent} mensagens enviadas via WhatsApp, ${messagesError} erros`
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no envio WhatsApp Baileys:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Erro interno no servidor ao enviar WhatsApp',
+        sentCount: 0,
+        errorCount: 0
+      });
+    }
+  });
+
   app.post("/api/selections/:id/send", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       console.log('🚀 INICIANDO ENVIO DE EMAILS - Selection ID:', req.params.id);
