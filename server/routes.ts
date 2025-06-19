@@ -1350,7 +1350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectionId = parseInt(req.params.id);
       console.log(`🚀 Iniciando envio WhatsApp Baileys para seleção ${selectionId}`);
       
-      const selection = await storage.getSelection(selectionId);
+      const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
         return res.status(404).json({ message: 'Selection not found' });
       }
@@ -1363,23 +1363,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
-      // Buscar candidatos da lista
-      const candidateListMembers = await storage.getCandidateListMembershipsByListId(selection.candidateListId);
+      // Buscar candidatos da lista usando método que existe
+      const allMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
+      const candidateListMembers = allMemberships.filter(member => member.listId === selection.candidateListId);
       console.log(`👥 Membros da lista encontrados: ${candidateListMembers.length}`);
 
       // Buscar dados completos dos candidatos
       const candidateIds = candidateListMembers.map(member => member.candidateId);
-      const candidates = [];
-      for (const candidateId of candidateIds) {
-        const candidate = await storage.getCandidate(candidateId);
-        if (candidate) {
-          candidates.push(candidate);
-        }
-      }
+      const allCandidates = await storage.getAllCandidates();
+      const candidates = allCandidates.filter(candidate => 
+        candidateIds.includes(candidate.id) && candidate.clientId === selection.clientId
+      );
       console.log(`🎯 Candidatos encontrados: ${candidates.length}`);
 
       // Buscar vaga
-      const job = await storage.getJob(selection.jobId);
+      const job = await storage.getJobById(selection.jobId);
       if (!job) {
         return res.status(404).json({ message: 'Job not found' });
       }
@@ -1394,20 +1392,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           try {
             console.log(`📱 Enviando WhatsApp para ${candidate.name} (${candidate.whatsapp})`);
             
-            // Criar entrevista
+            // Gerar token único primeiro
+            const token = `interview_${Date.now()}_${candidate.id}`;
+            
+            // Criar entrevista com token
             const interview = await storage.createInterview({
               candidateId: candidate.id,
-              jobId: selection.jobId,
               selectionId: selection.id,
-              status: 'pending',
-              clientId: selection.clientId
+              token: token,
+              status: 'pending'
             });
 
-            console.log(`🎤 Entrevista criada: ID ${interview.id}`);
-
-            // Gerar token único
-            const token = `interview_${interview.id}_${Date.now()}`;
-            await storage.updateInterview(interview.id, { token });
+            console.log(`🎤 Entrevista criada: ID ${interview.id}, Token: ${token}`);
 
             // Gerar link da entrevista
             const interviewLink = `${process.env.REPLIT_DOMAINS || 'https://your-domain.replit.app'}/entrevista/${token}`;
