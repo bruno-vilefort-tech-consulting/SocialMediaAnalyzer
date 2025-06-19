@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 19, 2025: ✅ CANDIDATOS EM LISTAS ESPECÍFICAS CORRIGIDO - Bug de visualização resolvido completamente
+  - **Problema identificado**: Nomenclatura inconsistente entre "candidate-list-memberships" e "candidateListMemberships" 
+  - **Storage.ts unificado**: Todas as 12+ referências padronizadas para "candidateListMemberships"
+  - **Frontend com logs detalhados**: Sistema de debug implementado para rastrear busca de candidatos
+  - **Visualização funcionando**: Candidatos aparecem corretamente ao clicar em lista específica
+  - **Validado para cliente**: Lista "Consultor 10" mostra "Daniel Moreira" corretamente
+  - **Sistema isolado**: Cada cliente vê apenas suas próprias listas e candidatos
+  - **Logs limpos**: Debug removido após correção confirmada
+
 - June 19, 2025: 🎯 SISTEMA DE ENTREVISTA INTERATIVA RESTAURADO - Fluxo original WhatsApp implementado conforme solicitado
   - **InteractiveInterviewService criado**: Novo serviço completo para entrevistas via WhatsApp com fluxo 1=sim/2=não
   - **Handler de mensagens integrado**: WhatsAppBaileyService agora processa mensagens recebidas automaticamente
