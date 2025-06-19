@@ -312,8 +312,8 @@ class InteractiveInterviewService {
 
     console.log(`📊 [AUDIO] Status da entrevista atualizado: pergunta ${interview.currentQuestion + 1}/${interview.questions.length}`);
 
-    // Enviar confirmação
-    await this.sendMessage(from, `✅ Resposta recebida! ${audioMessage ? '🎵 Áudio processado.' : ''} Preparando próxima pergunta...`);
+    // Enviar confirmação (só chega aqui com áudio)
+    await this.sendMessage(from, `✅ Resposta por áudio recebida! 🎵 Processando transcrição... Preparando próxima pergunta...`);
     
     setTimeout(async () => {
       await this.sendNextQuestion(phone, interview);
