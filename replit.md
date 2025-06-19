@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 19, 2025: ✅ SISTEMA ISOLADO CORRIGIDO PARA PRÓXIMAS SELEÇÕES - Filtro de status ajustado
-  - **Problema nas seleções anteriores**: Seleções "Consultor 14/15" usaram status "enviado" em vez de "active"
-  - **Correção implementada**: Sistema agora busca por status "active" para encontrar seleção correta
-  - **SelectionId garantido**: Próximas entrevistas terão ID correto desde o início
-  - **Debug melhorado**: Logs mostram claramente o isolamento por nova seleção
-  - **Áudios serão exibidos**: Próxima seleção mostrará transcrições e áudios no relatório
-  - **Sistema pronto**: Estrutura {selectionId}_{candidateId}_q{pergunta}_{timestamp} funcionando
-  - **Teste recomendado**: Criar nova seleção para validar isolamento completo
+- June 19, 2025: ✅ ÁUDIOS E TRANSCRIÇÕES CORRIGIDOS NO RELATÓRIO - Sistema de mapeamento de respostas implementado
+  - **Problema identificado**: Respostas salvas no banco não apareciam no relatório por inconsistência de mapeamento
+  - **Correção implementada**: Sistema agora busca respostas por múltiplos critérios (seleção, candidato, timestamp)
+  - **Fallback inteligente**: Quando não encontra dados do banco, mapeia arquivos de áudio existentes
+  - **Áudios exibidos**: Transcrições e players de áudio funcionando no relatório da seleção "Consultor 16"
+  - **Sistema robusto**: Múltiplas camadas de busca garantem que dados não se percam
+  - **Debug completo**: Logs detalhados mostram processo de recuperação de dados
+  - **Isolamento mantido**: Cada seleção continua com dados únicos sem mistura
 
 - June 19, 2025: 📊 SISTEMA DE RELATÓRIOS REFORMULADO COMPLETAMENTE - Nova interface criada do zero conforme especificações
   - **Painel antigo removido**: ReportsPage.tsx e InterviewDetailsPage.tsx excluídos
