@@ -213,7 +213,7 @@ class InteractiveInterviewService {
         status: 'in_progress'
       });
 
-      // Criar entrevista ativa em memória
+      // Criar entrevista ativa em memória com selectionId
       const interview: ActiveInterview = {
         candidateId: candidate.id,
         candidateName: candidate.name,
@@ -225,8 +225,18 @@ class InteractiveInterviewService {
         questions: job.perguntas,
         responses: [],
         startTime: new Date().toISOString(),
+        selectionId: selection.id.toString(),
         interviewDbId: interviewDb.id
       };
+      
+      console.log(`✅ [DEBUG_NOVA_SELEÇÃO] ENTREVISTA INICIADA COM ISOLAMENTO:`, {
+        candidateId: candidate.id,
+        candidateName: candidate.name,
+        selectionId: selection.id.toString(),
+        clientId: selection.clientId,
+        jobId: job.id,
+        totalQuestions: job.perguntas.length
+      });
 
       this.activeInterviews.set(phone, interview);
 
@@ -384,26 +394,41 @@ class InteractiveInterviewService {
     
     console.log(`💾 [AUDIO] Resposta salva na entrevista ativa`);
 
-    // Salvar resposta no banco de dados
+    // Salvar resposta no banco de dados com selectionId
     try {
       if (interview.interviewDbId) {
+        const responseId = `${interview.selectionId || 'unknown'}_${interview.candidateId}_q${interview.currentQuestion + 1}_${Date.now()}`;
+        
         await storage.createResponse({
+          id: responseId,
           interviewId: interview.interviewDbId,
           questionId: interview.currentQuestion + 1,
           audioUrl: audioFile || null,
           transcription: responseText,
           score: null,
+          selectionId: interview.selectionId || 'unknown',
+          candidateId: interview.candidateId.toString(),
+          clientId: parseInt(interview.clientId),
           aiAnalysis: { 
             rawResponse: response,
             hasAudio: !!audioMessage,
             transcriptionSuccess: responseText.length > 0
           },
-          recordingDuration: null
+          recordingDuration: null,
+          createdAt: new Date().toISOString()
         });
-        console.log(`✅ [AUDIO] Resposta salva no banco de dados`);
+        
+        console.log(`✅ [DEBUG_NOVA_SELEÇÃO] RESPOSTA SALVA COM ISOLAMENTO:`, {
+          responseId: responseId,
+          selectionId: interview.selectionId || 'unknown',
+          candidateId: interview.candidateId,
+          questionNumber: interview.currentQuestion + 1,
+          audioFile: audioFile ? 'SIM' : 'NÃO',
+          transcription: responseText ? responseText.substring(0, 50) + '...' : 'VAZIO'
+        });
       }
     } catch (saveError) {
-      console.log(`❌ [AUDIO] Erro ao salvar no banco:`, saveError.message);
+      console.log(`❌ [DEBUG_NOVA_SELEÇÃO] Erro ao salvar resposta isolada:`, saveError.message);
     }
 
     // Avançar para próxima pergunta
