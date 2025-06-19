@@ -199,6 +199,10 @@ class WhatsAppBaileyService {
     };
   }
 
+  getAllConnections() {
+    return this.connections;
+  }
+
   async connect(clientId: string) {
     return await this.initWhatsApp(clientId);
   }
