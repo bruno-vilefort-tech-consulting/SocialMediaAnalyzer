@@ -30,21 +30,27 @@ class InteractiveInterviewService {
     // Inicializar AudioDownloadService com null, será configurado quando necessário
   }
 
-  private async downloadAudioDirect(message: any, phone: string, clientId: string): Promise<string | null> {
-    console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD COM CORREÇÃO BAILEYS =====`);
-    console.log(`📱 [AUDIO_DOWNLOAD] Telefone: ${phone}`);
+  private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
+    console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD COM NOVA NOMENCLATURA =====`);
+    console.log(`📱 [AUDIO_DOWNLOAD] Telefone: ${phone}, Seleção: ${selectionId}, Pergunta: ${questionNumber}`);
     
     try {
+      const cleanPhone = phone.replace(/\D/g, '');
+      // Nova nomenclatura: audio_[whatsapp]_[selectionId]_R[numero].ogg
+      const audioFileName = `audio_${cleanPhone}_${selectionId}_R${questionNumber}.ogg`;
+      const audioPath = `uploads/${audioFileName}`;
+      
       // Verificar se mensagem foi corrigida pelo handler Baileys
       if (message._audioFixed && message._audioPath) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Usando áudio corrigido pelo Baileys: ${message._audioPath}`);
-        return message._audioPath;
+        console.log(`✅ [AUDIO_DOWNLOAD] Copiando áudio corrigido para nova nomenclatura`);
+        const fs = await import('fs');
+        await fs.promises.copyFile(message._audioPath, audioPath);
+        return audioPath;
       }
       
       if (message._audioBuffer) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Usando buffer corrigido pelo Baileys`);
+        console.log(`✅ [AUDIO_DOWNLOAD] Salvando buffer com nova nomenclatura`);
         const fs = await import('fs');
-        const audioPath = `uploads/audio_${phone}_${Date.now()}_corrected.ogg`;
         await fs.promises.writeFile(audioPath, message._audioBuffer);
         return audioPath;
       }
@@ -82,7 +88,6 @@ class InteractiveInterviewService {
           
           if (audioBuffer && audioBuffer.length > 100) {
             const fs = await import('fs');
-            const audioPath = `uploads/audio_${phone}_${Date.now()}_direct.ogg`;
             await fs.promises.writeFile(audioPath, audioBuffer);
             console.log(`✅ [AUDIO_DOWNLOAD] Download direto sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
             return audioPath;
@@ -93,9 +98,8 @@ class InteractiveInterviewService {
       }
       
       // Criar arquivo temporário para manter fluxo
-      console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário`);
+      console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário com nova nomenclatura`);
       const fs = await import('fs');
-      const audioPath = `uploads/audio_${phone}_${Date.now()}_temp.ogg`;
       
       const emptyOggHeader = Buffer.from([
         0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -398,8 +402,14 @@ class InteractiveInterviewService {
       console.log(`🎧 [AUDIO] Iniciando processamento de áudio...`);
       
       try {
-        // Usar novo método de download direto
-        const audioPath = await this.downloadAudioDirect(audioMessage, phone, interview.clientId);
+        // Usar novo método de download direto com nomenclatura padronizada
+        const audioPath = await this.downloadAudioDirect(
+          audioMessage, 
+          phone, 
+          interview.clientId, 
+          interview.selectionId, 
+          interview.currentQuestion + 1
+        );
         
         if (audioPath) {
           console.log(`✅ [AUDIO] Áudio baixado: ${audioPath}`);
@@ -446,10 +456,13 @@ class InteractiveInterviewService {
     
     console.log(`💾 [AUDIO] Resposta salva na entrevista ativa`);
 
-    // Salvar resposta no banco de dados com selectionId
+    // Salvar resposta no banco de dados com nova nomenclatura
     try {
       if (interview.interviewDbId) {
-        const responseId = `${interview.selectionId || 'unknown'}_${interview.candidateId}_q${interview.currentQuestion + 1}_${Date.now()}`;
+        // Nova nomenclatura para transcrição: candidato_[selectionId]_[numeroResposta]
+        const cleanPhone = interview.phone.replace(/\D/g, '');
+        const transcriptionId = `candidato_${interview.selectionId}_${interview.currentQuestion + 1}`;
+        const responseId = `${interview.selectionId}_${interview.candidateId}_R${interview.currentQuestion + 1}_${Date.now()}`;
         
         await storage.createResponse({
           id: responseId,
@@ -460,6 +473,7 @@ class InteractiveInterviewService {
           responseText: responseText,
           audioFile: audioFile || '',
           transcription: responseText,
+          transcriptionId: transcriptionId, // Nova nomenclatura para transcrições
           timestamp: new Date().toISOString(),
           score: 0,
           aiAnalysis: '',

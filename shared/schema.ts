@@ -263,3 +263,60 @@ export type MasterSettings = typeof masterSettings.$inferSelect;
 export type InsertMasterSettings = z.infer<typeof insertMasterSettingsSchema>;
 export type MessageLog = typeof messageLogs.$inferSelect;
 export type InsertMessageLog = z.infer<typeof insertMessageLogSchema>;
+
+// Nova tabela para relatórios independentes
+export const reports = pgTable("reports", {
+  id: text("id").primaryKey(), // report_selectionId_timestamp
+  selectionId: text("selection_id").notNull(), // ID da seleção original
+  selectionName: text("selection_name").notNull(),
+  jobName: text("job_name").notNull(),
+  clientId: integer("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  candidateListName: text("candidate_list_name").notNull(),
+  totalCandidates: integer("total_candidates").notNull().default(0),
+  completedInterviews: integer("completed_interviews").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  generatedAt: timestamp("generated_at").defaultNow()
+});
+
+// Candidatos do relatório (cópia independente)
+export const reportCandidates = pgTable("report_candidates", {
+  id: text("id").primaryKey(), // reportId_candidateOriginalId
+  reportId: text("report_id").notNull(),
+  originalCandidateId: text("original_candidate_id").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  whatsapp: text("whatsapp").notNull(),
+  status: text("status").notNull(), // 'invited', 'completed', 'pending'
+  totalScore: integer("total_score").default(0),
+  category: text("category"), // 'Melhor', 'Mediano', 'Em dúvida', 'Não'
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Respostas do relatório (cópia independente com nova nomenclatura)
+export const reportResponses = pgTable("report_responses", {
+  id: text("id").primaryKey(), // reportId_candidateId_R[numero]
+  reportId: text("report_id").notNull(),
+  reportCandidateId: text("report_candidate_id").notNull(),
+  questionNumber: integer("question_number").notNull(),
+  questionText: text("question_text").notNull(),
+  transcription: text("transcription"),
+  audioFile: text("audio_file"), // audio_[whatsapp]_[selectionId]_R[numero].ogg
+  score: integer("score").default(0),
+  recordingDuration: integer("recording_duration").default(0),
+  aiAnalysis: text("ai_analysis"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Schemas para os novos tipos
+export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true, generatedAt: true });
+export const insertReportCandidateSchema = createInsertSchema(reportCandidates).omit({ id: true, createdAt: true });
+export const insertReportResponseSchema = createInsertSchema(reportResponses).omit({ id: true, createdAt: true });
+
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = z.infer<typeof insertReportSchema>;
+export type ReportCandidate = typeof reportCandidates.$inferSelect;
+export type InsertReportCandidate = z.infer<typeof insertReportCandidateSchema>;
+export type ReportResponse = typeof reportResponses.$inferSelect;
+export type InsertReportResponse = z.infer<typeof insertReportResponseSchema>;

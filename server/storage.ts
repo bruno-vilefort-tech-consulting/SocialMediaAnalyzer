@@ -1845,6 +1845,270 @@ export class FirebaseStorage implements IStorage {
   }
 
 
+  // === MÉTODOS PARA RELATÓRIOS INDEPENDENTES ===
+
+  async createReport(reportData: any): Promise<any> {
+    try {
+      const reportId = `report_${reportData.selectionId}_${Date.now()}`;
+      const report = {
+        ...reportData,
+        id: reportId,
+        createdAt: new Date(),
+        generatedAt: new Date()
+      };
+      
+      await setDoc(doc(firebaseDb, "reports", reportId), report);
+      console.log(`✅ Relatório criado: ${reportId}`);
+      return report;
+    } catch (error) {
+      console.error('Erro ao criar relatório:', error);
+      throw error;
+    }
+  }
+
+  async createReportCandidate(candidateData: any): Promise<any> {
+    try {
+      const candidateId = `${candidateData.reportId}_${candidateData.originalCandidateId}`;
+      const candidate = {
+        ...candidateData,
+        id: candidateId,
+        createdAt: new Date()
+      };
+      
+      await setDoc(doc(firebaseDb, "report_candidates", candidateId), candidate);
+      return candidate;
+    } catch (error) {
+      console.error('Erro ao criar candidato do relatório:', error);
+      throw error;
+    }
+  }
+
+  async createReportResponse(responseData: any): Promise<any> {
+    try {
+      const responseId = `${responseData.reportId}_${responseData.reportCandidateId}_R${responseData.questionNumber}`;
+      const response = {
+        ...responseData,
+        id: responseId,
+        createdAt: new Date()
+      };
+      
+      await setDoc(doc(firebaseDb, "report_responses", responseId), response);
+      return response;
+    } catch (error) {
+      console.error('Erro ao criar resposta do relatório:', error);
+      throw error;
+    }
+  }
+
+  async getAllReports(): Promise<any[]> {
+    try {
+      const snapshot = await getDocs(collection(firebaseDb, "reports"));
+      const reports = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      // Ordenar do mais recente para o mais antigo
+      return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Erro ao buscar relatórios:', error);
+      return [];
+    }
+  }
+
+  async getReportsByClientId(clientId: number): Promise<any[]> {
+    try {
+      const q = query(
+        collection(firebaseDb, "reports"),
+        where("clientId", "==", clientId)
+      );
+      const snapshot = await getDocs(q);
+      const reports = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Erro ao buscar relatórios por cliente:', error);
+      return [];
+    }
+  }
+
+  async getReportCandidates(reportId: string): Promise<any[]> {
+    try {
+      const q = query(
+        collection(firebaseDb, "report_candidates"),
+        where("reportId", "==", reportId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } catch (error) {
+      console.error('Erro ao buscar candidatos do relatório:', error);
+      return [];
+    }
+  }
+
+  async getReportResponses(reportCandidateId: string): Promise<any[]> {
+    try {
+      const q = query(
+        collection(firebaseDb, "report_responses"),
+        where("reportCandidateId", "==", reportCandidateId)
+      );
+      const snapshot = await getDocs(q);
+      const responses = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return responses.sort((a, b) => a.questionNumber - b.questionNumber);
+    } catch (error) {
+      console.error('Erro ao buscar respostas do relatório:', error);
+      return [];
+    }
+  }
+
+  async deleteReport(reportId: string): Promise<void> {
+    try {
+      // Deletar o relatório principal
+      await deleteDoc(doc(firebaseDb, "reports", reportId));
+      
+      // Deletar todos os candidatos do relatório
+      const candidatesQuery = query(
+        collection(firebaseDb, "report_candidates"),
+        where("reportId", "==", reportId)
+      );
+      const candidatesSnapshot = await getDocs(candidatesQuery);
+      
+      const batch = writeBatch(firebaseDb);
+      candidatesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Deletar todas as respostas do relatório
+      const responsesQuery = query(
+        collection(firebaseDb, "report_responses"),
+        where("reportId", "==", reportId)
+      );
+      const responsesSnapshot = await getDocs(responsesQuery);
+      
+      responsesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      console.log(`✅ Relatório ${reportId} deletado completamente`);
+    } catch (error) {
+      console.error('Erro ao deletar relatório:', error);
+      throw error;
+    }
+  }
+
+  async generateReportFromSelection(selectionId: string): Promise<string> {
+    try {
+      console.log(`🔄 Gerando relatório para seleção ${selectionId}...`);
+      
+      // Buscar dados da seleção
+      const selection = await this.getSelectionById(parseInt(selectionId));
+      if (!selection) {
+        throw new Error('Seleção não encontrada');
+      }
+      
+      // Buscar dados do job
+      const job = await this.getJobById(selection.jobId);
+      if (!job) {
+        throw new Error('Job não encontrado');
+      }
+      
+      // Buscar dados do cliente
+      const client = await this.getClientById(selection.clientId);
+      if (!client) {
+        throw new Error('Cliente não encontrado');
+      }
+      
+      // Buscar dados da lista de candidatos
+      const candidateList = await this.getCandidateListById(selection.candidateListId);
+      if (!candidateList) {
+        throw new Error('Lista de candidatos não encontrada');
+      }
+      
+      // Buscar candidatos da seleção
+      const candidates = await this.getCandidatesInList(selection.candidateListId);
+      
+      // Criar relatório principal
+      const report = await this.createReport({
+        selectionId: selectionId,
+        selectionName: selection.name,
+        jobName: job.nomeVaga,
+        clientId: selection.clientId,
+        clientName: client.companyName,
+        candidateListName: candidateList.name,
+        totalCandidates: candidates.length,
+        completedInterviews: 0 // Será atualizado após processar candidatos
+      });
+      
+      let completedCount = 0;
+      
+      // Processar cada candidato
+      for (const candidate of candidates) {
+        // Buscar respostas do candidato para esta seleção
+        const responses = await this.getResponsesBySelectionAndCandidate(
+          selectionId,
+          candidate.id,
+          selection.clientId
+        );
+        
+        const status = responses.length > 0 ? 'completed' : 'invited';
+        if (status === 'completed') completedCount++;
+        
+        // Criar candidato do relatório
+        const reportCandidate = await this.createReportCandidate({
+          reportId: report.id,
+          originalCandidateId: candidate.id.toString(),
+          name: candidate.name,
+          email: candidate.email,
+          whatsapp: candidate.whatsapp,
+          status: status,
+          totalScore: responses.length > 0 ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length) : 0,
+          completedAt: status === 'completed' ? new Date() : null
+        });
+        
+        // Criar respostas do relatório
+        if (responses.length > 0) {
+          for (const response of responses) {
+            await this.createReportResponse({
+              reportId: report.id,
+              reportCandidateId: reportCandidate.id,
+              questionNumber: response.questionId || 1,
+              questionText: response.questionText || `Pergunta ${response.questionId}`,
+              transcription: response.transcription,
+              audioFile: response.audioFile,
+              score: response.score || 0,
+              recordingDuration: response.recordingDuration || 0,
+              aiAnalysis: response.aiAnalysis
+            });
+          }
+        }
+      }
+      
+      // Atualizar contador de entrevistas completadas
+      await updateDoc(doc(firebaseDb, "reports", report.id), {
+        completedInterviews: completedCount
+      });
+      
+      console.log(`✅ Relatório ${report.id} gerado com ${candidates.length} candidatos, ${completedCount} completos`);
+      return report.id;
+      
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      throw error;
+    }
+  }
+
+
 }
 
 export const storage = new FirebaseStorage();
