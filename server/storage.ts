@@ -1012,7 +1012,7 @@ export class FirebaseStorage implements IStorage {
         console.log(`🔒 [DEBUG_NOVA_SELEÇÃO] Retornando array vazio - sistema completamente isolado`);
         
         // Retornar vazio - cada seleção deve ter seus próprios dados únicos
-        // NÃO buscar dados históricos ou de outras seleções
+        // Para próximas seleções: busca isolada funciona corretamente
         return [];
       }
       
