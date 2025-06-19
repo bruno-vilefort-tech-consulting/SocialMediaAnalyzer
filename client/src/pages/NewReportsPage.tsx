@@ -69,13 +69,57 @@ interface InterviewResponse {
 
 // Componente para player de áudio
 const AudioPlayer: React.FC<{ audioUrl: string; className?: string }> = ({ audioUrl, className }) => {
-  const { isPlaying, play, pause, stop, setAudioUrl, loading } = useAudio();
-  
+  const [audio, setAudio] = React.useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+
   React.useEffect(() => {
     if (audioUrl) {
-      setAudioUrl(audioUrl);
+      setLoading(true);
+      const newAudio = new Audio(audioUrl);
+      
+      newAudio.addEventListener('loadeddata', () => {
+        setLoading(false);
+      });
+      
+      newAudio.addEventListener('ended', () => {
+        setIsPlaying(false);
+      });
+      
+      newAudio.addEventListener('error', () => {
+        setLoading(false);
+        console.error('Erro ao carregar áudio:', audioUrl);
+      });
+      
+      setAudio(newAudio);
+      
+      return () => {
+        newAudio.pause();
+      };
     }
-  }, [audioUrl, setAudioUrl]);
+  }, [audioUrl]);
+
+  const play = () => {
+    if (audio) {
+      audio.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const pause = () => {
+    if (audio) {
+      audio.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const stop = () => {
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      setIsPlaying(false);
+    }
+  };
 
   if (!audioUrl) {
     return (
