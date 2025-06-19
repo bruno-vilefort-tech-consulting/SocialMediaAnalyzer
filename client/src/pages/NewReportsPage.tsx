@@ -140,7 +140,9 @@ export default function NewReportsPage() {
       if (!selectedSelection) return [];
       
       try {
-        const response = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`);
+        const res = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`, 'GET');
+        const response = await res.json();
+        
         console.log('🔍 Interview candidates response:', response);
         console.log('🔍 Response type:', typeof response);
         console.log('🔍 Is array:', Array.isArray(response));
