@@ -240,6 +240,25 @@ export default function SelectionsPage() {
     }
   });
 
+  // Mutation para reenviar WhatsApp
+  const resendWhatsAppMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/selections/${id}/send-whatsapp`, 'POST'),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({
+        title: "Reenvio WhatsApp",
+        description: `${data.sentCount || 0} mensagens reenviadas com sucesso!`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro no Reenvio",
+        description: error.message || "Falha ao reenviar mensagens WhatsApp.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Reset do formulário
   const resetForm = () => {
     setShowForm(false);
