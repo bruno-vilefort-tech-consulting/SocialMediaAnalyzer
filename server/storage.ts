@@ -2168,6 +2168,100 @@ export class FirebaseStorage implements IStorage {
   }
 
 
+  // Candidate Categories - Sistema de categorização para relatórios
+  async saveCandidateCategory(categoryData: {
+    candidateId: number;
+    reportId: string;
+    selectionId: number;
+    clientId: number;
+    category: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Promise<any> {
+    try {
+      console.log(`💾 [STORAGE] Salvando categoria:`, categoryData);
+      
+      // Criar ID único baseado em candidateId + selectionId para evitar duplicatas
+      const categoryId = `candidate_${categoryData.candidateId}_selection_${categoryData.selectionId}`;
+      
+      const categoryDoc = {
+        ...categoryData,
+        id: categoryId,
+        createdAt: Timestamp.fromDate(categoryData.createdAt),
+        updatedAt: Timestamp.fromDate(categoryData.updatedAt)
+      };
+      
+      await setDoc(doc(firebaseDb, 'candidateCategories', categoryId), categoryDoc);
+      console.log(`✅ [STORAGE] Categoria salva com ID: ${categoryId}`);
+      
+      return { id: categoryId, ...categoryData };
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao salvar categoria:', error);
+      throw error;
+    }
+  }
+
+  async removeCandidateCategory(candidateId: number, reportId: string, selectionId: number): Promise<void> {
+    try {
+      const categoryId = `candidate_${candidateId}_selection_${selectionId}`;
+      console.log(`🗑️ [STORAGE] Removendo categoria: ${categoryId}`);
+      
+      await deleteDoc(doc(firebaseDb, 'candidateCategories', categoryId));
+      console.log(`✅ [STORAGE] Categoria removida: ${categoryId}`);
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao remover categoria:', error);
+      throw error;
+    }
+  }
+
+  async getCandidateCategoriesBySelection(selectionId: number): Promise<any[]> {
+    try {
+      console.log(`🔍 [STORAGE] Buscando categorias para seleção: ${selectionId}`);
+      
+      const q = query(
+        collection(firebaseDb, 'candidateCategories'),
+        where('selectionId', '==', selectionId)
+      );
+      
+      const snapshot = await getDocs(q);
+      const categories = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      }));
+      
+      console.log(`📋 [STORAGE] Encontradas ${categories.length} categorias para seleção ${selectionId}`);
+      return categories;
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar categorias:', error);
+      return [];
+    }
+  }
+
+  async getCandidateCategory(candidateId: number, selectionId: number): Promise<any | undefined> {
+    try {
+      const categoryId = `candidate_${candidateId}_selection_${selectionId}`;
+      console.log(`🔍 [STORAGE] Buscando categoria específica: ${categoryId}`);
+      
+      const docSnap = await getDoc(doc(firebaseDb, 'candidateCategories', categoryId));
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate()
+        };
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error('❌ [STORAGE] Erro ao buscar categoria específica:', error);
+      return undefined;
+    }
+  }
 }
 
 export const storage = new FirebaseStorage();

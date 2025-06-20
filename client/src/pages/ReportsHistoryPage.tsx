@@ -59,32 +59,67 @@ const ReportsHistoryPage: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mutação para atualizar categoria do candidato
-  const updateCategoryMutation = useMutation({
+  // Mutação para salvar categoria do candidato
+  const saveCategoryMutation = useMutation({
     mutationFn: ({ candidateId, reportId, selectionId, category }: { 
       candidateId: string, 
       reportId: string, 
       selectionId: string, 
       category: string 
-    }) => 
-      apiRequest('/api/reports/candidate-category', 'POST', { 
+    }) => {
+      console.log(`💾 [FRONTEND] Salvando categoria:`, { candidateId, reportId, selectionId, category });
+      return apiRequest('/api/reports/candidate-category', 'POST', { 
         candidateId, 
         reportId, 
         selectionId, 
         category 
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/reports', selectedReport?.id, 'candidates'] });
       toast({
-        title: "Categoria atualizada",
+        title: "Categoria salva",
         description: "A categoria do candidato foi salva com sucesso.",
         variant: "default",
       });
     },
     onError: (error: any) => {
+      console.error('❌ [FRONTEND] Erro ao salvar categoria:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar a categoria.",
+        description: "Não foi possível salvar a categoria.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutação para remover categoria do candidato
+  const removeCategoryMutation = useMutation({
+    mutationFn: ({ candidateId, reportId, selectionId }: { 
+      candidateId: string, 
+      reportId: string, 
+      selectionId: string
+    }) => {
+      console.log(`🗑️ [FRONTEND] Removendo categoria:`, { candidateId, reportId, selectionId });
+      return apiRequest('/api/reports/candidate-category', 'DELETE', { 
+        candidateId, 
+        reportId, 
+        selectionId
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', selectedReport?.id, 'candidates'] });
+      toast({
+        title: "Categoria removida",
+        description: "A categoria do candidato foi removida com sucesso.",
+        variant: "default",
+      });
+    },
+    onError: (error: any) => {
+      console.error('❌ [FRONTEND] Erro ao remover categoria:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a categoria.",
         variant: "destructive",
       });
     },
@@ -95,11 +130,29 @@ const ReportsHistoryPage: React.FC = () => {
     queryFn: () => apiRequest('/api/reports', 'GET')
   });
 
-  // Buscar candidatos de um relatório específico
+  // Buscar candidatos de um relatório específico  
   const { data: candidates = [], isLoading: candidatesLoading } = useQuery({
     queryKey: ['/api/reports', selectedReport?.id, 'candidates'],
     queryFn: () => apiRequest(`/api/reports/${selectedReport?.id}/candidates`, 'GET'),
     enabled: !!selectedReport && currentView === 'candidates'
+  });
+
+  // Buscar categorias dos candidatos para a seleção atual
+  const { data: candidateCategories = [] } = useQuery({
+    queryKey: ['/api/reports/candidate-categories', selectedReport?.selectionId],
+    queryFn: () => apiRequest(`/api/reports/candidate-categories/${selectedReport?.selectionId}`, 'GET'),
+    enabled: !!selectedReport && currentView === 'candidates'
+  });
+
+  // Combinar dados de candidatos com suas categorias
+  const candidatesWithCategories = candidates.map((candidate: ReportCandidate) => {
+    const category = candidateCategories.find((cat: any) => 
+      cat.candidateId === parseInt(candidate.originalCandidateId)
+    );
+    return {
+      ...candidate,
+      categorySelection: category?.category || ''
+    };
   });
 
   // Buscar respostas de um candidato específico
@@ -208,15 +261,31 @@ const ReportsHistoryPage: React.FC = () => {
 
   const handleCategorySelection = (candidate: ReportCandidate, category: string) => {
     if (selectedReport) {
-      // Se já está selecionado, desseleciona (envia null/empty)
-      const newCategory = candidate.categorySelection === category ? '' : category;
-      
-      updateCategoryMutation.mutate({
+      console.log(`🎯 [FRONTEND] Clique na categoria:`, {
         candidateId: candidate.originalCandidateId,
         reportId: selectedReport.id,
         selectionId: selectedReport.selectionId,
-        category: newCategory
+        currentCategory: candidate.categorySelection,
+        clickedCategory: category,
+        isAlreadySelected: candidate.categorySelection === category
       });
+
+      // Se já está selecionado, remove a categoria
+      if (candidate.categorySelection === category) {
+        removeCategoryMutation.mutate({
+          candidateId: candidate.originalCandidateId,
+          reportId: selectedReport.id,
+          selectionId: selectedReport.selectionId
+        });
+      } else {
+        // Senão, salva a nova categoria
+        saveCategoryMutation.mutate({
+          candidateId: candidate.originalCandidateId,
+          reportId: selectedReport.id,
+          selectionId: selectedReport.selectionId,
+          category: category
+        });
+      }
     }
   };
 
@@ -402,7 +471,7 @@ const ReportsHistoryPage: React.FC = () => {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {candidates.map((candidate: ReportCandidate) => (
+                      {candidatesWithCategories.map((candidate: ReportCandidate) => (
                         <div 
                           key={candidate.id} 
                           className="cursor-pointer hover:bg-gray-50 transition-colors border rounded-lg p-3"
