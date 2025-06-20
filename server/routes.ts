@@ -2215,8 +2215,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { whatsappBaileyService } = await import('./whatsappBaileyService');
       const status = whatsappBaileyService.getStatus();
       
-      console.log(`📱 Status WhatsApp:`, {
+      // Verificar se socket está realmente conectado
+      const sockState = whatsappBaileyService.sock?.readyState;
+      const hasUser = !!whatsappBaileyService.sock?.user;
+      
+      console.log(`📱 Status WhatsApp detalhado:`, {
         isConnected: status.isConnected,
+        sockState,
+        hasUser,
         hasQrCode: !!status.qrCode,
         qrCodeLength: status.qrCode?.length || 0,
         phoneNumber: status.phoneNumber

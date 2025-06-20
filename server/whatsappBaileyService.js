@@ -40,6 +40,7 @@ class WhatsAppBaileyService {
         
         if (connection === 'open') {
           console.log('✅ WhatsApp conectado com sucesso!');
+          console.log(`📱 Telefone conectado: ${this.sock?.user?.id?.split(':')[0]}`);
           this.currentQR = ''; // Limpar QR Code após conexão
         }
         
@@ -71,7 +72,7 @@ class WhatsAppBaileyService {
   }
 
   isConnected() {
-    return !!(this.sock?.user);
+    return this.sock && this.sock.user && this.sock.readyState === 'open';
   }
 
   async sendMessage(phone, text) {
@@ -95,8 +96,9 @@ class WhatsAppBaileyService {
   }
 
   getStatus() {
+    const isConnected = this.sock && this.sock.user && this.sock.readyState === 'open';
     return {
-      isConnected: this.isConnected(),
+      isConnected: !!isConnected,
       qrCode: this.currentQR,
       phoneNumber: this.sock?.user?.id?.split(':')[0] || null
     };
