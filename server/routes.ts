@@ -2922,6 +2922,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { evolutionApiService } = await import('./evolutionApiService');
       const connection = await evolutionApiService.getConnectionStatus(user.clientId.toString());
       
+      console.log(`📱 Evolution API Status para cliente ${user.clientId}:`, {
+        hasConnection: !!connection,
+        isConnected: connection?.isConnected || false,
+        hasQrCode: !!connection?.qrCode,
+        qrCodeLength: connection?.qrCode?.length || 0
+      });
+      
       res.json({
         isConnected: connection?.isConnected || false,
         qrCode: connection?.qrCode || null,

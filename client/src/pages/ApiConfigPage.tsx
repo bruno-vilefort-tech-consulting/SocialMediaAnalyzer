@@ -598,8 +598,14 @@ export default function ApiConfigPage() {
                       })
                       .then(res => res.json())
                       .then(data => {
+                        console.log('Evolution API Response:', data);
                         if (data.success) {
+                          // Forçar refresh dos dados WhatsApp
                           queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                          setTimeout(() => {
+                            queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                          }, 1000);
+                          
                           toast({ 
                             title: "Evolution API Conectando...",
                             description: data.message 
