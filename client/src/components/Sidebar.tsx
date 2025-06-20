@@ -34,7 +34,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/candidates", label: "Lista de Candidatos", icon: Users },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
-    { path: "/historico-relatorios", label: "Histórico", icon: FileText },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/configuracoes", label: "Configurações API", icon: Settings },
   ];
@@ -46,7 +45,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/candidates", label: "Lista de Candidatos", icon: Users },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
-    { path: "/historico-relatorios", label: "Histórico", icon: FileText },
     { path: "/configuracoes", label: "Configurações", icon: Settings },
   ];
 

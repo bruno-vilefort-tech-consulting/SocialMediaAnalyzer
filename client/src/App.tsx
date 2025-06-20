@@ -24,7 +24,6 @@ import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
 import NewReportsPage from "@/pages/NewReportsPage";
-import ReportsHistoryPage from "@/pages/ReportsHistoryPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 import NotFound from "@/pages/not-found";
@@ -129,14 +128,6 @@ function Router() {
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
             <NewReportsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
-
-      <Route path="/historico-relatorios">
-        <PrivateRoute allowedRoles={['master', 'client']}>
-          <Layout>
-            <ReportsHistoryPage />
           </Layout>
         </PrivateRoute>
       </Route>
