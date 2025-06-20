@@ -2321,28 +2321,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
+      console.log(`📤 Enviando teste WhatsApp para ${phoneNumber}...`);
       
       const { whatsappBaileyService } = await import('./whatsappBaileyService');
-      const success = await whatsappBaileyService.sendMessage(user.clientId.toString(), phoneNumber, message);
-      const result = { success };
+      const status = whatsappBaileyService.getStatus();
       
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: 'Mensagem enviada com sucesso' 
-        });
-      } else {
-        res.status(500).json({ 
+      if (!status.isConnected) {
+        return res.status(400).json({ 
           success: false, 
-          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
+          message: 'WhatsApp não está conectado' 
         });
       }
+
+      await whatsappBaileyService.sendMessage(phoneNumber, message);
+      
+      res.json({ 
+        success: true, 
+        message: 'Mensagem enviada com sucesso' 
+      });
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Erro interno ao enviar mensagem' 
+        message: error.message || 'Erro interno ao enviar mensagem' 
       });
     }
   });
