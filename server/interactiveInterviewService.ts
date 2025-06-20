@@ -40,17 +40,22 @@ class InteractiveInterviewService {
       const audioFileName = `audio_${cleanPhone}_${selectionId}_R${questionNumber}.ogg`;
       const audioPath = `uploads/${audioFileName}`;
       
+      // Verificar se arquivo já existe (evitar duplicação)
+      const fs = await import('fs');
+      if (await fs.promises.access(audioPath).then(() => true).catch(() => false)) {
+        console.log(`✅ [AUDIO_DOWNLOAD] Arquivo já existe, reutilizando: ${audioPath}`);
+        return audioPath;
+      }
+      
       // Verificar se mensagem foi corrigida pelo handler Baileys
       if (message._audioFixed && message._audioPath) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Copiando áudio corrigido para nova nomenclatura`);
-        const fs = await import('fs');
-        await fs.promises.copyFile(message._audioPath, audioPath);
+        console.log(`✅ [AUDIO_DOWNLOAD] Movendo áudio corrigido (sem duplicar)`);
+        await fs.promises.rename(message._audioPath, audioPath);
         return audioPath;
       }
       
       if (message._audioBuffer) {
         console.log(`✅ [AUDIO_DOWNLOAD] Salvando buffer com nova nomenclatura`);
-        const fs = await import('fs');
         await fs.promises.writeFile(audioPath, message._audioBuffer);
         return audioPath;
       }

@@ -202,6 +202,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
   - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
 
+- June 20, 2025: ✅ OTIMIZAÇÃO DO SISTEMA DE ÁUDIO - Duplicação de arquivos eliminada para economia de espaço
+  - **Problema identificado**: Sistema criava arquivos duplicados (nomenclatura correta + "_fixed")
+  - **Verificação implementada**: Checa se arquivo já existe antes de criar novo
+  - **Rename em vez de copy**: Move arquivo corrigido em vez de copiar (evita duplicação)
+  - **Limpeza automática**: Remove arquivos temporários "_fixed" desnecessários
+  - **Economia de espaço**: Sistema agora mantém apenas um arquivo por resposta de áudio
+  - **Nomenclatura preservada**: Mantém padrão audio_[telefone]_[selectionId]_R[numero].ogg
+
 - June 20, 2025: ✅ REORGANIZAÇÃO DO MENU SIDEBAR - "Lista de Candidatos" movido para posição estratégica
   - **Reordenação implementada**: "Lista de Candidatos" agora aparece antes de "Cadastrar Vagas"
   - **Menu master atualizado**: Nova ordem Dashboard → Candidatos → Lista de Candidatos → Cadastrar Vagas
