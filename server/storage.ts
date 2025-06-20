@@ -383,22 +383,37 @@ export class FirebaseStorage implements IStorage {
   }
 
   async createJob(insertJob: InsertJob): Promise<Job> {
+    console.log('💾 Criando nova vaga no Firebase:', insertJob);
+    console.log('📝 Perguntas recebidas:', insertJob.perguntas);
+    
     const jobId = Date.now().toString();
     const jobData = {
       ...insertJob,
       id: jobId,
       createdAt: new Date(),
-      perguntas: []
+      // Preservar as perguntas vindas do frontend em vez de forçar array vazio
+      perguntas: insertJob.perguntas || []
     };
+    
+    console.log('💾 Dados finais da vaga para salvar:', jobData);
     await setDoc(doc(firebaseDb, "jobs", jobId), jobData);
+    console.log('✅ Vaga salva no Firebase com ID:', jobId);
+    
     return jobData as Job;
   }
 
   async updateJob(id: string, jobUpdate: Partial<Job>): Promise<Job> {
+    console.log('📝 Atualizando vaga no Firebase:', id, jobUpdate);
+    console.log('📝 Perguntas na atualização:', jobUpdate.perguntas);
+    
     const docRef = doc(firebaseDb, "jobs", id);
     await updateDoc(docRef, jobUpdate);
+    
     const updatedDoc = await getDoc(docRef);
-    return { id, ...updatedDoc.data() } as Job;
+    const result = { id, ...updatedDoc.data() } as Job;
+    
+    console.log('✅ Vaga atualizada no Firebase:', result);
+    return result;
   }
 
   async deleteJob(id: string): Promise<void> {
