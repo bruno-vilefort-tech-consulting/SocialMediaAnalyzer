@@ -98,6 +98,20 @@ export interface IStorage {
   getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined>;
   upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
 
+  // Candidate Categories - Sistema de categorização para relatórios
+  saveCandidateCategory(categoryData: {
+    candidateId: number;
+    reportId: string;
+    selectionId: number;
+    clientId: number;
+    category: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Promise<any>;
+  removeCandidateCategory(candidateId: number, reportId: string, selectionId: number): Promise<void>;
+  getCandidateCategoriesBySelection(selectionId: number): Promise<any[]>;
+  getCandidateCategory(candidateId: number, selectionId: number): Promise<any | undefined>;
+
   // Client Voice Settings - DEPRECATED - mantido para compatibilidade
   getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined>;
   upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting>;

@@ -3262,6 +3262,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate Category Routes - Sistema de categorização para relatórios
+  app.post("/api/reports/candidate-category", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { candidateId, reportId, selectionId, category } = req.body;
+      const user = req.user!;
+      
+      console.log(`💾 [CATEGORIA] Salvando categoria para candidato ${candidateId}:`, {
+        candidateId,
+        reportId,
+        selectionId,
+        category,
+        userRole: user.role,
+        userClientId: user.clientId
+      });
+      
+      if (!candidateId || !reportId || !selectionId || !category) {
+        return res.status(400).json({ message: 'candidateId, reportId, selectionId e category são obrigatórios' });
+      }
+      
+      // Determinar clientId baseado no role do usuário
+      let clientId = user.clientId;
+      if (user.role === 'master') {
+        // Para master, buscar clientId da seleção
+        const selection = await storage.getSelectionById(parseInt(selectionId));
+        if (selection) {
+          clientId = selection.clientId;
+        }
+      }
+      
+      const categoryData = {
+        candidateId: parseInt(candidateId),
+        reportId,
+        selectionId: parseInt(selectionId),
+        clientId,
+        category,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      const result = await storage.saveCandidateCategory(categoryData);
+      console.log(`✅ [CATEGORIA] Categoria salva com sucesso:`, result);
+      
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('❌ [CATEGORIA] Erro ao salvar categoria:', error);
+      res.status(500).json({ message: 'Erro ao salvar categoria do candidato' });
+    }
+  });
+  
+  app.delete("/api/reports/candidate-category", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { candidateId, reportId, selectionId } = req.body;
+      const user = req.user!;
+      
+      console.log(`🗑️ [CATEGORIA] Removendo categoria para candidato ${candidateId}:`, {
+        candidateId,
+        reportId,
+        selectionId,
+        userRole: user.role,
+        userClientId: user.clientId
+      });
+      
+      if (!candidateId || !reportId || !selectionId) {
+        return res.status(400).json({ message: 'candidateId, reportId e selectionId são obrigatórios' });
+      }
+      
+      const result = await storage.removeCandidateCategory(parseInt(candidateId), reportId, parseInt(selectionId));
+      console.log(`✅ [CATEGORIA] Categoria removida com sucesso`);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('❌ [CATEGORIA] Erro ao remover categoria:', error);
+      res.status(500).json({ message: 'Erro ao remover categoria do candidato' });
+    }
+  });
+  
+  app.get("/api/reports/candidate-categories/:selectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = parseInt(req.params.selectionId);
+      const user = req.user!;
+      
+      console.log(`🔍 [CATEGORIA] Buscando categorias para seleção ${selectionId} - usuário: ${user.role}`);
+      
+      const categories = await storage.getCandidateCategoriesBySelection(selectionId);
+      console.log(`📋 [CATEGORIA] Encontradas ${categories.length} categorias para seleção ${selectionId}`);
+      
+      res.json(categories);
+    } catch (error) {
+      console.error('❌ [CATEGORIA] Erro ao buscar categorias:', error);
+      res.status(500).json({ message: 'Erro ao buscar categorias dos candidatos' });
+    }
+  });
+
+  // Debug endpoint para verificar status das categorias
+  app.get("/api/debug/candidate-categories", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log(`🐛 [DEBUG] Listando todas as categorias no banco de dados...`);
+      
+      const { collection, getDocs } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db');
+      
+      const categoriesSnapshot = await getDocs(collection(firebaseDb, 'candidateCategories'));
+      const allCategories = categoriesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      console.log(`📊 [DEBUG] Total de categorias no banco: ${allCategories.length}`);
+      allCategories.forEach(cat => {
+        console.log(`   - Candidato ${cat.candidateId}: ${cat.category} (Seleção: ${cat.selectionId})`);
+      });
+      
+      res.json({
+        total: allCategories.length,
+        categories: allCategories
+      });
+    } catch (error) {
+      console.error('❌ [DEBUG] Erro ao listar categorias:', error);
+      res.status(500).json({ message: 'Erro ao debugar categorias' });
+    }
+  });
+
   // WhatsApp QR endpoints - completely optional and non-blocking
   let whatsappQRService: any = null;
   
