@@ -349,19 +349,19 @@ const ReportsHistoryPage: React.FC = () => {
         <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
           <TabsTrigger 
             value="candidatos"
-            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-blue-600 data-[state=inactive]:hover:bg-blue-50 transition-all duration-200 font-medium"
+            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-blue-600 data-[state=inactive]:hover:bg-blue-100 transition-all duration-200 font-medium"
           >
             Candidatos
           </TabsTrigger>
           <TabsTrigger 
             value="analise"
-            className="data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-green-600 data-[state=inactive]:hover:bg-green-50 transition-all duration-200 font-medium"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-purple-600 data-[state=inactive]:hover:bg-purple-100 transition-all duration-200 font-medium"
           >
             Análise
           </TabsTrigger>
           <TabsTrigger 
             value="selecionados"
-            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-600 data-[state=inactive]:hover:text-purple-600 data-[state=inactive]:hover:bg-purple-50 transition-all duration-200 font-medium"
+            className="data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-green-600 data-[state=inactive]:hover:bg-green-100 transition-all duration-200 font-medium"
           >
             Selecionados
           </TabsTrigger>
