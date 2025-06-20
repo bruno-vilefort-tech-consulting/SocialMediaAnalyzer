@@ -59,10 +59,22 @@ export class ClientWhatsAppService {
 
       const { state, saveCreds } = await this.baileys.useMultiFileAuthState(this.getSessionPath(clientId));
       
+      // Criar logger compatível com Baileys
+      const logger = {
+        level: 'silent',
+        child: () => logger,
+        trace: () => {},
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
+        fatal: () => {}
+      };
+
       const socket = this.baileys.makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        logger: console,
+        logger: logger,
         browser: ['WhatsApp Business', 'Chrome', '118.0.0.0'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
