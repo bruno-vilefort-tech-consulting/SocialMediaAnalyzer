@@ -133,6 +133,14 @@ function Router() {
         </PrivateRoute>
       </Route>
 
+      <Route path="/relatorios-independentes">
+        <PrivateRoute allowedRoles={['master', 'client']}>
+          <Layout>
+            <IndependentReportsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
       <Route path="/candidates">
         <PrivateRoute allowedRoles={['client', 'master']}>
           <Layout>
