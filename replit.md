@@ -184,12 +184,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 QR CODE CORRIGIDO - Interface agora exibe QR Code salvos no banco
-  - **Problema identificado**: QR Code salvo no banco mas não retornado na API status
-  - **Correção implementada**: getClientStatus agora retorna whatsappQrCode do storage
-  - **Logs detalhados**: Debug completo mostra QR Code com 7918 caracteres salvos
-  - **Interface atualizada**: Console logs para debug da resposta connect e status
-  - **Sistema funcional**: QR Code persistido no Firebase e retornado para frontend
+- June 20, 2025: 📱 SISTEMA QR CODE OTIMIZADO - Configurações aprimoradas para conexão mobile
+  - **QR Code melhorado**: Timeout estendido para 2 minutos, qualidade otimizada para escaneamento
+  - **Browser string atualizada**: Mudança para "WhatsApp Web" para melhor compatibilidade
+  - **getMessage handler**: Implementado para evitar erros de protocolo Baileys
+  - **Logs aprimorados**: Feedback detalhado do processo de conexão e QR Code
+  - **Reconexão inteligente**: Sistema diferencia logout manual de falhas de rede
+  - **Interface funcionando**: QR Code aparece corretamente na página de configurações
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
