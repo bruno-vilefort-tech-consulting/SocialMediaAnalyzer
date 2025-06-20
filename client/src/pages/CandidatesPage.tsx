@@ -224,6 +224,9 @@ export default function CandidatesPage() {
     }
   });
 
+  // Lista selecionada atual (definir antes das queries que a usam)
+  const selectedList = candidateLists.find(list => list.id === selectedListId);
+
   // Query específica para candidatos de uma lista quando visualizando lista única
   const { data: listCandidates = [], isLoading: listCandidatesLoading } = useQuery<Candidate[]>({
     queryKey: ['/api/lists', selectedListId, 'candidates'],
@@ -359,9 +362,6 @@ export default function CandidatesPage() {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
-
-  // Lista selecionada atual
-  const selectedList = candidateLists.find(list => list.id === selectedListId);
 
   // Função para contar candidatos REAIS por lista (não memberships órfãos)
   const getCandidateCountForList = (listId: number): number => {
@@ -538,8 +538,8 @@ export default function CandidatesPage() {
   // Mutation para adicionar candidatos existentes à lista
   const addExistingCandidatesMutation = useMutation({
     mutationFn: async ({ candidateIds, listId }: { candidateIds: number[]; listId: number }) => {
-      const selectedList = candidateLists.find(list => list.id === listId);
-      if (!selectedList) throw new Error("Lista não encontrada");
+      const targetList = candidateLists.find(list => list.id === listId);
+      if (!targetList) throw new Error("Lista não encontrada");
 
       const memberships = candidateIds.map(candidateId => ({
         candidateId,
@@ -630,12 +630,9 @@ export default function CandidatesPage() {
     } else {
       // Para criação, precisamos de listId e clientId
       // Se estamos dentro de uma lista específica, usar seus dados
-      if (selectedListId) {
-        const selectedList = candidateLists?.find(list => list.id === selectedListId);
-        if (selectedList) {
-          data.listId = selectedList.id;
-          data.clientId = selectedList.clientId;
-        }
+      if (selectedListId && selectedList) {
+        data.listId = selectedList.id;
+        data.clientId = selectedList.clientId;
       }
 
       // Para usuários client, usar automaticamente o clientId do usuário
@@ -851,8 +848,7 @@ export default function CandidatesPage() {
       return;
     }
 
-    // Buscar dados da lista selecionada para obter clientId correto
-    const selectedList = candidateLists?.find(list => list.id === selectedListId);
+    // Verificar se a lista selecionada existe
     if (!selectedList) {
       toast({ 
         title: "Erro", 
