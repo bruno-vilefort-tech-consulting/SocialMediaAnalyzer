@@ -134,6 +134,13 @@ export interface IStorage {
     monthlyLimit: number;
     currentUsage: number;
   }>;
+
+  // Reports - Independent system
+  getReportsByClientId(clientId: number): Promise<Report[]>;
+  getReportById(id: string): Promise<Report | undefined>;
+  createReport(report: InsertReport): Promise<Report>;
+  deleteReport(id: string): Promise<void>;
+  createReportFromSelection(selectionId: number): Promise<Report>;
 }
 
 export class FirebaseStorage implements IStorage {

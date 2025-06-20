@@ -264,6 +264,57 @@ export type InsertMasterSettings = z.infer<typeof insertMasterSettingsSchema>;
 export type MessageLog = typeof messageLogs.$inferSelect;
 export type InsertMessageLog = z.infer<typeof insertMessageLogSchema>;
 
+// Independent Reports system - preserves data even if original entities are deleted
+export type Report = {
+  id: string;
+  name: string;
+  originalSelectionId: number; // Reference to original selection (can be deleted)
+  clientId: number;
+  status: string;
+  createdAt: Date;
+  
+  // Job information (snapshot at creation time)
+  jobData: {
+    id: string;
+    name: string;
+    description?: string;
+    questions: Array<{
+      id: number;
+      text: string;
+      perfectAnswer?: string;
+    }>;
+  };
+  
+  // Candidates information (snapshot at creation time)
+  candidatesData: Array<{
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+    whatsapp: string;
+  }>;
+  
+  // Interview responses (preserved independently)
+  responseData: Array<{
+    candidateId: number;
+    questionId: number;
+    questionText: string;
+    transcription: string;
+    audioFile?: string;
+    score?: number;
+    aiAnalysis?: any;
+    recordingDuration?: number;
+  }>;
+  
+  // Metadata
+  totalCandidates: number;
+  totalQuestions: number;
+  completedInterviews: number;
+  avgScore?: number;
+};
+
+export type InsertReport = Omit<Report, 'id' | 'createdAt'>;
+
 // Nova tabela para relatórios independentes
 export const reports = pgTable("reports", {
   id: text("id").primaryKey(), // report_selectionId_timestamp
