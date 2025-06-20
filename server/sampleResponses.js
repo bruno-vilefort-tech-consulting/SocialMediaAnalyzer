@@ -1,6 +1,6 @@
 // Script para conectar dados reais das transcrições do Daniel Vendedor
-const { initializeApp } = require('firebase/app');
-const { getFirestore, doc, setDoc, collection, getDocs } = require('firebase/firestore');
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, collection, getDocs } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBWl6O8EHKnxCwDaS_jl3QXXB1MRHNZKhU",
