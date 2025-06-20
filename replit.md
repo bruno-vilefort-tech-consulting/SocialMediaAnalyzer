@@ -184,14 +184,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 WHATSAPP QR CODE FUNCIONANDO - Sistema corrigido para exibir QR Code corretamente
-  - **QR Code gerado com sucesso**: Backend retorna QR Code válido convertido para DataURL
-  - **Interface WhatsApp por cliente**: Card posicionado acima do menu de voz
-  - **Endpoints /api/whatsapp-client/***: connect, disconnect, status, test funcionais
-  - **Conversão QR Code**: String QR convertida para data:image/png;base64 no backend
-  - **Sistema Baileys atualizado**: QR Code timeout estendido para 90 segundos
-  - **Logs detalhados**: Debug completo do processo de geração e conversão
-  - **Proteção de dados**: Sistema preserva banco de dados sem alterações destrutivas
+- June 20, 2025: 📱 QR CODE CORRIGIDO - Interface agora exibe QR Code salvos no banco
+  - **Problema identificado**: QR Code salvo no banco mas não retornado na API status
+  - **Correção implementada**: getClientStatus agora retorna whatsappQrCode do storage
+  - **Logs detalhados**: Debug completo mostra QR Code com 7918 caracteres salvos
+  - **Interface atualizada**: Console logs para debug da resposta connect e status
+  - **Sistema funcional**: QR Code persistido no Firebase e retornado para frontend
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas

@@ -317,9 +317,17 @@ export class ClientWhatsAppService {
     try {
       const apiConfig = await storage.getApiConfig('client', clientId);
       
+      console.log(`📊 Status DB para cliente ${clientId}:`, {
+        hasConfig: !!apiConfig,
+        isConnected: apiConfig?.whatsappQrConnected || false,
+        hasQrCode: !!apiConfig?.whatsappQrCode,
+        qrCodeLength: apiConfig?.whatsappQrCode ? apiConfig.whatsappQrCode.length : 0,
+        phoneNumber: apiConfig?.whatsappQrPhoneNumber || null
+      });
+      
       return {
         isConnected: apiConfig?.whatsappQrConnected || false,
-        qrCode: null, // QR codes não são persistidos
+        qrCode: apiConfig?.whatsappQrCode || null, // Retornar QR Code do banco se existir
         phoneNumber: apiConfig?.whatsappQrPhoneNumber || null,
         lastConnection: apiConfig?.whatsappQrLastConnection || null,
         clientId

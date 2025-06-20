@@ -543,6 +543,7 @@ export default function ApiConfigPage() {
                       })
                       .then(res => res.json())
                       .then(data => {
+                        console.log('🔗 Connect Response:', data);
                         if (data.success) {
                           queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
                           setTimeout(() => {
