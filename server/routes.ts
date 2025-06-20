@@ -2202,7 +2202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Sistema original que funcionava
+  // Client WhatsApp endpoints - Sistema novo isolado por cliente
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -2210,41 +2210,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📊 Buscando status WhatsApp...`);
+      console.log(`📊 Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Usar o sistema WhatsApp original que já funcionava
-      const { whatsappQRService } = await import('./whatsappQRService');
+      const { whatsappClientService } = await import('./whatsappClientService');
+      const status = await whatsappClientService.getStatus(user.clientId.toString());
       
-      let isConnected = false;
-      let phoneNumber = null;
-      let qrCode = null;
-      
-      try {
-        // Verificar se está conectado
-        const connectionStatus = whatsappQRService.getConnectionStatus();
-        isConnected = connectionStatus.isConnected;
-        phoneNumber = connectionStatus.phoneNumber;
-        
-        // Se não conectado, tentar obter QR Code
-        if (!isConnected) {
-          const connectResult = await whatsappQRService.connect();
-          qrCode = connectResult.qrCode;
-        }
-      } catch (error) {
-        console.log('WhatsApp service não disponível:', error.message);
-      }
-      
-      console.log(`📱 Status WhatsApp (sistema original):`, {
-        isConnected,
-        phoneNumber,
-        hasQrCode: !!qrCode
+      console.log(`📱 Status WhatsApp:`, {
+        isConnected: status.isConnected,
+        phoneNumber: status.phoneNumber,
+        hasQrCode: !!status.qrCode
       });
       
       res.json({
-        isConnected,
-        phone: phoneNumber,
-        qrCode,
-        lastConnection: isConnected ? new Date() : null
+        isConnected: status.isConnected,
+        phone: status.phoneNumber,
+        qrCode: status.qrCode,
+        lastConnection: status.lastConnection
       });
     } catch (error) {
       console.error('❌ Erro ao buscar status WhatsApp:', error);
@@ -2290,7 +2271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       if (!user?.clientId) {
@@ -2323,7 +2304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       if (!user?.clientId) {
@@ -2339,28 +2320,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`📤 Enviando teste WhatsApp para ${phoneNumber}...`);
+      console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      // Usar o sistema WhatsApp original que já funcionava
-      const { whatsappQRService } = await import('./whatsappQRService');
+      const { whatsappClientService } = await import('./whatsappClientService');
       
-      const connectionStatus = whatsappQRService.getConnectionStatus();
-      if (!connectionStatus.isConnected) {
+      const status = await whatsappClientService.getStatus(user.clientId.toString());
+      if (!status.isConnected) {
         return res.status(400).json({ 
           success: false, 
-          message: 'WhatsApp não está conectado' 
+          message: 'WhatsApp não está conectado para este cliente' 
         });
       }
 
-      const success = await whatsappQRService.sendTextMessage(phoneNumber, message);
-      
-      if (!success) {
-        throw new Error('Falha ao enviar mensagem');
-      }
+      const result = await whatsappClientService.sendMessage(
+        user.clientId.toString(), 
+        phoneNumber, 
+        message
+      );
       
       res.json({ 
         success: true, 
-        message: 'Mensagem enviada com sucesso' 
+        message: 'Mensagem enviada com sucesso',
+        messageId: result.messageId
       });
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
