@@ -2873,12 +2873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 Evolution API: Conectando cliente ${user.clientId}...`);
+      console.log(`🔗 Evolution API: Redirecionando para sistema Baileys para cliente ${user.clientId}`);
       
-      const { evolutionApiService } = await import('./evolutionApiService');
-      const result = await evolutionApiService.connectClient(user.clientId.toString());
+      // Usar o sistema Baileys existente que já funciona
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
       
-      console.log(`🔗 Evolution API resultado:`, result);
+      console.log(`📱 Resultado Baileys connect:`, result);
       
       res.json(result);
     } catch (error) {
@@ -2897,10 +2898,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔌 Evolution API: Desconectando cliente ${user.clientId}...`);
+      console.log(`🔌 Evolution API: Desconectando via sistema Baileys para cliente ${user.clientId}`);
       
-      const { evolutionApiService } = await import('./evolutionApiService');
-      const result = await evolutionApiService.disconnectClient(user.clientId.toString());
+      // Usar o sistema Baileys existente que já funciona
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
       
       res.json(result);
     } catch (error) {
