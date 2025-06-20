@@ -3069,28 +3069,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneNumber, message } = req.body;
       
       if (!user?.clientId) {
-        return res.status(400).json({ message: 'Client ID required' });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Client ID required' 
+        });
       }
 
       if (!phoneNumber || !message) {
-        return res.status(400).json({ message: 'Phone number and message required' });
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Número de telefone e mensagem são obrigatórios' 
+        });
       }
 
-      console.log(`💬 WhatsApp Client: Enviando teste para cliente ${user.clientId}`);
+      console.log(`📱 [WHATSAPP TEST] Enviando mensagem teste para cliente ${user.clientId}`);
+      console.log(`📱 [WHATSAPP TEST] Telefone: ${phoneNumber}`);
+      console.log(`📱 [WHATSAPP TEST] Mensagem: ${message.substring(0, 50)}...`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
-      const result = await clientWhatsAppService.sendTestMessage(
-        user.clientId.toString(), 
-        phoneNumber, 
+      // Usar o serviço WhatsApp Baileys que está funcionando
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const clientIdStr = user.clientId.toString();
+      
+      // Verificar se o WhatsApp está conectado para este cliente
+      const status = whatsappBaileyService.getStatus(clientIdStr);
+      console.log(`📱 [WHATSAPP TEST] Status do WhatsApp para cliente ${clientIdStr}:`, status);
+      
+      if (!status.isConnected) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'WhatsApp não está conectado. Conecte primeiro usando o QR Code.' 
+        });
+      }
+
+      // Formatar número de telefone se necessário
+      let formattedPhone = phoneNumber.replace(/\D/g, ''); // Remove caracteres não numéricos
+      
+      // Se não começar com código do país, adicionar 55 (Brasil)
+      if (!formattedPhone.startsWith('55') && formattedPhone.length === 11) {
+        formattedPhone = '55' + formattedPhone;
+      }
+      
+      // Adicionar @s.whatsapp.net se não tiver
+      if (!formattedPhone.includes('@')) {
+        formattedPhone = formattedPhone + '@s.whatsapp.net';
+      }
+      
+      console.log(`📱 [WHATSAPP TEST] Número formatado: ${formattedPhone}`);
+      
+      // Enviar mensagem usando o serviço Baileys
+      const result = await whatsappBaileyService.sendMessage(
+        clientIdStr,
+        formattedPhone,
         message
       );
       
-      res.json(result);
+      if (result) {
+        console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso para ${phoneNumber}`);
+        res.json({ 
+          success: true, 
+          message: 'Mensagem de teste enviada com sucesso!' 
+        });
+      } else {
+        console.log(`❌ [WHATSAPP TEST] Falha no envio para ${phoneNumber}`);
+        res.status(400).json({ 
+          success: false, 
+          message: 'Falha ao enviar mensagem. Verifique se o número está correto e se o WhatsApp está conectado.' 
+        });
+      }
+      
     } catch (error) {
-      console.error('❌ Erro WhatsApp Client test:', error);
+      console.error('❌ [WHATSAPP TEST] Erro ao enviar mensagem teste:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Erro interno ao enviar mensagem teste' 
+        message: 'Erro interno do servidor ao enviar mensagem teste' 
       });
     }
   });

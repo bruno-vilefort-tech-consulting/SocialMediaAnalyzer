@@ -642,7 +642,7 @@ export default function ApiConfigPage() {
                 </div>
                 
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!whatsappPhone.trim() || !whatsappMessage.trim()) {
                       toast({
                         title: "Campos obrigatórios",
@@ -652,37 +652,47 @@ export default function ApiConfigPage() {
                       return;
                     }
                     
-                    fetch('/api/whatsapp-client/test', {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                        phoneNumber: whatsappPhone,
-                        message: whatsappMessage
-                      })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
+                    try {
+                      const response = await fetch('/api/whatsapp-client/test', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          phoneNumber: whatsappPhone,
+                          message: whatsappMessage
+                        })
+                      });
+                      
+                      const data = await response.json();
+                      
                       if (data.success) {
-                        toast({ title: "Mensagem enviada com sucesso!" });
+                        toast({ 
+                          title: "Sucesso!", 
+                          description: "Mensagem de teste enviada com sucesso!" 
+                        });
+                        // Limpar campos após envio bem-sucedido
+                        setWhatsappPhone('');
+                        setWhatsappMessage('');
                       } else {
                         toast({ 
                           title: "Erro ao enviar", 
-                          description: data.message,
+                          description: data.message || "Falha ao enviar mensagem de teste",
                           variant: "destructive" 
                         });
                       }
-                    })
-                    .catch(() => {
+                    } catch (error) {
+                      console.error('Erro ao enviar mensagem teste:', error);
                       toast({ 
-                        title: "Erro ao enviar", 
+                        title: "Erro de conexão", 
+                        description: "Falha na comunicação com o servidor",
                         variant: "destructive" 
                       });
-                    });
+                    }
                   }}
                   className="w-full md:w-auto"
+                  disabled={!whatsappPhone.trim() || !whatsappMessage.trim()}
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Enviar Teste
