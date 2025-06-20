@@ -580,43 +580,57 @@ export default function ApiConfigPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center">
-                      <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                    <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                      <Smartphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-yellow-900 dark:text-yellow-100">WhatsApp Desconectado</h4>
-                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Escolha o método de conexão preferido
+                      <h4 className="font-medium text-blue-900 dark:text-blue-100">Evolution API - WhatsApp</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Conexão individual por cliente via Evolution API
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setShowPhoneLogin(false);
-                        fetch('/api/client/whatsapp/connect', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                            'Content-Type': 'application/json'
-                          }
-                        }).then(() => {
+                  <Button
+                    onClick={() => {
+                      fetch('/api/evolution/connect', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                          'Content-Type': 'application/json'
+                        }
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.success) {
                           queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
-                          toast({ title: "Conectando WhatsApp..." });
+                          toast({ 
+                            title: "Evolution API Conectando...",
+                            description: data.message 
+                          });
+                        } else {
+                          toast({ 
+                            title: "Erro na conexão", 
+                            description: data.message,
+                            variant: "destructive" 
+                          });
+                        }
+                      })
+                      .catch(() => {
+                        toast({ 
+                          title: "Erro na requisição", 
+                          variant: "destructive" 
                         });
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-900/20"
-                    >
-                      <QrCode className="h-4 w-4 mr-2" />
-                      QR Code
-                    </Button>
-                    
-
-                  </div>
+                      });
+                    }}
+                    variant="default"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Gerar QR Code
+                  </Button>
                 </div>
 
                 {/* QR Code Original - Versão que funcionava */}
@@ -691,7 +705,7 @@ export default function ApiConfigPage() {
                       return;
                     }
                     
-                    fetch('/api/client/whatsapp/test', {
+                    fetch('/api/evolution/test', {
                       method: 'POST',
                       headers: {
                         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,

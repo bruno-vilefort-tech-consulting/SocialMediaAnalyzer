@@ -2865,6 +2865,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Evolution API Routes
+  app.post("/api/evolution/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔗 Evolution API: Conectando cliente ${user.clientId}...`);
+      
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const result = await evolutionApiService.connectClient(user.clientId.toString());
+      
+      console.log(`🔗 Evolution API resultado:`, result);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro Evolution API connect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao conectar Evolution API' 
+      });
+    }
+  });
+
+  app.post("/api/evolution/disconnect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔌 Evolution API: Desconectando cliente ${user.clientId}...`);
+      
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const result = await evolutionApiService.disconnectClient(user.clientId.toString());
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro Evolution API disconnect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao desconectar Evolution API' 
+      });
+    }
+  });
+
+  app.get("/api/evolution/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const connection = await evolutionApiService.getConnectionStatus(user.clientId.toString());
+      
+      res.json({
+        isConnected: connection?.isConnected || false,
+        qrCode: connection?.qrCode || null,
+        phoneNumber: connection?.phoneNumber || null,
+        lastConnection: connection?.lastConnection || null
+      });
+    } catch (error) {
+      console.error('❌ Erro Evolution API status:', error);
+      res.status(500).json({ 
+        isConnected: false,
+        qrCode: null,
+        phoneNumber: null,
+        lastConnection: null
+      });
+    }
+  });
+
+  app.post("/api/evolution/test", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const { phoneNumber, message } = req.body;
+      
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ message: 'Phone number and message required' });
+      }
+
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const result = await evolutionApiService.sendTestMessage(
+        user.clientId.toString(), 
+        phoneNumber, 
+        message
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro Evolution API test:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao enviar mensagem teste' 
+      });
+    }
+  });
+
   // Upload Audio Route - Firebase Storage for demo
   app.post("/api/upload-audio", upload.single('audio'), async (req, res) => {
     try {
