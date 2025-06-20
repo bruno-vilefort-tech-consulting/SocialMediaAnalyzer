@@ -7,7 +7,8 @@ import {
   type Response, type InsertResponse, type ApiConfig, type InsertApiConfig,
   type ClientVoiceSetting, type InsertClientVoiceSetting,
   type MasterSettings, type InsertMasterSettings,
-  type MessageLog, type InsertMessageLog
+  type MessageLog, type InsertMessageLog,
+  type Report, type InsertReport
 } from "@shared/schema";
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
