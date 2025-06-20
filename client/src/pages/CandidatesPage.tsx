@@ -1282,70 +1282,70 @@ export default function CandidatesPage() {
       ) : (
         // Visualização de lista única
         <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={handleBackToAllLists}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar às Listas
-              </Button>
-              <div>
-                <h1 className="text-3xl font-bold">{selectedList?.name}</h1>
-                <p className="text-muted-foreground">
-                  {(() => {
-                    const count = viewMode === 'single' && selectedListId 
-                      ? listCandidates.length 
-                      : filteredCandidates.length;
-                    return `${count} ${count === 1 ? 'candidato' : 'candidatos'} nesta lista`;
-                  })()}
-                </p>
-              </div>
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={handleBackToAllLists}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar às Listas
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{selectedList?.name}</h1>
+              <p className="text-muted-foreground">
+                {(() => {
+                  const count = viewMode === 'single' && selectedListId 
+                    ? listCandidates.length 
+                    : filteredCandidates.length;
+                  return `${count} ${count === 1 ? 'candidato' : 'candidatos'} nesta lista`;
+                })()}
+              </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileUpload}
-                className="hidden"
-                id="file-upload"
-              />
-              
-              {/* Botão principal - Novo Candidato */}
-              <Button 
-                onClick={() => {
-                  candidateForm.reset({
-                    name: "",
-                    email: "",
-                    whatsapp: "",
-                    listId: selectedListId || 0,
-                    clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
-                  });
-                  setShowCandidateForm(true);
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Candidato
-              </Button>
+          </div>
 
-              {/* Botões secundários */}
-              <Button
-                variant="outline"
-                onClick={() => setShowExistingCandidatesDialog(true)}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Adicionar Existente
-              </Button>
+          {/* Botões de ação acima do bloco Candidatos */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="file-upload"
+            />
+            
+            {/* Botão principal - Novo Candidato */}
+            <Button 
+              onClick={() => {
+                candidateForm.reset({
+                  name: "",
+                  email: "",
+                  whatsapp: "",
+                  listId: selectedListId || 0,
+                  clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
+                });
+                setShowCandidateForm(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Candidato
+            </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => document.getElementById('file-upload')?.click()}
-                className="border-gray-200 text-gray-700 hover:bg-gray-50"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Importar Excel
-              </Button>
-            </div>
+            {/* Botões secundários */}
+            <Button
+              variant="outline"
+              onClick={() => setShowExistingCandidatesDialog(true)}
+              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Adicionar Existente
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => document.getElementById('file-upload')?.click()}
+              className="border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importar Excel
+            </Button>
           </div>
 
           {/* Lista de candidatos */}
