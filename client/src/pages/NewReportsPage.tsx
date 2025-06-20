@@ -509,7 +509,9 @@ function CandidateDetailModal({
                         </h4>
                         <div className="bg-muted/50 p-3 rounded-md">
                           <p className="text-sm leading-relaxed">
-                            {response.transcription || 'Aguardando resposta via WhatsApp'}
+                            {response.transcription && response.transcription !== 'Aguardando resposta via WhatsApp' 
+                              ? response.transcription 
+                              : 'Aguardando resposta via WhatsApp'}
                           </p>
                         </div>
                       </div>

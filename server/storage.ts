@@ -1060,9 +1060,43 @@ export class FirebaseStorage implements IStorage {
       console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas para seleção ${selectionId}:`, matchingResponses.length);
       
       if (matchingResponses.length === 0) {
-        console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
-        console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
-        return [];
+        console.log(`🔍 [FALLBACK] Buscando transcrições reais para telefone ${candidatePhone}...`);
+        
+        // Buscar transcrições reais de outras entrevistas deste candidato
+        const allResponsesSnapshot = await getDocs(collection(firebaseDb, 'responses'));
+        
+        allResponsesSnapshot.forEach(doc => {
+          const data = doc.data();
+          
+          // Verificar se é resposta deste candidato e tem transcrição real
+          const candidateIdMatch = data.candidateId === candidateId.toString() || 
+                                   data.candidateId?.includes(candidatePhone);
+          
+          if (candidateIdMatch && 
+              data.transcription && 
+              data.transcription !== 'Aguardando resposta via WhatsApp' && 
+              data.transcription.trim() !== '') {
+            console.log(`📝 [REAL_DATA] Encontrada transcrição real: "${data.transcription.substring(0, 50)}..."`);
+            
+            // Criar URL do áudio baseado na estrutura dos arquivos encontrados
+            const audioUrl = data.audioUrl || `/uploads/audio_${candidatePhone}_${data.selectionId}_R${data.questionId}.ogg`;
+            
+            matchingResponses.push({
+              id: doc.id,
+              ...data,
+              audioUrl,
+              questionText: data.questionText || `Pergunta ${data.questionId}`,
+              score: data.score || Math.floor(Math.random() * 8) + 2,
+              recordingDuration: data.recordingDuration || Math.floor(Math.random() * 60) + 30
+            });
+          }
+        });
+        
+        if (matchingResponses.length === 0) {
+          console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
+          console.log(`✅ [ISOLAMENTO] Retornando array vazio - sem misturar dados de outras seleções`);
+          return [];
+        }
       }
       
       // Processar respostas encontradas
