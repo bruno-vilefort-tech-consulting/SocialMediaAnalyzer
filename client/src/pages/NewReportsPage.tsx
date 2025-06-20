@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -51,6 +53,9 @@ export default function NewReportsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const [activeTab, setActiveTab] = useState('candidatos');
+  const [selectedCandidate, setSelectedCandidate] = useState<InterviewCandidate | null>(null);
+  const [audioPlayers, setAudioPlayers] = useState<{ [key: string]: HTMLAudioElement }>({});
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
 
   // Buscar clientes (apenas para masters)
   const { data: clients = [] } = useQuery({
@@ -312,6 +317,14 @@ export default function NewReportsPage() {
                                   {answeredQuestions}/{totalQuestions} respostas
                                 </p>
                               </div>
+                              
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setSelectedCandidate(item)}
+                              >
+                                Ver Detalhes
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
@@ -356,6 +369,224 @@ export default function NewReportsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de detalhes do candidato */}
+      <CandidateDetailModal
+        candidate={selectedCandidate}
+        isOpen={!!selectedCandidate}
+        onClose={() => setSelectedCandidate(null)}
+        audioPlayers={audioPlayers}
+        setAudioPlayers={setAudioPlayers}
+        playingAudio={playingAudio}
+        setPlayingAudio={setPlayingAudio}
+      />
     </div>
+  );
+}
+
+// Componente do Modal de Detalhes do Candidato
+interface CandidateDetailModalProps {
+  candidate: InterviewCandidate | null;
+  isOpen: boolean;
+  onClose: () => void;
+  audioPlayers: { [key: string]: HTMLAudioElement };
+  setAudioPlayers: React.Dispatch<React.SetStateAction<{ [key: string]: HTMLAudioElement }>>;
+  playingAudio: string | null;
+  setPlayingAudio: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+function CandidateDetailModal({ 
+  candidate, 
+  isOpen, 
+  onClose,
+  audioPlayers,
+  setAudioPlayers,
+  playingAudio,
+  setPlayingAudio
+}: CandidateDetailModalProps) {
+  if (!candidate) return null;
+
+  const playAudio = async (audioUrl: string, responseId: string) => {
+    try {
+      // Parar qualquer áudio tocando
+      if (playingAudio && audioPlayers[playingAudio]) {
+        audioPlayers[playingAudio].pause();
+        audioPlayers[playingAudio].currentTime = 0;
+      }
+
+      // Criar novo player se não existir
+      if (!audioPlayers[responseId]) {
+        const audio = new Audio(audioUrl);
+        audio.addEventListener('ended', () => {
+          setPlayingAudio(null);
+        });
+        audio.addEventListener('error', (e) => {
+          console.error('Erro ao carregar áudio:', e);
+          setPlayingAudio(null);
+        });
+        
+        setAudioPlayers(prev => ({
+          ...prev,
+          [responseId]: audio
+        }));
+        
+        audio.play();
+        setPlayingAudio(responseId);
+      } else {
+        // Usar player existente
+        const audio = audioPlayers[responseId];
+        if (playingAudio === responseId) {
+          // Pausar se já está tocando
+          audio.pause();
+          setPlayingAudio(null);
+        } else {
+          // Tocar áudio
+          audio.currentTime = 0;
+          audio.play();
+          setPlayingAudio(responseId);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao reproduzir áudio:', error);
+      setPlayingAudio(null);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3">
+            <Users className="h-5 w-5" />
+            Detalhes da Entrevista - {candidate.candidate.name}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <ScrollArea className="max-h-[60vh]">
+          <div className="space-y-6">
+            {/* Informações do Candidato */}
+            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+              <div>
+                <h4 className="font-semibold text-sm text-muted-foreground">Nome</h4>
+                <p className="font-medium">{candidate.candidate.name}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-muted-foreground">Email</h4>
+                <p className="text-sm">{candidate.candidate.email}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-muted-foreground">Telefone</h4>
+                <p className="text-sm">{candidate.candidate.phone}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm text-muted-foreground">Status</h4>
+                <Badge variant={candidate.interview.status === 'completed' ? 'default' : 'secondary'}>
+                  {candidate.interview.status}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Respostas da Entrevista */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Respostas da Entrevista</h3>
+              
+              {candidate.responses.map((response, index) => (
+                <Card key={response.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      {/* Pergunta */}
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                          Pergunta {index + 1}
+                        </h4>
+                        <p className="font-medium">{response.questionText}</p>
+                      </div>
+
+                      {/* Transcrição */}
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                          Transcrição
+                        </h4>
+                        <div className="bg-muted/50 p-3 rounded-md">
+                          <p className="text-sm leading-relaxed">
+                            {response.transcription || 'Aguardando resposta via WhatsApp'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Player de Áudio */}
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">
+                          Áudio da Resposta
+                        </h4>
+                        {response.audioUrl && response.audioUrl !== "" ? (
+                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-md">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => playAudio(response.audioUrl!, response.id.toString())}
+                              className="flex items-center gap-2"
+                            >
+                              {playingAudio === response.id.toString() ? (
+                                <Pause className="h-4 w-4" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                              {playingAudio === response.id.toString() ? 'Pausar' : 'Reproduzir'}
+                            </Button>
+                            
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Volume2 className="h-4 w-4" />
+                              <span>Duração: {response.recordingDuration || 'N/A'}s</span>
+                            </div>
+                            
+                            {response.score && (
+                              <div className="ml-auto">
+                                <Badge variant="outline">
+                                  Score: {response.score}/10
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-md">
+                            <Clock className="h-4 w-4 text-yellow-500" />
+                            <span className="text-sm text-muted-foreground">
+                              Aguardando resposta de áudio via WhatsApp
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Análise IA (se disponível) */}
+                      {response.aiAnalysis && (
+                        <div>
+                          <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                            Análise IA
+                          </h4>
+                          <div className="bg-green-50 p-3 rounded-md">
+                            <p className="text-sm">{response.aiAnalysis}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {candidate.responses.length === 0 && (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhuma resposta encontrada</h3>
+                  <p className="text-muted-foreground">
+                    Este candidato ainda não respondeu às perguntas da entrevista.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
