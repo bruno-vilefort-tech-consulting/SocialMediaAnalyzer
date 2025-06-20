@@ -29,16 +29,39 @@ export class TranscriptionService {
         throw new Error(`Arquivo muito pequeno: ${stats.size} bytes`);
       }
       
-      // Transcrever com OpenAI Whisper usando createReadStream
-      const { createReadStream } = await import('fs');
+      // Converter arquivo OGG para formato compatível se necessário
+      const fileBuffer = await fs.readFile(audioPath);
       
-      const transcription = await this.openai.audio.transcriptions.create({
-        file: createReadStream(audioPath),
-        model: 'whisper-1',
-        language: 'pt',
-        response_format: 'text'
+      // Usar FormData nativo do Node.js
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+      
+      formData.append('file', fileBuffer, {
+        filename: path.basename(audioPath).replace('.ogg', '.wav'),
+        contentType: 'audio/wav'
+      });
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'pt');
+      formData.append('response_format', 'text');
+      
+      console.log(`🌐 [WHISPER] Enviando para OpenAI API...`);
+      
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          ...formData.getHeaders()
+        },
+        body: formData
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ OpenAI API Response:`, response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+      
+      const transcription = await response.text();
       console.log(`✅ [WHISPER] Transcrição obtida: "${transcription}"`);
       
       if (transcription && transcription.trim().length > 0) {
@@ -73,11 +96,24 @@ export class TranscriptionService {
       console.log(`📊 Respostas encontradas: ${responses.length}`);
       
       if (responses.length >= 1) {
-        await storage.updateResponse(responses[0].id, {
-          transcription: transcription1,
-          audioFile: `audio_${phone}_${selectionId}_R1.ogg`
-        });
-        console.log('✅ Transcrição R1 salva no banco');
+        try {
+          await storage.updateResponse(responses[0].id, {
+            transcription: transcription1,
+            audioFile: `audio_${phone}_${selectionId}_R1.ogg`
+          });
+          console.log('✅ Transcrição R1 salva no banco');
+        } catch (error) {
+          console.log('❌ Erro ao atualizar resposta:', error.message);
+          // Salvar diretamente no Firebase
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { firebaseDb } = await import('./db');
+          await updateDoc(doc(firebaseDb, 'responses', String(responses[0].id)), {
+            transcription: transcription1,
+            audioFile: `audio_${phone}_${selectionId}_R1.ogg`,
+            updatedAt: new Date()
+          });
+          console.log('✅ Transcrição R1 salva diretamente no Firebase');
+        }
       }
       
       // Processar R2
@@ -88,11 +124,24 @@ export class TranscriptionService {
       console.log(`📝 Transcrição 2 obtida: "${transcription2}"`);
       
       if (responses.length >= 2) {
-        await storage.updateResponse(responses[1].id, {
-          transcription: transcription2,
-          audioFile: `audio_${phone}_${selectionId}_R2.ogg`
-        });
-        console.log('✅ Transcrição R2 salva no banco');
+        try {
+          await storage.updateResponse(responses[1].id, {
+            transcription: transcription2,
+            audioFile: `audio_${phone}_${selectionId}_R2.ogg`
+          });
+          console.log('✅ Transcrição R2 salva no banco');
+        } catch (error) {
+          console.log('❌ Erro ao atualizar resposta R2:', error.message);
+          // Salvar diretamente no Firebase
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { firebaseDb } = await import('./db');
+          await updateDoc(doc(firebaseDb, 'responses', String(responses[1].id)), {
+            transcription: transcription2,
+            audioFile: `audio_${phone}_${selectionId}_R2.ogg`,
+            updatedAt: new Date()
+          });
+          console.log('✅ Transcrição R2 salva diretamente no Firebase');
+        }
       }
       
       console.log('🎉 Processamento da Comercial 3 concluído com sucesso!');
