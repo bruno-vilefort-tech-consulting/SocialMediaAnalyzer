@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 20, 2025: 🗑️ ROTA /RELATORIOS REMOVIDA - Limpeza de URL conforme solicitado sem quebrar sistema
+  - **Rota removida**: /relatorios deletada do App.tsx sem afetar funcionalidade
+  - **Dados preservados**: Todas as categorias e informações mantidas no Firebase
+  - **Sistema intacto**: Rota /historico-relatorios mantida com funcionalidade completa
+  - **Zero impacto**: Banco de dados e demais funcionalidades preservadas
+
 - June 19, 2025: 🎉 SISTEMA COMPLETO VALIDADO - Nova arquitetura + Whisper funcionando perfeitamente
   - **Teste final**: Consultor GM 6 (ID: 1750316326534) - Entrevista completa realizada
   - **Transcrições reais confirmadas**: "Estão vendendo, eles não dão resposta correta 100% do tempo..." e "crédito que já é subsidiado 200 dólares por mês..."

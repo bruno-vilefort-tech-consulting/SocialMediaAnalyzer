@@ -125,13 +125,7 @@ function Router() {
 
 
 
-      <Route path="/relatorios">
-        <PrivateRoute allowedRoles={['master', 'client']}>
-          <Layout>
-            <NewReportsPage />
-          </Layout>
-        </PrivateRoute>
-      </Route>
+
 
       <Route path="/historico-relatorios">
         <PrivateRoute allowedRoles={['master', 'client']}>
