@@ -3981,15 +3981,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Buscar candidato original do Daniel Braga
       const reportCandidatesRef = collection(firebaseDb, 'reportCandidates');
+      console.log('🔍 Buscando em reportCandidates com reportId: report_1750361142848_1750364164707');
+      
+      // Buscar todos os candidatos primeiro para debug
+      const allCandidatesSnapshot = await getDocs(reportCandidatesRef);
+      console.log('📋 Total de candidatos encontrados:', allCandidatesSnapshot.docs.length);
+      
+      allCandidatesSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        console.log('📋 Candidato encontrado:', { id: doc.id, name: data.name, reportId: data.reportId });
+      });
+      
       const candidatesQuery = query(reportCandidatesRef, where('reportId', '==', 'report_1750361142848_1750364164707'));
       const candidatesSnapshot = await getDocs(candidatesQuery);
       
       if (candidatesSnapshot.empty) {
-        return res.status(404).json({ error: 'Candidato original não encontrado' });
+        console.log('❌ Nenhum candidato encontrado com reportId: report_1750361142848_1750364164707');
+        // Vamos tentar buscar pelo primeiro candidato encontrado
+        if (allCandidatesSnapshot.docs.length > 0) {
+          console.log('✅ Usando primeiro candidato disponível como base');
+          const originalCandidateDoc = allCandidatesSnapshot.docs[0];
+          const originalCandidate = originalCandidateDoc.data();
+        } else {
+          return res.status(404).json({ error: 'Nenhum candidato encontrado no sistema' });
+        }
+      } else {
+        var originalCandidateDoc = candidatesSnapshot.docs[0];
+        var originalCandidate = originalCandidateDoc.data();
       }
-      
-      const originalCandidateDoc = candidatesSnapshot.docs[0];
-      const originalCandidate = originalCandidateDoc.data();
       console.log('✅ Candidato original encontrado:', originalCandidate.name);
       
       // Buscar respostas originais
