@@ -184,6 +184,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
+- June 20, 2025: 📱 NOVA CONEXÃO WHATSAPP EVOLUTION API IMPLEMENTADA - Sistema individual por clientId conforme solicitado
+  - **EvolutionApiService criado**: Novo serviço para conexões WhatsApp independentes por cliente
+  - **QR Code individual**: Cada clientId gera seu próprio QR Code via Evolution API
+  - **Endpoints atualizados**: Routes alteradas para usar evolutionApiService ao invés de clientWhatsAppService
+  - **Interface modernizada**: ApiConfigPage.tsx reformulada com visual Evolution API
+  - **Storage expandido**: Campos evolutionInstanceId, evolutionConnected, evolutionQrCode adicionados
+  - **Isolamento total**: Cada cliente possui instanceId único e conexão independente
+  - **Sistema híbrido**: Mantém funcionalidades de entrevista existentes, apenas troca método de conexão
+  - **Backward compatibility**: Sistema antigo preservado sem quebras no fluxo de entrevistas
+
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
   - **Arquitetura detalhada**: Stack tecnológico, integrações, banco de dados e APIs documentados
