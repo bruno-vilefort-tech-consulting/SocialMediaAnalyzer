@@ -107,21 +107,42 @@ export class ClientWhatsAppService {
             console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
             console.log(`📱 IMPORTANTE: Escaneie o QR Code para conectar seu WhatsApp ao sistema`);
             
-            // Atualizar configuração do cliente
-            await this.updateClientConfig(clientId, {
-              qrCode: qr,
-              isConnected: false,
-              phoneNumber: null,
-              lastConnection: new Date(),
-              clientId
-            });
+            try {
+              // Converter QR Code string para DataURL
+              const QRCode = await import('qrcode');
+              const qrCodeDataUrl = await QRCode.toDataURL(qr, { 
+                width: 400, 
+                margin: 2,
+                color: {
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
+              });
+              console.log(`🖼️ QR Code convertido para DataURL, length: ${qrCodeDataUrl.length}`);
+              
+              // Atualizar configuração do cliente com DataURL
+              await this.updateClientConfig(clientId, {
+                qrCode: qrCodeDataUrl,
+                isConnected: false,
+                phoneNumber: null,
+                lastConnection: new Date(),
+                clientId
+              });
 
-            resolved = true;
-            resolve({
-              success: true,
-              qrCode: qr,
-              message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
-            });
+              resolved = true;
+              resolve({
+                success: true,
+                qrCode: qrCodeDataUrl,
+                message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
+              });
+            } catch (error) {
+              console.error(`❌ Erro ao converter QR Code para cliente ${clientId}:`, error);
+              resolved = true;
+              resolve({
+                success: false,
+                message: 'Erro ao gerar QR Code'
+              });
+            }
           }
 
           if (connection === 'open') {
@@ -342,7 +363,7 @@ export class ClientWhatsAppService {
         return;
       }
 
-      // Atualizar configuração usando upsertApiConfig (filtrando valores undefined)
+      // Preparar dados para atualização
       const configUpdate = {
         entityType: 'client' as const,
         entityId: clientId,
@@ -354,9 +375,19 @@ export class ClientWhatsAppService {
         firebaseServiceAccount: apiConfig.firebaseServiceAccount ?? null
       };
 
+      // Adicionar QR Code se fornecido
+      if (updates.qrCode !== undefined) {
+        configUpdate.whatsappQrCode = updates.qrCode;
+        console.log(`📱 Salvando QR Code para cliente ${clientId}, tamanho: ${updates.qrCode ? updates.qrCode.length : 0}`);
+      }
+
       await storage.upsertApiConfig(configUpdate);
 
-      console.log(`💾 Configuração WhatsApp atualizada para cliente ${clientId}`);
+      console.log(`💾 Configuração WhatsApp atualizada para cliente ${clientId}`, {
+        isConnected: configUpdate.whatsappQrConnected,
+        hasQrCode: !!configUpdate.whatsappQrCode,
+        phoneNumber: configUpdate.whatsappQrPhoneNumber
+      });
     } catch (error) {
       console.error(`❌ Erro ao atualizar configuração do cliente ${clientId}:`, error);
     }

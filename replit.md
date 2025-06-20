@@ -184,14 +184,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 WHATSAPP POR CLIENTE IMPLEMENTADO - Sistema individual funcionando conforme instruções
-  - **Interface WhatsApp por cliente**: Card posicionado acima do menu de voz conforme solicitado
-  - **Endpoints individuais**: /api/whatsapp-client/* para connect, disconnect, status, test
-  - **QR Code por clientId**: Cada cliente tem conexão WhatsApp isolada e independente
-  - **Sistema Baileys mantido**: Usa clientWhatsAppService existente sem quebrar funcionalidade
-  - **Teste de envio**: Interface para testar mensagens por cliente individual
+- June 20, 2025: 📱 WHATSAPP QR CODE FUNCIONANDO - Sistema corrigido para exibir QR Code corretamente
+  - **QR Code gerado com sucesso**: Backend retorna QR Code válido convertido para DataURL
+  - **Interface WhatsApp por cliente**: Card posicionado acima do menu de voz
+  - **Endpoints /api/whatsapp-client/***: connect, disconnect, status, test funcionais
+  - **Conversão QR Code**: String QR convertida para data:image/png;base64 no backend
+  - **Sistema Baileys atualizado**: QR Code timeout estendido para 90 segundos
+  - **Logs detalhados**: Debug completo do processo de geração e conversão
   - **Proteção de dados**: Sistema preserva banco de dados sem alterações destrutivas
-  - **Interface completa**: QR Code, status de conexão, desconexão e teste funcional
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
