@@ -2919,21 +2919,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const { evolutionApiService } = await import('./evolutionApiService');
-      const connection = await evolutionApiService.getConnectionStatus(user.clientId.toString());
+      console.log(`📱 Evolution API: Buscando status via sistema Baileys para cliente ${user.clientId}`);
       
-      console.log(`📱 Evolution API Status para cliente ${user.clientId}:`, {
-        hasConnection: !!connection,
-        isConnected: connection?.isConnected || false,
-        hasQrCode: !!connection?.qrCode,
-        qrCodeLength: connection?.qrCode?.length || 0
+      // Usar o sistema Baileys existente que já funciona
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const status = await clientWhatsAppService.getClientStatus(user.clientId.toString());
+      
+      console.log(`📱 Status Baileys para cliente ${user.clientId}:`, {
+        isConnected: status.isConnected,
+        hasQrCode: !!status.qrCode,
+        qrCodeLength: status.qrCode?.length || 0,
+        phoneNumber: status.phoneNumber
       });
       
       res.json({
-        isConnected: connection?.isConnected || false,
-        qrCode: connection?.qrCode || null,
-        phoneNumber: connection?.phoneNumber || null,
-        lastConnection: connection?.lastConnection || null
+        isConnected: status.isConnected,
+        qrCode: status.qrCode,
+        phoneNumber: status.phoneNumber,
+        lastConnection: status.lastConnection
       });
     } catch (error) {
       console.error('❌ Erro Evolution API status:', error);
