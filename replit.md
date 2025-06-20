@@ -184,15 +184,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 SISTEMA EVOLUTION API HÍBRIDO CORRIGIDO - Logger Baileys implementado
-  - **Interface Evolution API criada**: Botões "Gerar QR Code" e endpoints /api/evolution/* implementados
-  - **Backend redirecionado**: Evolution API redireciona para sistema Baileys corrigido
-  - **Bug logger corrigido**: TypeError logger.child resolvido com logger compatível
-  - **QR Code real**: WhatsApp QR Code autêntico será gerado via Baileys
-  - **Endpoints funcionais**: /api/evolution/connect, disconnect, status, test operacionais
-  - **Interface modernizada**: ApiConfigPage.tsx com visual Evolution API
-  - **Sistema híbrido**: Interface nova + backend Baileys funcionando
-  - **Debug completo**: Logs detalhados para troubleshooting
+- June 20, 2025: 📱 INTERFACE EVOLUTION API REMOVIDA - Sistema simplificado conforme solicitação
+  - **Interface Evolution API removida**: Card completo removido da ApiConfigPage.tsx
+  - **Sistema mantido original**: WhatsApp funciona apenas com sistema existente
+  - **Endpoints Evolution mantidos**: Backend permanece mas sem interface frontend
+  - **Interface limpa**: Página ApiConfigPage sem elementos Evolution API
+  - **Sistema funcionando**: WhatsApp original preservado e operacional
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
