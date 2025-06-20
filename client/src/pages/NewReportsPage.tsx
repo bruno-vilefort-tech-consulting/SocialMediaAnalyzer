@@ -37,9 +37,16 @@ export default function NewReportsPage() {
   });
 
   // Buscar seleções
-  const { data: selections = [], isLoading: loadingSelections } = useQuery({
+  const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
     queryKey: ['/api/selections', selectedClientId],
     enabled: !!selectedClientId || user?.role === 'client'
+  });
+
+  // Ordenar seleções da mais nova para a mais velha
+  const selections = [...selectionsData].sort((a, b) => {
+    const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(a.createdAt);
+    const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(b.createdAt);
+    return dateB.getTime() - dateA.getTime(); // Mais nova primeiro
   });
 
   // Buscar candidatos da seleção (para aba Candidatos)
@@ -109,7 +116,7 @@ export default function NewReportsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-3">
                 {selections.map((selection: Selection) => (
                   <Card 
                     key={selection.id}
@@ -117,20 +124,20 @@ export default function NewReportsPage() {
                     onClick={() => setSelectedSelection(selection)}
                   >
                     <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-lg truncate">{selection.name}</h3>
-                          <Badge variant={selection.status === 'active' ? 'default' : 'secondary'}>
-                            {selection.status}
-                          </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-semibold text-lg">{selection.name}</h3>
+                            <Badge variant={selection.status === 'enviado' ? 'default' : 'secondary'}>
+                              {selection.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Vaga: {selection.jobName || 'Não identificada'}
+                          </p>
                         </div>
                         
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          <p>ID: {selection.id}</p>
-                          <p>Vaga: {selection.jobName || 'Não identificada'}</p>
-                        </div>
-                        
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline">
                           Ver Relatório
                         </Button>
                       </div>

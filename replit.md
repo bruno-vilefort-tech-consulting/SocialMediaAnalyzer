@@ -209,6 +209,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Fluxo restaurado**: Mensagem inicial → resposta "1" → início automático da entrevista
   - **Sistema funcional**: Cadência WhatsApp 1=sim/2=não voltou a funcionar corretamente
 
+- June 20, 2025: ✅ LAYOUT DE RELATÓRIOS ATUALIZADO - Design horizontal com ordenação cronológica implementado
+  - **Layout horizontal**: Cards de seleções organizados em lista vertical com design limpo
+  - **Ordenação cronológica**: Seleções mais novas no topo, mais antigas embaixo
+  - **ID removido**: Interface sem IDs visíveis conforme solicitação do usuário
+  - **Design otimizado**: Nome, status e botão "Ver Relatório" alinhados horizontalmente
+
 - June 20, 2025: ✅ OTIMIZAÇÃO DO SISTEMA DE ÁUDIO - Duplicação de arquivos eliminada para economia de espaço
   - **Problema identificado**: Sistema criava arquivos duplicados (nomenclatura correta + "_fixed")
   - **Verificação implementada**: Checa se arquivo já existe antes de criar novo
