@@ -76,7 +76,10 @@ const ReportsHistoryPage: React.FC = () => {
       });
     },
     onSuccess: () => {
+      // Invalidar múltiplas queries para garantir atualização
       queryClient.invalidateQueries({ queryKey: ['/api/reports', selectedReport?.id, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/candidate-categories', selectedReport?.selectionId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       toast({
         title: "Categoria salva",
         description: "A categoria do candidato foi salva com sucesso.",
@@ -108,7 +111,10 @@ const ReportsHistoryPage: React.FC = () => {
       });
     },
     onSuccess: () => {
+      // Invalidar múltiplas queries para garantir atualização
       queryClient.invalidateQueries({ queryKey: ['/api/reports', selectedReport?.id, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/candidate-categories', selectedReport?.selectionId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       toast({
         title: "Categoria removida",
         description: "A categoria do candidato foi removida com sucesso.",
@@ -138,10 +144,12 @@ const ReportsHistoryPage: React.FC = () => {
   });
 
   // Buscar categorias dos candidatos para a seleção atual
-  const { data: candidateCategories = [] } = useQuery({
+  const { data: candidateCategories = [], refetch: refetchCategories } = useQuery({
     queryKey: ['/api/reports/candidate-categories', selectedReport?.selectionId],
     queryFn: () => apiRequest(`/api/reports/candidate-categories/${selectedReport?.selectionId}`, 'GET'),
-    enabled: !!selectedReport && currentView === 'candidates'
+    enabled: !!selectedReport && currentView === 'candidates',
+    staleTime: 0, // Sempre refetch
+    cacheTime: 0  // Não manter cache
   });
 
   // Combinar dados de candidatos com suas categorias
@@ -267,7 +275,7 @@ const ReportsHistoryPage: React.FC = () => {
     }
   };
 
-  const handleCategorySelection = (candidate: ReportCandidate, category: string) => {
+  const handleCategorySelection = async (candidate: ReportCandidate, category: string) => {
     if (selectedReport) {
       console.log(`🎯 [FRONTEND] Clique na categoria:`, {
         candidateId: candidate.originalCandidateId,
@@ -278,21 +286,31 @@ const ReportsHistoryPage: React.FC = () => {
         isAlreadySelected: candidate.categorySelection === category
       });
 
-      // Se já está selecionado, remove a categoria
-      if (candidate.categorySelection === category) {
-        removeCategoryMutation.mutate({
-          candidateId: candidate.originalCandidateId,
-          reportId: selectedReport.id,
-          selectionId: selectedReport.selectionId
-        });
-      } else {
-        // Senão, salva a nova categoria
-        saveCategoryMutation.mutate({
-          candidateId: candidate.originalCandidateId,
-          reportId: selectedReport.id,
-          selectionId: selectedReport.selectionId,
-          category: category
-        });
+      try {
+        // Se já está selecionado, remove a categoria
+        if (candidate.categorySelection === category) {
+          await removeCategoryMutation.mutateAsync({
+            candidateId: candidate.originalCandidateId,
+            reportId: selectedReport.id,
+            selectionId: selectedReport.selectionId
+          });
+        } else {
+          // Senão, salva a nova categoria
+          await saveCategoryMutation.mutateAsync({
+            candidateId: candidate.originalCandidateId,
+            reportId: selectedReport.id,
+            selectionId: selectedReport.selectionId,
+            category: category
+          });
+        }
+        
+        // Forçar refetch das categorias após sucesso
+        setTimeout(() => {
+          refetchCategories();
+        }, 100);
+        
+      } catch (error) {
+        console.error('❌ [FRONTEND] Erro ao processar categoria:', error);
       }
     }
   };
