@@ -3387,23 +3387,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NO WhatsApp initialization during server startup to prevent crashes
   console.log('📱 WhatsApp QR Service: Inicialização adiada para não bloquear servidor');
   
-  // Helper function to safely initialize WhatsApp only when needed
+  // Helper function to safely initialize WhatsApp Manager only when needed
   const ensureWhatsAppReady = async () => {
-    if (!whatsappQRService) {
-      try {
-        // Only initialize WhatsApp when explicitly requested
-        const { WhatsAppQRService } = await import('./whatsappQRService');
-        whatsappQRService = new WhatsAppQRService();
-        console.log('✅ WhatsApp QR Service inicializado sob demanda');
-        
-        // Aguardar um momento para a inicialização e carregamento de dados
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error) {
-        console.log('⚠️ WhatsApp QR Service não disponível:', error instanceof Error ? error.message : String(error));
-        whatsappQRService = null;
-      }
+    try {
+      // Use WhatsApp Manager instead of old service
+      const { whatsappManager } = await import('./whatsappManager');
+      await whatsappManager.initialize();
+      console.log('✅ WhatsApp Manager inicializado sob demanda');
+      return whatsappManager;
+    } catch (error) {
+      console.error('❌ Erro ao inicializar WhatsApp Manager:', error);
+      return null;
     }
-    return whatsappQRService;
+  };
   };
 
   app.get("/api/whatsapp-qr/status", async (req, res) => {
@@ -3487,7 +3483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!service) {
         return res.status(500).json({ 
           success: false,
-          error: 'WhatsApp QR Service não disponível' 
+          error: 'WhatsApp Manager não disponível' 
         });
       }
       
@@ -3502,17 +3498,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🧪 Testando envio WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
       
-      const result = await service.sendTextMessage(phoneNumber, message);
+      const normalizedPhone = phoneNumber.replace(/\D/g, '');
+      const result = await service.sendMessage('master', normalizedPhone, message);
       
-      if (result) {
+      if (result?.success) {
         res.json({ 
           success: true, 
-          message: 'Mensagem de teste enviada com sucesso' 
+          message: 'Mensagem de teste enviada com sucesso via WhatsApp Manager',
+          messageId: result.messageId
         });
       } else {
         res.status(500).json({ 
           success: false,
-          error: 'Falha ao enviar mensagem de teste' 
+          error: result?.message || 'Falha ao enviar mensagem de teste' 
         });
       }
     } catch (error) {
