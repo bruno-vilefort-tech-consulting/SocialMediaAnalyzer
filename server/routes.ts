@@ -3977,106 +3977,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint temporário para criar dados de teste
   app.post('/api/create-test-data', authenticate, async (req, res) => {
     try {
-      console.log('🔍 Iniciando criação de dados de teste...');
+      console.log('🔍 Criando 10 candidatos de teste baseados no Daniel Braga...');
       
-      // Buscar candidato original do Daniel Braga
-      const reportCandidatesRef = collection(firebaseDb, 'reportCandidates');
-      console.log('🔍 Buscando em reportCandidates com reportId: report_1750361142848_1750364164707');
+      // Usar dados base do Daniel Braga existente
+      const baseCandidate = {
+        reportId: 'report_1750361142848_1750364164707',
+        status: 'completed',
+        totalScore: 0,
+        originalCandidateId: '1750309705713'
+      };
       
-      // Buscar todos os candidatos primeiro para debug
-      const allCandidatesSnapshot = await getDocs(reportCandidatesRef);
-      console.log('📋 Total de candidatos encontrados:', allCandidatesSnapshot.docs.length);
-      
-      allCandidatesSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        console.log('📋 Candidato encontrado:', { id: doc.id, name: data.name, reportId: data.reportId });
-      });
-      
-      const candidatesQuery = query(reportCandidatesRef, where('reportId', '==', 'report_1750361142848_1750364164707'));
-      const candidatesSnapshot = await getDocs(candidatesQuery);
-      
-      if (candidatesSnapshot.empty) {
-        console.log('❌ Nenhum candidato encontrado com reportId: report_1750361142848_1750364164707');
-        // Vamos tentar buscar pelo primeiro candidato encontrado
-        if (allCandidatesSnapshot.docs.length > 0) {
-          console.log('✅ Usando primeiro candidato disponível como base');
-          const originalCandidateDoc = allCandidatesSnapshot.docs[0];
-          const originalCandidate = originalCandidateDoc.data();
-        } else {
-          return res.status(404).json({ error: 'Nenhum candidato encontrado no sistema' });
+      const baseResponses = [
+        {
+          questionNumber: 1,
+          questionText: "Você é consultor há quanto tempo? Pode me explicar com detalhes e me dar uma resposta longa.",
+          transcription: "Oi, tudo bem? Eu queria falar que eu sou consultor há bastante tempo e gosto muito de trabalhar com isso, sabe?",
+          score: 0,
+          recordingDuration: 0,
+          aiAnalysis: ""
+        },
+        {
+          questionNumber: 2,
+          questionText: "Você tem experiência com vendas de crédito consignado? Pode me explicar detalhadamente sua experiência.",
+          transcription: "Sim, eu já trabalhei muito com essa área financeira, gosto muito de trabalhar, eu acho legal, é uma área suave e tranquila.",
+          score: 0,
+          recordingDuration: 0,
+          aiAnalysis: ""
         }
-      } else {
-        var originalCandidateDoc = candidatesSnapshot.docs[0];
-        var originalCandidate = originalCandidateDoc.data();
-      }
-      console.log('✅ Candidato original encontrado:', originalCandidate.name);
+      ];
       
-      // Buscar respostas originais
+      const reportCandidatesRef = collection(firebaseDb, 'reportCandidates');
       const responsesRef = collection(firebaseDb, 'reportResponses');
-      const responsesQuery = query(responsesRef, where('reportCandidateId', '==', originalCandidateDoc.id));
-      const responsesSnapshot = await getDocs(responsesQuery);
-      
-      console.log('✅ Encontradas', responsesSnapshot.docs.length, 'respostas originais');
-      
       const createdCandidates = [];
       
-      // Criar 10 versões de teste
+      // Criar 10 candidatos de teste
       for (let i = 1; i <= 10; i++) {
-        const timestamp = Date.now();
-        const newCandidateId = `report_1750361142848_1750364164707_test_${timestamp}_${i}`;
+        const timestamp = Date.now() + i;
+        const newCandidateId = `report_1750361142848_1750364164707_${parseInt(baseCandidate.originalCandidateId) + i}`;
         
-        // Criar novo candidato
+        // Criar candidato
         const newCandidate = {
           id: newCandidateId,
           name: `Daniel Braga ${i}`,
           email: `danielbraga${i}@teste.com`,
           whatsapp: `5511984316${String(526 + i).padStart(3, '0')}`,
-          originalCandidateId: `${parseInt(originalCandidate.originalCandidateId) + i}`,
-          reportId: originalCandidate.reportId,
-          status: 'completed',
+          originalCandidateId: `${parseInt(baseCandidate.originalCandidateId) + i}`,
+          reportId: baseCandidate.reportId,
+          status: baseCandidate.status,
           totalScore: Math.floor(Math.random() * 100),
           createdAt: Timestamp.now(),
           completedAt: Timestamp.now()
         };
         
-        // Adicionar candidato ao Firebase
-        const newCandidateDocRef = await addDoc(reportCandidatesRef, newCandidate);
-        console.log(`✅ Candidato criado: ${newCandidate.name} (Score: ${newCandidate.totalScore})`);
+        // Adicionar ao Firebase
+        const candidateDocRef = await addDoc(reportCandidatesRef, newCandidate);
+        console.log(`✅ Candidato ${i}: ${newCandidate.name} (Score: ${newCandidate.totalScore})`);
         createdCandidates.push(newCandidate.name);
         
-        // Duplicar respostas
-        for (const responseDoc of responsesSnapshot.docs) {
-          const originalResponse = responseDoc.data();
+        // Criar respostas
+        for (const response of baseResponses) {
           const newResponse = {
-            id: `${newCandidateId}_R${originalResponse.questionNumber}`,
-            reportCandidateId: newCandidateDocRef.id,
-            reportId: originalResponse.reportId,
-            questionNumber: originalResponse.questionNumber,
-            questionText: originalResponse.questionText,
-            transcription: originalResponse.transcription,
-            audioFile: `audio_${newCandidate.whatsapp}_1750361142848_R${originalResponse.questionNumber}.ogg`,
+            id: `${newCandidateId}_R${response.questionNumber}`,
+            reportCandidateId: candidateDocRef.id,
+            reportId: baseCandidate.reportId,
+            questionNumber: response.questionNumber,
+            questionText: response.questionText,
+            transcription: response.transcription,
+            audioFile: `audio_${newCandidate.whatsapp}_1750361142848_R${response.questionNumber}.ogg`,
             score: Math.floor(Math.random() * 100),
-            recordingDuration: originalResponse.recordingDuration || 30,
-            aiAnalysis: originalResponse.aiAnalysis || '',
+            recordingDuration: response.recordingDuration,
+            aiAnalysis: response.aiAnalysis,
             createdAt: Timestamp.now()
           };
           
           await addDoc(responsesRef, newResponse);
         }
-        
-        console.log(`✅ Respostas duplicadas para: ${newCandidate.name}`);
       }
       
-      console.log('🎉 10 versões de teste criadas com sucesso!');
+      console.log('🎉 10 candidatos de teste criados com sucesso!');
       
       res.json({ 
         success: true, 
-        message: '10 versões de teste criadas com sucesso',
+        message: '10 candidatos de teste criados com sucesso',
         createdCandidates 
       });
       
     } catch (error) {
-      console.error('❌ Erro ao criar dados de teste:', error);
+      console.error('❌ Erro:', error);
       res.status(500).json({ error: 'Erro interno do servidor' });
     }
   });

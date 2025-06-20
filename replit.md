@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 20, 2025: 📊 DADOS DE TESTE CRIADOS - 10 versões do Daniel Braga para relatório "Consultor GM 17"
+  - **Endpoint temporário**: /api/create-test-data criado para duplicar candidatos
+  - **10 candidatos gerados**: Daniel Braga 1, Daniel Braga 2... Daniel Braga 10
+  - **Scores aleatórios**: Cada candidato com pontuação diferente para variação
+  - **Respostas duplicadas**: Todas as respostas de áudio mantidas com estrutura original
+  - **Sistema categorização**: Botões funcionais para todos os novos candidatos
+
 - June 20, 2025: 🗑️ ROTA /RELATORIOS REMOVIDA - Limpeza de URL conforme solicitado sem quebrar sistema
   - **Rota removida**: /relatorios deletada do App.tsx sem afetar funcionalidade
   - **Dados preservados**: Todas as categorias e informações mantidas no Firebase
