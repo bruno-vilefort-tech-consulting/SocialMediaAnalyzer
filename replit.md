@@ -115,27 +115,6 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 20, 2025: 📱 WHATSAPP CONNECTION STATUS VISUALIZER IMPLEMENTADO - Painel completo de monitoramento em tempo real
-  - **WhatsAppStatusPage.tsx criado**: Interface completa para visualização do status WhatsApp
-  - **Monitoramento em tempo real**: Atualização automática a cada 5 segundos
-  - **Histórico de conexões**: Registro das últimas atividades de conexão/desconexão
-  - **Estatísticas visuais**: Cards com métricas de conexões ativas, conexões do dia e desconexões
-  - **QR Code dinâmico**: Exibição automática quando WhatsApp não está conectado
-  - **Botão de reconexão**: Funcionalidade para tentar reconectar automaticamente
-  - **Formatação de telefone**: Números brasileiros formatados (+55 (11) 99999-9999)
-  - **Navegação integrada**: Nova opção "Status WhatsApp" no sidebar com ícone smartphone
-  - **Autorização expandida**: Masters também podem acessar status WhatsApp
-  - **Interface responsiva**: Layout otimizado para desktop e mobile
-
-- June 19, 2025: 🎉 BACKUP COMPLETO CRIADO - 48MB com sistema 100% funcional e documentação técnica completa
-  - **Arquivo principal**: SISTEMA_ENTREVISTAS_IA_BACKUP_COMPLETO.tar.gz (48MB)
-  - **Documentação técnica**: 6 arquivos MD com guias completos de instalação, banco de dados e estrutura
-  - **Sistema validado**: Todas as funcionalidades testadas e operacionais
-  - **Relatórios independentes**: Nova arquitetura de histórico preservado funcionando
-  - **Nova nomenclatura áudios**: audio_[whatsapp]_[selectionId]_R[numero].ogg implementada
-  - **WhatsApp + OpenAI**: Integração completa validada em produção
-  - **Usuário satisfeito**: "bra sistema" confirmando qualidade final
-
 - June 19, 2025: 🎉 SISTEMA COMPLETO VALIDADO - Nova arquitetura + Whisper funcionando perfeitamente
   - **Teste final**: Consultor GM 6 (ID: 1750316326534) - Entrevista completa realizada
   - **Transcrições reais confirmadas**: "Estão vendendo, eles não dão resposta correta 100% do tempo..." e "crédito que já é subsidiado 200 dólares por mês..."

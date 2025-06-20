@@ -51,9 +51,6 @@ export class ClientWhatsAppService {
     try {
       console.log(`🔗 Iniciando conexão WhatsApp para cliente ${clientId}...`);
       
-      // Primeiro, forçar desconexão completa
-      await this.disconnectClient(clientId);
-      
       if (!this.baileys) {
         await this.initializeBaileys();
       }
@@ -98,35 +95,21 @@ export class ClientWhatsAppService {
             console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
             console.log(`📱 IMPORTANTE: Escaneie o QR Code para conectar seu WhatsApp ao sistema`);
             
-            try {
-              // Converter QR Code para Data URL usando qrcode
-              const qrcode = await import('qrcode');
-              const qrCodeDataUrl = await qrcode.toDataURL(qr);
-              console.log(`✅ QR Code convertido para Data URL (${qrCodeDataUrl.length} chars)`);
-              
-              // Atualizar configuração do cliente com QR Code convertido
-              await this.updateClientConfig(clientId, {
-                qrCode: qrCodeDataUrl,
-                isConnected: false,
-                phoneNumber: null,
-                lastConnection: new Date(),
-                clientId
-              });
+            // Atualizar configuração do cliente
+            await this.updateClientConfig(clientId, {
+              qrCode: qr,
+              isConnected: false,
+              phoneNumber: null,
+              lastConnection: new Date(),
+              clientId
+            });
 
-              resolved = true;
-              resolve({
-                success: true,
-                qrCode: qrCodeDataUrl,
-                message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
-              });
-            } catch (qrError) {
-              console.error(`❌ Erro ao converter QR Code:`, qrError);
-              resolved = true;
-              resolve({
-                success: false,
-                message: 'Erro ao gerar QR Code visual'
-              });
-            }
+            resolved = true;
+            resolve({
+              success: true,
+              qrCode: qr,
+              message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
+            });
           }
 
           if (connection === 'open') {

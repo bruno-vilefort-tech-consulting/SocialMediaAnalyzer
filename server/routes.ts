@@ -2202,30 +2202,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Sistema novo isolado por cliente
-  app.get("/api/client/whatsapp/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+  // Client WhatsApp endpoints - Sistema original que funcionava
+  app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       if (!user?.clientId) {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📊 Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`📊 [BAILEYS] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappClientService } = await import('./whatsappClientService');
-      const status = await whatsappClientService.getStatus(user.clientId.toString());
+      // Primeiro buscar no banco de dados (fonte autoritativa)
+      const dbConfig = await storage.getApiConfig('client', user.clientId.toString());
       
-      console.log(`📱 Status WhatsApp:`, {
-        isConnected: status.isConnected,
-        phoneNumber: status.phoneNumber,
-        hasQrCode: !!status.qrCode
+      // Depois buscar no serviço em memória
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const memoryStatus = whatsappBaileyService.getStatus(user.clientId.toString());
+      
+      // Combinar dados: QR Code do banco (mais confiável) + status de conexão da memória
+      // Se memória mostra desconectado mas banco mostra conectado, tentar restaurar
+      const shouldRestore = !memoryStatus.isConnected && dbConfig?.whatsappQrConnected && dbConfig?.whatsappQrPhoneNumber;
+      
+      if (shouldRestore) {
+        console.log(`🔄 Tentando restaurar conexão para cliente ${user.clientId}...`);
+        try {
+          await whatsappBaileyService.connect(user.clientId.toString());
+          // Atualizar status após tentativa de restauração
+          const restoredStatus = whatsappBaileyService.getStatus(user.clientId.toString());
+          memoryStatus.isConnected = restoredStatus.isConnected;
+          memoryStatus.phoneNumber = restoredStatus.phoneNumber;
+        } catch (error) {
+          console.log(`❌ Erro ao restaurar conexão:`, error.message);
+        }
+      }
+      
+      const finalStatus = {
+        isConnected: memoryStatus.isConnected || dbConfig?.whatsappQrConnected || false,
+        qrCode: dbConfig?.whatsappQrCode || memoryStatus.qrCode || null,
+        phoneNumber: dbConfig?.whatsappQrPhoneNumber || memoryStatus.phoneNumber || null,
+        lastConnection: dbConfig?.whatsappQrLastConnection || null
+      };
+      
+      console.log(`📱 [BAILEYS] Status final:`, {
+        isConnected: finalStatus.isConnected,
+        hasQrCode: !!finalStatus.qrCode,
+        qrCodeLength: finalStatus.qrCode?.length || 0,
+        phoneNumber: finalStatus.phoneNumber,
+        source: 'DB + Memory'
       });
       
       res.json({
-        isConnected: status.isConnected,
-        phone: status.phoneNumber,
-        qrCode: status.qrCode,
-        lastConnection: status.lastConnection
+        isConnected: finalStatus.isConnected,
+        phone: finalStatus.phoneNumber,
+        qrCode: finalStatus.qrCode,
+        lastConnection: finalStatus.lastConnection
       });
     } catch (error) {
       console.error('❌ Erro ao buscar status WhatsApp:', error);
@@ -2233,35 +2263,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+  app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
+      console.log(`🔗 [DEBUG] Usuário autenticado:`, {
+        hasUser: !!user,
+        clientId: user?.clientId,
+        role: user?.role,
+        email: user?.email
+      });
+      
       if (!user?.clientId) {
+        console.log('❌ [DEBUG] Client ID não encontrado');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 Conectando WhatsApp...`);
+      console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
       const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      await whatsappBaileyService.connect(user.clientId.toString());
       
-      // Inicializar se ainda não foi inicializado
-      if (!whatsappBaileyService.isInitialized) {
-        await whatsappBaileyService.initWhatsApp();
+      const status = whatsappBaileyService.getStatus(user.clientId.toString());
+      const result = { success: true, qrCode: status.qrCode };
+      
+      console.log(`🔗 [DEBUG] Resultado da conexão:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0,
+        message: result.message
+      });
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.qrCode ? 'QR Code gerado - escaneie com seu WhatsApp' : 'Conectado com sucesso',
+          qrCode: result.qrCode
+        });
+      } else {
+        console.log(`❌ [DEBUG] Falha na conexão WhatsApp:`, result.message);
+        res.status(500).json({
+          success: false,
+          message: result.message || 'Erro ao conectar WhatsApp'
+        });
       }
-      
-      const status = whatsappBaileyService.getStatus();
-      
-      console.log(`🔗 Status da conexão:`, {
-        isConnected: status.isConnected,
-        hasQrCode: !!status.qrCode,
-        qrCodeLength: status.qrCode?.length || 0
-      });
-      
-      res.json({
-        success: true,
-        message: status.isConnected ? 'WhatsApp já conectado' : 'QR Code gerado - escaneie com seu WhatsApp',
-        qrCode: status.qrCode
-      });
     } catch (error) {
       console.error('❌ Erro ao conectar WhatsApp:', error);
       res.status(500).json({
@@ -2271,7 +2315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+  app.post("/api/client/whatsapp/disconnect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       if (!user?.clientId) {
@@ -2304,7 +2348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/client/whatsapp/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       if (!user?.clientId) {
@@ -2322,32 +2366,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { whatsappClientService } = await import('./whatsappClientService');
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const success = await whatsappBaileyService.sendMessage(user.clientId.toString(), phoneNumber, message);
+      const result = { success };
       
-      const status = await whatsappClientService.getStatus(user.clientId.toString());
-      if (!status.isConnected) {
-        return res.status(400).json({ 
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Mensagem enviada com sucesso' 
+        });
+      } else {
+        res.status(500).json({ 
           success: false, 
-          message: 'WhatsApp não está conectado para este cliente' 
+          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
         });
       }
-
-      const result = await whatsappClientService.sendMessage(
-        user.clientId.toString(), 
-        phoneNumber, 
-        message
-      );
-      
-      res.json({ 
-        success: true, 
-        message: 'Mensagem enviada com sucesso',
-        messageId: result.messageId
-      });
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
       res.status(500).json({ 
         success: false, 
-        message: error.message || 'Erro interno ao enviar mensagem' 
+        message: 'Erro interno ao enviar mensagem' 
       });
     }
   });
