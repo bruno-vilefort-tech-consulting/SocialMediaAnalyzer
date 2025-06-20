@@ -115,6 +115,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 20, 2025: ✅ BOTÃO DE EXCLUSÃO CORRIGIDO - Problema de JSON parsing resolvido sem quebrar sistema
+  - **Root cause identificado**: Backend retorna 204 (sem conteúdo) mas frontend tentava fazer .json()
+  - **Solução implementada**: Detecta status 204 e retorna {success: true} sem processar JSON
+  - **Sistema preservado**: Todos os outros módulos e funcionalidades mantidos intactos
+  - **Teste validado**: Exclusão de seleções funcionando com toast de sucesso
+
 - June 20, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE RESTAURADO - Sistema de disparo corrigido sem quebrar nada
   - **WhatsAppManager implementado**: Sistema robusto baseado na documentação de backup anexada
   - **Disparo corrigido**: POST /api/selections agora usa WhatsApp Manager em vez do sistema antigo

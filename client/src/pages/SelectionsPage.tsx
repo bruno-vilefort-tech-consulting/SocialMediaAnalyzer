@@ -167,7 +167,11 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       console.log('🗑️ [MUTATION] Iniciando exclusão da seleção:', selectionId);
       const response = await apiRequest(`/api/selections/${selectionId}`, 'DELETE');
       console.log('🗑️ [MUTATION] Resposta da exclusão:', response.status);
-      return response;
+      // DELETE retorna 204 (sem conteúdo), não tenta fazer .json()
+      if (response.status === 204) {
+        return { success: true };
+      }
+      throw new Error(`Erro HTTP ${response.status}`);
     },
     onSuccess: (data, selectionId) => {
       console.log('🗑️ [MUTATION] Exclusão bem-sucedida para seleção:', selectionId);
