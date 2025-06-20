@@ -184,6 +184,28 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
+- June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
+  - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
+  - **Arquitetura detalhada**: Stack tecnológico, integrações, banco de dados e APIs documentados
+  - **Fluxos de usuário**: Mapeamento completo para Master, Cliente e Candidato
+  - **Especificações técnicas**: Schemas, endpoints, nomenclaturas e configurações
+  - **Casos de uso avançados**: Cenários reais de uso e implementação
+  - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
+  - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
+
+- June 20, 2025: ✅ BOTÃO HISTÓRICO REMOVIDO - Interface limpa conforme solicitação
+  - **Sidebar.tsx atualizado**: Botão "Histórico" removido dos menus master e cliente
+  - **App.tsx limpo**: Rota /historico-relatorios excluída do sistema
+  - **Import desnecessário removido**: ReportsHistoryPage não mais referenciado
+  - **Interface simplificada**: Menu lateral focado apenas em funcionalidades ativas
+
+- June 20, 2025: 📱 CADÊNCIA WHATSAPP DOCUMENTADA - Mapeamento completo do fluxo de mensagens
+  - **CADENCIA_WHATSAPP_COMPLETA.md**: Documentação técnica de todo o fluxo WhatsApp
+  - **Arquivos identificados**: interactiveInterviewService.ts, prompts.ts, SelectionModal.tsx
+  - **Mensagens mapeadas**: Convite, comandos 1/2, perguntas, validações e finalização
+  - **Nomenclatura de áudios**: audio_[telefone]_[selectionId]_R[numero].ogg confirmada
+  - **Templates configuráveis**: Placeholders e personalização por cliente documentados
+
 - June 19, 2025: 🧹 LIMPEZA COMPLETA DE ARQUIVOS TEMPORÁRIOS - Sistema organizado e otimizado conforme solicitado
   - **Scripts de debug removidos**: Deletados 100+ arquivos temporários de correções, testes e debug
   - **Backups antigos removidos**: Arquivos .tar.gz, .zip e documentos de backup desnecessários eliminados
