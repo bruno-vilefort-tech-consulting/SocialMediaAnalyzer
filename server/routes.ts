@@ -2875,13 +2875,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Evolution API: Redirecionando para sistema Baileys para cliente ${user.clientId}`);
       
-      // Usar o sistema Baileys existente que já funciona
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
-      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
-      
-      console.log(`📱 Resultado Baileys connect:`, result);
-      
-      res.json(result);
+      try {
+        // Usar o sistema Baileys existente que já funciona
+        const { clientWhatsAppService } = await import('./clientWhatsAppService');
+        console.log(`📱 clientWhatsAppService importado com sucesso`);
+        
+        const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+        console.log(`📱 Resultado Baileys connect:`, result);
+        
+        res.json(result);
+      } catch (connectError) {
+        console.error(`❌ Erro específico ao conectar via Baileys:`, connectError);
+        res.status(500).json({ 
+          success: false, 
+          message: `Erro específico: ${connectError.message}` 
+        });
+      }
     } catch (error) {
       console.error('❌ Erro Evolution API connect:', error);
       res.status(500).json({ 
