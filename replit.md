@@ -209,6 +209,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Fluxo restaurado**: Mensagem inicial → resposta "1" → início automático da entrevista
   - **Sistema funcional**: Cadência WhatsApp 1=sim/2=não voltou a funcionar corretamente
 
+- June 20, 2025: ✅ ABA CANDIDATOS IMPLEMENTADA - Sistema de status de respostas funcionando completamente
+  - **Candidatos com convites**: Mostra todos que receberam convites independente de resposta
+  - **Layout horizontal**: Cards em lista com informações organizadas lado a lado
+  - **Status visual**: Ícones verde/amarelo/vermelho indicando progresso das respostas
+  - **Contador de respostas**: "X/Y respostas" mostra progresso individual de cada candidato
+  - **Cores de fundo**: Cards com bordas coloridas baseadas no status de conclusão
+  - **Dados reais**: Busca via endpoint interview-candidates sem alterações no banco
+
 - June 20, 2025: ✅ LAYOUT DE RELATÓRIOS ATUALIZADO - Design horizontal com ordenação cronológica implementado
   - **Layout horizontal**: Cards de seleções organizados em lista vertical com design limpo
   - **Ordenação cronológica**: Seleções mais novas no topo, mais antigas embaixo

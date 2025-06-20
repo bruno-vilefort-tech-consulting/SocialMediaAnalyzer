@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, ArrowLeft, Users, BarChart3, Star } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Selection {
   id: number;
@@ -17,11 +18,32 @@ interface Selection {
   clientId: number;
 }
 
-interface Candidate {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
+interface InterviewCandidate {
+  candidate: {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+  };
+  interview: {
+    id: string;
+    status: string;
+    createdAt: any;
+    completedAt?: any;
+    totalScore: number;
+  };
+  responses: InterviewResponse[];
+}
+
+interface InterviewResponse {
+  id: string;
+  questionId: number;
+  questionText: string;
+  transcription: string;
+  audioUrl?: string;
+  score?: number;
+  recordingDuration?: number;
+  aiAnalysis?: any;
 }
 
 export default function NewReportsPage() {
@@ -49,10 +71,28 @@ export default function NewReportsPage() {
     return dateB.getTime() - dateA.getTime(); // Mais nova primeiro
   });
 
-  // Buscar candidatos da seleção (para aba Candidatos)
-  const { data: candidates = [], isLoading: loadingCandidates } = useQuery({
-    queryKey: ['/api/lists', selectedSelection?.candidateListId, 'candidates'],
-    enabled: !!selectedSelection?.candidateListId
+  // Buscar candidatos da seleção com status de entrevista
+  const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
+    queryKey: ['selection-interview-candidates', selectedSelection?.id],
+    queryFn: async () => {
+      if (!selectedSelection) return [];
+      
+      try {
+        const res = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`, 'GET');
+        const response = await res.json();
+        
+        // Garantir que sempre retornamos um array
+        if (Array.isArray(response)) {
+          return response;
+        } else {
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching interview candidates:', error);
+        return [];
+      }
+    },
+    enabled: !!selectedSelection
   });
 
   // Definir cliente padrão para usuários cliente
@@ -63,8 +103,8 @@ export default function NewReportsPage() {
   }, [user]);
 
   // Ordenar candidatos alfabeticamente
-  const sortedCandidates = [...(candidates || [])].sort((a, b) => 
-    a.name.localeCompare(b.name)
+  const sortedCandidates = [...(interviewCandidates || [])].sort((a, b) => 
+    a.candidate.name.localeCompare(b.candidate.name)
   );
 
   // Se nenhuma seleção foi escolhida, mostrar lista de seleções
@@ -205,18 +245,79 @@ export default function NewReportsPage() {
                   <p className="text-muted-foreground">Esta seleção não possui candidatos.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {sortedCandidates.map((candidate: Candidate) => (
-                    <Card key={candidate.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="space-y-2">
-                          <h4 className="font-medium">{candidate.name}</h4>
-                          <p className="text-sm text-muted-foreground truncate">{candidate.email}</p>
-                          <p className="text-sm text-muted-foreground">{candidate.phone}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-3">
+                  {sortedCandidates.map((item: InterviewCandidate) => {
+                    const candidate = item.candidate;
+                    const interview = item.interview;
+                    const responses = item.responses;
+                    
+                    // Verificar quantas perguntas foram respondidas
+                    const answeredQuestions = responses.filter(r => 
+                      r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
+                    ).length;
+                    const totalQuestions = responses.length;
+                    
+                    // Status visual baseado nas respostas
+                    const getStatusIcon = () => {
+                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
+                        return <CheckCircle className="h-5 w-5 text-green-500" />;
+                      } else if (answeredQuestions > 0) {
+                        return <Clock className="h-5 w-5 text-yellow-500" />;
+                      } else {
+                        return <XCircle className="h-5 w-5 text-red-500" />;
+                      }
+                    };
+                    
+                    const getStatusText = () => {
+                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
+                        return 'Completo';
+                      } else if (answeredQuestions > 0) {
+                        return 'Parcial';
+                      } else {
+                        return 'Pendente';
+                      }
+                    };
+                    
+                    const getStatusColor = () => {
+                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
+                        return 'bg-green-50 border-green-200';
+                      } else if (answeredQuestions > 0) {
+                        return 'bg-yellow-50 border-yellow-200';
+                      } else {
+                        return 'bg-red-50 border-red-200';
+                      }
+                    };
+                    
+                    return (
+                      <Card key={candidate.id} className={`hover:shadow-md transition-shadow ${getStatusColor()}`}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <h4 className="font-medium">{candidate.name}</h4>
+                                  <p className="text-sm text-muted-foreground">{candidate.email}</p>
+                                  <p className="text-sm text-muted-foreground">{candidate.phone}</p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4">
+                              <div className="text-center">
+                                <div className="flex items-center gap-1 mb-1">
+                                  {getStatusIcon()}
+                                  <span className="text-sm font-medium">{getStatusText()}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {answeredQuestions}/{totalQuestions} respostas
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
