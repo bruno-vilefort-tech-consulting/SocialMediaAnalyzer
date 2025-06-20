@@ -184,13 +184,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 SISTEMA QR CODE OTIMIZADO - Configurações aprimoradas para conexão mobile
-  - **QR Code melhorado**: Timeout estendido para 2 minutos, qualidade otimizada para escaneamento
-  - **Browser string atualizada**: Mudança para "WhatsApp Web" para melhor compatibilidade
-  - **getMessage handler**: Implementado para evitar erros de protocolo Baileys
-  - **Logs aprimorados**: Feedback detalhado do processo de conexão e QR Code
-  - **Reconexão inteligente**: Sistema diferencia logout manual de falhas de rede
-  - **Interface funcionando**: QR Code aparece corretamente na página de configurações
+- June 20, 2025: 📱 QR CODE SISTEMA CORRIGIDO - Limpeza de credenciais e regeneração automática
+  - **Credenciais antigas limpas**: Sistema remove sessões com erro 401 automaticamente
+  - **Browser otimizado**: Mudança para "Ubuntu Chrome" para melhor compatibilidade Replit
+  - **Regeneração automática**: QR Code é gerado novamente após limpar credenciais antigas
+  - **Timeout estendido**: 2 minutos para escaneamento, qualidade PNG otimizada
+  - **clearClientSession**: Método específico para limpar sessões individuais por cliente
+  - **Logs informativos**: Sistema indica quando está limpando e regenerando QR Code
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas

@@ -75,21 +75,21 @@ export class ClientWhatsAppService {
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        browser: ['WhatsApp Business', 'Chrome', '118.0.0.0'],
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 45000,
-        connectTimeoutMs: 45000,
+        defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        qrTimeout: 90000,
-        retryRequestDelayMs: 500,
-        maxMsgRetryCount: 7,
+        qrTimeout: 120000, // 2 minutos
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 3,
         syncFullHistory: false,
-        fireInitQueries: true,
+        fireInitQueries: false,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false,
         getMessage: async (key: any) => {
-          return { conversation: 'Hi' };
+          return { conversation: 'Hello' };
         }
       });
 
@@ -102,21 +102,22 @@ export class ClientWhatsAppService {
           console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr });
 
           if (qr && !resolved) {
-            console.log(`📱 QR Code gerado para cliente ${clientId}`);
-            console.log(`🕐 QR Code válido por 90 segundos - tempo estendido`);
-            console.log(`📱 Dica: Abra WhatsApp > Menu (3 pontos) > Dispositivos conectados > Conectar dispositivo`);
-            console.log(`📱 IMPORTANTE: Escaneie o QR Code para conectar seu WhatsApp ao sistema`);
+            console.log(`📱 NOVO QR CODE GERADO para cliente ${clientId}!`);
+            console.log(`⏰ QR Code válido por 2 minutos - escaneie rapidamente!`);
             
             try {
-              // Converter QR Code string para DataURL
+              // Converter QR Code string para DataURL com configurações otimizadas
               const QRCode = await import('qrcode');
               const qrCodeDataUrl = await QRCode.toDataURL(qr, { 
-                width: 400, 
-                margin: 2,
+                errorCorrectionLevel: 'M',
+                type: 'image/png',
+                quality: 0.92,
+                margin: 1,
                 color: {
-                  dark: '#000000',
-                  light: '#FFFFFF'
-                }
+                  dark: '#000000FF',
+                  light: '#FFFFFFFF'
+                },
+                width: 400
               });
               console.log(`🖼️ QR Code convertido para DataURL, length: ${qrCodeDataUrl.length}`);
               
