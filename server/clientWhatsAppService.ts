@@ -51,6 +51,9 @@ export class ClientWhatsAppService {
     try {
       console.log(`🔗 Iniciando conexão WhatsApp para cliente ${clientId}...`);
       
+      // Primeiro, forçar desconexão completa
+      await this.disconnectClient(clientId);
+      
       if (!this.baileys) {
         await this.initializeBaileys();
       }
