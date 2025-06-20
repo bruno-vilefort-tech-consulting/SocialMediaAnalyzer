@@ -1878,22 +1878,23 @@ export default function CandidatesPage() {
                       {filteredExistingCandidates.map((candidate) => (
                         <div
                           key={candidate.id}
-                          className="flex items-center p-3 border-b last:border-b-0 hover:bg-muted/30 cursor-pointer"
-                          onClick={() => handleToggleExistingCandidate(candidate.id)}
+                          className="flex items-center p-3 border-b last:border-b-0 hover:bg-muted/30"
                         >
-                          <input
-                            type="checkbox"
-                            checked={selectedExistingCandidates.includes(candidate.id)}
-                            onChange={() => handleToggleExistingCandidate(candidate.id)}
-                            className="rounded mr-3"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-4">
-                              <span className="font-medium text-sm">{candidate.name}</span>
-                              <span className="text-sm text-muted-foreground">{candidate.email}</span>
-                              <span className="text-sm text-muted-foreground">{candidate.whatsapp}</span>
+                          <label className="flex items-center cursor-pointer w-full">
+                            <input
+                              type="checkbox"
+                              checked={selectedExistingCandidates.includes(candidate.id)}
+                              onChange={() => handleToggleExistingCandidate(candidate.id)}
+                              className="rounded mr-3"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-4">
+                                <span className="font-medium text-sm">{candidate.name}</span>
+                                <span className="text-sm text-muted-foreground">{candidate.email}</span>
+                                <span className="text-sm text-muted-foreground">{candidate.whatsapp}</span>
+                              </div>
                             </div>
-                          </div>
+                          </label>
                         </div>
                       ))}
                     </div>
