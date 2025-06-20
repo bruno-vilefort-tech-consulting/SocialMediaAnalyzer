@@ -120,8 +120,8 @@ export default function ApiConfigPage() {
     enabled: !isMaster && !!user?.clientId,
   });
 
-  // Status WhatsApp QR - Usa endpoint específico baseado no tipo de usuário
-  const whatsappEndpoint = isMaster ? "/api/whatsapp-qr/status" : "/api/client/whatsapp/status";
+  // Status WhatsApp Evolution API - Novo sistema para clientes
+  const whatsappEndpoint = isMaster ? "/api/whatsapp-qr/status" : "/api/evolution/status";
   const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [whatsappEndpoint],
     refetchInterval: 15000,
@@ -172,10 +172,10 @@ export default function ApiConfigPage() {
     }
   }, [apiConfig, voiceSetting, isMaster]);
 
-  // Estados para teste WhatsApp
-  const [testPhone, setTestPhone] = useState("");
-  const [testMessage, setTestMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
-  
+  // Estados para WhatsApp Evolution API
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappMessage, setWhatsappMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
 
 
   // Carrega dados existentes
@@ -285,12 +285,7 @@ export default function ApiConfigPage() {
     },
   });
 
-  // Estados para novo painel WhatsApp com clientId
-  const [whatsappPhone, setWhatsappPhone] = useState("");
-  const [whatsappMessage, setWhatsappMessage] = useState("Olá! Esta é uma mensagem de teste do sistema de entrevistas.");
-  
-  // Phone login states
-  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
+  // Phone login states (únicos)
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
   const [verifyCodeInput, setVerifyCodeInput] = useState('');
@@ -559,7 +554,7 @@ export default function ApiConfigPage() {
                 </div>
                 <Button
                   onClick={() => {
-                    fetch('/api/client/whatsapp/disconnect', {
+                    fetch('/api/evolution/disconnect', {
                       method: 'POST',
                       headers: {
                         'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
