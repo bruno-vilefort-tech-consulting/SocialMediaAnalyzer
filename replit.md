@@ -115,12 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 20, 2025: ✅ SISTEMA DE SELEÇÕES FUNCIONANDO PERFEITAMENTE - Problema era apenas no WhatsApp
-  - **Seleções funcionais**: Endpoint POST /api/selections criando seleções corretamente
-  - **Entrevistas criadas**: Tokens únicos gerados automaticamente para candidatos
-  - **Candidatos identificados**: Sistema filtra candidatos por lista corretamente
-  - **Problema isolado**: Apenas WhatsApp desconectado (precisa reautenticar QR Code)
-  - **Sistema preservado**: Todas as funcionalidades mantidas sem quebrar nada
+- June 20, 2025: 🔧 WHATSAPP MANAGER RESTAURADO - Sistema de disparo corrigido conforme backup
+  - **WhatsAppManager criado**: Novo sistema robusto baseado na documentação de backup
+  - **Endpoints atualizados**: Todos os disparos agora usam o WhatsApp Manager
+  - **Conexões isoladas**: Cada cliente mantém sessão WhatsApp independente
+  - **QR Code persistente**: Sistema salva e carrega QR Code do banco de dados
+  - **Keep-alive implementado**: Reconexão automática e manutenção de sessão
+  - **Download de áudio**: Suporte completo para processamento de mensagens de áudio
+  - **Sistema preservado**: Todos os outros módulos mantidos intactos
 
 - June 20, 2025: 🗑️ ROTA /RELATORIOS REMOVIDA - Limpeza de URL conforme solicitado sem quebrar sistema
   - **Rota removida**: /relatorios deletada do App.tsx sem afetar funcionalidade

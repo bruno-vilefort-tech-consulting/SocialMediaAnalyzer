@@ -1,357 +1,270 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, proto } from '@whiskeysockets/baileys';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
-import { firebaseDb } from './db';
-import { WhatsAppConnection } from '@shared/schema';
-import * as path from 'path';
-import * as fs from 'fs';
-import QRCode from 'qrcode';
+import { storage } from './storage';
 
-interface ActiveConnection {
-  socket: any;
-  clientId: string;
-  clientName: string;
-  phoneNumber?: string;
-  isConnected: boolean;
-  qrCode?: string;
-  connectionId: string;
-  authDir: string;
+// Usar import dinâmico para baileys e qrcode
+let makeWASocket: any;
+let useMultiFileAuthState: any;
+let DisconnectReason: any;
+let QRCode: any;
+
+async function initializeDependencies() {
+  if (!makeWASocket) {
+    console.log('📦 Carregando dependências Baileys...');
+    const baileys = await import('@whiskeysockets/baileys');
+    makeWASocket = baileys.default || baileys.makeWASocket;
+    useMultiFileAuthState = baileys.useMultiFileAuthState;
+    DisconnectReason = baileys.DisconnectReason;
+    const qrCodeModule = await import('qrcode');
+    QRCode = qrCodeModule.default || qrCodeModule;
+    console.log('📦 Dependências carregadas com sucesso');
+  }
 }
 
-export class WhatsAppManager {
-  private activeConnections: Map<string, ActiveConnection> = new Map();
-  private qrListeners: Map<string, ((qr: string | null) => void)[]> = new Map();
-  private connectionListeners: Map<string, ((isConnected: boolean) => void)[]> = new Map();
+interface WhatsAppConnection {
+  socket: any;
+  qrCode: string | null;
+  isConnected: boolean;
+  phoneNumber: string | null;
+  clientId: string;
+  lastActivity: Date;
+}
 
-  constructor() {
-    // Initialize manager without auto-loading connections to prevent startup loops
-    console.log('🚀 WhatsApp Manager criado - inicialização sob demanda');
-    
-    // Garantir que o diretório de sessões existe
-    const sessionsDir = path.join(process.cwd(), 'whatsapp-sessions');
-    if (!fs.existsSync(sessionsDir)) {
-      fs.mkdirSync(sessionsDir, { recursive: true });
-    }
+class WhatsAppManager {
+  private connections: Map<string, WhatsAppConnection> = new Map();
+  private initialized = false;
+
+  async initialize() {
+    if (this.initialized) return;
+    await initializeDependencies();
+    this.initialized = true;
+    console.log('✅ WhatsApp Manager inicializado');
   }
 
-  private async initializeManager() {
-    console.log('🚀 Inicializando WhatsApp Manager com Firebase');
-    
-    // Carregar conexões ativas do Firebase apenas quando necessário
-    await this.loadActiveConnections();
-  }
-
-  private async loadActiveConnections() {
+  async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
-      const connectionsRef = collection(firebaseDb, 'whatsappConnections');
-      const snapshot = await getDocs(connectionsRef);
+      await this.initialize();
       
-      console.log(`📱 Carregando ${snapshot.size} conexões do Firebase`);
+      console.log(`🔗 Conectando cliente ${clientId}`);
       
-      for (const docSnap of snapshot.docs) {
-        const connection = docSnap.data() as WhatsAppConnection;
-        if (connection.status === 'connected') {
-          console.log(`🔄 Tentando restaurar conexão: ${connection.clientName}`);
-          await this.restoreConnection(connection);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar conexões:', error);
-    }
-  }
-
-  private async restoreConnection(connection: WhatsAppConnection) {
-    try {
-      const authDir = path.join(process.cwd(), 'whatsapp-sessions', `client_${connection.clientId}`);
-      
-      if (!fs.existsSync(authDir)) {
-        console.log(`⚠️ Diretório de autenticação não encontrado para ${connection.clientName}`);
-        await this.updateConnectionStatus(connection.id, 'disconnected');
-        return;
+      // Verificar conexão existente
+      const existing = this.connections.get(clientId);
+      if (existing && existing.isConnected) {
+        return {
+          success: true,
+          message: `Cliente ${clientId} já conectado`
+        };
       }
 
+      // Criar nova conexão
+      const authDir = `whatsapp-sessions/client_${clientId}`;
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
+      
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['WhatsApp Manager', 'Chrome', '1.0.0'],
+        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        syncFullHistory: false,
+        markOnlineOnConnect: true
       });
 
-      const activeConnection: ActiveConnection = {
+      const connection: WhatsAppConnection = {
         socket,
-        clientId: connection.clientId,
-        clientName: connection.clientName,
-        phoneNumber: connection.phoneNumber || undefined,
-        isConnected: true,
-        connectionId: connection.id,
-        authDir
-      };
-
-      this.activeConnections.set(connection.id, activeConnection);
-      this.setupSocketEvents(connection.id, socket, saveCreds);
-
-      console.log(`✅ Conexão restaurada para ${connection.clientName}`);
-    } catch (error) {
-      console.error(`❌ Erro ao restaurar conexão ${connection.clientName}:`, error);
-      await this.updateConnectionStatus(connection.id, 'disconnected');
-    }
-  }
-
-  async createConnection(clientId: string, clientName: string): Promise<string> {
-    const connectionId = `client_${clientId}_${Date.now()}`;
-    
-    console.log(`📱 Criando nova conexão WhatsApp para ${clientName} (ID: ${connectionId})`);
-
-    try {
-      // Criar diretório de autenticação específico para o cliente
-      const authDir = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
-      if (!fs.existsSync(authDir)) {
-        fs.mkdirSync(authDir, { recursive: true });
-      }
-
-      // Salvar conexão no Firebase
-      const connectionData: any = {
-        id: connectionId,
-        clientId,
-        clientName,
-        status: 'connecting',
-        createdAt: new Date(),
+        qrCode: null,
         isConnected: false,
         phoneNumber: null,
-        qrCode: null
+        clientId,
+        lastActivity: new Date()
       };
 
-      await setDoc(doc(firebaseDb, 'whatsappConnections', connectionId), connectionData);
+      this.connections.set(clientId, connection);
 
-      // Inicializar socket WhatsApp
-      const { state, saveCreds } = await useMultiFileAuthState(authDir);
-      const socket = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        browser: ['WhatsApp Manager', 'Chrome', '1.0.0'],
+      // Event handlers
+      socket.ev.on('connection.update', async (update: any) => {
+        const { connection: connState, lastDisconnect, qr } = update;
+        
+        if (qr) {
+          try {
+            const qrCodeDataURL = await QRCode.toDataURL(qr);
+            connection.qrCode = qrCodeDataURL;
+            await this.saveConnectionToDB(clientId);
+            console.log(`📱 QR Code gerado para cliente ${clientId}`);
+          } catch (error) {
+            console.error('❌ Erro ao gerar QR Code:', error);
+          }
+        }
+
+        if (connState === 'open') {
+          connection.isConnected = true;
+          connection.phoneNumber = socket.user?.id?.split(':')[0] || null;
+          connection.qrCode = null;
+          await this.saveConnectionToDB(clientId);
+          console.log(`✅ Cliente ${clientId} conectado: ${connection.phoneNumber}`);
+        }
+
+        if (connState === 'close') {
+          connection.isConnected = false;
+          const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
+          
+          if (shouldReconnect) {
+            console.log(`🔄 Reconectando cliente ${clientId}...`);
+            setTimeout(() => this.connectClient(clientId), 3000);
+          } else {
+            console.log(`❌ Cliente ${clientId} desconectado (401 - QR expirado)`);
+            connection.qrCode = null;
+            await this.saveConnectionToDB(clientId);
+          }
+        }
       });
 
-      const activeConnection: ActiveConnection = {
-        socket,
-        clientId,
-        clientName,
-        phoneNumber: undefined,
-        isConnected: false,
-        connectionId,
-        authDir
-      };
+      socket.ev.on('creds.update', saveCreds);
 
-      this.activeConnections.set(connectionId, activeConnection);
-      this.setupSocketEvents(connectionId, socket, saveCreds);
+      // Message handler para entrevistas
+      socket.ev.on('messages.upsert', async ({ messages }: any) => {
+        const msg = messages[0];
+        if (!msg || msg.key.fromMe) return;
 
-      console.log(`📱 QR Code gerado para ${clientName}`);
-      return connectionId;
-    } catch (error) {
-      console.error(`❌ Erro ao criar conexão para ${clientName}:`, error);
-      throw new Error(`Falha ao criar conexão: ${error.message}`);
-    }
-  }
+        const from = msg.key.remoteJid?.replace('@s.whatsapp.net', '');
+        let messageText = msg.message?.conversation || 
+                         msg.message?.extendedTextMessage?.text || '';
 
-  private setupSocketEvents(connectionId: string, socket: any, saveCreds: () => Promise<void>) {
-    const connection = this.activeConnections.get(connectionId);
-    if (!connection) return;
+        // Processar áudio
+        let audioMessage = null;
+        if (msg.message?.audioMessage) {
+          audioMessage = msg.message.audioMessage;
+        } else if (msg.message?.viewOnceMessageV2?.message?.audioMessage) {
+          audioMessage = msg.message.viewOnceMessageV2.message.audioMessage;
+        }
 
-    socket.ev.on('connection.update', async (update: any) => {
-      const { connection: conn, lastDisconnect, qr } = update;
-
-      if (qr) {
-        console.log(`🔄 QR Code recebido para ${connection.clientName}`);
+        // Encaminhar para o serviço de entrevistas
         try {
-          const qrDataUrl = await QRCode.toDataURL(qr);
-          connection.qrCode = qrDataUrl;
-          
-          // Atualizar no Firebase
-          await updateDoc(doc(firebaseDb, 'whatsappConnections', connectionId), {
-            qrCode: qrDataUrl,
-            status: 'connecting'
-          });
-
-          // Notificar listeners
-          const listeners = this.qrListeners.get(connectionId) || [];
-          listeners.forEach(listener => listener(qrDataUrl));
+          const { interactiveInterviewService } = await import('./interactiveInterviewService');
+          await interactiveInterviewService.handleMessage(from, messageText, audioMessage, clientId);
         } catch (error) {
-          console.error('❌ Erro ao gerar QR Code:', error);
+          console.error('❌ Erro ao processar mensagem:', error);
         }
-      }
+      });
 
-      if (conn === 'close') {
-        const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log(`🔌 Conexão fechada para ${connection.clientName}. Reconectar: ${shouldReconnect}`);
-        
-        if (shouldReconnect) {
-          setTimeout(() => this.createConnection(connection.clientId, connection.clientName), 3000);
+      // Keep-alive
+      const keepAliveInterval = setInterval(() => {
+        if (connection.isConnected && socket.user) {
+          socket.sendPresenceUpdate('available').catch(() => {});
+          connection.lastActivity = new Date();
         } else {
-          await this.updateConnectionStatus(connectionId, 'disconnected');
-          this.activeConnections.delete(connectionId);
+          clearInterval(keepAliveInterval);
         }
-      } else if (conn === 'open') {
-        console.log(`✅ WhatsApp conectado para ${connection.clientName}`);
-        connection.isConnected = true;
-        connection.phoneNumber = socket.user?.id?.split(':')[0] || undefined;
-        
-        await this.updateConnectionStatus(connectionId, 'connected', connection.phoneNumber);
-        
-        // Notificar listeners
-        const listeners = this.connectionListeners.get(connectionId) || [];
-        listeners.forEach(listener => listener(true));
-      }
-    });
+      }, 25000);
 
-    socket.ev.on('creds.update', saveCreds);
-  }
-
-  private async updateConnectionStatus(connectionId: string, status: 'connecting' | 'connected' | 'disconnected', phoneNumber?: string) {
-    try {
-      const updateData: any = { 
-        status,
-        isConnected: status === 'connected',
-        lastConnection: new Date()
+      return {
+        success: true,
+        qrCode: connection.qrCode || undefined,
+        message: 'Conexão iniciada'
       };
 
-      if (phoneNumber) {
-        updateData.phoneNumber = phoneNumber;
-      }
-
-      if (status === 'disconnected') {
-        updateData.qrCode = null;
-      }
-
-      await updateDoc(doc(firebaseDb, 'whatsappConnections', connectionId), updateData);
-      
-      // Atualizar conexão ativa
-      const connection = this.activeConnections.get(connectionId);
-      if (connection) {
-        connection.isConnected = status === 'connected';
-        if (phoneNumber) connection.phoneNumber = phoneNumber;
-      }
     } catch (error) {
-      console.error('❌ Erro ao atualizar status da conexão:', error);
+      console.error(`❌ Erro ao conectar cliente ${clientId}:`, error);
+      return {
+        success: false,
+        message: `Erro: ${error instanceof Error ? error.message : String(error)}`
+      };
     }
   }
 
-  async disconnectClient(connectionId: string): Promise<void> {
-    console.log(`🔌 Desconectando cliente: ${connectionId}`);
-    
-    const connection = this.activeConnections.get(connectionId);
-    if (connection) {
-      try {
-        await connection.socket?.logout();
-        connection.socket?.end();
-      } catch (error) {
-        console.log('⚠️ Erro ao desconectar socket:', error);
-      }
-      
-      this.activeConnections.delete(connectionId);
-    }
-
-    await this.updateConnectionStatus(connectionId, 'disconnected');
-  }
-
-  async deleteConnection(connectionId: string): Promise<void> {
-    console.log(`🗑️ Deletando conexão: ${connectionId}`);
-    
-    // Desconectar primeiro
-    await this.disconnectClient(connectionId);
-    
-    // Remover do Firebase
-    await deleteDoc(doc(firebaseDb, 'whatsappConnections', connectionId));
-    
-    // Remover diretório de autenticação
-    const connection = this.activeConnections.get(connectionId);
-    if (connection && fs.existsSync(connection.authDir)) {
-      fs.rmSync(connection.authDir, { recursive: true, force: true });
-    }
-  }
-
-  private formatBrazilianPhoneNumber(phoneNumber: string): string {
-    // Remove todos os caracteres não numéricos
-    let cleanNumber = phoneNumber.replace(/\D/g, '');
-    
-    // Se já tem código do país, usa como está
-    if (cleanNumber.startsWith('55') && cleanNumber.length >= 12) {
-      return cleanNumber;
-    }
-    
-    // Se não tem código do país, adiciona +55
-    if (cleanNumber.length === 11 || cleanNumber.length === 10) {
-      return `55${cleanNumber}`;
-    }
-    
-    // Se já tem 55 mas não está completo, retorna como está
-    return cleanNumber;
-  }
-
-  async sendMessage(connectionId: string, phoneNumber: string, message: string): Promise<boolean> {
-    const connection = this.activeConnections.get(connectionId);
-    
-    if (!connection || !connection.isConnected) {
-      console.log(`❌ Conexão ${connectionId} não está ativa`);
-      return false;
-    }
-
+  async disconnectClient(clientId: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Formatar número brasileiro com código do país
-      const formattedPhoneNumber = this.formatBrazilianPhoneNumber(phoneNumber);
-      
-      const whatsappNumber = formattedPhoneNumber.includes('@s.whatsapp.net') 
-        ? formattedPhoneNumber 
-        : `${formattedPhoneNumber}@s.whatsapp.net`;
+      const connection = this.connections.get(clientId);
+      if (!connection) {
+        return { success: false, message: 'Cliente não encontrado' };
+      }
 
-      console.log(`📱 Enviando mensagem para: ${phoneNumber} → ${formattedPhoneNumber}`);
-      await connection.socket.sendMessage(whatsappNumber, { text: message });
-      console.log(`✅ Mensagem enviada via ${connection.clientName} para ${formattedPhoneNumber}`);
-      return true;
+      if (connection.socket) {
+        await connection.socket.logout();
+        connection.socket.end();
+      }
+
+      connection.isConnected = false;
+      connection.qrCode = null;
+      await this.saveConnectionToDB(clientId);
+      
+      this.connections.delete(clientId);
+      
+      return { success: true, message: 'Cliente desconectado' };
     } catch (error) {
-      console.error(`❌ Erro ao enviar mensagem via ${connection.clientName}:`, error);
-      return false;
+      console.error(`❌ Erro ao desconectar cliente ${clientId}:`, error);
+      return { success: false, message: 'Erro ao desconectar' };
     }
   }
 
-  getConnectionStatus(connectionId: string): any {
-    const connection = this.activeConnections.get(connectionId);
+  async sendMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; message: string; messageId?: string }> {
+    try {
+      const connection = this.connections.get(clientId);
+      if (!connection || !connection.isConnected) {
+        return { success: false, message: 'Cliente não conectado' };
+      }
+
+      const jid = `${phoneNumber}@s.whatsapp.net`;
+      const result = await connection.socket.sendMessage(jid, { text: message });
+      
+      connection.lastActivity = new Date();
+      
+      return {
+        success: true,
+        message: 'Mensagem enviada',
+        messageId: result.key.id
+      };
+    } catch (error) {
+      console.error(`❌ Erro ao enviar mensagem para ${phoneNumber}:`, error);
+      return { success: false, message: 'Erro ao enviar mensagem' };
+    }
+  }
+
+  async getClientStatus(clientId: string): Promise<{
+    isConnected: boolean;
+    qrCode: string | null;
+    phoneNumber: string | null;
+    lastActivity: Date | null;
+  }> {
+    // Buscar do banco primeiro
+    const dbConfig = await this.loadConnectionFromDB(clientId);
+    
+    // Verificar conexão ativa em memória
+    const connection = this.connections.get(clientId);
     
     return {
       isConnected: connection?.isConnected || false,
-      phoneNumber: connection?.phoneNumber,
-      qrCode: connection?.qrCode,
-      clientName: connection?.clientName
+      qrCode: dbConfig?.whatsappQrCode || connection?.qrCode || null,
+      phoneNumber: dbConfig?.whatsappPhoneNumber || connection?.phoneNumber || null,
+      lastActivity: connection?.lastActivity || null
     };
   }
 
-  async getClientConnections(): Promise<WhatsAppConnection[]> {
+  private async saveConnectionToDB(clientId: string): Promise<void> {
     try {
-      const connectionsRef = collection(firebaseDb, 'whatsappConnections');
-      const snapshot = await getDocs(connectionsRef);
+      const connection = this.connections.get(clientId);
+      if (!connection) return;
+
+      const apiConfig = await storage.getApiConfig('client', clientId) || {};
       
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as WhatsAppConnection));
+      await storage.updateApiConfig('client', clientId, {
+        ...apiConfig,
+        whatsappConnected: connection.isConnected,
+        whatsappQrCode: connection.qrCode || null,
+        whatsappPhoneNumber: connection.phoneNumber || null,
+        whatsappLastConnection: connection.isConnected ? new Date() : null
+      });
+      
+      console.log(`💾 Status salvo para cliente ${clientId}: ${connection.isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
     } catch (error) {
-      console.error('❌ Erro ao buscar conexões:', error);
-      return [];
+      console.error('❌ Erro ao salvar no banco:', error);
     }
   }
 
-  // Métodos para listeners (para uso futuro com WebSockets)
-  onQRUpdate(connectionId: string, callback: (qr: string | null) => void) {
-    if (!this.qrListeners.has(connectionId)) {
-      this.qrListeners.set(connectionId, []);
+  private async loadConnectionFromDB(clientId: string) {
+    try {
+      return await storage.getApiConfig('client', clientId);
+    } catch (error) {
+      console.error('❌ Erro ao carregar do banco:', error);
+      return null;
     }
-    this.qrListeners.get(connectionId)!.push(callback);
-  }
-
-  onConnectionUpdate(connectionId: string, callback: (isConnected: boolean) => void) {
-    if (!this.connectionListeners.has(connectionId)) {
-      this.connectionListeners.set(connectionId, []);
-    }
-    this.connectionListeners.get(connectionId)!.push(callback);
   }
 }
 
-// Singleton instance
 export const whatsappManager = new WhatsAppManager();

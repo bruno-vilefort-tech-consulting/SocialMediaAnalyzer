@@ -1316,43 +1316,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
                 whatsappMessage = whatsappMessage + confirmationText;
 
-                // Garantir que WhatsApp está inicializado e conectado
-                const whatsappService = await ensureWhatsAppReady();
-                if (!whatsappService) {
-                  console.log(`❌ WhatsApp Service não disponível para ${candidate.whatsapp}`);
-                  throw new Error('WhatsApp Service não disponível');
-                }
-                
-                // Aguardar mais tempo para garantir conexão ativa
-                console.log(`🔄 Aguardando conexão WhatsApp para ${candidate.whatsapp}...`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                // Usar o novo WhatsApp Manager
+                console.log(`🔄 Preparando envio WhatsApp Manager para ${candidate.whatsapp}...`);
                 
                 try {
-                  console.log(`📱 Tentando envio WhatsApp para ${candidate.whatsapp}`);
-                  const whatsappResult = await whatsappService.sendTextMessage(
-                    candidate.whatsapp,
+                  // Importar o WhatsApp Manager
+                  const { whatsappManager } = await import('./whatsappManager.js');
+                  
+                  console.log(`📱 Tentando envio WhatsApp Manager para ${candidate.whatsapp}`);
+                  const normalizedPhone = candidate.whatsapp.replace(/\D/g, '');
+                  const whatsappResult = await whatsappManager.sendMessage(
+                    selection.clientId.toString(),
+                    normalizedPhone,
                     whatsappMessage
                   );
                   
                   await storage.createMessageLog({
                     interviewId: interview.id,
                     type: 'whatsapp',
-                    channel: 'whatsapp',
-                    status: whatsappResult ? 'sent' : 'failed'
+                    channel: 'whatsapp_manager',
+                    status: whatsappResult?.success ? 'sent' : 'failed'
                   });
                   
-                  if (whatsappResult) {
+                  if (whatsappResult?.success) {
                     messagesSent++;
-                    console.log(`✅ WhatsApp enviado para ${candidate.whatsapp}`);
+                    console.log(`✅ WhatsApp Manager enviado para ${candidate.whatsapp}: ${whatsappResult.messageId || 'sem ID'}`);
                   } else {
-                    console.error(`❌ Falha ao enviar WhatsApp para ${candidate.whatsapp}`);
+                    console.error(`❌ Falha ao enviar WhatsApp Manager para ${candidate.whatsapp}: ${whatsappResult?.message || 'erro desconhecido'}`);
                   }
                 } catch (whatsappError) {
                   console.error('❌ Erro no envio WhatsApp:', whatsappError);
                   await storage.createMessageLog({
                     interviewId: interview.id,
                     type: 'whatsapp',
-                    channel: 'whatsapp',
+                    channel: 'whatsapp_manager',
                     status: 'failed'
                   });
                 }
@@ -2631,8 +2628,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
-      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
-      const result = await clientWhatsAppService.sendTestMessage(clientId.toString(), phoneNumber, message);
+      const { whatsappManager } = await import('./whatsappManager.js');
+      const result = await whatsappManager.sendMessage(clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
