@@ -242,11 +242,11 @@ export default function IndependentReportsPage() {
 
   // Organizar dados por candidato
   const organizeReportData = (report: Report) => {
-    const candidatesWithResponses = report.candidatesData.map(candidate => {
-      const candidateResponses = report.responseData.filter(r => 
+    const candidatesWithResponses = (report.candidatesData || []).map(candidate => {
+      const candidateResponses = (report.responseData || []).filter(r => 
         r.candidateId === candidate.id || 
-        r.candidateId.includes(candidate.phone) ||
-        r.candidateId.includes(candidate.id)
+        r.candidateId?.includes(candidate.phone) ||
+        r.candidateId?.includes(candidate.id)
       );
 
       const totalScore = candidateResponses.reduce((sum, r) => sum + (r.score || 0), 0);
@@ -257,7 +257,7 @@ export default function IndependentReportsPage() {
         responses: candidateResponses,
         totalResponses: candidateResponses.length,
         averageScore: avgScore,
-        status: candidateResponses.length >= report.jobData.questions.length ? 'completed' : 'partial'
+        status: candidateResponses.length >= (report.jobData?.questions?.length || 0) ? 'completed' : 'partial'
       };
     });
 
@@ -380,6 +380,17 @@ export default function IndependentReportsPage() {
             <div className="space-y-4">
               {reports.map((report: Report) => {
                 const organizedData = organizeReportData(report);
+                
+                // Debug: verificar dados do relatório
+                console.log('📊 [DEBUG] Dados do relatório:', {
+                  id: report.id,
+                  hasCandidatesData: !!report.candidatesData,
+                  candidatesCount: report.candidatesData?.length || 0,
+                  hasResponseData: !!report.responseData,
+                  responsesCount: report.responseData?.length || 0,
+                  hasJobData: !!report.jobData,
+                  questionsCount: report.jobData?.questions?.length || 0
+                });
                 
                 return (
                   <Card key={report.id} className="overflow-hidden">
