@@ -2913,6 +2913,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para processar transcrições pendentes
+  app.post("/api/process-transcriptions", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🚀 Iniciando processamento de transcrições pendentes...');
+      
+      // Processar especificamente a seleção Comercial 3
+      await transcriptionService.processComercial3Transcriptions();
+      
+      res.json({
+        success: true,
+        message: "Transcrições processadas com sucesso"
+      });
+    } catch (error) {
+      console.error("❌ Erro ao processar transcrições:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro ao processar transcrições",
+        error: error.message
+      });
+    }
+  });
+
   // Get interview results for a selection
   app.get("/api/selections/:id/results", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

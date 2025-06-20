@@ -81,40 +81,39 @@ export class TranscriptionService {
     try {
       // Processar R1
       const audioPath1 = path.join('uploads', `audio_${phone}_${selectionId}_R1.ogg`);
+      console.log(`🎵 Processando áudio 1: ${audioPath1}`);
+      
       const transcription1 = await this.transcribeAudioFile(audioPath1);
+      console.log(`📝 Transcrição 1 obtida: "${transcription1}"`);
       
-      // Salvar transcrição R1
-      const responseId1 = `${candidateId}_1`;
-      await storage.updateResponse(responseId1, {
-        transcription: transcription1,
-        score: 0,
-        audioFile: `audio_${phone}_${selectionId}_R1.ogg`
-      });
+      // Buscar e atualizar resposta R1 no Firebase
+      const responses = await storage.getResponsesBySelectionAndCandidate(selectionId, parseInt(candidateId), 1749849987543);
+      console.log(`📊 Respostas encontradas: ${responses.length}`);
       
-      console.log('✅ Transcrição R1 salva no banco');
+      if (responses.length >= 1) {
+        await storage.updateResponse(responses[0].id, {
+          transcription: transcription1,
+          audioFile: `audio_${phone}_${selectionId}_R1.ogg`
+        });
+        console.log('✅ Transcrição R1 salva no banco');
+      }
       
       // Processar R2
       const audioPath2 = path.join('uploads', `audio_${phone}_${selectionId}_R2.ogg`);
+      console.log(`🎵 Processando áudio 2: ${audioPath2}`);
+      
       const transcription2 = await this.transcribeAudioFile(audioPath2);
+      console.log(`📝 Transcrição 2 obtida: "${transcription2}"`);
       
-      // Salvar transcrição R2
-      const responseId2 = `${candidateId}_2`;
-      await storage.updateResponse(responseId2, {
-        transcription: transcription2,
-        score: 0,
-        audioFile: `audio_${phone}_${selectionId}_R2.ogg`
-      });
+      if (responses.length >= 2) {
+        await storage.updateResponse(responses[1].id, {
+          transcription: transcription2,
+          audioFile: `audio_${phone}_${selectionId}_R2.ogg`
+        });
+        console.log('✅ Transcrição R2 salva no banco');
+      }
       
-      console.log('✅ Transcrição R2 salva no banco');
-      
-      // Atualizar status da entrevista
-      const interviewId = `interview_${candidateId}`;
-      await storage.updateInterview(interviewId, {
-        status: 'completed',
-        completedAt: new Date()
-      });
-      
-      console.log('✅ Status da entrevista atualizado para completo');
+      console.log('🎉 Processamento da Comercial 3 concluído com sucesso!');
       
     } catch (error) {
       console.error('❌ Erro ao processar transcrições:', error.message);
