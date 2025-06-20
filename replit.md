@@ -202,6 +202,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
   - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
 
+- June 20, 2025: ✅ DESIGN DOS BOTÕES MELHORADO E FUNCIONALIDADE COMPLETA - Layout profissional implementado
+  - **Botão duplicado removido**: "Adicionar Candidato Existente" duplicado eliminado
+  - **Layout responsivo**: flex-wrap com gap-3 para melhor organização
+  - **Hierarquia visual clara**: "Novo Candidato" como ação primária (azul), secundárias com cores distintas
+  - **Texto otimizado**: "Adicionar Existente" em vez de texto longo
+  - **Endpoint backend criado**: /api/candidate-list-memberships/bulk para criação em lote
+  - **Sistema completo funcional**: Busca em tempo real, seleção múltipla, validação de segurança
+  - **Erro de inicialização corrigido**: selectedList movido para ordem correta das variáveis
+
 - June 20, 2025: ✅ BOTÃO HISTÓRICO REMOVIDO - Interface limpa conforme solicitação
   - **Sidebar.tsx atualizado**: Botão "Histórico" removido dos menus master e cliente
   - **App.tsx limpo**: Rota /historico-relatorios excluída do sistema
