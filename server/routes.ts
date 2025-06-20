@@ -2914,7 +2914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Endpoint para processar transcrições pendentes
-  app.post("/api/process-transcriptions", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+  app.post("/api/process-transcriptions", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       console.log('🚀 Iniciando processamento de transcrições pendentes...');
       

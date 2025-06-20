@@ -29,33 +29,15 @@ export class TranscriptionService {
         throw new Error(`Arquivo muito pequeno: ${stats.size} bytes`);
       }
       
-      // Transcrever com OpenAI Whisper usando FormData
-      const FormData = (await import('form-data')).default;
-      const formData = new FormData();
+      // Transcrever com OpenAI Whisper usando createReadStream
+      const { createReadStream } = await import('fs');
       
-      const audioBuffer = await fs.readFile(audioPath);
-      formData.append('file', audioBuffer, {
-        filename: path.basename(audioPath),
-        contentType: 'audio/ogg'
+      const transcription = await this.openai.audio.transcriptions.create({
+        file: createReadStream(audioPath),
+        model: 'whisper-1',
+        language: 'pt',
+        response_format: 'text'
       });
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'pt');
-      formData.append('response_format', 'text');
-      
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.openai.apiKey}`,
-          ...formData.getHeaders()
-        },
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const transcription = await response.text();
       
       console.log(`✅ [WHISPER] Transcrição obtida: "${transcription}"`);
       
