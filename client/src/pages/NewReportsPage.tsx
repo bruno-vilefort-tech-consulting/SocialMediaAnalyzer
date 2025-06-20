@@ -53,9 +53,13 @@ export default function NewReportsPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const [activeTab, setActiveTab] = useState('candidatos');
-  const [selectedCandidate, setSelectedCandidate] = useState<InterviewCandidate | null>(null);
-  const [audioPlayers, setAudioPlayers] = useState<{ [key: string]: HTMLAudioElement }>({});
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
+  const [audioStates, setAudioStates] = useState<{ [key: string]: { 
+    isPlaying: boolean;
+    currentTime: number;
+    duration: number;
+    progress: number;
+  } }>({});
 
   // Buscar clientes (apenas para masters)
   const { data: clients = [] } = useQuery({
