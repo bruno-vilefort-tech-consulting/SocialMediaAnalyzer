@@ -1316,40 +1316,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
                 whatsappMessage = whatsappMessage + confirmationText;
 
-                // Usar o novo WhatsApp Manager
-                console.log(`🔄 Preparando envio WhatsApp Manager para ${candidate.whatsapp}...`);
+                // Garantir que WhatsApp está inicializado e conectado
+                const whatsappService = await ensureWhatsAppReady();
+                if (!whatsappService) {
+                  console.log(`❌ WhatsApp Service não disponível para ${candidate.whatsapp}`);
+                  throw new Error('WhatsApp Service não disponível');
+                }
+                
+                // Aguardar mais tempo para garantir conexão ativa
+                console.log(`🔄 Aguardando conexão WhatsApp para ${candidate.whatsapp}...`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 
                 try {
-                  // Importar o WhatsApp Manager
-                  const { whatsappManager } = await import('./whatsappManager.js');
-                  
-                  console.log(`📱 Tentando envio WhatsApp Manager para ${candidate.whatsapp}`);
-                  const normalizedPhone = candidate.whatsapp.replace(/\D/g, '');
-                  const whatsappResult = await whatsappManager.sendMessage(
-                    selection.clientId.toString(),
-                    normalizedPhone,
+                  console.log(`📱 Tentando envio WhatsApp para ${candidate.whatsapp}`);
+                  const whatsappResult = await whatsappService.sendTextMessage(
+                    candidate.whatsapp,
                     whatsappMessage
                   );
                   
                   await storage.createMessageLog({
                     interviewId: interview.id,
                     type: 'whatsapp',
-                    channel: 'whatsapp_manager',
-                    status: whatsappResult?.success ? 'sent' : 'failed'
+                    channel: 'whatsapp',
+                    status: whatsappResult ? 'sent' : 'failed'
                   });
                   
-                  if (whatsappResult?.success) {
+                  if (whatsappResult) {
                     messagesSent++;
-                    console.log(`✅ WhatsApp Manager enviado para ${candidate.whatsapp}: ${whatsappResult.messageId || 'sem ID'}`);
+                    console.log(`✅ WhatsApp enviado para ${candidate.whatsapp}`);
                   } else {
-                    console.error(`❌ Falha ao enviar WhatsApp Manager para ${candidate.whatsapp}: ${whatsappResult?.message || 'erro desconhecido'}`);
+                    console.error(`❌ Falha ao enviar WhatsApp para ${candidate.whatsapp}`);
                   }
                 } catch (whatsappError) {
                   console.error('❌ Erro no envio WhatsApp:', whatsappError);
                   await storage.createMessageLog({
                     interviewId: interview.id,
                     type: 'whatsapp',
-                    channel: 'whatsapp_manager',
+                    channel: 'whatsapp',
                     status: 'failed'
                   });
                 }
@@ -2628,8 +2631,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
-      const { whatsappManager } = await import('./whatsappManager.js');
-      const result = await whatsappManager.sendMessage(clientId.toString(), phoneNumber, message);
+      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const result = await clientWhatsAppService.sendTestMessage(clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
@@ -3259,146 +3262,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Candidate Category Routes - Sistema de categorização para relatórios
-  app.post("/api/reports/candidate-category", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      const { candidateId, reportId, selectionId, category } = req.body;
-      const user = req.user!;
-      
-      console.log(`💾 [CATEGORIA] Salvando categoria para candidato ${candidateId}:`, {
-        candidateId,
-        reportId,
-        selectionId,
-        category,
-        userRole: user.role,
-        userClientId: user.clientId
-      });
-      
-      if (!candidateId || !reportId || !selectionId || !category) {
-        return res.status(400).json({ message: 'candidateId, reportId, selectionId e category são obrigatórios' });
-      }
-      
-      // Determinar clientId baseado no role do usuário
-      let clientId = user.clientId;
-      if (user.role === 'master') {
-        // Para master, buscar clientId da seleção
-        const selection = await storage.getSelectionById(parseInt(selectionId));
-        if (selection) {
-          clientId = selection.clientId;
-        }
-      }
-      
-      const categoryData = {
-        candidateId: parseInt(candidateId),
-        reportId,
-        selectionId: parseInt(selectionId),
-        clientId,
-        category,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      const result = await storage.saveCandidateCategory(categoryData);
-      console.log(`✅ [CATEGORIA] Categoria salva com sucesso:`, result);
-      
-      res.json({ success: true, data: result });
-    } catch (error) {
-      console.error('❌ [CATEGORIA] Erro ao salvar categoria:', error);
-      res.status(500).json({ message: 'Erro ao salvar categoria do candidato' });
-    }
-  });
-  
-  app.delete("/api/reports/candidate-category", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      const { candidateId, reportId, selectionId } = req.body;
-      const user = req.user!;
-      
-      console.log(`🗑️ [CATEGORIA] Removendo categoria para candidato ${candidateId}:`, {
-        candidateId,
-        reportId,
-        selectionId,
-        userRole: user.role,
-        userClientId: user.clientId
-      });
-      
-      if (!candidateId || !reportId || !selectionId) {
-        return res.status(400).json({ message: 'candidateId, reportId e selectionId são obrigatórios' });
-      }
-      
-      const result = await storage.removeCandidateCategory(parseInt(candidateId), reportId, parseInt(selectionId));
-      console.log(`✅ [CATEGORIA] Categoria removida com sucesso`);
-      
-      res.json({ success: true });
-    } catch (error) {
-      console.error('❌ [CATEGORIA] Erro ao remover categoria:', error);
-      res.status(500).json({ message: 'Erro ao remover categoria do candidato' });
-    }
-  });
-  
-  app.get("/api/reports/candidate-categories/:selectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      const selectionId = parseInt(req.params.selectionId);
-      const user = req.user!;
-      
-      console.log(`🔍 [CATEGORIA] Buscando categorias para seleção ${selectionId} - usuário: ${user.role}`);
-      
-      const categories = await storage.getCandidateCategoriesBySelection(selectionId);
-      console.log(`📋 [CATEGORIA] Encontradas ${categories.length} categorias para seleção ${selectionId}`);
-      
-      res.json(categories);
-    } catch (error) {
-      console.error('❌ [CATEGORIA] Erro ao buscar categorias:', error);
-      res.status(500).json({ message: 'Erro ao buscar categorias dos candidatos' });
-    }
-  });
-
-  // Debug endpoint para verificar status das categorias
-  app.get("/api/debug/candidate-categories", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
-    try {
-      console.log(`🐛 [DEBUG] Listando todas as categorias no banco de dados...`);
-      
-      const { collection, getDocs } = await import('firebase/firestore');
-      const { firebaseDb } = await import('./db');
-      
-      const categoriesSnapshot = await getDocs(collection(firebaseDb, 'candidateCategories'));
-      const allCategories = categoriesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      console.log(`📊 [DEBUG] Total de categorias no banco: ${allCategories.length}`);
-      allCategories.forEach(cat => {
-        console.log(`   - Candidato ${cat.candidateId}: ${cat.category} (Seleção: ${cat.selectionId})`);
-      });
-      
-      res.json({
-        total: allCategories.length,
-        categories: allCategories
-      });
-    } catch (error) {
-      console.error('❌ [DEBUG] Erro ao listar categorias:', error);
-      res.status(500).json({ message: 'Erro ao debugar categorias' });
-    }
-  });
-
   // WhatsApp QR endpoints - completely optional and non-blocking
   let whatsappQRService: any = null;
   
   // NO WhatsApp initialization during server startup to prevent crashes
   console.log('📱 WhatsApp QR Service: Inicialização adiada para não bloquear servidor');
   
-  // Helper function to safely initialize WhatsApp Manager only when needed
+  // Helper function to safely initialize WhatsApp only when needed
   const ensureWhatsAppReady = async () => {
-    try {
-      // Use WhatsApp Manager instead of old service
-      const { whatsappManager } = await import('./whatsappManager');
-      await whatsappManager.initialize();
-      console.log('✅ WhatsApp Manager inicializado sob demanda');
-      return whatsappManager;
-    } catch (error) {
-      console.error('❌ Erro ao inicializar WhatsApp Manager:', error);
-      return null;
+    if (!whatsappQRService) {
+      try {
+        // Only initialize WhatsApp when explicitly requested
+        const { WhatsAppQRService } = await import('./whatsappQRService');
+        whatsappQRService = new WhatsAppQRService();
+        console.log('✅ WhatsApp QR Service inicializado sob demanda');
+        
+        // Aguardar um momento para a inicialização e carregamento de dados
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.log('⚠️ WhatsApp QR Service não disponível:', error instanceof Error ? error.message : String(error));
+        whatsappQRService = null;
+      }
     }
+    return whatsappQRService;
   };
 
   app.get("/api/whatsapp-qr/status", async (req, res) => {
@@ -3482,7 +3368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!service) {
         return res.status(500).json({ 
           success: false,
-          error: 'WhatsApp Manager não disponível' 
+          error: 'WhatsApp QR Service não disponível' 
         });
       }
       
@@ -3497,19 +3383,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🧪 Testando envio WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
       
-      const normalizedPhone = phoneNumber.replace(/\D/g, '');
-      const result = await service.sendMessage('master', normalizedPhone, message);
+      const result = await service.sendTextMessage(phoneNumber, message);
       
-      if (result?.success) {
+      if (result) {
         res.json({ 
           success: true, 
-          message: 'Mensagem de teste enviada com sucesso via WhatsApp Manager',
-          messageId: result.messageId
+          message: 'Mensagem de teste enviada com sucesso' 
         });
       } else {
         res.status(500).json({ 
           success: false,
-          error: result?.message || 'Falha ao enviar mensagem de teste' 
+          error: 'Falha ao enviar mensagem de teste' 
         });
       }
     } catch (error) {
@@ -3967,8 +3851,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Erro interno do servidor' });
     }
   });
-
-
 
   const httpServer = createServer(app);
   return httpServer;

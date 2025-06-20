@@ -98,20 +98,6 @@ export interface IStorage {
   getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined>;
   upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
 
-  // Candidate Categories - Sistema de categorização para relatórios
-  saveCandidateCategory(categoryData: {
-    candidateId: number;
-    reportId: string;
-    selectionId: number;
-    clientId: number;
-    category: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }): Promise<any>;
-  removeCandidateCategory(candidateId: number, reportId: string, selectionId: number): Promise<void>;
-  getCandidateCategoriesBySelection(selectionId: number): Promise<any[]>;
-  getCandidateCategory(candidateId: number, selectionId: number): Promise<any | undefined>;
-
   // Client Voice Settings - DEPRECATED - mantido para compatibilidade
   getClientVoiceSetting(clientId: number): Promise<ClientVoiceSetting | undefined>;
   upsertClientVoiceSetting(setting: InsertClientVoiceSetting): Promise<ClientVoiceSetting>;
@@ -1985,54 +1971,38 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async getReportById(reportId: string): Promise<any | null> {
-    try {
-      const docRef = doc(firebaseDb, "reports", reportId);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
-      }
-      return null;
-    } catch (error) {
-      console.error('Erro ao buscar relatório por ID:', error);
-      return null;
-    }
-  }
-
   async deleteReport(reportId: string): Promise<void> {
     try {
-      console.log(`🗑️ Iniciando deleção do relatório ${reportId}`);
+      // Deletar o relatório principal
+      await deleteDoc(doc(firebaseDb, "reports", reportId));
       
-      // 1. Deletar todas as respostas relacionadas
-      const responsesQuery = query(
-        collection(firebaseDb, "reportResponses"),
-        where("reportId", "==", reportId)
-      );
-      const responsesSnapshot = await getDocs(responsesQuery);
-      console.log(`🗑️ Encontradas ${responsesSnapshot.docs.length} respostas para deletar`);
-      
-      const responseDeletePromises = responsesSnapshot.docs.map(doc => deleteDoc(doc.ref));
-      await Promise.all(responseDeletePromises);
-      
-      // 2. Deletar todos os candidatos relacionados
+      // Deletar todos os candidatos do relatório
       const candidatesQuery = query(
-        collection(firebaseDb, "reportCandidates"),
+        collection(firebaseDb, "report_candidates"),
         where("reportId", "==", reportId)
       );
       const candidatesSnapshot = await getDocs(candidatesQuery);
-      console.log(`🗑️ Encontrados ${candidatesSnapshot.docs.length} candidatos para deletar`);
       
-      const candidateDeletePromises = candidatesSnapshot.docs.map(doc => deleteDoc(doc.ref));
-      await Promise.all(candidateDeletePromises);
+      const batch = writeBatch(firebaseDb);
+      candidatesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
       
-      // 3. Deletar o relatório principal
-      const reportRef = doc(firebaseDb, "reports", reportId);
-      await deleteDoc(reportRef);
+      // Deletar todas as respostas do relatório
+      const responsesQuery = query(
+        collection(firebaseDb, "report_responses"),
+        where("reportId", "==", reportId)
+      );
+      const responsesSnapshot = await getDocs(responsesQuery);
       
-      console.log(`✅ Relatório ${reportId} e todos os dados relacionados foram deletados`);
+      responsesSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      console.log(`✅ Relatório ${reportId} deletado completamente`);
     } catch (error) {
-      console.error('❌ Erro ao deletar relatório:', error);
+      console.error('Erro ao deletar relatório:', error);
       throw error;
     }
   }
@@ -2168,100 +2138,6 @@ export class FirebaseStorage implements IStorage {
   }
 
 
-  // Candidate Categories - Sistema de categorização para relatórios
-  async saveCandidateCategory(categoryData: {
-    candidateId: number;
-    reportId: string;
-    selectionId: number;
-    clientId: number;
-    category: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }): Promise<any> {
-    try {
-      console.log(`💾 [STORAGE] Salvando categoria:`, categoryData);
-      
-      // Criar ID único baseado em candidateId + selectionId para evitar duplicatas
-      const categoryId = `candidate_${categoryData.candidateId}_selection_${categoryData.selectionId}`;
-      
-      const categoryDoc = {
-        ...categoryData,
-        id: categoryId,
-        createdAt: Timestamp.fromDate(categoryData.createdAt),
-        updatedAt: Timestamp.fromDate(categoryData.updatedAt)
-      };
-      
-      await setDoc(doc(firebaseDb, 'candidateCategories', categoryId), categoryDoc);
-      console.log(`✅ [STORAGE] Categoria salva com ID: ${categoryId}`);
-      
-      return { id: categoryId, ...categoryData };
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao salvar categoria:', error);
-      throw error;
-    }
-  }
-
-  async removeCandidateCategory(candidateId: number, reportId: string, selectionId: number): Promise<void> {
-    try {
-      const categoryId = `candidate_${candidateId}_selection_${selectionId}`;
-      console.log(`🗑️ [STORAGE] Removendo categoria: ${categoryId}`);
-      
-      await deleteDoc(doc(firebaseDb, 'candidateCategories', categoryId));
-      console.log(`✅ [STORAGE] Categoria removida: ${categoryId}`);
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao remover categoria:', error);
-      throw error;
-    }
-  }
-
-  async getCandidateCategoriesBySelection(selectionId: number): Promise<any[]> {
-    try {
-      console.log(`🔍 [STORAGE] Buscando categorias para seleção: ${selectionId}`);
-      
-      const q = query(
-        collection(firebaseDb, 'candidateCategories'),
-        where('selectionId', '==', selectionId)
-      );
-      
-      const snapshot = await getDocs(q);
-      const categories = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      }));
-      
-      console.log(`📋 [STORAGE] Encontradas ${categories.length} categorias para seleção ${selectionId}`);
-      return categories;
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar categorias:', error);
-      return [];
-    }
-  }
-
-  async getCandidateCategory(candidateId: number, selectionId: number): Promise<any | undefined> {
-    try {
-      const categoryId = `candidate_${candidateId}_selection_${selectionId}`;
-      console.log(`🔍 [STORAGE] Buscando categoria específica: ${categoryId}`);
-      
-      const docSnap = await getDoc(doc(firebaseDb, 'candidateCategories', categoryId));
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          ...data,
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate()
-        };
-      }
-      
-      return undefined;
-    } catch (error) {
-      console.error('❌ [STORAGE] Erro ao buscar categoria específica:', error);
-      return undefined;
-    }
-  }
 }
 
 export const storage = new FirebaseStorage();

@@ -15,9 +15,9 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(
   url: string,
-  method: string = "GET",
+  method: string,
   data?: unknown | undefined,
-): Promise<any> {
+): Promise<Response> {
   const token = localStorage.getItem("auth_token");
   const headers: Record<string, string> = {};
   
@@ -43,9 +43,7 @@ export async function apiRequest(
   console.log(`🌐 [FRONTEND] Response status:`, res.status);
 
   await throwIfResNotOk(res);
-  const jsonData = await res.json();
-  console.log(`🌐 [FRONTEND] JSON Data:`, jsonData);
-  return jsonData;
+  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

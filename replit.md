@@ -115,37 +115,6 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 20, 2025: 📦 BACKUP COMPLETO DO SISTEMA DE RELATÓRIOS CRIADO - Documentação técnica completa
-  - **Arquivo principal**: backup_sistema_relatorios_completo_2025-06-20.zip contendo todo o sistema
-  - **Documentação detalhada**: Arquitetura frontend/backend, estrutura Firebase, endpoints API
-  - **Arquivos incluídos**: ReportsHistoryPage.tsx, NewReportsPage.tsx, Sidebar.tsx, App.tsx, aiComparisonService.ts
-  - **Banco de dados mapeado**: 4 coleções Firebase (reports, reportCandidates, candidateCategories, reportResponses)
-  - **Instruções de restore**: README_RESTORE.txt com passo-a-passo completo para restauração
-  - **Sistema funcional**: Painel de relatórios, categorização, player de áudio, controle de acesso
-  - **Pronto para envio**: Usuário pode enviar este .zip para restaurar sistema completo
-
-- June 20, 2025: ✅ BOTÃO DE EXCLUSÃO CORRIGIDO - Problema de JSON parsing resolvido sem quebrar sistema
-  - **Root cause identificado**: Backend retorna 204 (sem conteúdo) mas frontend tentava fazer .json()
-  - **Solução implementada**: Detecta status 204 e retorna {success: true} sem processar JSON
-  - **Sistema preservado**: Todos os outros módulos e funcionalidades mantidos intactos
-  - **Teste validado**: Exclusão de seleções funcionando com toast de sucesso
-
-- June 20, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE RESTAURADO - Sistema de disparo corrigido sem quebrar nada
-  - **WhatsAppManager implementado**: Sistema robusto baseado na documentação de backup anexada
-  - **Disparo corrigido**: POST /api/selections agora usa WhatsApp Manager em vez do sistema antigo
-  - **Endpoints migrados**: /api/client/whatsapp/* usam WhatsApp Manager para conexão e teste
-  - **Conexões isoladas por cliente**: Cada cliente mantém sessão WhatsApp independente
-  - **QR Code persistente**: Sistema salva e carrega QR Code do banco de dados Firebase
-  - **Keep-alive e reconexão**: Manutenção automática de sessão com retry inteligente
-  - **Processamento de áudio**: Handler completo para mensagens de áudio e entrevistas
-  - **Sistema preservado**: Relatórios, candidatos e demais funcionalidades intactas
-
-- June 20, 2025: 🗑️ ROTA /RELATORIOS REMOVIDA - Limpeza de URL conforme solicitado sem quebrar sistema
-  - **Rota removida**: /relatorios deletada do App.tsx sem afetar funcionalidade
-  - **Dados preservados**: Todas as categorias e informações mantidas no Firebase
-  - **Sistema intacto**: Rota /historico-relatorios mantida com funcionalidade completa
-  - **Zero impacto**: Banco de dados e demais funcionalidades preservadas
-
 - June 19, 2025: 🎉 SISTEMA COMPLETO VALIDADO - Nova arquitetura + Whisper funcionando perfeitamente
   - **Teste final**: Consultor GM 6 (ID: 1750316326534) - Entrevista completa realizada
   - **Transcrições reais confirmadas**: "Estão vendendo, eles não dão resposta correta 100% do tempo..." e "crédito que já é subsidiado 200 dólares por mês..."
