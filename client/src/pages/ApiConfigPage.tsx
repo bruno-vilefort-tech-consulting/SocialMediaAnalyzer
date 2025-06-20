@@ -121,7 +121,7 @@ export default function ApiConfigPage() {
   });
 
   // Status WhatsApp Evolution API - Novo sistema para clientes
-  const whatsappEndpoint = isMaster ? "/api/whatsapp-qr/status" : "/api/evolution/status";
+  const whatsappEndpoint = "/api/whatsapp-client/status";
   const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [whatsappEndpoint],
     refetchInterval: 15000,
@@ -562,7 +562,7 @@ export default function ApiConfigPage() {
                         }
                       })
                       .catch((error) => {
-                        console.error('WhatsApp Error:', error);
+                        console.error('WhatsApp Connect Error:', error);
                         toast({ 
                           title: "Erro na requisição", 
                           description: "Verifique a conexão",
