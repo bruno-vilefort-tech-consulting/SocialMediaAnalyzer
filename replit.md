@@ -202,6 +202,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
   - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
 
+- June 20, 2025: ✅ FUNÇÃO DELETE INTELIGENTE IMPLEMENTADA - Comportamento contextual para remoção de candidatos
+  - **Delete contextual**: Dentro de lista remove da lista (desassocia), fora da lista deleta permanentemente
+  - **Endpoint criado**: DELETE /api/candidate-list-memberships/:candidateId/:listId para desassociação
+  - **Mutation separada**: removeFromListMutation para operações de desassociação de candidatos
+  - **Textos adaptativos**: Modal mostra ação diferente baseada no contexto (remover vs excluir)
+  - **Preservação de dados**: Candidatos removidos de listas permanecem no sistema para reuso
+  - **Interface clara**: Usuário entende diferença entre remover da lista e excluir permanentemente
+
 - June 20, 2025: ✅ DESIGN DOS BOTÕES MELHORADO E FUNCIONALIDADE COMPLETA - Layout profissional implementado
   - **Botão duplicado removido**: "Adicionar Candidato Existente" duplicado eliminado
   - **Layout responsivo**: flex-wrap com gap-3 para melhor organização

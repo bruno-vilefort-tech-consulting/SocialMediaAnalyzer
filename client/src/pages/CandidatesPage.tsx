@@ -535,6 +535,43 @@ export default function CandidatesPage() {
     }
   });
 
+  // Mutation para remover candidato da lista (desassociar)
+  const removeFromListMutation = useMutation({
+    mutationFn: async (candidateId: number) => {
+      if (!selectedListId) {
+        throw new Error("Lista não selecionada");
+      }
+
+      console.log(`🔗 Removendo candidato ${candidateId} da lista ${selectedListId}`);
+      
+      const response = await apiRequest(`/api/candidate-list-memberships/${candidateId}/${selectedListId}`, 'DELETE');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+        throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
+      }
+
+      return response;
+    },
+    onSuccess: () => {
+      console.log('✅ Candidato removido da lista com sucesso!');
+      
+      // Invalidar caches relevantes
+      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+      
+      toast({ title: "Candidato removido da lista com sucesso!" });
+    },
+    onError: (error: any) => {
+      console.error('❌ Erro ao remover candidato da lista:', error);
+      toast({ 
+        title: "Erro ao remover candidato da lista", 
+        description: error.message || "Erro desconhecido",
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Mutation para adicionar candidatos existentes à lista
   const addExistingCandidatesMutation = useMutation({
     mutationFn: async ({ candidateIds, listId }: { candidateIds: number[]; listId: number }) => {
@@ -1432,19 +1469,36 @@ export default function CandidatesPage() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                {selectedListId ? 'Remover da Lista' : 'Confirmar exclusão'}
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                Tem certeza que deseja remover o candidato "{candidate.name}"? 
-                                Esta ação não pode ser desfeita.
+                                {selectedListId ? (
+                                  <>
+                                    Tem certeza que deseja remover o candidato "{candidate.name}" desta lista? 
+                                    O candidato permanecerá no sistema e poderá ser adicionado a outras listas.
+                                  </>
+                                ) : (
+                                  <>
+                                    Tem certeza que deseja excluir permanentemente o candidato "{candidate.name}"? 
+                                    Esta ação não pode ser desfeita e o candidato será removido de todas as listas.
+                                  </>
+                                )}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => deleteCandidateMutation.mutate(candidate.id)}
+                                onClick={() => {
+                                  if (selectedListId) {
+                                    removeFromListMutation.mutate(candidate.id);
+                                  } else {
+                                    deleteCandidateMutation.mutate(candidate.id);
+                                  }
+                                }}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
-                                Remover Candidato
+                                {selectedListId ? 'Remover da Lista' : 'Excluir Candidato'}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

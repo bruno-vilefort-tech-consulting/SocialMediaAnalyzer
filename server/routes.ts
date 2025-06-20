@@ -975,6 +975,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para remover candidato da lista (desassociar)
+  app.delete("/api/candidate-list-memberships/:candidateId/:listId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const candidateId = parseInt(req.params.candidateId);
+      const listId = parseInt(req.params.listId);
+
+      console.log(`🔗 Removendo candidato ${candidateId} da lista ${listId}`);
+
+      // Verificar se o membership existe
+      const memberships = await storage.getCandidateListMembershipsByClientId(req.user!.clientId!);
+      const membership = memberships.find(m => 
+        m.candidateId === candidateId && m.listId === listId
+      );
+
+      if (!membership) {
+        return res.status(404).json({ message: 'Candidato não encontrado nesta lista' });
+      }
+
+      // Remover da lista (desassociar)
+      await storage.removeCandidateFromList(candidateId, listId);
+      
+      console.log(`✅ Candidato ${candidateId} removido da lista ${listId} com sucesso`);
+      res.status(204).send();
+    } catch (error) {
+      console.error('❌ Erro ao remover candidato da lista:', error);
+      res.status(400).json({ message: 'Failed to remove candidate from list' });
+    }
+  });
+
   // Candidates routes
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
