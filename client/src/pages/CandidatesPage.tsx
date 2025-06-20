@@ -1333,6 +1333,20 @@ export default function CandidatesPage() {
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Candidato
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExistingCandidatesDialog(true)}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Adicionar Candidato Existente
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExistingCandidatesDialog(true)}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Adicionar Candidato Existente
+              </Button>
             </div>
           </div>
 
@@ -1372,6 +1386,13 @@ export default function CandidatesPage() {
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Adicionar Candidato
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowExistingCandidatesDialog(true)}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Adicionar Candidato Existente
                     </Button>
                   </div>
                 </div>
@@ -1716,6 +1737,134 @@ export default function CandidatesPage() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para adicionar candidatos existentes */}
+      <Dialog open={showExistingCandidatesDialog} onOpenChange={(open) => {
+        setShowExistingCandidatesDialog(open);
+        if (!open) {
+          setSelectedExistingCandidates([]);
+          setExistingCandidatesSearch("");
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Adicionar Candidatos Existentes à Lista</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Selecione candidatos já cadastrados no sistema para adicionar à lista "{selectedList?.name}"
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Campo de busca */}
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, email ou WhatsApp..."
+                value={existingCandidatesSearch}
+                onChange={(e) => setExistingCandidatesSearch(e.target.value)}
+                className="flex-1"
+              />
+            </div>
+
+            {/* Lista de candidatos */}
+            <div className="border rounded-lg overflow-hidden">
+              {existingCandidatesLoading ? (
+                <div className="p-4 text-center">Carregando candidatos...</div>
+              ) : (() => {
+                // Filtrar candidatos por busca
+                const filteredExistingCandidates = existingCandidates.filter(candidate =>
+                  candidate.name.toLowerCase().includes(existingCandidatesSearch.toLowerCase()) ||
+                  candidate.email.toLowerCase().includes(existingCandidatesSearch.toLowerCase()) ||
+                  candidate.whatsapp.includes(existingCandidatesSearch)
+                );
+
+                if (filteredExistingCandidates.length === 0) {
+                  return (
+                    <div className="p-8 text-center">
+                      <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">
+                        {existingCandidatesSearch ? 'Nenhum candidato encontrado' : 'Nenhum candidato disponível'}
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {existingCandidatesSearch 
+                          ? 'Tente buscar com outros termos'
+                          : 'Todos os candidatos deste cliente já estão nesta lista'
+                        }
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* Header com seleção */}
+                    <div className="p-3 border-b bg-muted/50 flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedExistingCandidates.length === filteredExistingCandidates.length && filteredExistingCandidates.length > 0}
+                          onChange={() => handleSelectAllExistingCandidates(filteredExistingCandidates)}
+                          className="rounded"
+                        />
+                        <span className="text-sm font-medium">
+                          Selecionar todos ({filteredExistingCandidates.length})
+                        </span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {selectedExistingCandidates.length} selecionado{selectedExistingCandidates.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Lista de candidatos */}
+                    <div className="max-h-96 overflow-y-auto">
+                      {filteredExistingCandidates.map((candidate) => (
+                        <div
+                          key={candidate.id}
+                          className="flex items-center p-3 border-b last:border-b-0 hover:bg-muted/30 cursor-pointer"
+                          onClick={() => handleToggleExistingCandidate(candidate.id)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedExistingCandidates.includes(candidate.id)}
+                            onChange={() => handleToggleExistingCandidate(candidate.id)}
+                            className="rounded mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-4">
+                              <span className="font-medium text-sm">{candidate.name}</span>
+                              <span className="text-sm text-muted-foreground">{candidate.email}</span>
+                              <span className="text-sm text-muted-foreground">{candidate.whatsapp}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExistingCandidatesDialog(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAddExistingCandidates}
+                disabled={selectedExistingCandidates.length === 0 || addExistingCandidatesMutation.isPending}
+              >
+                {addExistingCandidatesMutation.isPending 
+                  ? "Adicionando..." 
+                  : `Adicionar ${selectedExistingCandidates.length} candidato${selectedExistingCandidates.length !== 1 ? 's' : ''}`
+                }
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

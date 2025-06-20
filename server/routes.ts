@@ -915,6 +915,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para adicionar candidatos existentes em lote à lista
+  app.post("/api/candidate-list-memberships/bulk", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { memberships } = req.body;
+      
+      if (!memberships || !Array.isArray(memberships) || memberships.length === 0) {
+        return res.status(400).json({ message: 'Array de memberships é obrigatório' });
+      }
+
+      console.log(`📋 Criando ${memberships.length} memberships em lote`);
+
+      const createdMemberships = [];
+      
+      for (const membership of memberships) {
+        const { candidateId, listId, clientId } = membership;
+        
+        // Validar campos obrigatórios
+        if (!candidateId || !listId || !clientId) {
+          return res.status(400).json({ 
+            message: 'Campos obrigatórios para cada membership: candidateId, listId, clientId' 
+          });
+        }
+
+        // Cliente só pode criar memberships para seu próprio clientId
+        if (req.user!.role === 'client' && parseInt(clientId) !== req.user!.clientId) {
+          console.log(`❌ Cliente ${req.user!.email} tentou criar membership para clientId ${clientId}, mas pertence ao clientId ${req.user!.clientId}`);
+          return res.status(403).json({ message: 'Access denied: You can only create memberships for your own client' });
+        }
+
+        // Verificar se o membership já existe
+        const existingMemberships = await storage.getCandidateListMembershipsByClientId(parseInt(clientId));
+        const alreadyExists = existingMemberships.some(m => 
+          m.candidateId === parseInt(candidateId) && m.listId === parseInt(listId)
+        );
+
+        if (!alreadyExists) {
+          const newMembership = await storage.addCandidateToList(
+            parseInt(candidateId), 
+            parseInt(listId), 
+            parseInt(clientId)
+          );
+          createdMemberships.push(newMembership);
+          console.log(`✅ Membership criado: candidato ${candidateId} → lista ${listId}`);
+        } else {
+          console.log(`⚠️ Membership já existe: candidato ${candidateId} → lista ${listId}`);
+        }
+      }
+
+      console.log(`✅ ${createdMemberships.length} memberships criados em lote`);
+      res.status(201).json({ 
+        created: createdMemberships.length, 
+        total: memberships.length,
+        memberships: createdMemberships 
+      });
+    } catch (error) {
+      console.error('❌ Erro ao criar memberships em lote:', error);
+      res.status(400).json({ message: 'Failed to create memberships in bulk' });
+    }
+  });
+
   // Candidates routes
   app.get("/api/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
