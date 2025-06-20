@@ -158,12 +158,7 @@ const ReportsHistoryPage: React.FC = () => {
       cat.candidateId === parseInt(candidate.originalCandidateId)
     );
     
-    console.log(`🔗 [DEBUG] Vinculando categoria para ${candidate.name}:`, {
-      candidateId: candidate.originalCandidateId,
-      categoryFound: !!category,
-      categoryValue: category?.category || 'sem categoria',
-      allCategories: candidateCategories.length
-    });
+
     
     return {
       ...candidate,
