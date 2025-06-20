@@ -37,24 +37,43 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("auth_token");
-    const savedUser = localStorage.getItem("auth_user");
+    let isMounted = true;
     
-    if (savedToken && savedUser && savedUser !== "undefined") {
+    const initializeAuth = async () => {
       try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        const savedToken = localStorage.getItem("auth_token");
+        const savedUser = localStorage.getItem("auth_user");
+        
+        if (savedToken && savedUser && savedUser !== "undefined") {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            if (isMounted) {
+              setToken(savedToken);
+              setUser(parsedUser);
+            }
+          } catch (error) {
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("auth_user");
+          }
+        }
       } catch (error) {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("auth_user");
+        // Silent error handling
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    }
-    setIsLoading(false);
+    };
+
+    initializeAuth();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      console.log("🔐 Iniciando login com:", email);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -63,10 +82,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify({ email, password })
       });
       
-      console.log("📡 Status da resposta:", response.status);
-      
       const responseText = await response.text();
-      console.log("📄 Resposta bruta:", responseText);
       
       if (!response.ok) {
         let errorMessage = "Erro de autenticação";
