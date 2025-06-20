@@ -202,6 +202,12 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
   - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
 
+- June 20, 2025: ✅ REORGANIZAÇÃO DO MENU SIDEBAR - "Lista de Candidatos" movido para posição estratégica
+  - **Reordenação implementada**: "Lista de Candidatos" agora aparece antes de "Cadastrar Vagas"
+  - **Menu master atualizado**: Nova ordem Dashboard → Candidatos → Lista de Candidatos → Cadastrar Vagas
+  - **Menu client atualizado**: Mesma reorganização aplicada para usuários cliente
+  - **Fluxo lógico melhorado**: Usuário acessa gestão de candidatos antes de criar vagas
+
 - June 20, 2025: ✅ FUNÇÃO DELETE INTELIGENTE IMPLEMENTADA - Comportamento contextual para remoção de candidatos
   - **Delete contextual**: Dentro de lista remove da lista (desassocia), fora da lista deleta permanentemente
   - **Endpoint criado**: DELETE /api/candidate-list-memberships/:candidateId/:listId para desassociação
