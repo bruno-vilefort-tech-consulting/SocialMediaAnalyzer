@@ -3400,7 +3400,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return null;
     }
   };
-  };
 
   app.get("/api/whatsapp-qr/status", async (req, res) => {
     try {

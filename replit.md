@@ -115,14 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 20, 2025: 🔧 WHATSAPP MANAGER RESTAURADO - Sistema de disparo corrigido conforme backup
-  - **WhatsAppManager criado**: Novo sistema robusto baseado na documentação de backup
-  - **Endpoints atualizados**: Todos os disparos agora usam o WhatsApp Manager
-  - **Conexões isoladas**: Cada cliente mantém sessão WhatsApp independente
-  - **QR Code persistente**: Sistema salva e carrega QR Code do banco de dados
-  - **Keep-alive implementado**: Reconexão automática e manutenção de sessão
-  - **Download de áudio**: Suporte completo para processamento de mensagens de áudio
-  - **Sistema preservado**: Todos os outros módulos mantidos intactos
+- June 20, 2025: ✅ WHATSAPP MANAGER COMPLETAMENTE RESTAURADO - Sistema de disparo corrigido sem quebrar nada
+  - **WhatsAppManager implementado**: Sistema robusto baseado na documentação de backup anexada
+  - **Disparo corrigido**: POST /api/selections agora usa WhatsApp Manager em vez do sistema antigo
+  - **Endpoints migrados**: /api/client/whatsapp/* usam WhatsApp Manager para conexão e teste
+  - **Conexões isoladas por cliente**: Cada cliente mantém sessão WhatsApp independente
+  - **QR Code persistente**: Sistema salva e carrega QR Code do banco de dados Firebase
+  - **Keep-alive e reconexão**: Manutenção automática de sessão com retry inteligente
+  - **Processamento de áudio**: Handler completo para mensagens de áudio e entrevistas
+  - **Sistema preservado**: Relatórios, candidatos e demais funcionalidades intactas
 
 - June 20, 2025: 🗑️ ROTA /RELATORIOS REMOVIDA - Limpeza de URL conforme solicitado sem quebrar sistema
   - **Rota removida**: /relatorios deletada do App.tsx sem afetar funcionalidade
