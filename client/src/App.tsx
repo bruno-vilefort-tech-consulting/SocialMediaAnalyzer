@@ -24,6 +24,7 @@ import NaturalInterviewPage from "@/pages/NaturalInterviewPage";
 import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
 import NewReportsPage from "@/pages/NewReportsPage";
+import IndependentReportsPage from "@/pages/IndependentReportsPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 import NotFound from "@/pages/not-found";
