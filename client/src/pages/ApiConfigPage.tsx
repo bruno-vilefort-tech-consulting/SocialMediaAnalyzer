@@ -612,9 +612,11 @@ export default function ApiConfigPage() {
                           });
                         }
                       })
-                      .catch(() => {
+                      .catch((error) => {
+                        console.error('Evolution API Error:', error);
                         toast({ 
                           title: "Erro na requisição", 
+                          description: "Verifique se o serviço Evolution API está configurado",
                           variant: "destructive" 
                         });
                       });
