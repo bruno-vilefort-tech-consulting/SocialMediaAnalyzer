@@ -104,7 +104,6 @@ class InteractiveInterviewService {
       
       // Criar arquivo temporário para manter fluxo
       console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário com nova nomenclatura`);
-      const fs = await import('fs');
       
       const emptyOggHeader = Buffer.from([
         0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -305,8 +304,10 @@ class InteractiveInterviewService {
         `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
       );
 
-      // Enviar primeira pergunta
-      await this.sendNextQuestion(phone, interview);
+      // Enviar primeira pergunta após pequeno delay
+      setTimeout(async () => {
+        await this.sendNextQuestion(phone, interview);
+      }, 2000);
       
     } catch (error) {
       console.log(`❌ Erro ao buscar vaga:`, error);

@@ -202,6 +202,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Checklist de implementação**: Guia passo-a-passo para desenvolvimento completo
   - **Pronto para replicação**: Todas as informações necessárias para reconstruir em qualquer plataforma
 
+- June 20, 2025: 🔧 CADÊNCIA DE ENTREVISTAS CORRIGIDA - Fluxo 1/2 restaurado e otimizado
+  - **Problema identificado**: Erro de compilação TypeScript quebrava processamento de mensagens de entrevista
+  - **Variável duplicada corrigida**: Removida declaração dupla de `fs` em downloadAudioDirect()
+  - **Delay adicionado**: 2 segundos entre confirmação de início e primeira pergunta para melhor UX
+  - **Fluxo restaurado**: Mensagem inicial → resposta "1" → início automático da entrevista
+  - **Sistema funcional**: Cadência WhatsApp 1=sim/2=não voltou a funcionar corretamente
+
 - June 20, 2025: ✅ OTIMIZAÇÃO DO SISTEMA DE ÁUDIO - Duplicação de arquivos eliminada para economia de espaço
   - **Problema identificado**: Sistema criava arquivos duplicados (nomenclatura correta + "_fixed")
   - **Verificação implementada**: Checa se arquivo já existe antes de criar novo
