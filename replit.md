@@ -270,6 +270,18 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Dados completos**: JobData, candidatesData, responseData preservados com timestamp
   - **Sistema robusto**: Funciona independentemente do painel de seleções sem quebrar outras funções
 
+- June 20, 2025: 📊 SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Geração automática de relatórios permanentes
+  - **IndependentReportsPage.tsx criado**: Interface completa para geração e gerenciamento de relatórios
+  - **Sistema completamente independente**: Relatórios preservados mesmo após exclusão de seleções/candidatos
+  - **Geração automática**: Relatórios criados a partir de seleções com todos os dados necessários
+  - **Dupla confirmação**: Botão deletar relatório com AlertDialog para confirmação segura
+  - **Player de áudio integrado**: Timeline funcional com controles play/pause/navegação
+  - **Visualização inline**: Detalhes expandíveis sem modal sobreposto
+  - **Dados preservados**: jobData, candidatesData, responseData completos em JSON
+  - **APIs backend**: Endpoints GET, POST, DELETE com autorização por cliente
+  - **Menu atualizado**: "Relatórios Independentes" adicionado ao sidebar para masters e clientes
+  - **Isolamento total**: Deletar seleção não afeta relatórios, deletar relatório não afeta dados originais
+
 - June 20, 2025: 📱 CADÊNCIA WHATSAPP DOCUMENTADA - Mapeamento completo do fluxo de mensagens
   - **CADENCIA_WHATSAPP_COMPLETA.md**: Documentação técnica de todo o fluxo WhatsApp
   - **Arquivos identificados**: interactiveInterviewService.ts, prompts.ts, SelectionModal.tsx
