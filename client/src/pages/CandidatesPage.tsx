@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye, Search } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye, Search, UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,6 +76,11 @@ export default function CandidatesPage() {
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // Estados para adicionar candidato existente
+  const [showExistingCandidatesDialog, setShowExistingCandidatesDialog] = useState(false);
+  const [existingCandidatesSearch, setExistingCandidatesSearch] = useState("");
+  const [selectedExistingCandidates, setSelectedExistingCandidates] = useState<number[]>([]);
 
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -249,6 +254,56 @@ export default function CandidatesPage() {
       return Array.isArray(data) ? data : [];
     },
     enabled: !!selectedListId && viewMode === 'single'
+  });
+
+  // Query para buscar candidatos existentes do mesmo cliente (excluindo os já na lista atual)
+  const { data: existingCandidates = [], isLoading: existingCandidatesLoading } = useQuery<Candidate[]>({
+    queryKey: showExistingCandidatesDialog && selectedListId ? 
+      ['/api/candidates/available', { clientId: selectedList?.clientId, listId: selectedListId }] : 
+      ['empty-existing'],
+    enabled: showExistingCandidatesDialog && !!selectedListId && !!selectedList?.clientId,
+    queryFn: async () => {
+      if (!selectedListId || !selectedList?.clientId) return [];
+      
+      const token = localStorage.getItem("auth_token");
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // Buscar todos os candidatos do cliente
+      const candidatesResponse = await fetch(`/api/candidates?clientId=${selectedList.clientId}`, {
+        headers,
+        credentials: "include"
+      });
+
+      if (!candidatesResponse.ok) {
+        throw new Error(`Erro ao buscar candidatos: ${candidatesResponse.status}`);
+      }
+
+      const allClientCandidates = await candidatesResponse.json();
+
+      // Buscar candidatos já na lista atual
+      const listCandidatesResponse = await fetch(`/api/lists/${selectedListId}/candidates`, {
+        headers,
+        credentials: "include"
+      });
+
+      if (!listCandidatesResponse.ok) {
+        throw new Error(`Erro ao buscar candidatos da lista: ${listCandidatesResponse.status}`);
+      }
+
+      const currentListCandidates = await listCandidatesResponse.json();
+      const currentListCandidateIds = currentListCandidates.map((c: Candidate) => c.id);
+
+      // Filtrar candidatos que não estão na lista atual
+      const availableCandidates = allClientCandidates.filter((candidate: Candidate) => 
+        !currentListCandidateIds.includes(candidate.id)
+      );
+
+      return Array.isArray(availableCandidates) ? availableCandidates : [];
+    }
   });
 
   // Filtrar listas de candidatos por cliente e termo de busca
@@ -480,6 +535,40 @@ export default function CandidatesPage() {
     }
   });
 
+  // Mutation para adicionar candidatos existentes à lista
+  const addExistingCandidatesMutation = useMutation({
+    mutationFn: async ({ candidateIds, listId }: { candidateIds: number[]; listId: number }) => {
+      const selectedList = candidateLists.find(list => list.id === listId);
+      if (!selectedList) throw new Error("Lista não encontrada");
+
+      const memberships = candidateIds.map(candidateId => ({
+        candidateId,
+        listId,
+        clientId: selectedList.clientId
+      }));
+
+      return await apiRequest('/api/candidate-list-memberships/bulk', 'POST', { memberships });
+    },
+    onSuccess: (_, { candidateIds }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/candidates/available'] });
+      
+      setShowExistingCandidatesDialog(false);
+      setSelectedExistingCandidates([]);
+      setExistingCandidatesSearch("");
+      
+      const count = candidateIds.length;
+      toast({ 
+        title: `${count} candidato${count > 1 ? 's' : ''} adicionado${count > 1 ? 's' : ''} à lista com sucesso!` 
+      });
+    },
+    onError: () => {
+      toast({ title: "Erro ao adicionar candidatos à lista", variant: "destructive" });
+    }
+  });
+
   const deleteCandidateMutation = useMutation({
     mutationFn: async (candidateId: number) => {
       return await apiRequest(`/api/candidates/${candidateId}`, 'DELETE');
@@ -689,6 +778,47 @@ export default function CandidatesPage() {
   const handleBackToAllLists = () => {
     setViewMode('all');
     setSelectedListId(null);
+  };
+
+  // Handlers para adicionar candidatos existentes
+  const handleToggleExistingCandidate = (candidateId: number) => {
+    setSelectedExistingCandidates(prev => 
+      prev.includes(candidateId) 
+        ? prev.filter(id => id !== candidateId)
+        : [...prev, candidateId]
+    );
+  };
+
+  const handleSelectAllExistingCandidates = (candidates: Candidate[]) => {
+    const allIds = candidates.map(c => c.id);
+    setSelectedExistingCandidates(
+      selectedExistingCandidates.length === allIds.length ? [] : allIds
+    );
+  };
+
+  const handleAddExistingCandidates = () => {
+    if (selectedExistingCandidates.length === 0) {
+      toast({ 
+        title: "Nenhum candidato selecionado", 
+        description: "Selecione pelo menos um candidato para adicionar à lista.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (!selectedListId) {
+      toast({ 
+        title: "Erro", 
+        description: "Lista não selecionada.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    addExistingCandidatesMutation.mutate({
+      candidateIds: selectedExistingCandidates,
+      listId: selectedListId
+    });
   };
 
   const handleEditCandidate = (candidate: Candidate) => {
