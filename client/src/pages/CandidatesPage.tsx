@@ -1304,7 +1304,7 @@ export default function CandidatesPage() {
                 </p>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-3">
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
@@ -1312,40 +1312,42 @@ export default function CandidatesPage() {
                 className="hidden"
                 id="file-upload"
               />
-              <Button
-                variant="outline"
-                onClick={() => document.getElementById('file-upload')?.click()}
+              
+              {/* Botão principal - Novo Candidato */}
+              <Button 
+                onClick={() => {
+                  candidateForm.reset({
+                    name: "",
+                    email: "",
+                    whatsapp: "",
+                    listId: selectedListId || 0,
+                    clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
+                  });
+                  setShowCandidateForm(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Importar Excel
-              </Button>
-              <Button onClick={() => {
-                // Resetar e preencher formulário com dados corretos
-                candidateForm.reset({
-                  name: "",
-                  email: "",
-                  whatsapp: "",
-                  listId: selectedListId || 0,
-                  clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
-                });
-                setShowCandidateForm(true);
-              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Candidato
               </Button>
-              <Button 
-                variant="outline" 
+
+              {/* Botões secundários */}
+              <Button
+                variant="outline"
                 onClick={() => setShowExistingCandidatesDialog(true)}
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
-                Adicionar Candidato Existente
+                Adicionar Existente
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowExistingCandidatesDialog(true)}
+
+              <Button
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
               >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Adicionar Candidato Existente
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Excel
               </Button>
             </div>
           </div>
@@ -1365,34 +1367,38 @@ export default function CandidatesPage() {
                   <p className="text-muted-foreground mb-4">
                     Adicione candidatos manualmente ou importe via Excel
                   </p>
-                  <div className="flex justify-center space-x-2">
+                  <div className="flex justify-center flex-wrap gap-3">
+                    <Button 
+                      onClick={() => {
+                        candidateForm.reset({
+                          name: "",
+                          email: "",
+                          whatsapp: "",
+                          listId: selectedListId || 0,
+                          clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
+                        });
+                        setShowCandidateForm(true);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Candidato
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowExistingCandidatesDialog(true)}
+                      className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Adicionar Existente
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => document.getElementById('file-upload')?.click()}
+                      className="border-gray-200 text-gray-700 hover:bg-gray-50"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Importar Excel
-                    </Button>
-                    <Button onClick={() => {
-                      // Resetar e preencher formulário com dados corretos
-                      candidateForm.reset({
-                        name: "",
-                        email: "",
-                        whatsapp: "",
-                        listId: selectedListId || 0,
-                        clientId: selectedList?.clientId || (user?.role === 'client' ? user?.clientId || 0 : 0)
-                      });
-                      setShowCandidateForm(true);
-                    }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Candidato
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setShowExistingCandidatesDialog(true)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Adicionar Candidato Existente
                     </Button>
                   </div>
                 </div>
