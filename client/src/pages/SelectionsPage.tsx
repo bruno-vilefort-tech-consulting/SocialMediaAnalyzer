@@ -164,13 +164,18 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
   // Deletar seleção
   const deleteSelectionMutation = useMutation({
     mutationFn: async (selectionId: number) => {
-      await apiRequest(`/api/selections/${selectionId}`, 'DELETE');
+      console.log('🗑️ [MUTATION] Iniciando exclusão da seleção:', selectionId);
+      const response = await apiRequest(`/api/selections/${selectionId}`, 'DELETE');
+      console.log('🗑️ [MUTATION] Resposta da exclusão:', response.status);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data, selectionId) => {
+      console.log('🗑️ [MUTATION] Exclusão bem-sucedida para seleção:', selectionId);
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       toast({ title: "Seleção excluída com sucesso!" });
     },
-    onError: () => {
+    onError: (error, selectionId) => {
+      console.error('🗑️ [MUTATION] Erro ao excluir seleção:', selectionId, error);
       toast({ title: "Erro ao excluir seleção", variant: "destructive" });
     }
   });
@@ -887,7 +892,12 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 border-red-300 hover:bg-red-50"
+                              title="Excluir seleção"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -900,8 +910,15 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteSelectionMutation.mutate(selection.id)}>
-                                Excluir
+                              <AlertDialogAction 
+                                onClick={() => {
+                                  console.log('🗑️ Excluindo seleção:', selection.id);
+                                  deleteSelectionMutation.mutate(selection.id);
+                                }}
+                                disabled={deleteSelectionMutation.isPending}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                {deleteSelectionMutation.isPending ? 'Excluindo...' : 'Excluir'}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
