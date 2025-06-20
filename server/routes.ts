@@ -2990,6 +2990,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Client Routes - Individual connection per client
+  app.post("/api/whatsapp-client/connect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔗 WhatsApp Client: Conectando cliente ${user.clientId}...`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      
+      console.log(`📱 Resultado WhatsApp connect:`, result);
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client connect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao conectar WhatsApp' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/disconnect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔌 WhatsApp Client: Desconectando cliente ${user.clientId}...`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client disconnect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao desconectar WhatsApp' 
+      });
+    }
+  });
+
+  app.get("/api/whatsapp-client/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.getClientStatus(user.clientId.toString());
+      
+      res.json({
+        isConnected: result.isConnected,
+        qrCode: result.qrCode,
+        phoneNumber: result.phoneNumber,
+        lastConnection: result.lastConnection
+      });
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client status:', error);
+      res.status(500).json({ 
+        isConnected: false,
+        qrCode: null,
+        phoneNumber: null,
+        lastConnection: null
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const { phoneNumber, message } = req.body;
+      
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ message: 'Phone number and message required' });
+      }
+
+      console.log(`💬 WhatsApp Client: Enviando teste para cliente ${user.clientId}`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.sendTestMessage(
+        user.clientId.toString(), 
+        phoneNumber, 
+        message
+      );
+      
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client test:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao enviar mensagem teste' 
+      });
+    }
+  });
+
   // Upload Audio Route - Firebase Storage for demo
   app.post("/api/upload-audio", upload.single('audio'), async (req, res) => {
     try {

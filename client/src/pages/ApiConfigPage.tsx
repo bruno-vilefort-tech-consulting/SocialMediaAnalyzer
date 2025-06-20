@@ -469,6 +469,229 @@ export default function ApiConfigPage() {
         </Card>
       )}
 
+      {/* WhatsApp Connection per Client */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            WhatsApp {user?.clientId && `(Cliente: ${user.clientId})`}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Conexão WhatsApp individual por cliente para envio de entrevistas
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            {whatsappStatus?.isConnected ? (
+              <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-green-900 dark:text-green-100">WhatsApp Conectado</h4>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      {whatsappStatus.phoneNumber ? `Telefone: ${whatsappStatus.phoneNumber}` : 'Conexão ativa'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      fetch('/api/whatsapp-client/disconnect', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                          'Content-Type': 'application/json'
+                        }
+                      }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                        toast({ title: "WhatsApp desconectado" });
+                      });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    <WifiOff className="h-4 w-4 mr-2" />
+                    Desconectar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                      <Smartphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-blue-900 dark:text-blue-100">WhatsApp Desconectado</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Conecte seu WhatsApp para enviar entrevistas
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      fetch('/api/whatsapp-client/connect', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                          'Content-Type': 'application/json'
+                        }
+                      })
+                      .then(res => res.json())
+                      .then(data => {
+                        if (data.success) {
+                          queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                          setTimeout(() => {
+                            queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                          }, 1000);
+                          
+                          toast({ 
+                            title: "Conectando WhatsApp...",
+                            description: data.message 
+                          });
+                        } else {
+                          toast({ 
+                            title: "Erro na conexão", 
+                            description: data.message,
+                            variant: "destructive" 
+                          });
+                        }
+                      })
+                      .catch((error) => {
+                        console.error('WhatsApp Error:', error);
+                        toast({ 
+                          title: "Erro na requisição", 
+                          description: "Verifique a conexão",
+                          variant: "destructive" 
+                        });
+                      });
+                    }}
+                    variant="default"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Gerar QR Code
+                  </Button>
+                </div>
+
+                {/* QR Code Display */}
+                {whatsappStatus?.qrCode && (
+                  <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="text-center space-y-3">
+                      <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
+                        <QrCode className="h-5 w-5" />
+                        <span className="font-medium">Escaneie o QR Code com seu WhatsApp</span>
+                      </div>
+                      
+                      <div className="flex justify-center">
+                        <img 
+                          src={whatsappStatus.qrCode} 
+                          alt="QR Code WhatsApp" 
+                          className="border rounded-lg shadow-sm max-w-xs"
+                        />
+                      </div>
+                      
+                      <div className="text-sm text-blue-600 dark:text-blue-400">
+                        <p>1. Abra o WhatsApp no seu celular</p>
+                        <p>2. Toque em Menu ou Configurações e selecione "Dispositivos conectados"</p>
+                        <p>3. Toque em "Conectar um dispositivo"</p>
+                        <p>4. Aponte seu telefone para esta tela para capturar o código</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Teste de Envio WhatsApp */}
+            {whatsappStatus?.isConnected && (
+              <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
+                <h4 className="font-medium flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Teste de Envio
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="testPhone">Número de Teste</Label>
+                    <Input
+                      id="testPhone"
+                      placeholder="11987654321 ou 5511987654321"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="testMessage">Mensagem de Teste</Label>
+                    <Input
+                      id="testMessage"
+                      placeholder="Mensagem de teste..."
+                      value={whatsappMessage}
+                      onChange={(e) => setWhatsappMessage(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={() => {
+                    if (!whatsappPhone.trim() || !whatsappMessage.trim()) {
+                      toast({
+                        title: "Campos obrigatórios",
+                        description: "Preencha o número e a mensagem de teste",
+                        variant: "destructive"
+                      });
+                      return;
+                    }
+                    
+                    fetch('/api/whatsapp-client/test', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        phoneNumber: whatsappPhone,
+                        message: whatsappMessage
+                      })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.success) {
+                        toast({ title: "Mensagem enviada com sucesso!" });
+                      } else {
+                        toast({ 
+                          title: "Erro ao enviar", 
+                          description: data.message,
+                          variant: "destructive" 
+                        });
+                      }
+                    })
+                    .catch(() => {
+                      toast({ 
+                        title: "Erro ao enviar", 
+                        variant: "destructive" 
+                      });
+                    });
+                  }}
+                  className="w-full md:w-auto"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Enviar Teste
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Configurações de Voz (Master e Cliente) */}
       <Card>
         <CardHeader>

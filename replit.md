@@ -184,12 +184,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Feedback visual completo**: Progress bar animada com status em tempo real do envio
   - **Experiência aprimorada**: Sistema mais intuitivo e informativo para o usuário
 
-- June 20, 2025: 📱 INTERFACE EVOLUTION API REMOVIDA - Sistema simplificado conforme solicitação
-  - **Interface Evolution API removida**: Card completo removido da ApiConfigPage.tsx
-  - **Sistema mantido original**: WhatsApp funciona apenas com sistema existente
-  - **Endpoints Evolution mantidos**: Backend permanece mas sem interface frontend
-  - **Interface limpa**: Página ApiConfigPage sem elementos Evolution API
-  - **Sistema funcionando**: WhatsApp original preservado e operacional
+- June 20, 2025: 📱 WHATSAPP POR CLIENTE IMPLEMENTADO - Sistema individual funcionando conforme instruções
+  - **Interface WhatsApp por cliente**: Card posicionado acima do menu de voz conforme solicitado
+  - **Endpoints individuais**: /api/whatsapp-client/* para connect, disconnect, status, test
+  - **QR Code por clientId**: Cada cliente tem conexão WhatsApp isolada e independente
+  - **Sistema Baileys mantido**: Usa clientWhatsAppService existente sem quebrar funcionalidade
+  - **Teste de envio**: Interface para testar mensagens por cliente individual
+  - **Proteção de dados**: Sistema preserva banco de dados sem alterações destrutivas
+  - **Interface completa**: QR Code, status de conexão, desconexão e teste funcional
 
 - June 20, 2025: 📋 PRD COMPLETO CRIADO - Documento técnico detalhado para replicação do sistema
   - **PRD_SISTEMA_ENTREVISTAS_IA_COMPLETO.md**: Documento de 200+ páginas com especificações completas
