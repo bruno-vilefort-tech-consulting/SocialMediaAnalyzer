@@ -4025,8 +4025,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           reportId: baseCandidate.reportId,
           status: baseCandidate.status,
           totalScore: Math.floor(Math.random() * 100),
-          createdAt: Timestamp.now(),
-          completedAt: Timestamp.now()
+          createdAt: new Date(),
+          completedAt: new Date()
         };
         
         // Adicionar ao Firebase
@@ -4047,7 +4047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             score: Math.floor(Math.random() * 100),
             recordingDuration: response.recordingDuration,
             aiAnalysis: response.aiAnalysis,
-            createdAt: Timestamp.now()
+            createdAt: new Date()
           };
           
           await addDoc(responsesRef, newResponse);
