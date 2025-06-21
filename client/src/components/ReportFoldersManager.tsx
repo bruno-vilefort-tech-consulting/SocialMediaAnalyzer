@@ -309,23 +309,21 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
                 onDrop={(e) => handleDrop(e, folder.id)}
               >
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => toggleFolderExpansion(folder.id)}
-                        className="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition-colors"
-                      >
-                        {isExpanded ? (
-                          <FolderOpen className="w-6 h-6" style={{ color: folder.color }} />
-                        ) : (
-                          <Folder className="w-6 h-6" style={{ color: folder.color }} />
-                        )}
-                        <span className="font-semibold">{folder.name}</span>
-                      </button>
-                      <Badge variant="secondary" className="text-xs">
-                        {reportsInFolder.length} relatórios
-                      </Badge>
-                    </div>
+                  <div className="flex items-center gap-3 w-fit">
+                    <button
+                      onClick={() => toggleFolderExpansion(folder.id)}
+                      className="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                    >
+                      {isExpanded ? (
+                        <FolderOpen className="w-6 h-6" style={{ color: folder.color }} />
+                      ) : (
+                        <Folder className="w-6 h-6" style={{ color: folder.color }} />
+                      )}
+                      <span className="font-semibold">{folder.name}</span>
+                    </button>
+                    <Badge variant="secondary" className="text-xs">
+                      {reportsInFolder.length} relatórios
+                    </Badge>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
