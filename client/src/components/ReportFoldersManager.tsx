@@ -264,17 +264,6 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     });
   };
 
-  const folderColors = [
-    { name: 'Azul', value: '#3b82f6' },
-    { name: 'Verde', value: '#10b981' },
-    { name: 'Roxo', value: '#8b5cf6' },
-    { name: 'Rosa', value: '#ec4899' },
-    { name: 'Amarelo', value: '#f59e0b' },
-    { name: 'Vermelho', value: '#ef4444' },
-    { name: 'Laranja', value: '#f97316' },
-    { name: 'Cinza', value: '#6b7280' }
-  ];
-
   if (!selectedClientId) {
     return (
       <div className="text-center py-12 text-muted-foreground">
