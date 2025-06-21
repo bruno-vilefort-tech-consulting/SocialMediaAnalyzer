@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
@@ -670,34 +670,90 @@ export default function NewReportsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {selections.map((selection: Selection) => (
-                  <Card 
-                    key={selection.id}
-                    className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-300"
-                    onClick={() => setSelectedSelection(selection)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <h3 className="font-semibold text-lg">{selection.name}</h3>
-                            <Badge variant={selection.status === 'enviado' ? 'default' : 'secondary'}>
-                              {selection.status}
-                            </Badge>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {selections
+                  .sort((a: Selection, b: Selection) => {
+                    const dateA = new Date(a.createdAt?.seconds * 1000 || a.createdAt);
+                    const dateB = new Date(b.createdAt?.seconds * 1000 || b.createdAt);
+                    return dateB.getTime() - dateA.getTime(); // Mais recente primeiro (esquerda para direita)
+                  })
+                  .map((selection: Selection) => {
+                    const createdDate = new Date(selection.createdAt?.seconds * 1000 || selection.createdAt);
+                    return (
+                      <Card 
+                        key={selection.id}
+                        className="group cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50"
+                        onClick={() => setSelectedSelection(selection)}
+                      >
+                        <CardContent className="p-0">
+                          <div className="relative overflow-hidden rounded-lg">
+                            {/* Header colorido */}
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-5 w-5" />
+                                  <Badge 
+                                    variant={selection.status === 'enviado' ? 'secondary' : 'outline'}
+                                    className="bg-white/20 text-white border-white/30 hover:bg-white/30"
+                                  >
+                                    {selection.status}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs opacity-80">
+                                  #{selection.id.toString().slice(-4)}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Conteúdo */}
+                            <div className="p-4 space-y-3">
+                              <div>
+                                <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                                  {selection.name}
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-1">
+                                  {selection.jobName || 'Vaga não identificada'}
+                                </p>
+                              </div>
+                              
+                              {/* Data de criação */}
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Calendar className="h-3 w-3" />
+                                <span>Criado em {createdDate.toLocaleDateString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit', 
+                                  year: 'numeric'
+                                })}</span>
+                              </div>
+                              
+                              {/* Horário */}
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Clock className="h-3 w-3" />
+                                <span>{createdDate.toLocaleTimeString('pt-BR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Footer com botão */}
+                            <div className="px-4 pb-4">
+                              <Button 
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm group-hover:shadow-md transition-all"
+                                size="sm"
+                              >
+                                <BarChart3 className="h-4 w-4 mr-2" />
+                                Ver Relatório
+                              </Button>
+                            </div>
+                            
+                            {/* Overlay de hover */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Vaga: {selection.jobName || 'Não identificada'}
-                          </p>
-                        </div>
-                        
-                        <Button variant="outline">
-                          Ver Relatório
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
               </div>
             )}
           </div>

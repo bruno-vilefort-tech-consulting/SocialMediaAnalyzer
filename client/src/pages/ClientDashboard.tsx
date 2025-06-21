@@ -48,7 +48,6 @@ export default function ClientDashboard() {
     <div className="space-y-6">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Dashboard Cliente</h2>
-        <p className="text-slate-600">Visão geral das suas vagas e entrevistas</p>
       </div>
       
       {/* Client Stats */}
