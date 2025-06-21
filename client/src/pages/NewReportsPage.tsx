@@ -880,7 +880,7 @@ export default function NewReportsPage() {
                           
                           return (
                             <Card key={candidate.candidate.id} className="bg-orange-50 border-orange-200">
-                              <CardContent className="p-3">
+                              <CardContent className="p-3 pt-[4px] pb-[4px]">
                                 <div className="flex items-center justify-between">
                                   <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
                                   {candidate.interview.status === 'pending' ? (
