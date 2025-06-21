@@ -50,6 +50,9 @@ interface InterviewResponse {
   aiAnalysis?: any;
 }
 
+// Constantes de categorização de candidatos
+const CANDIDATE_CATEGORIES = ['Melhor', 'Mediano', 'Em dúvida', 'Não'] as const;
+
 export default function NewReportsPage() {
   const { user } = useAuth();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
