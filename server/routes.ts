@@ -3516,7 +3516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionText: r.questionText || questions[index]?.pergunta || 'Pergunta não encontrada',
             transcription: r.transcription || r.respostaTexto || 'Transcrição não disponível',
             audioUrl: r.audioUrl || r.respostaAudioUrl || '',
-            score: r.score || 0,
+            score: r.score !== undefined && r.score !== null ? r.score : 0,
             recordingDuration: r.recordingDuration || 0,
             aiAnalysis: r.aiAnalysis || 'Análise não disponível'
           }));

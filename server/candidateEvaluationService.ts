@@ -67,7 +67,7 @@ export class CandidateEvaluationService {
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.1 // Baixa temperatura para consistência nas avaliações
+        temperature: 0 // Temperatura zero para resultados completamente determinísticos
       });
 
       const content = response.choices[0]?.message?.content;
