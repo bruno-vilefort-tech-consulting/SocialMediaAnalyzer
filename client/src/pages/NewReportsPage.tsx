@@ -125,16 +125,22 @@ export default function NewReportsPage() {
       const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
       return response;
     },
-    enabled: !!selectedSelection,
-    onSuccess: (data) => {
-      // Atualizar estado local com as categorias carregadas
+    enabled: !!selectedSelection
+  });
+
+  // Effect para atualizar estado local com as categorias carregadas
+  React.useEffect(() => {
+    if (categories && categories.length > 0 && selectedSelection) {
       const categoryMap: { [key: string]: string } = {};
-      data.forEach((cat: any) => {
-        categoryMap[`selection_${selectedSelection?.id}_${cat.candidateId}`] = cat.category;
+      categories.forEach((cat: any) => {
+        categoryMap[`selection_${selectedSelection.id}_${cat.candidateId}`] = cat.category;
       });
       setCandidateCategories(categoryMap);
+    } else if (selectedSelection) {
+      // Limpar categorias quando mudar de seleção
+      setCandidateCategories({});
     }
-  });
+  }, [categories, selectedSelection]);
 
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
@@ -147,10 +153,17 @@ export default function NewReportsPage() {
       });
     },
     onSuccess: (data, variables) => {
+      // Atualizar estado local imediatamente
       setCandidateCategories(prev => ({
         ...prev,
         [`${variables.reportId}_${variables.candidateId}`]: variables.category
       }));
+      
+      // Invalidar cache para recarregar do banco
+      queryClient.invalidateQueries({
+        queryKey: ['/api/candidate-categories', selectedSelection?.id]
+      });
+      
       console.log(`✅ Categoria ${variables.category} salva para candidato ${variables.candidateId}`);
     },
     onError: (error) => {
