@@ -687,18 +687,32 @@ export default function NewReportsPage() {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {averageScore > 0 && (
+                                    {candidate.interview.status === 'pending' ? (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Sem resposta
+                                      </div>
+                                    ) : averageScore > 0 ? (
                                       <div className="bg-yellow-600 text-white px-2 py-1 rounded text-xs font-bold">
                                         {averageScore.toFixed(0)}
+                                      </div>
+                                    ) : (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Processando...
                                       </div>
                                     )}
                                   </div>
                                   <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
                                   <div className="flex items-center gap-1 text-xs">
-                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                    <span>/</span>
-                                    <span>{candidate.responses.length}</span>
-                                    <span className="text-muted-foreground">respostas</span>
+                                    {candidate.interview.status === 'pending' ? (
+                                      <span className="text-red-600">Não iniciou entrevista</span>
+                                    ) : (
+                                      <>
+                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                        <span>/</span>
+                                        <span>{candidate.responses.length}</span>
+                                        <span className="text-muted-foreground">respostas</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -748,18 +762,32 @@ export default function NewReportsPage() {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {averageScore > 0 && (
+                                    {candidate.interview.status === 'pending' ? (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Sem resposta
+                                      </div>
+                                    ) : averageScore > 0 ? (
                                       <div className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold">
                                         {averageScore.toFixed(0)}
+                                      </div>
+                                    ) : (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Processando...
                                       </div>
                                     )}
                                   </div>
                                   <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
                                   <div className="flex items-center gap-1 text-xs">
-                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                    <span>/</span>
-                                    <span>{candidate.responses.length}</span>
-                                    <span className="text-muted-foreground">respostas</span>
+                                    {candidate.interview.status === 'pending' ? (
+                                      <span className="text-red-600">Não iniciou entrevista</span>
+                                    ) : (
+                                      <>
+                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                        <span>/</span>
+                                        <span>{candidate.responses.length}</span>
+                                        <span className="text-muted-foreground">respostas</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -809,18 +837,32 @@ export default function NewReportsPage() {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {averageScore > 0 && (
+                                    {candidate.interview.status === 'pending' ? (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Sem resposta
+                                      </div>
+                                    ) : averageScore > 0 ? (
                                       <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
                                         {averageScore.toFixed(0)}
+                                      </div>
+                                    ) : (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Processando...
                                       </div>
                                     )}
                                   </div>
                                   <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
                                   <div className="flex items-center gap-1 text-xs">
-                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                    <span>/</span>
-                                    <span>{candidate.responses.length}</span>
-                                    <span className="text-muted-foreground">respostas</span>
+                                    {candidate.interview.status === 'pending' ? (
+                                      <span className="text-red-600">Não iniciou entrevista</span>
+                                    ) : (
+                                      <>
+                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                        <span>/</span>
+                                        <span>{candidate.responses.length}</span>
+                                        <span className="text-muted-foreground">respostas</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 

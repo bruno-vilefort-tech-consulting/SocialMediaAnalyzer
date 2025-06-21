@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 21, 2025: 📊 SISTEMA DE CATEGORIZAÇÃO EM 4 COLUNAS IMPLEMENTADO - Layout visual completo para avaliação de candidatos
+  - **Layout 4 colunas**: "Melhor" (verde), "Mediano" (amarelo), "Em dúvida" (laranja), "Reprovado" (vermelho)
+  - **Todos os candidatos visíveis**: Sistema mostra candidatos da lista da vaga, não apenas os que responderam
+  - **Indicadores visuais**: Candidatos sem resposta aparecem com badge "Sem resposta" e texto "Não iniciou entrevista"
+  - **Endpoint criado**: /api/candidate-lists/:listId/candidates para buscar todos os candidatos da lista
+  - **Cores correspondentes**: Background das colunas combina com cores dos botões de avaliação
+  - **Status automático**: Candidatos sem resposta ficam automaticamente na coluna "Reprovado" com indicadores
+  - **Sistema híbrido**: Combina dados de entrevista com lista completa de candidatos da vaga
+  - **Interface completa**: Cada candidato mostra nome, telefone, score (se houver) e progresso de respostas
+
 - June 19, 2025: 🎉 SISTEMA COMPLETO VALIDADO - Nova arquitetura + Whisper funcionando perfeitamente
   - **Teste final**: Consultor GM 6 (ID: 1750316326534) - Entrevista completa realizada
   - **Transcrições reais confirmadas**: "Estão vendendo, eles não dão resposta correta 100% do tempo..." e "crédito que já é subsidiado 200 dólares por mês..."
