@@ -628,7 +628,6 @@ export default function NewReportsPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
         </div>
-
         {user?.role === 'master' && (
           <Card>
             <CardHeader>
@@ -650,7 +649,6 @@ export default function NewReportsPage() {
             </CardContent>
           </Card>
         )}
-
         {selectedClientId && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
@@ -689,7 +687,7 @@ export default function NewReportsPage() {
                           <div className="relative overflow-hidden rounded-lg">
                             {/* Header colorido */}
                             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
-                              <h3 className="font-bold text-lg text-white line-clamp-1">
+                              <h3 className="font-bold text-lg text-white line-clamp-1 text-center">
                                 {selection.name}
                               </h3>
                             </div>
@@ -739,8 +737,6 @@ export default function NewReportsPage() {
             )}
           </div>
         )}
-
-
       </div>
     );
   }
