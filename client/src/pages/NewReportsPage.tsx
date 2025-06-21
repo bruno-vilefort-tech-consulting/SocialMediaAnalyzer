@@ -362,14 +362,122 @@ export default function NewReportsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Análise dos Resultados</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Candidatos ordenados por pontuação (maior para menor)
+              </p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Análise será implementada conforme suas especificações.
-                </p>
-              </div>
+              {loadingCandidates ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Carregando análise...</p>
+                </div>
+              ) : interviewCandidates.length === 0 ? (
+                <div className="text-center py-12">
+                  <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum candidato encontrado</h3>
+                  <p className="text-muted-foreground">
+                    Ainda não há candidatos que receberam convites para esta seleção.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Cabeçalho da tabela */}
+                  <div className="grid grid-cols-4 gap-4 p-3 bg-gray-50 rounded-lg font-medium text-sm text-muted-foreground">
+                    <div>Nome do Candidato</div>
+                    <div>Status da Entrevista</div>
+                    <div>Respostas Completas</div>
+                    <div className="text-right">Pontuação Final</div>
+                  </div>
+                  
+                  {/* Lista de candidatos ordenada por pontuação */}
+                  {interviewCandidates
+                    .map(candidate => {
+                      // Calcular pontuação média baseada nas respostas
+                      const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
+                      const averageScore = responsesWithScore.length > 0 
+                        ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
+                        : 0;
+                      
+                      return {
+                        ...candidate,
+                        calculatedScore: averageScore
+                      };
+                    })
+                    .sort((a, b) => b.calculatedScore - a.calculatedScore) // Ordenar do maior para menor
+                    .map((candidate) => {
+                      const totalQuestions = candidate.responses.length;
+                      const completedResponses = candidate.responses.filter(r => 
+                        r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
+                      ).length;
+                      const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
+                      
+                      return (
+                        <div 
+                          key={candidate.candidate.id} 
+                          className="grid grid-cols-4 gap-4 p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow"
+                        >
+                          {/* Nome do Candidato */}
+                          <div>
+                            <p className="font-medium">{candidate.candidate.name}</p>
+                            <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
+                          </div>
+                          
+                          {/* Status da Entrevista */}
+                          <div className="flex items-center gap-2">
+                            {isCompleted ? (
+                              <Badge variant="default" className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Finalizada
+                              </Badge>
+                            ) : completedResponses > 0 ? (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Em andamento
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-red-50 text-red-700">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Não iniciada
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Respostas Completas */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {completedResponses}/{totalQuestions}
+                            </span>
+                            {totalQuestions > 0 && (
+                              <Progress 
+                                value={(completedResponses / totalQuestions) * 100} 
+                                className="w-20 h-2"
+                              />
+                            )}
+                          </div>
+                          
+                          {/* Pontuação Final */}
+                          <div className="text-right">
+                            {candidate.calculatedScore > 0 ? (
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
+                                candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
+                                candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {candidate.calculatedScore.toFixed(1)}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                Sem pontuação
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
