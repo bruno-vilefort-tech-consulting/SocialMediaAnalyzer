@@ -56,6 +56,7 @@ export default function NewReportsPage() {
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const [activeTab, setActiveTab] = useState('analise');
   const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
+  const [candidateCategories, setCandidateCategories] = useState<{ [key: string]: string }>({});
   const [audioStates, setAudioStates] = useState<{ [key: string]: { 
     isPlaying: boolean;
     currentTime: number;
@@ -112,6 +113,51 @@ export default function NewReportsPage() {
       setSelectedClientId(user.clientId.toString());
     }
   }, [user]);
+
+  // Query para buscar categorias dos candidatos quando uma seleção é escolhida
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/reports', `selection_${selectedSelection?.id}`, 'categories'],
+    enabled: !!selectedSelection,
+    onSuccess: (data) => {
+      // Atualizar estado local com as categorias carregadas
+      const categoryMap: { [key: string]: string } = {};
+      data.forEach((cat: any) => {
+        categoryMap[`${cat.reportId}_${cat.candidateId}`] = cat.category;
+      });
+      setCandidateCategories(categoryMap);
+    }
+  });
+
+  // Mutation para salvar categoria do candidato
+  const setCategoryMutation = useMutation({
+    mutationFn: async ({ reportId, candidateId, category }: { reportId: string; candidateId: string; category: string }) => {
+      return apiRequest(`/api/candidate-categories`, {
+        method: 'POST',
+        body: JSON.stringify({ reportId, candidateId, category, clientId: user?.clientId }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onSuccess: (data, variables) => {
+      setCandidateCategories(prev => ({
+        ...prev,
+        [`${variables.reportId}_${variables.candidateId}`]: variables.category
+      }));
+      console.log(`✅ Categoria ${variables.category} salva para candidato ${variables.candidateId}`);
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao salvar categoria:', error);
+    }
+  });
+
+  // Função para definir categoria do candidato
+  const setCategory = (candidateId: number, category: string) => {
+    const reportId = `selection_${selectedSelection?.id}`;
+    setCategoryMutation.mutate({ 
+      reportId, 
+      candidateId: candidateId.toString(), 
+      category 
+    });
+  };
 
   // Ordenar candidatos alfabeticamente
   const sortedCandidates = [...(interviewCandidates || [])].sort((a, b) => 

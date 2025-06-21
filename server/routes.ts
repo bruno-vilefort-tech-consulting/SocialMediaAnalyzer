@@ -3148,6 +3148,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate Categories - endpoints para categorização
+  app.get("/api/candidate-categories/:reportId/:candidateId", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+      const { reportId, candidateId } = req.params;
+      const user = req.user!;
+      
+      const category = await storage.getCandidateCategory(reportId, candidateId);
+      
+      // Verificar se o usuário tem acesso a este relatório
+      if (user.role !== 'master' && category && category.clientId !== user.clientId) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+      
+      return res.json(category || { category: null });
+    } catch (error) {
+      console.error('❌ Erro ao buscar categoria do candidato:', error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  app.post("/api/candidate-categories", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+      const { reportId, candidateId, category } = req.body;
+      const user = req.user!;
+      
+      if (!reportId || !candidateId || !category) {
+        return res.status(400).json({ error: "Dados obrigatórios: reportId, candidateId, category" });
+      }
+      
+      const validCategories = ['Melhor', 'Mediano', 'Em dúvida', 'Não'];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ error: "Categoria inválida. Use: Melhor, Mediano, Em dúvida, Não" });
+      }
+      
+      const clientId = user.role === 'master' ? req.body.clientId : user.clientId;
+      if (!clientId) {
+        return res.status(400).json({ error: "ClientId é obrigatório" });
+      }
+      
+      const result = await storage.setCandidateCategory(reportId, candidateId, category, clientId);
+      
+      console.log(`✅ Categoria ${category} salva para candidato ${candidateId} no relatório ${reportId}`);
+      return res.json(result);
+    } catch (error) {
+      console.error('❌ Erro ao salvar categoria do candidato:', error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
+  app.get("/api/reports/:reportId/categories", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+      const { reportId } = req.params;
+      const user = req.user!;
+      
+      const categories = await storage.getCategoriesByReportId(reportId);
+      
+      // Filtrar categorias por cliente se necessário
+      const filteredCategories = user.role === 'master' ? categories : 
+        categories.filter(cat => cat.clientId === user.clientId);
+      
+      return res.json(filteredCategories);
+    } catch (error) {
+      console.error('❌ Erro ao buscar categorias do relatório:', error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  });
+
   app.get("/api/whatsapp-client/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
