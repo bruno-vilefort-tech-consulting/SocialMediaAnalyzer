@@ -14,8 +14,8 @@ export default function ClientDashboard() {
     queryKey: ["/api/client/stats"],
   });
 
-  const { data: reports, isLoading: isLoadingReports } = useQuery({
-    queryKey: ["/api/reports"],
+  const { data: selections = [], isLoading: isLoadingSelections } = useQuery({
+    queryKey: ["/api/selections"],
   });
 
   const handleQuickAction = (path: string) => {
@@ -117,11 +117,11 @@ export default function ClientDashboard() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Últimos Relatórios</CardTitle>
+              <CardTitle>Últimas Seleções</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {isLoadingReports ? (
+                {isLoadingSelections ? (
                   <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
                       <div key={i} className="animate-pulse">
@@ -129,19 +129,19 @@ export default function ClientDashboard() {
                       </div>
                     ))}
                   </div>
-                ) : (!reports || reports.length === 0) ? (
+                ) : (!selections || selections.length === 0) ? (
                   <div className="text-center text-slate-500 py-8">
                     <FileText className="h-8 w-8 mx-auto mb-2" />
-                    <div className="text-sm">Nenhum relatório gerado ainda</div>
-                    <div className="text-xs mt-1">Os relatórios aparecerão aqui quando as seleções forem criadas</div>
+                    <div className="text-sm">Nenhuma seleção criada ainda</div>
+                    <div className="text-xs mt-1">As seleções aparecerão aqui quando forem criadas</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {reports.slice(0, 4).map((report: any) => (
+                    {selections.slice(0, 4).map((selection: any) => (
                       <div 
-                        key={report.id} 
+                        key={selection.id} 
                         className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
-                        onClick={() => setLocation(`/relatorios?reportId=${encodeURIComponent(report.id)}`)}
+                        onClick={() => setLocation("/relatorios")}
                       >
                         <div className="flex items-center">
                           <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -149,33 +149,33 @@ export default function ClientDashboard() {
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-slate-900">
-                              {report.selectionName || report.jobData?.nomeVaga || 'Relatório'}
+                              {selection.name || 'Seleção'}
                             </div>
                             <div className="text-xs text-slate-500 flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(report.createdAt?.seconds * 1000 || report.createdAt).toLocaleDateString('pt-BR')}
+                              {new Date(selection.createdAt?.seconds * 1000 || selection.createdAt).toLocaleDateString('pt-BR')}
                             </div>
-                            {report.jobData?.nomeVaga && (
+                            {selection.jobName && (
                               <div className="text-xs text-slate-400 mt-1">
-                                Vaga: {report.jobData.nomeVaga}
+                                Vaga: {selection.jobName}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="text-right">
-                          <Badge variant="outline" className="text-xs">
-                            {report.candidatesData?.length || 0} candidatos
+                          <Badge variant={selection.status === 'enviado' ? 'default' : 'secondary'} className="text-xs">
+                            {selection.status}
                           </Badge>
                         </div>
                       </div>
                     ))}
-                    {reports.length > 4 && (
+                    {selections.length > 4 && (
                       <Button 
                         variant="outline" 
                         className="w-full mt-3"
                         onClick={() => setLocation("/relatorios")}
                       >
-                        Ver todos os relatórios
+                        Ver todas as seleções
                       </Button>
                     )}
                   </div>
