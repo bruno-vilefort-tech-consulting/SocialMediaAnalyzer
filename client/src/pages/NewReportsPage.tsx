@@ -7,10 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
+import * as XLSX from 'xlsx';
 
 interface Selection {
   id: number;
@@ -301,6 +302,67 @@ export default function NewReportsPage() {
       candidateId: candidateId.toString(), 
       category 
     });
+  };
+
+  // Função para exportar dados para Excel
+  const exportToExcel = () => {
+    if (!allCandidatesWithStatus || allCandidatesWithStatus.length === 0) {
+      return;
+    }
+
+    // Organizar candidatos por categoria
+    const categorias = {
+      'Melhor': allCandidatesWithStatus.filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Melhor'),
+      'Potencial': allCandidatesWithStatus.filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Mediano'),
+      'Em dúvida': allCandidatesWithStatus.filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Em dúvida'),
+      'Reprovado': allCandidatesWithStatus.filter(candidate => getCandidateCategoryWithFallback(candidate.candidate.id) === 'Não')
+    };
+
+    // Criar workbook
+    const workbook = XLSX.utils.book_new();
+
+    // Para cada categoria, criar uma aba
+    Object.entries(categorias).forEach(([nomeCategoria, candidatos]) => {
+      // Ordenar candidatos por pontuação (maior para menor)
+      const candidatosOrdenados = candidatos.sort((a, b) => {
+        const scoreA = a.responses.filter(r => r.score !== null && r.score !== undefined).length > 0 
+          ? a.responses.filter(r => r.score !== null && r.score !== undefined).reduce((sum, r) => sum + (r.score || 0), 0) / a.responses.filter(r => r.score !== null && r.score !== undefined).length
+          : 0;
+        const scoreB = b.responses.filter(r => r.score !== null && r.score !== undefined).length > 0 
+          ? b.responses.filter(r => r.score !== null && r.score !== undefined).reduce((sum, r) => sum + (r.score || 0), 0) / b.responses.filter(r => r.score !== null && r.score !== undefined).length
+          : 0;
+        return scoreB - scoreA; // Ordem decrescente
+      });
+
+      // Preparar dados para a planilha
+      const dadosParaPlanilha = candidatosOrdenados.map(candidate => ({
+        'Nome': candidate.candidate.name,
+        'WhatsApp': candidate.candidate.phone,
+        'E-mail': candidate.candidate.email
+      }));
+
+      // Criar worksheet
+      const worksheet = XLSX.utils.json_to_sheet(dadosParaPlanilha);
+
+      // Ajustar largura das colunas
+      const columnWidths = [
+        { wch: 25 }, // Nome
+        { wch: 20 }, // WhatsApp
+        { wch: 30 }  // E-mail
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Adicionar worksheet ao workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, nomeCategoria);
+    });
+
+    // Nome do arquivo com data atual
+    const agora = new Date();
+    const dataFormatada = agora.toLocaleDateString('pt-BR').replace(/\//g, '-');
+    const nomeArquivo = `Classificacao_Candidatos_${selectedSelection?.name || 'Relatorio'}_${dataFormatada}.xlsx`;
+
+    // Fazer download do arquivo
+    XLSX.writeFile(workbook, nomeArquivo);
   };
 
   // Ordenar candidatos alfabeticamente
@@ -659,10 +721,22 @@ export default function NewReportsPage() {
         <TabsContent value="selecionados" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Candidatos por Categoria</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Candidatos organizados por avaliação em colunas
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Candidatos por Categoria</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Candidatos organizados por avaliação em colunas
+                  </p>
+                </div>
+                <Button
+                  onClick={exportToExcel}
+                  disabled={allCandidatesWithStatus.length === 0}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Excel
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {(loadingCandidates || loadingAllCandidates) ? (
