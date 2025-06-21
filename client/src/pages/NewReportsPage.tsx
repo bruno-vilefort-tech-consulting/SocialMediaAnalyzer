@@ -689,7 +689,7 @@ export default function NewReportsPage() {
                           <div className="relative overflow-hidden rounded-lg">
                             {/* Header colorido */}
                             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-5 w-5" />
                                   <Badge 
@@ -703,18 +703,13 @@ export default function NewReportsPage() {
                                   #{selection.id.toString().slice(-4)}
                                 </div>
                               </div>
+                              <h3 className="font-bold text-lg text-white line-clamp-1">
+                                {selection.jobName || 'Vaga não identificada'}
+                              </h3>
                             </div>
                             
                             {/* Conteúdo */}
                             <div className="p-4 space-y-3">
-                              <div>
-                                <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                                  {selection.name}
-                                </h3>
-                                <p className="text-sm text-gray-600 mt-1 line-clamp-1">
-                                  {selection.jobName || 'Vaga não identificada'}
-                                </p>
-                              </div>
                               
                               {/* Data de criação */}
                               <div className="flex items-center gap-2 text-xs text-gray-500">
