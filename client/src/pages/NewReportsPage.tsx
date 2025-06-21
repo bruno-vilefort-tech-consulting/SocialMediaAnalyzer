@@ -605,48 +605,24 @@ export default function NewReportsPage() {
                             : 0;
                           
                           return (
-                            <Card key={candidate.candidate.id} className="bg-green-50 border-green-200 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
-                            >
+                            <Card key={candidate.candidate.id} className="bg-green-50 border-green-200">
                               <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {candidate.interview.status === 'pending' ? (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Sem resposta
-                                      </div>
-                                    ) : averageScore > 0 ? (
-                                      <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
-                                        {averageScore.toFixed(0)}
-                                      </div>
-                                    ) : (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Processando...
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {candidate.interview.status === 'pending' ? (
-                                      <span className="text-red-600">Não iniciou entrevista</span>
-                                    ) : (
-                                      <>
-                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                        <span>/</span>
-                                        <span>{candidate.responses.length}</span>
-                                        <span className="text-muted-foreground">respostas</span>
-                                      </>
-                                    )}
-                                  </div>
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                  {candidate.interview.status === 'pending' ? (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Sem resposta
+                                    </div>
+                                  ) : averageScore > 0 ? (
+                                    <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                      {averageScore.toFixed(0)}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Processando...
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {/* Detalhes expandidos */}
-                                {expandedCandidate === candidate.candidate.id && (
-                                  <div className="mt-4 pt-3 border-t border-green-200">
-                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
-                                  </div>
-                                )}
                               </CardContent>
                             </Card>
                           );
@@ -680,48 +656,24 @@ export default function NewReportsPage() {
                             : 0;
                           
                           return (
-                            <Card key={candidate.candidate.id} className="bg-yellow-50 border-yellow-200 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
-                            >
+                            <Card key={candidate.candidate.id} className="bg-yellow-50 border-yellow-200">
                               <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {candidate.interview.status === 'pending' ? (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Sem resposta
-                                      </div>
-                                    ) : averageScore > 0 ? (
-                                      <div className="bg-yellow-600 text-white px-2 py-1 rounded text-xs font-bold">
-                                        {averageScore.toFixed(0)}
-                                      </div>
-                                    ) : (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Processando...
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {candidate.interview.status === 'pending' ? (
-                                      <span className="text-red-600">Não iniciou entrevista</span>
-                                    ) : (
-                                      <>
-                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                        <span>/</span>
-                                        <span>{candidate.responses.length}</span>
-                                        <span className="text-muted-foreground">respostas</span>
-                                      </>
-                                    )}
-                                  </div>
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                  {candidate.interview.status === 'pending' ? (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Sem resposta
+                                    </div>
+                                  ) : averageScore > 0 ? (
+                                    <div className="bg-yellow-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                      {averageScore.toFixed(0)}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Processando...
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {/* Detalhes expandidos */}
-                                {expandedCandidate === candidate.candidate.id && (
-                                  <div className="mt-4 pt-3 border-t border-yellow-200">
-                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
-                                  </div>
-                                )}
                               </CardContent>
                             </Card>
                           );
@@ -755,48 +707,24 @@ export default function NewReportsPage() {
                             : 0;
                           
                           return (
-                            <Card key={candidate.candidate.id} className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
-                            >
+                            <Card key={candidate.candidate.id} className="bg-orange-50 border-orange-200">
                               <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {candidate.interview.status === 'pending' ? (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Sem resposta
-                                      </div>
-                                    ) : averageScore > 0 ? (
-                                      <div className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold">
-                                        {averageScore.toFixed(0)}
-                                      </div>
-                                    ) : (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Processando...
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {candidate.interview.status === 'pending' ? (
-                                      <span className="text-red-600">Não iniciou entrevista</span>
-                                    ) : (
-                                      <>
-                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                        <span>/</span>
-                                        <span>{candidate.responses.length}</span>
-                                        <span className="text-muted-foreground">respostas</span>
-                                      </>
-                                    )}
-                                  </div>
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                  {candidate.interview.status === 'pending' ? (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Sem resposta
+                                    </div>
+                                  ) : averageScore > 0 ? (
+                                    <div className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                      {averageScore.toFixed(0)}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Processando...
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {/* Detalhes expandidos */}
-                                {expandedCandidate === candidate.candidate.id && (
-                                  <div className="mt-4 pt-3 border-t border-orange-200">
-                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
-                                  </div>
-                                )}
                               </CardContent>
                             </Card>
                           );
@@ -830,48 +758,24 @@ export default function NewReportsPage() {
                             : 0;
                           
                           return (
-                            <Card key={candidate.candidate.id} className="bg-red-50 border-red-200 hover:shadow-md transition-shadow cursor-pointer"
-                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
-                            >
+                            <Card key={candidate.candidate.id} className="bg-red-50 border-red-200">
                               <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {candidate.interview.status === 'pending' ? (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Sem resposta
-                                      </div>
-                                    ) : averageScore > 0 ? (
-                                      <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
-                                        {averageScore.toFixed(0)}
-                                      </div>
-                                    ) : (
-                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
-                                        Processando...
-                                      </div>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {candidate.interview.status === 'pending' ? (
-                                      <span className="text-red-600">Não iniciou entrevista</span>
-                                    ) : (
-                                      <>
-                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                        <span>/</span>
-                                        <span>{candidate.responses.length}</span>
-                                        <span className="text-muted-foreground">respostas</span>
-                                      </>
-                                    )}
-                                  </div>
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                  {candidate.interview.status === 'pending' ? (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Sem resposta
+                                    </div>
+                                  ) : averageScore > 0 ? (
+                                    <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                      {averageScore.toFixed(0)}
+                                    </div>
+                                  ) : (
+                                    <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                      Processando...
+                                    </div>
+                                  )}
                                 </div>
-                                
-                                {/* Detalhes expandidos */}
-                                {expandedCandidate === candidate.candidate.id && (
-                                  <div className="mt-4 pt-3 border-t border-red-200">
-                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
-                                  </div>
-                                )}
                               </CardContent>
                             </Card>
                           );
