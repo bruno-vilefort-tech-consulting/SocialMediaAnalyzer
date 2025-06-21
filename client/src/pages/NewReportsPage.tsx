@@ -52,7 +52,7 @@ export default function NewReportsPage() {
   const { user } = useAuth();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
-  const [activeTab, setActiveTab] = useState('candidatos');
+  const [activeTab, setActiveTab] = useState('analise');
   const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
   const [audioStates, setAudioStates] = useState<{ [key: string]: { 
     isPlaying: boolean;
@@ -222,11 +222,7 @@ export default function NewReportsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="candidatos" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Candidatos
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="analise" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Análise
@@ -237,126 +233,7 @@ export default function NewReportsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="candidatos" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Candidatos da Seleção</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingCandidates ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                </div>
-              ) : sortedCandidates.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Nenhum candidato encontrado</h3>
-                  <p className="text-muted-foreground">Esta seleção não possui candidatos.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {sortedCandidates.map((item: InterviewCandidate) => {
-                    const candidate = item.candidate;
-                    const interview = item.interview;
-                    const responses = item.responses;
-                    
-                    // Verificar quantas perguntas foram respondidas
-                    const answeredQuestions = responses.filter(r => 
-                      r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
-                    ).length;
-                    const totalQuestions = responses.length;
-                    
-                    // Status visual baseado nas respostas
-                    const getStatusIcon = () => {
-                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
-                        return <CheckCircle className="h-5 w-5 text-green-500" />;
-                      } else if (answeredQuestions > 0) {
-                        return <Clock className="h-5 w-5 text-yellow-500" />;
-                      } else {
-                        return <XCircle className="h-5 w-5 text-red-500" />;
-                      }
-                    };
-                    
-                    const getStatusText = () => {
-                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
-                        return 'Completo';
-                      } else if (answeredQuestions > 0) {
-                        return 'Parcial';
-                      } else {
-                        return 'Pendente';
-                      }
-                    };
-                    
-                    const getStatusColor = () => {
-                      if (answeredQuestions === totalQuestions && totalQuestions > 0) {
-                        return 'bg-green-50 border-green-200';
-                      } else if (answeredQuestions > 0) {
-                        return 'bg-yellow-50 border-yellow-200';
-                      } else {
-                        return 'bg-red-50 border-red-200';
-                      }
-                    };
-                    
-                    return (
-                      <Card key={candidate.id} className={`hover:shadow-md transition-shadow ${getStatusColor()}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <h4 className="font-medium">{candidate.name}</h4>
-                                  <p className="text-sm text-muted-foreground">{candidate.email}</p>
-                                  <p className="text-sm text-muted-foreground">{candidate.phone}</p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-4">
-                              <div className="text-center">
-                                <div className="flex items-center gap-1 mb-1">
-                                  {getStatusIcon()}
-                                  <span className="text-sm font-medium">{getStatusText()}</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {answeredQuestions}/{totalQuestions} respostas
-                                </p>
-                              </div>
-                              
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setExpandedCandidate(expandedCandidate === item.candidate.id ? null : item.candidate.id)}
-                              >
-                                {expandedCandidate === item.candidate.id ? (
-                                  <>
-                                    <ChevronUp className="h-4 w-4 mr-2" />
-                                    Ocultar Detalhes
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronDown className="h-4 w-4 mr-2" />
-                                    Ver Detalhes
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                        
-                        {/* Detalhes expandidos inline */}
-                        {expandedCandidate === item.candidate.id && (
-                          <div className="border-t bg-gray-50 p-6">
-                            <CandidateDetailsInline candidate={item} audioStates={audioStates} setAudioStates={setAudioStates} />
-                          </div>
-                        )}
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="analise" className="space-y-4">
           <Card>
