@@ -1112,8 +1112,8 @@ export class FirebaseStorage implements IStorage {
               ...data,
               audioUrl,
               questionText: data.questionText || `Pergunta ${data.questionId}`,
-              score: data.score || Math.floor(Math.random() * 8) + 2,
-              recordingDuration: data.recordingDuration || Math.floor(Math.random() * 60) + 30
+              score: data.score !== undefined && data.score !== null ? data.score : 0,
+              recordingDuration: data.recordingDuration || 0
             });
           }
         });
@@ -1161,7 +1161,7 @@ export class FirebaseStorage implements IStorage {
         questionText: resp.questionText || `Pergunta ${resp.questionId}`,
         transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
         audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
-        score: resp.score || 0,
+        score: resp.score !== undefined && resp.score !== null ? resp.score : 0,
         recordingDuration: resp.recordingDuration || 0,
         aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
         ...resp

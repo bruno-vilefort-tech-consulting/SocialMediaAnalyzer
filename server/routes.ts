@@ -3509,7 +3509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionText: r.questionText || questions[index]?.pergunta || 'Pergunta não encontrada',
             transcription: r.transcription || r.respostaTexto || 'Transcrição não disponível',
             audioUrl: r.audioUrl || r.respostaAudioUrl || '',
-            score: r.score !== undefined && r.score !== null ? r.score : 0,
+            score: r.score !== undefined && r.score !== null ? r.score : 0, // Usar score já calculado - não recalcular
             recordingDuration: r.recordingDuration || 0,
             aiAnalysis: r.aiAnalysis || 'Análise não disponível'
           }));
@@ -3529,7 +3529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`📝 [FALLBACK] Usando respostas padrão para ${candidate.name} - não encontrou dados reais`);
         }
         
-        // Calcular score total e status baseado nas respostas reais
+        // Usar scores já calculados do banco - NÃO recalcular
         const totalScore = responses.length > 0 
           ? Math.round(responses.reduce((sum, r) => sum + (r.score !== undefined && r.score !== null ? r.score : 0), 0) / responses.length)
           : 0;

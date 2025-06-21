@@ -233,14 +233,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Validação de tipos**: getCandidateCategory() verifica se categories é array antes de usar .find()
   - **Sistema funcional**: Categorias persistem após clique e refresh da página
 
-- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA OTIMIZADO - Cálculo único e eficiente sem desperdício de API
-  - **Problema resolvido**: Score mudava constantemente a cada visualização da página
-  - **Temperature zero**: Mudança de 0.1/0.3 para 0 nos serviços AI para resultados determinísticos
-  - **Verificação de score existente**: Sistema verifica se pontuação já foi calculada antes de chamar API
-  - **Economia de API**: Evita recálculos desnecessários da OpenAI preservando custos
-  - **Processamento único**: Avaliação acontece apenas uma vez após transcrição e é salva permanentemente
-  - **Correção de tipos**: Score 0 agora é preservado corretamente (r.score !== undefined && r.score !== null)
-  - **Logs informativos**: Sistema indica quando usa score já calculado vs quando calcula pela primeira vez
+- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA CORRIGIDO - Cálculo único após transcrição e leitura do banco implementada
+  - **Problema principal resolvido**: Sistema calculava score toda vez que acessava painel causando lentidão e custos API
+  - **Cálculo único implementado**: Score calculado apenas uma vez após transcrição do áudio via WhatsApp
+  - **Persistência no banco**: Scores salvos permanentemente no Firebase e apenas lidos nas visualizações
+  - **Economia de API garantida**: Sistema verifica se score existe antes de chamar OpenAI evitando recálculos
+  - **Logs otimizados**: Indicadores claros quando usa score já calculado vs primeira vez
+  - **Performance melhorada**: Carregamento do painel mais rápido sem chamadas desnecessárias à API
+  - **Validação de dados**: Preserva scores 0 corretamente e evita valores undefined/null
 
 - June 21, 2025: 🗂️ SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Relatórios persistem mesmo após deleção de seleções
   - **Schema Report expandido**: Entidade completamente independente com ID único (report_[selectionId]_[timestamp])

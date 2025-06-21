@@ -486,15 +486,18 @@ class InteractiveInterviewService {
         if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined) {
           // Usar score já calculado para evitar gasto desnecessário de API
           pontuacao = existingResponse.score;
-          console.log(`♻️ [EVALUATION] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo)`);
+          console.log(`♻️ [SCORE_OTIMIZADO] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo e economia de API)`);
         } else {
-          // Calcular pontuação usando IA apenas se não existe
+          // Calcular pontuação usando IA apenas se não existe - PRIMEIRA VEZ APENAS
           try {
             const { candidateEvaluationService } = await import('./candidateEvaluationService');
-            const openaiApiKey = process.env.OPENAI_API_KEY;
+            
+            // Verificar se OpenAI está configurada no master settings
+            const masterSettings = await storage.getMasterSettings();
+            const openaiApiKey = masterSettings?.openaiApiKey;
             
             if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
-              console.log(`🤖 [EVALUATION] Calculando pontuação pela primeira vez...`);
+              console.log(`🤖 [SCORE_CALCULADO_PRIMEIRA_VEZ] Calculando pontuação pela primeira vez - será salva permanentemente...`);
               pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
                 responseId,
                 currentQuestion.pergunta,
@@ -502,9 +505,9 @@ class InteractiveInterviewService {
                 currentQuestion.respostaPerfeita,
                 openaiApiKey
               );
-              console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
+              console.log(`📊 [SCORE_SALVO] Pontuação calculada e será salva: ${pontuacao}/100 - futuras visualizações lerão do banco`);
             } else {
-              console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+              console.log(`⚠️ [EVALUATION] OpenAI não configurada ou dados insuficientes - usando pontuação padrão`);
             }
           } catch (evaluationError) {
             console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
