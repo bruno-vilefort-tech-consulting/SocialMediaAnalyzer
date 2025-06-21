@@ -8,7 +8,9 @@ import {
   type ClientVoiceSetting, type InsertClientVoiceSetting,
   type MasterSettings, type InsertMasterSettings,
   type MessageLog, type InsertMessageLog,
-  type Report, type InsertReport
+  type Report, type InsertReport,
+  type ReportFolder, type InsertReportFolder,
+  type ReportFolderAssignment, type InsertReportFolderAssignment
 } from "@shared/schema";
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
@@ -141,6 +143,20 @@ export interface IStorage {
   getReportById(id: string): Promise<Report | undefined>;
   createReport(report: InsertReport): Promise<Report>;
   deleteReport(id: string): Promise<void>;
+
+  // Report Folders
+  getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]>;
+  getReportFolderById(id: string): Promise<ReportFolder | undefined>;
+  createReportFolder(folder: InsertReportFolder): Promise<ReportFolder>;
+  updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder>;
+  deleteReportFolder(id: string): Promise<void>;
+  
+  // Report Folder Assignments
+  getReportFolderAssignments(folderId: string): Promise<ReportFolderAssignment[]>;
+  getReportFolderAssignmentByReportId(reportId: string): Promise<ReportFolderAssignment | undefined>;
+  assignReportToFolder(assignment: InsertReportFolderAssignment): Promise<ReportFolderAssignment>;
+  removeReportFromFolder(reportId: string): Promise<void>;
+  moveReportToFolder(reportId: string, folderId: string): Promise<void>;
   createReportFromSelection(selectionId: number): Promise<Report>;
 
   // Candidate Categories - para relatórios
@@ -2401,6 +2417,199 @@ export class FirebaseStorage implements IStorage {
 
 
 
+  // Report Folders - Sistema de pastas de trabalho
+  async getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]> {
+    try {
+      const foldersRef = collection(firebaseDb, 'reportFolders');
+      const q = query(foldersRef, where('clientId', '==', clientId), orderBy('position', 'asc'));
+      const querySnapshot = await getDocs(q);
+      
+      const folders = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as ReportFolder[];
+      
+      console.log(`📁 Pastas encontradas para cliente ${clientId}: ${folders.length}`);
+      return folders;
+    } catch (error) {
+      console.error('❌ Erro ao buscar pastas:', error);
+      return [];
+    }
+  }
+
+  async getReportFolderById(id: string): Promise<ReportFolder | undefined> {
+    try {
+      const docRef = doc(firebaseDb, 'reportFolders', id);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        } as ReportFolder;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('❌ Erro ao buscar pasta por ID:', error);
+      return undefined;
+    }
+  }
+
+  async createReportFolder(folder: InsertReportFolder): Promise<ReportFolder> {
+    try {
+      const folderId = `folder_${Date.now()}`;
+      const folderData = {
+        ...folder,
+        id: folderId,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      };
+      
+      await setDoc(doc(firebaseDb, 'reportFolders', folderId), folderData);
+      console.log(`✅ Pasta criada: ${folderId}`);
+      
+      return folderData as ReportFolder;
+    } catch (error) {
+      console.error('❌ Erro ao criar pasta:', error);
+      throw error;
+    }
+  }
+
+  async updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder> {
+    try {
+      const docRef = doc(firebaseDb, 'reportFolders', id);
+      const updateData = {
+        ...folder,
+        updatedAt: Timestamp.now()
+      };
+      
+      await updateDoc(docRef, updateData);
+      const updatedDoc = await getDoc(docRef);
+      console.log(`✅ Pasta atualizada: ${id}`);
+      
+      return { id, ...updatedDoc.data() } as ReportFolder;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar pasta:', error);
+      throw error;
+    }
+  }
+
+  async deleteReportFolder(id: string): Promise<void> {
+    try {
+      // Primeiro, remover todas as atribuições de relatórios dessa pasta
+      const assignmentsRef = collection(firebaseDb, 'reportFolderAssignments');
+      const q = query(assignmentsRef, where('folderId', '==', id));
+      const querySnapshot = await getDocs(q);
+      
+      const batch = writeBatch(firebaseDb);
+      querySnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Deletar a pasta
+      batch.delete(doc(firebaseDb, 'reportFolders', id));
+      await batch.commit();
+      
+      console.log(`🗑️ Pasta deletada: ${id} (${querySnapshot.docs.length} atribuições removidas)`);
+    } catch (error) {
+      console.error('❌ Erro ao deletar pasta:', error);
+      throw error;
+    }
+  }
+
+  // Report Folder Assignments - Atribuições de relatórios às pastas
+  async getReportFolderAssignments(folderId: string): Promise<ReportFolderAssignment[]> {
+    try {
+      const assignmentsRef = collection(firebaseDb, 'reportFolderAssignments');
+      const q = query(assignmentsRef, where('folderId', '==', folderId));
+      const querySnapshot = await getDocs(q);
+      
+      const assignments = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as ReportFolderAssignment[];
+      
+      console.log(`📋 Atribuições encontradas para pasta ${folderId}: ${assignments.length}`);
+      return assignments;
+    } catch (error) {
+      console.error('❌ Erro ao buscar atribuições:', error);
+      return [];
+    }
+  }
+
+  async getReportFolderAssignmentByReportId(reportId: string): Promise<ReportFolderAssignment | undefined> {
+    try {
+      const assignmentsRef = collection(firebaseDb, 'reportFolderAssignments');
+      const q = query(assignmentsRef, where('reportId', '==', reportId));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return {
+          id: doc.id,
+          ...doc.data()
+        } as ReportFolderAssignment;
+      }
+      return undefined;
+    } catch (error) {
+      console.error('❌ Erro ao buscar atribuição por reportId:', error);
+      return undefined;
+    }
+  }
+
+  async assignReportToFolder(assignment: InsertReportFolderAssignment): Promise<ReportFolderAssignment> {
+    try {
+      // Primeiro, remover qualquer atribuição existente para este relatório
+      await this.removeReportFromFolder(assignment.reportId);
+      
+      const assignmentId = `assignment_${Date.now()}`;
+      const assignmentData = {
+        ...assignment,
+        id: assignmentId,
+        assignedAt: Timestamp.now()
+      };
+      
+      await setDoc(doc(firebaseDb, 'reportFolderAssignments', assignmentId), assignmentData);
+      console.log(`✅ Relatório ${assignment.reportId} atribuído à pasta ${assignment.folderId}`);
+      
+      return assignmentData as ReportFolderAssignment;
+    } catch (error) {
+      console.error('❌ Erro ao atribuir relatório à pasta:', error);
+      throw error;
+    }
+  }
+
+  async removeReportFromFolder(reportId: string): Promise<void> {
+    try {
+      const assignmentsRef = collection(firebaseDb, 'reportFolderAssignments');
+      const q = query(assignmentsRef, where('reportId', '==', reportId));
+      const querySnapshot = await getDocs(q);
+      
+      const batch = writeBatch(firebaseDb);
+      querySnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+      
+      console.log(`🗑️ Relatório ${reportId} removido de todas as pastas`);
+    } catch (error) {
+      console.error('❌ Erro ao remover relatório da pasta:', error);
+      throw error;
+    }
+  }
+
+  async moveReportToFolder(reportId: string, folderId: string): Promise<void> {
+    try {
+      await this.assignReportToFolder({
+        reportId,
+        folderId
+      });
+      console.log(`📁 Relatório ${reportId} movido para pasta ${folderId}`);
+    } catch (error) {
+      console.error('❌ Erro ao mover relatório:', error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new FirebaseStorage();

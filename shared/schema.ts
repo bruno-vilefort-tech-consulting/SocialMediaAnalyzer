@@ -34,6 +34,25 @@ export const clients = pgTable("clients", {
 
 
 
+// Report Folders for organizing reports
+export const reportFolders = pgTable("report_folders", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  clientId: text("client_id").notNull(),
+  color: text("color").default("#3b82f6"), // Default blue color
+  position: integer("position").default(0), // For ordering folders
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Report assignments to folders
+export const reportFolderAssignments = pgTable("report_folder_assignments", {
+  id: text("id").primaryKey(),
+  reportId: text("report_id").notNull(),
+  folderId: text("folder_id").notNull(),
+  assignedAt: timestamp("assigned_at").defaultNow()
+});
+
 // Types for WhatsApp connections in Firebase
 export interface WhatsAppConnection {
   id: string;
@@ -48,6 +67,15 @@ export interface WhatsAppConnection {
   createdAt: Date;
   updatedAt?: Date;
 }
+
+// Report Folder types
+export const insertReportFolderSchema = createInsertSchema(reportFolders);
+export type InsertReportFolder = z.infer<typeof insertReportFolderSchema>;
+export type ReportFolder = typeof reportFolders.$inferSelect;
+
+export const insertReportFolderAssignmentSchema = createInsertSchema(reportFolderAssignments);
+export type InsertReportFolderAssignment = z.infer<typeof insertReportFolderAssignmentSchema>;
+export type ReportFolderAssignment = typeof reportFolderAssignments.$inferSelect;
 
 // Password reset tokens
 export const passwordResetTokens = pgTable("password_reset_tokens", {
