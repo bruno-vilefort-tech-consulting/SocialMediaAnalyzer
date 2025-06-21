@@ -277,7 +277,6 @@ export default function NewReportsPage() {
           </p>
         </div>
       </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="analise" className="flex items-center gap-2">
@@ -322,7 +321,7 @@ export default function NewReportsPage() {
                     <div>Status da Entrevista</div>
                     <div>Respostas Completas</div>
                     <div>Avaliação</div>
-                    <div className="text-right">Pontuação Final</div>
+                    <div className="text-center">Pontuação Final</div>
                   </div>
                   
                   {/* Lista de candidatos ordenada por pontuação */}
@@ -492,8 +491,6 @@ export default function NewReportsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-
     </div>
   );
 }
