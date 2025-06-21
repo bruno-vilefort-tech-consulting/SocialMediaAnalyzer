@@ -3538,7 +3538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Calcular score total e status baseado nas respostas reais
         const totalScore = responses.length > 0 
-          ? Math.round(responses.reduce((sum, r) => sum + (r.score || 0), 0) / responses.length)
+          ? Math.round(responses.reduce((sum, r) => sum + (r.score !== undefined && r.score !== null ? r.score : 0), 0) / responses.length)
           : 0;
         const hasRealResponses = realResponses.length > 0;
         
