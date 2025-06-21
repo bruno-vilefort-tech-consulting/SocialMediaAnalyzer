@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { transcriptionService } from "./transcriptionService";
 import { insertUserSchema, insertClientSchema, insertJobSchema, insertQuestionSchema, 
          insertCandidateSchema, insertCandidateListSchema, insertSelectionSchema, insertInterviewSchema, 
-         insertResponseSchema, insertApiConfigSchema } from "@shared/schema";
+         insertResponseSchema, insertApiConfigSchema, insertReportFolderSchema, insertReportFolderAssignmentSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import multer from "multer";

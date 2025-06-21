@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar } from 'lucide-react';
+import ReportFoldersManager from '@/components/ReportFoldersManager';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
@@ -621,7 +622,7 @@ export default function NewReportsPage() {
     );
   }
 
-  // Se nenhuma seleção foi escolhida, mostrar lista de seleções
+  // Se nenhuma seleção foi escolhida, mostrar lista de seleções com sistema de pastas
   if (!selectedSelection) {
     return (
       <div className="space-y-6">
@@ -650,7 +651,30 @@ export default function NewReportsPage() {
           </Card>
         )}
         {selectedClientId && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Sistema de Pastas de Trabalho */}
+            <ReportFoldersManager 
+              selectedClientId={selectedClientId}
+              reports={selections.map(s => ({
+                id: `selection_${s.id}`,
+                selectionId: s.id.toString(),
+                selectionName: s.name,
+                jobName: s.jobName || 'Vaga não especificada',
+                clientId: typeof s.clientId === 'number' ? s.clientId : parseInt(s.clientId),
+                clientName: '',
+                candidateListName: '',
+                totalCandidates: 0,
+                completedInterviews: 0,
+                createdAt: s.createdAt
+              }))}
+              onReportSelect={(report) => {
+                const selection = selections.find(s => s.id.toString() === report.selectionId);
+                if (selection) {
+                  setSelectedSelection(selection);
+                }
+              }}
+            />
+            
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
             
             {loadingSelections ? (
