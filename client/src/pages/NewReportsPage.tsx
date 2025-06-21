@@ -497,15 +497,272 @@ export default function NewReportsPage() {
         <TabsContent value="selecionados" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Candidatos Selecionados</CardTitle>
+              <CardTitle>Candidatos por Categoria</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Candidatos organizados por avaliação em colunas
+              </p>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Sistema de selecionados será implementado conforme suas especificações.
-                </p>
-              </div>
+              {loadingCandidates ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Carregando candidatos...</p>
+                </div>
+              ) : interviewCandidates.length === 0 ? (
+                <div className="text-center py-12">
+                  <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Nenhum candidato encontrado</h3>
+                  <p className="text-muted-foreground">
+                    Ainda não há candidatos que receberam convites para esta seleção.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                  {/* Coluna Melhor - Verde */}
+                  <div className="space-y-3">
+                    <div className="bg-green-100 border border-green-200 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ThumbsUp className="h-5 w-5 text-green-700" />
+                        <h3 className="font-semibold text-green-700">Melhor</h3>
+                      </div>
+                      <div className="text-sm text-green-600">
+                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length} candidatos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {interviewCandidates
+                        .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Melhor')
+                        .map(candidate => {
+                          const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
+                          const averageScore = responsesWithScore.length > 0 
+                            ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
+                            : 0;
+                          
+                          return (
+                            <Card key={candidate.candidate.id} className="bg-green-50 border-green-200 hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                    {averageScore > 0 && (
+                                      <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                        {averageScore.toFixed(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                    <span>/</span>
+                                    <span>{candidate.responses.length}</span>
+                                    <span className="text-muted-foreground">respostas</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Detalhes expandidos */}
+                                {expandedCandidate === candidate.candidate.id && (
+                                  <div className="mt-4 pt-3 border-t border-green-200">
+                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          Nenhum candidato nesta categoria
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Coluna Mediano - Amarelo */}
+                  <div className="space-y-3">
+                    <div className="bg-yellow-100 border border-yellow-200 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Meh className="h-5 w-5 text-yellow-700" />
+                        <h3 className="font-semibold text-yellow-700">Mediano</h3>
+                      </div>
+                      <div className="text-sm text-yellow-600">
+                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length} candidatos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {interviewCandidates
+                        .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Mediano')
+                        .map(candidate => {
+                          const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
+                          const averageScore = responsesWithScore.length > 0 
+                            ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
+                            : 0;
+                          
+                          return (
+                            <Card key={candidate.candidate.id} className="bg-yellow-50 border-yellow-200 hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                    {averageScore > 0 && (
+                                      <div className="bg-yellow-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                        {averageScore.toFixed(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                    <span>/</span>
+                                    <span>{candidate.responses.length}</span>
+                                    <span className="text-muted-foreground">respostas</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Detalhes expandidos */}
+                                {expandedCandidate === candidate.candidate.id && (
+                                  <div className="mt-4 pt-3 border-t border-yellow-200">
+                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          Nenhum candidato nesta categoria
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Coluna Em dúvida - Laranja */}
+                  <div className="space-y-3">
+                    <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <AlertTriangle className="h-5 w-5 text-orange-700" />
+                        <h3 className="font-semibold text-orange-700">Em dúvida</h3>
+                      </div>
+                      <div className="text-sm text-orange-600">
+                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length} candidatos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {interviewCandidates
+                        .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Em dúvida')
+                        .map(candidate => {
+                          const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
+                          const averageScore = responsesWithScore.length > 0 
+                            ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
+                            : 0;
+                          
+                          return (
+                            <Card key={candidate.candidate.id} className="bg-orange-50 border-orange-200 hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                    {averageScore > 0 && (
+                                      <div className="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                        {averageScore.toFixed(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                    <span>/</span>
+                                    <span>{candidate.responses.length}</span>
+                                    <span className="text-muted-foreground">respostas</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Detalhes expandidos */}
+                                {expandedCandidate === candidate.candidate.id && (
+                                  <div className="mt-4 pt-3 border-t border-orange-200">
+                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          Nenhum candidato nesta categoria
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Coluna Não - Vermelho */}
+                  <div className="space-y-3">
+                    <div className="bg-red-100 border border-red-200 rounded-lg p-3 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ThumbsDown className="h-5 w-5 text-red-700" />
+                        <h3 className="font-semibold text-red-700">Reprovado</h3>
+                      </div>
+                      <div className="text-sm text-red-600">
+                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length} candidatos
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {interviewCandidates
+                        .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Não')
+                        .map(candidate => {
+                          const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
+                          const averageScore = responsesWithScore.length > 0 
+                            ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
+                            : 0;
+                          
+                          return (
+                            <Card key={candidate.candidate.id} className="bg-red-50 border-red-200 hover:shadow-md transition-shadow cursor-pointer"
+                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
+                            >
+                              <CardContent className="p-3">
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
+                                    {averageScore > 0 && (
+                                      <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                                        {averageScore.toFixed(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                    <span>/</span>
+                                    <span>{candidate.responses.length}</span>
+                                    <span className="text-muted-foreground">respostas</span>
+                                  </div>
+                                </div>
+                                
+                                {/* Detalhes expandidos */}
+                                {expandedCandidate === candidate.candidate.id && (
+                                  <div className="mt-4 pt-3 border-t border-red-200">
+                                    <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length === 0 && (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          Nenhum candidato nesta categoria
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
