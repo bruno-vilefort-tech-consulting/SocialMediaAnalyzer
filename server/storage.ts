@@ -1057,29 +1057,48 @@ export class FirebaseStorage implements IStorage {
         }
       });
       
-      console.log(`📄 [DEBUG_NOVA_SELEÇÃO] Respostas encontradas para seleção ${selectionId}:`, matchingResponses.length);
+      console.log(`📄 [SELECTION_FILTER] Respostas ESPECÍFICAS da seleção ${selectionId}:`, matchingResponses.length);
+      
+      // FILTRO FINAL: Garantir que todas as respostas pertencem à seleção correta
+      const filteredResponses = matchingResponses.filter(response => {
+        const belongsToSelection = response.selectionId === selectionId || 
+                                 response.selectionId === selectionId.toString() ||
+                                 response.id.includes(`_${selectionId}_`);
+        
+        if (!belongsToSelection) {
+          console.log(`🚫 [FILTER_OUT] Removendo resposta de seleção diferente: ${response.selectionId} (esperado: ${selectionId})`);
+        }
+        
+        return belongsToSelection;
+      });
+      
+      console.log(`🎯 [FINAL_FILTER] Respostas após filtro: ${filteredResponses.length} (removidas: ${matchingResponses.length - filteredResponses.length})`);
       
       if (matchingResponses.length === 0) {
-        console.log(`🔍 [FALLBACK] Buscando transcrições reais para telefone ${candidatePhone}...`);
+        console.log(`🔍 [FALLBACK] Buscando transcrições ESPECÍFICAS para seleção ${selectionId} + candidato ${candidatePhone}...`);
         
-        // Buscar transcrições reais de outras entrevistas deste candidato
+        // Buscar apenas respostas desta seleção específica
         const allResponsesSnapshot = await getDocs(collection(firebaseDb, 'responses'));
         
         allResponsesSnapshot.forEach(doc => {
           const data = doc.data();
           
-          // Verificar se é resposta deste candidato e tem transcrição real
+          // FILTRO RIGOROSO: Apenas respostas desta seleção específica
+          const belongsToThisSelection = data.selectionId === selectionId || 
+                                       data.selectionId === selectionId.toString();
+          
           const candidateIdMatch = data.candidateId === candidateId.toString() || 
                                    data.candidateId?.includes(candidatePhone);
           
-          if (candidateIdMatch && 
+          if (belongsToThisSelection && candidateIdMatch && 
               data.transcription && 
               data.transcription !== 'Aguardando resposta via WhatsApp' && 
               data.transcription.trim() !== '') {
-            console.log(`📝 [REAL_DATA] Encontrada transcrição real: "${data.transcription.substring(0, 50)}..."`);
             
-            // Criar URL do áudio baseado na estrutura dos arquivos encontrados
-            const audioUrl = data.audioUrl || `/uploads/audio_${candidatePhone}_${data.selectionId}_R${data.questionId}.ogg`;
+            console.log(`📝 [SPECIFIC_DATA] Seleção ${selectionId}: "${data.transcription.substring(0, 50)}..."`);
+            
+            // Criar URL do áudio baseado na estrutura correta
+            const audioUrl = data.audioUrl || `/uploads/audio_${candidatePhone}_${selectionId}_R${data.questionId}.ogg`;
             
             matchingResponses.push({
               id: doc.id,
@@ -1091,6 +1110,35 @@ export class FirebaseStorage implements IStorage {
             });
           }
         });
+        
+        // Se ainda não encontrou respostas específicas desta seleção, buscar perguntas do job para criar estrutura base
+        if (matchingResponses.length === 0) {
+          console.log(`🔍 [EMPTY_INTERVIEW] Criando estrutura base para seleção ${selectionId}...`);
+          
+          // Buscar job da seleção
+          const selection = await this.getSelectionById(selectionId);
+          if (selection) {
+            const questions = await this.getQuestionsByJobId(selection.jobId);
+            
+            // Criar estrutura base com perguntas sem respostas
+            questions.forEach((question, index) => {
+              matchingResponses.push({
+                id: `pending_${selectionId}_${candidateId}_${index + 1}`,
+                candidateId: candidateId.toString(),
+                selectionId: selectionId,
+                questionId: index + 1,
+                questionText: question.questionText || question.pergunta || `Pergunta ${index + 1}`,
+                transcription: 'Aguardando resposta via WhatsApp',
+                audioUrl: '',
+                score: 0,
+                recordingDuration: 0,
+                aiAnalysis: 'Análise IA pendente'
+              });
+            });
+            
+            console.log(`📋 [STRUCTURE] Criadas ${questions.length} perguntas base para seleção ${selectionId}`);
+          }
+        }
         
         if (matchingResponses.length === 0) {
           console.log(`🔒 [ISOLAMENTO] Nenhuma resposta encontrada para seleção ${selectionId} + candidato ${candidateId}`);
