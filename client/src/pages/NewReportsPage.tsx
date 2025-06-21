@@ -320,7 +320,7 @@ export default function NewReportsPage() {
                     <div>Nome do Candidato</div>
                     <div>Status da Entrevista</div>
                     <div>Respostas Completas</div>
-                    <div>Avaliação</div>
+                    <div className="text-center">Avaliação</div>
                     <div className="text-center">Pontuação Final</div>
                   </div>
                   
