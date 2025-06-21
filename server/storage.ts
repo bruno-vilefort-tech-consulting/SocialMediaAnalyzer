@@ -148,7 +148,6 @@ export interface IStorage {
   setCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any>;
   getCategoriesByReportId(reportId: string): Promise<any[]>;
   getCandidateCategories(selectionId: string): Promise<any[]>;
-  saveCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any>;
 }
 
 export class FirebaseStorage implements IStorage {
@@ -2346,49 +2345,7 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async saveCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any> {
-    try {
-      const categoriesRef = collection(firebaseDb, 'candidateCategories');
-      
-      // Check if category already exists for this candidate and report
-      const existingQuery = query(
-        categoriesRef,
-        where('reportId', '==', reportId),
-        where('candidateId', '==', candidateId)
-      );
-      
-      const existingSnapshot = await getDocs(existingQuery);
-      
-      const categoryData = {
-        reportId,
-        candidateId,
-        category,
-        clientId,
-        updatedAt: new Date()
-      };
-      
-      if (!existingSnapshot.empty) {
-        // Update existing category
-        const docRef = existingSnapshot.docs[0].ref;
-        await updateDoc(docRef, categoryData);
-        console.log(`✅ [STORAGE] Categoria atualizada: ${candidateId} -> ${category}`);
-      } else {
-        // Create new category
-        const newCategoryData = {
-          ...categoryData,
-          id: `${reportId}_${candidateId}`,
-          createdAt: new Date()
-        };
-        await addDoc(categoriesRef, newCategoryData);
-        console.log(`✅ [STORAGE] Nova categoria criada: ${candidateId} -> ${category}`);
-      }
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Erro ao salvar categoria:', error);
-      throw error;
-    }
-  }
+
 
 }
 

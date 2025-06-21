@@ -2115,7 +2115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
-      await storage.saveCandidateCategory(reportId, candidateId, category, clientId);
+      await storage.setCandidateCategory(reportId, candidateId, category, clientId);
       console.log(`✅ [API] Categoria ${category} salva para candidato ${candidateId}`);
       
       res.json({ success: true });
