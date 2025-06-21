@@ -2069,6 +2069,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Candidate Categories routes
+  app.get("/api/candidate-categories", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = req.query.selectionId as string;
+      
+      if (!selectionId) {
+        return res.json([]);
+      }
+      
+      // For now, return empty array since we don't have this table yet
+      // This will be implemented when categories storage is added
+      res.json([]);
+    } catch (error) {
+      console.error('Error fetching candidate categories:', error);
+      res.status(500).json({ message: 'Failed to fetch categories' });
+    }
+  });
+
+  app.post("/api/candidate-categories", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { reportId, candidateId, category, clientId } = req.body;
+      
+      // Validate required fields
+      if (!reportId || !candidateId || !category) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      
+      // For now, just return success
+      // This will be implemented when categories storage is added
+      console.log(`✅ Categoria ${category} definida para candidato ${candidateId} na seleção ${reportId}`);
+      
+      res.json({ 
+        success: true,
+        reportId,
+        candidateId,
+        category 
+      });
+    } catch (error) {
+      console.error('Error saving candidate category:', error);
+      res.status(500).json({ message: 'Failed to save category' });
+    }
+  });
+
   // Interview routes (public for candidates)
   app.get("/api/interview/:token", async (req, res) => {
     try {

@@ -119,13 +119,18 @@ export default function NewReportsPage() {
 
   // Query para buscar categorias dos candidatos quando uma seleção é escolhida
   const { data: categories = [] } = useQuery({
-    queryKey: ['/api/reports', `selection_${selectedSelection?.id}`, 'categories'],
+    queryKey: ['/api/candidate-categories', selectedSelection?.id],
+    queryFn: async () => {
+      if (!selectedSelection) return [];
+      const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
+      return response;
+    },
     enabled: !!selectedSelection,
     onSuccess: (data) => {
       // Atualizar estado local com as categorias carregadas
       const categoryMap: { [key: string]: string } = {};
       data.forEach((cat: any) => {
-        categoryMap[`${cat.reportId}_${cat.candidateId}`] = cat.category;
+        categoryMap[`selection_${selectedSelection?.id}_${cat.candidateId}`] = cat.category;
       });
       setCandidateCategories(categoryMap);
     }
@@ -134,10 +139,11 @@ export default function NewReportsPage() {
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
     mutationFn: async ({ reportId, candidateId, category }: { reportId: string; candidateId: string; category: string }) => {
-      return apiRequest(`/api/candidate-categories`, {
-        method: 'POST',
-        body: JSON.stringify({ reportId, candidateId, category, clientId: user?.clientId }),
-        headers: { 'Content-Type': 'application/json' }
+      return apiRequest('/api/candidate-categories', 'POST', { 
+        reportId, 
+        candidateId, 
+        category, 
+        clientId: user?.clientId 
       });
     },
     onSuccess: (data, variables) => {
@@ -344,17 +350,17 @@ export default function NewReportsPage() {
                         <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
                             <div 
-                              className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="grid grid-cols-12 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
                             >
-                              {/* Nome do Candidato */}
-                              <div>
+                              {/* Coluna 1-4: Nome do Candidato */}
+                              <div className="col-span-4">
                                 <p className="font-medium">{candidate.candidate.name}</p>
                                 <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
                               </div>
                               
-                              {/* Status da Entrevista */}
-                              <div className="flex items-center gap-2">
+                              {/* Coluna 5-6: Status da Entrevista */}
+                              <div className="col-span-2 flex items-center gap-2">
                                 {isCompleted ? (
                                   <Badge variant="default" className="bg-green-100 text-green-800">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -373,8 +379,8 @@ export default function NewReportsPage() {
                                 )}
                               </div>
                               
-                              {/* Respostas Completas */}
-                              <div className="flex items-center gap-2">
+                              {/* Coluna 7-8: Respostas Completas */}
+                              <div className="col-span-2 flex items-center gap-2">
                                 <span className="text-sm font-medium">
                                   {completedResponses}/{totalQuestions}
                                 </span>
@@ -386,52 +392,61 @@ export default function NewReportsPage() {
                                 )}
                               </div>
                               
-                              {/* Botões de Categorização + Pontuação Final */}
-                              <div className="flex items-center justify-end gap-2">
-                                {/* 4 Botões de Categorização */}
-                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                  <Button
-                                    size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
-                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-green-50'}`}
-                                    onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
-                                    disabled={setCategoryMutation.isPending}
-                                  >
-                                    <ThumbsUp className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
-                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700' : 'hover:bg-yellow-50'}`}
-                                    onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
-                                    disabled={setCategoryMutation.isPending}
-                                  >
-                                    <Meh className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
-                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700' : 'hover:bg-orange-50'}`}
-                                    onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
-                                    disabled={setCategoryMutation.isPending}
-                                  >
-                                    <AlertTriangle className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
-                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700' : 'hover:bg-red-50'}`}
-                                    onClick={() => setCategory(candidate.candidate.id, 'Não')}
-                                    disabled={setCategoryMutation.isPending}
-                                  >
-                                    <ThumbsDown className="h-3 w-3" />
-                                  </Button>
+                              {/* Coluna 9-10: Avaliação (4 Botões de Categorização) */}
+                              <div className="col-span-2">
+                                <div className="text-center">
+                                  <h4 className="text-xs font-medium text-muted-foreground mb-1">Avaliação</h4>
+                                  <div className="flex gap-1 justify-center" onClick={(e) => e.stopPropagation()}>
+                                    <Button
+                                      size="sm"
+                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
+                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
+                                      onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
+                                      disabled={setCategoryMutation.isPending}
+                                      title="Melhor"
+                                    >
+                                      <ThumbsUp className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
+                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
+                                      onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
+                                      disabled={setCategoryMutation.isPending}
+                                      title="Mediano"
+                                    >
+                                      <Meh className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
+                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
+                                      onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
+                                      disabled={setCategoryMutation.isPending}
+                                      title="Em dúvida"
+                                    >
+                                      <AlertTriangle className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
+                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
+                                      onClick={() => setCategory(candidate.candidate.id, 'Não')}
+                                      disabled={setCategoryMutation.isPending}
+                                      title="Não"
+                                    >
+                                      <ThumbsDown className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
+                              </div>
 
-                                {/* Pontuação Final */}
+                              {/* Coluna 11-12: Pontuação Final */}
+                              <div className="col-span-2 text-center">
+                                <h4 className="text-xs font-medium text-muted-foreground mb-1">Pontuação</h4>
                                 <div>
                                   {candidate.calculatedScore > 0 ? (
-                                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
+                                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-bold ${
                                       candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
                                       candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
                                       candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
@@ -440,7 +455,7 @@ export default function NewReportsPage() {
                                       {candidate.calculatedScore.toFixed(1)}
                                     </div>
                                   ) : (
-                                    <span className="text-muted-foreground text-sm">
+                                    <span className="text-muted-foreground text-xs">
                                       Sem pontuação
                                     </span>
                                   )}
