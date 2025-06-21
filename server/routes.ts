@@ -889,6 +889,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint alternativo para candidatos de uma lista (frontend usa esta URL)
+  app.get("/api/candidate-lists/:listId/candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const listId = parseInt(req.params.listId);
+      console.log(`🔍 Buscando candidatos da lista ${listId} via candidate-lists`);
+      
+      if (isNaN(listId)) {
+        return res.status(400).json({ message: 'Invalid list ID' });
+      }
+      
+      const candidates = await storage.getCandidatesByListId(listId);
+      console.log(`📋 Encontrados ${candidates.length} candidatos na lista ${listId}`);
+      
+      res.json(candidates);
+    } catch (error) {
+      console.error('Erro ao buscar candidatos da lista:', error);
+      res.status(500).json({ message: 'Failed to fetch list candidates' });
+    }
+  });
+
   // Endpoint para buscar todos os relacionamentos candidateListMemberships
   app.get("/api/candidate-list-memberships", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

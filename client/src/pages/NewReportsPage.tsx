@@ -612,18 +612,32 @@ export default function NewReportsPage() {
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between">
                                     <h4 className="font-medium text-sm">{candidate.candidate.name}</h4>
-                                    {averageScore > 0 && (
+                                    {candidate.interview.status === 'pending' ? (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Sem resposta
+                                      </div>
+                                    ) : averageScore > 0 ? (
                                       <div className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">
                                         {averageScore.toFixed(0)}
+                                      </div>
+                                    ) : (
+                                      <div className="bg-gray-400 text-white px-2 py-1 rounded text-xs font-bold">
+                                        Processando...
                                       </div>
                                     )}
                                   </div>
                                   <p className="text-xs text-muted-foreground">{candidate.candidate.phone}</p>
                                   <div className="flex items-center gap-1 text-xs">
-                                    <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
-                                    <span>/</span>
-                                    <span>{candidate.responses.length}</span>
-                                    <span className="text-muted-foreground">respostas</span>
+                                    {candidate.interview.status === 'pending' ? (
+                                      <span className="text-red-600">Não iniciou entrevista</span>
+                                    ) : (
+                                      <>
+                                        <span>{candidate.responses.filter(r => r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp').length}</span>
+                                        <span>/</span>
+                                        <span>{candidate.responses.length}</span>
+                                        <span className="text-muted-foreground">respostas</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 
@@ -653,11 +667,11 @@ export default function NewReportsPage() {
                         <h3 className="font-semibold text-yellow-700">Mediano</h3>
                       </div>
                       <div className="text-sm text-yellow-600">
-                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length} candidatos
+                        {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length} candidatos
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {interviewCandidates
+                      {allCandidatesWithStatus
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Mediano')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
@@ -698,7 +712,7 @@ export default function NewReportsPage() {
                             </Card>
                           );
                         })}
-                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length === 0 && (
+                      {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length === 0 && (
                         <div className="text-center py-6 text-muted-foreground text-sm">
                           Nenhum candidato nesta categoria
                         </div>
@@ -714,11 +728,11 @@ export default function NewReportsPage() {
                         <h3 className="font-semibold text-orange-700">Em dúvida</h3>
                       </div>
                       <div className="text-sm text-orange-600">
-                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length} candidatos
+                        {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length} candidatos
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {interviewCandidates
+                      {allCandidatesWithStatus
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Em dúvida')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
@@ -759,7 +773,7 @@ export default function NewReportsPage() {
                             </Card>
                           );
                         })}
-                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length === 0 && (
+                      {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Em dúvida').length === 0 && (
                         <div className="text-center py-6 text-muted-foreground text-sm">
                           Nenhum candidato nesta categoria
                         </div>
@@ -775,11 +789,11 @@ export default function NewReportsPage() {
                         <h3 className="font-semibold text-red-700">Reprovado</h3>
                       </div>
                       <div className="text-sm text-red-600">
-                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length} candidatos
+                        {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length} candidatos
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {interviewCandidates
+                      {allCandidatesWithStatus
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Não')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
@@ -820,7 +834,7 @@ export default function NewReportsPage() {
                             </Card>
                           );
                         })}
-                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length === 0 && (
+                      {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length === 0 && (
                         <div className="text-center py-6 text-muted-foreground text-sm">
                           Nenhum candidato nesta categoria
                         </div>
