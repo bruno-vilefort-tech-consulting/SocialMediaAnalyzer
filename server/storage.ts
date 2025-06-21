@@ -147,6 +147,8 @@ export interface IStorage {
   getCandidateCategory(reportId: string, candidateId: string): Promise<any>;
   setCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any>;
   getCategoriesByReportId(reportId: string): Promise<any[]>;
+  getCandidateCategories(selectionId: string): Promise<any[]>;
+  saveCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any>;
 }
 
 export class FirebaseStorage implements IStorage {

@@ -2078,9 +2078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      // For now, return empty array since we don't have this table yet
-      // This will be implemented when categories storage is added
-      res.json([]);
+      const categories = await storage.getCandidateCategories(selectionId);
+      res.json(categories);
     } catch (error) {
       console.error('Error fetching candidate categories:', error);
       res.status(500).json({ message: 'Failed to fetch categories' });
@@ -2096,8 +2095,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Missing required fields' });
       }
       
-      // For now, just return success
-      // This will be implemented when categories storage is added
+      await storage.saveCandidateCategory(reportId, candidateId, category, clientId);
+      console.log(`✅ [API] Categoria ${category} salva para candidato ${candidateId}`);
+      
+      res.json({ success: true });
       console.log(`✅ Categoria ${category} definida para candidato ${candidateId} na seleção ${reportId}`);
       
       res.json({ 

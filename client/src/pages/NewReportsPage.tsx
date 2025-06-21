@@ -123,24 +123,37 @@ export default function NewReportsPage() {
     queryFn: async () => {
       if (!selectedSelection) return [];
       const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
-      return response;
+      console.log('🔍 [CATEGORY_LOAD] Categorias carregadas do banco:', response);
+      return response || [];
     },
     enabled: !!selectedSelection
   });
 
   // Effect para atualizar estado local com as categorias carregadas
   React.useEffect(() => {
-    if (categories && categories.length > 0 && selectedSelection) {
-      const categoryMap: { [key: string]: string } = {};
-      categories.forEach((cat: any) => {
-        categoryMap[`selection_${selectedSelection.id}_${cat.candidateId}`] = cat.category;
-      });
-      setCandidateCategories(categoryMap);
-    } else if (selectedSelection) {
-      // Limpar categorias quando mudar de seleção
-      setCandidateCategories({});
+    console.log('🔍 [CATEGORY_EFFECT] Executando useEffect:', {
+      selectedSelectionId: selectedSelection?.id,
+      categoriesLength: categories?.length,
+      categories: categories
+    });
+    
+    if (selectedSelection) {
+      if (categories && categories.length > 0) {
+        const categoryMap: { [key: string]: string } = {};
+        categories.forEach((cat: any) => {
+          const key = `selection_${selectedSelection.id}_${cat.candidateId}`;
+          categoryMap[key] = cat.category;
+          console.log(`🔍 [CATEGORY_MAP] ${key} = ${cat.category}`);
+        });
+        setCandidateCategories(categoryMap);
+        console.log('✅ [CATEGORY_SET] Categorias definidas:', categoryMap);
+      } else {
+        // Só limpar se não estiver carregando
+        console.log('🔄 [CATEGORY_CLEAR] Limpando categorias (sem dados)');
+        setCandidateCategories({});
+      }
     }
-  }, [categories, selectedSelection]);
+  }, [categories, selectedSelection?.id]);
 
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
@@ -174,6 +187,16 @@ export default function NewReportsPage() {
   // Função para definir categoria do candidato
   const setCategory = (candidateId: number, category: string) => {
     const reportId = `selection_${selectedSelection?.id}`;
+    const key = `${reportId}_${candidateId}`;
+    
+    console.log('🔄 [CATEGORY_CLICK] Definindo categoria:', {
+      candidateId,
+      category,
+      reportId,
+      key,
+      currentCategories: candidateCategories
+    });
+    
     setCategoryMutation.mutate({ 
       reportId, 
       candidateId: candidateId.toString(), 
