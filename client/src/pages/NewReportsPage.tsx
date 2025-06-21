@@ -320,7 +320,7 @@ export default function NewReportsPage() {
                   <div className="grid grid-cols-4 gap-4 p-3 bg-gray-50 rounded-lg font-medium text-sm text-muted-foreground">
                     <div>Nome do Candidato</div>
                     <div>Status da Entrevista</div>
-                    <div>Respostas Completas</div>
+                    <div>Respostas Completas / Avaliação</div>
                     <div className="text-right">Pontuação Final</div>
                   </div>
                   
@@ -379,24 +379,24 @@ export default function NewReportsPage() {
                                 )}
                               </div>
                               
-                              {/* Coluna 7-8: Respostas Completas */}
-                              <div className="col-span-2 flex items-center gap-2">
-                                <span className="text-sm font-medium">
-                                  {completedResponses}/{totalQuestions}
-                                </span>
-                                {totalQuestions > 0 && (
-                                  <Progress 
-                                    value={(completedResponses / totalQuestions) * 100} 
-                                    className="w-20 h-2"
-                                  />
-                                )}
-                              </div>
-                              
-                              {/* Coluna 9-10: Avaliação (4 Botões de Categorização) */}
+                              {/* Coluna 7-8: Respostas Completas e Avaliação */}
                               <div className="col-span-2">
-                                <div className="text-center">
-                                  <h4 className="text-xs font-medium text-muted-foreground mb-1">Avaliação</h4>
-                                  <div className="flex gap-1 justify-center" onClick={(e) => e.stopPropagation()}>
+                                <div className="space-y-2">
+                                  {/* Respostas Completas */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium">
+                                      {completedResponses}/{totalQuestions}
+                                    </span>
+                                    {totalQuestions > 0 && (
+                                      <Progress 
+                                        value={(completedResponses / totalQuestions) * 100} 
+                                        className="w-20 h-2"
+                                      />
+                                    )}
+                                  </div>
+                                  
+                                  {/* Avaliação (4 Botões de Categorização) */}
+                                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                                     <Button
                                       size="sm"
                                       variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
@@ -441,12 +441,11 @@ export default function NewReportsPage() {
                                 </div>
                               </div>
 
-                              {/* Coluna 11-12: Pontuação Final */}
-                              <div className="col-span-2 text-center">
-                                <h4 className="text-xs font-medium text-muted-foreground mb-1">Pontuação</h4>
+                              {/* Coluna 9-12: Pontuação Final */}
+                              <div className="col-span-4 text-center">
                                 <div>
                                   {candidate.calculatedScore > 0 ? (
-                                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-bold ${
+                                    <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${
                                       candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
                                       candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
                                       candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
