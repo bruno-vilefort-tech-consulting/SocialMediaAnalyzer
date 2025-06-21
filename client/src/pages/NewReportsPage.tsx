@@ -747,7 +747,7 @@ export default function NewReportsPage() {
                   setSelectedSelection(selection);
                 }
               }}
-              onFilterChange={setFilteredReports}
+              onFilterChange={(filtered) => setFilteredReports(filtered)}
             />
             
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>

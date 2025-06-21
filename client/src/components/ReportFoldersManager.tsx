@@ -146,6 +146,10 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     onSuccess: () => {
       toast({ title: "Relatório movido para a pasta!" });
       queryClient.invalidateQueries({ queryKey: ['/api/report-folder-assignments'] });
+      // Reapply current filter to update the view
+      setTimeout(() => {
+        applyFilter(activeFilter);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Erro ao mover relatório", variant: "destructive" });
@@ -212,12 +216,8 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
       return;
     }
 
-    // Remove from current folder first, then assign to new one
-    removeReportMutation.mutate(reportId, {
-      onSuccess: () => {
-        assignReportMutation.mutate({ reportId, folderId });
-      }
-    });
+    // Assign to folder (API will handle moving from other folders)
+    assignReportMutation.mutate({ reportId, folderId });
   };
 
   const handleEditFolder = () => {
@@ -250,10 +250,10 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
   // Apply initial filter when data loads
   useEffect(() => {
-    if (reports.length > 0 && assignments.length >= 0) {
+    if (reports && assignments && reports.length > 0) {
       applyFilter(activeFilter);
     }
-  }, [reports, assignments, activeFilter]);
+  }, [reports, assignments]);
 
   if (!selectedClientId) {
     return (
