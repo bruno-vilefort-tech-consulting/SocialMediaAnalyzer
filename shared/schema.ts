@@ -371,3 +371,18 @@ export type ReportCandidate = typeof reportCandidates.$inferSelect;
 export type InsertReportCandidate = z.infer<typeof insertReportCandidateSchema>;
 export type ReportResponse = typeof reportResponses.$inferSelect;
 export type InsertReportResponse = z.infer<typeof insertReportResponseSchema>;
+
+// Tabela para categorização de candidatos nos relatórios
+export const candidateCategories = pgTable("candidate_categories", {
+  id: text("id").primaryKey(), // reportId_candidateId
+  reportId: text("report_id").notNull(),
+  candidateId: text("candidate_id").notNull(),
+  category: text("category").notNull(), // 'Melhor', 'Mediano', 'Em dúvida', 'Não'
+  clientId: integer("client_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertCandidateCategorySchema = createInsertSchema(candidateCategories).omit({ id: true, createdAt: true, updatedAt: true });
+export type CandidateCategory = typeof candidateCategories.$inferSelect;
+export type InsertCandidateCategory = z.infer<typeof insertCandidateCategorySchema>;

@@ -142,6 +142,11 @@ export interface IStorage {
   createReport(report: InsertReport): Promise<Report>;
   deleteReport(id: string): Promise<void>;
   createReportFromSelection(selectionId: number): Promise<Report>;
+
+  // Candidate Categories - para relatórios
+  getCandidateCategory(reportId: string, candidateId: string): Promise<any>;
+  setCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any>;
+  getCategoriesByReportId(reportId: string): Promise<any[]>;
 }
 
 export class FirebaseStorage implements IStorage {
@@ -2242,6 +2247,71 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  // Candidate Categories - para relatórios
+  async getCandidateCategory(reportId: string, candidateId: string): Promise<any> {
+    try {
+      const categoryId = `${reportId}_${candidateId}`;
+      const categoryRef = doc(firebaseDb, "candidateCategories", categoryId);
+      const categoryDoc = await getDoc(categoryRef);
+      
+      if (categoryDoc.exists()) {
+        return { id: categoryDoc.id, ...categoryDoc.data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Erro ao buscar categoria do candidato:', error);
+      return null;
+    }
+  }
+
+  async setCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any> {
+    try {
+      const categoryId = `${reportId}_${candidateId}`;
+      const categoryData = {
+        reportId,
+        candidateId,
+        category,
+        clientId,
+        updatedAt: new Date()
+      };
+
+      const categoryRef = doc(firebaseDb, "candidateCategories", categoryId);
+      const existingDoc = await getDoc(categoryRef);
+      
+      if (existingDoc.exists()) {
+        await updateDoc(categoryRef, categoryData);
+      } else {
+        await setDoc(categoryRef, {
+          ...categoryData,
+          createdAt: new Date()
+        });
+      }
+
+      console.log(`✅ Categoria ${category} salva para candidato ${candidateId} no relatório ${reportId}`);
+      return { id: categoryId, ...categoryData };
+    } catch (error) {
+      console.error('❌ Erro ao salvar categoria do candidato:', error);
+      throw error;
+    }
+  }
+
+  async getCategoriesByReportId(reportId: string): Promise<any[]> {
+    try {
+      const categoriesRef = collection(firebaseDb, "candidateCategories");
+      const q = query(categoriesRef, where("reportId", "==", reportId));
+      const querySnapshot = await getDocs(q);
+      
+      const categories = [];
+      querySnapshot.forEach((doc) => {
+        categories.push({ id: doc.id, ...doc.data() });
+      });
+      
+      return categories;
+    } catch (error) {
+      console.error('❌ Erro ao buscar categorias do relatório:', error);
+      return [];
+    }
+  }
 
 }
 
