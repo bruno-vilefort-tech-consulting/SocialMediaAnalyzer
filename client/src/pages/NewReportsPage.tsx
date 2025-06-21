@@ -124,6 +124,12 @@ export default function NewReportsPage() {
     }
   }, [specificReport, reportId, user]);
 
+  // Buscar seleções
+  const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
+    queryKey: ['/api/selections', selectedClientId],
+    enabled: !!selectedClientId || user?.role === 'client'
+  });
+
   // Efeito para navegar diretamente para uma seleção específica via parâmetro selectedSelection
   useEffect(() => {
     if (selectedSelectionId && selectionsData.length > 0) {
@@ -142,12 +148,6 @@ export default function NewReportsPage() {
       }
     }
   }, [selectedSelectionId, selectionsData, user]);
-
-  // Buscar seleções
-  const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
-    queryKey: ['/api/selections', selectedClientId],
-    enabled: !!selectedClientId || user?.role === 'client'
-  });
 
   // Ordenar seleções da mais nova para a mais velha
   const selections = [...selectionsData].sort((a, b) => {
