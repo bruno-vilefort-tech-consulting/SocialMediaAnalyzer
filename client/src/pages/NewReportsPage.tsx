@@ -91,6 +91,38 @@ export default function NewReportsPage() {
     enabled: !!reportId
   });
 
+  // Efeito para configurar automaticamente o relatório específico quando reportId está na URL
+  useEffect(() => {
+    if (specificReport && reportId) {
+      // Extrair dados do relatório para configurar a visualização
+      const reportData = specificReport;
+      
+      // Se for um relatório de seleção, configurar a seleção
+      if (reportData.selectionId) {
+        // Criar objeto de seleção mock baseado nos dados do relatório
+        const mockSelection: Selection = {
+          id: reportData.selectionId,
+          name: reportData.jobData?.nomeVaga || 'Relatório',
+          status: 'completed',
+          createdAt: reportData.createdAt,
+          jobName: reportData.jobData?.nomeVaga,
+          clientId: reportData.jobData?.clientId || (user?.role === 'client' ? user.clientId : 0)
+        };
+        
+        // Se o usuário é master, configurar o clientId
+        if (user?.role === 'master' && reportData.jobData?.clientId) {
+          setSelectedClientId(reportData.jobData.clientId.toString());
+        }
+        
+        // Configurar a seleção selecionada
+        setSelectedSelection(mockSelection);
+        
+        // Navegar para a aba de candidatos
+        setActiveTab('candidatos');
+      }
+    }
+  }, [specificReport, reportId, user]);
+
   // Buscar seleções
   const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
     queryKey: ['/api/selections', selectedClientId],
@@ -386,6 +418,188 @@ export default function NewReportsPage() {
   const sortedCandidates = [...(interviewCandidates || [])].sort((a, b) => 
     a.candidate.name.localeCompare(b.candidate.name)
   );
+
+  // Se há um relatório específico sendo visualizado via URL
+  if (reportId && specificReport) {
+    // Renderizar visualização direta do relatório
+    const reportData = specificReport;
+    const candidates = reportData.candidatesData || [];
+    const responses = reportData.responseData || [];
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{reportData.jobData?.nomeVaga || 'Relatório'}</h1>
+            <p className="text-muted-foreground">
+              Relatório gerado em {new Date(reportData.createdAt?.seconds * 1000 || reportData.createdAt).toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="candidatos">Candidatos</TabsTrigger>
+            <TabsTrigger value="analise">Análise por Score</TabsTrigger>
+            <TabsTrigger value="categorias">Por Categoria</TabsTrigger>
+            <TabsTrigger value="selecionados">Selecionados</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="candidatos" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {candidates.map((candidate: any) => {
+                const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
+                const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
+                const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
+                
+                return (
+                  <Card key={candidate.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-lg">{candidate.name}</h3>
+                        <Badge variant={avgScore >= 80 ? "default" : avgScore >= 60 ? "secondary" : "destructive"}>
+                          {avgScore}%
+                        </Badge>
+                      </div>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <div>{candidate.email}</div>
+                        <div>{candidate.whatsapp}</div>
+                        <div>{candidateResponses.length}/{reportData.jobData?.perguntas?.length || 0} respostas</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analise" className="space-y-4">
+            <div className="grid gap-4">
+              {candidates
+                .map((candidate: any) => {
+                  const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
+                  const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
+                  const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
+                  return { ...candidate, avgScore, responseCount: candidateResponses.length };
+                })
+                .sort((a, b) => b.avgScore - a.avgScore)
+                .map((candidate: any) => (
+                  <Card key={candidate.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">{candidate.name}</h3>
+                          <p className="text-sm text-muted-foreground">{candidate.email}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={candidate.avgScore >= 80 ? "default" : candidate.avgScore >= 60 ? "secondary" : "destructive"}>
+                            {candidate.avgScore}%
+                          </Badge>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {candidate.responseCount} respostas
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="categorias" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {CANDIDATE_CATEGORIES.map((category) => {
+                const categoryColor = {
+                  'Melhor': 'bg-green-50 border-green-200',
+                  'Mediano': 'bg-yellow-50 border-yellow-200', 
+                  'Em dúvida': 'bg-orange-50 border-orange-200',
+                  'Não': 'bg-red-50 border-red-200'
+                };
+                
+                return (
+                  <Card key={category} className={`${categoryColor[category as keyof typeof categoryColor]} border-2`}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">{category}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {candidates
+                        .filter((candidate: any) => {
+                          // Para relatórios específicos, assumir categoria "Não" se não especificado
+                          return (getCandidateCategoryWithFallback(candidate.id) === category);
+                        })
+                        .map((candidate: any) => {
+                          const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
+                          const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
+                          const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
+                          
+                          return (
+                            <div key={candidate.id} className="p-3 bg-white rounded-lg border shadow-sm">
+                              <div className="font-medium">{candidate.name}</div>
+                              <div className="text-sm text-muted-foreground flex items-center justify-between">
+                                <span>{avgScore}% de score</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {candidateResponses.length} respostas
+                                </Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {candidates.filter((candidate: any) => getCandidateCategoryWithFallback(candidate.id) === category).length === 0 && (
+                        <div className="text-center text-muted-foreground py-4 text-sm">
+                          Nenhum candidato nesta categoria
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="selecionados" className="space-y-4">
+            <div className="grid gap-4">
+              {candidates
+                .filter((candidate: any) => {
+                  const category = getCandidateCategoryWithFallback(candidate.id);
+                  return category === 'Melhor' || category === 'Mediano';
+                })
+                .map((candidate: any) => {
+                  const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
+                  const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
+                  const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
+                  
+                  return (
+                    <Card key={candidate.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold">{candidate.name}</h3>
+                            <p className="text-sm text-muted-foreground">{candidate.email}</p>
+                            <p className="text-sm text-muted-foreground">{candidate.whatsapp}</p>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="default">{getCandidateCategoryWithFallback(candidate.id)}</Badge>
+                            <div className="text-sm text-muted-foreground mt-1">{avgScore}% de score</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
 
   // Se nenhuma seleção foi escolhida, mostrar lista de seleções
   if (!selectedSelection) {

@@ -141,7 +141,7 @@ export default function ClientDashboard() {
                       <div 
                         key={report.id} 
                         className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
-                        onClick={() => setLocation(`/relatorios?reportId=${report.id}`)}
+                        onClick={() => setLocation(`/relatorios?reportId=${encodeURIComponent(report.id)}`)}
                       >
                         <div className="flex items-center">
                           <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
