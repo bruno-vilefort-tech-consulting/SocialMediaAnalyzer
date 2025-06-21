@@ -736,7 +736,7 @@ export default function NewReportsPage() {
                     <div className="bg-yellow-100 border border-yellow-200 rounded-lg p-3 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <Meh className="h-5 w-5 text-yellow-700" />
-                        <h3 className="font-semibold text-yellow-700">Mediano</h3>
+                        <h3 className="font-semibold text-yellow-700">Potencial</h3>
                       </div>
                       <div className="text-sm text-yellow-600">
                         {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Mediano').length} candidatos
