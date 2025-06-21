@@ -2099,14 +2099,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ [API] Categoria ${category} salva para candidato ${candidateId}`);
       
       res.json({ success: true });
-      console.log(`✅ Categoria ${category} definida para candidato ${candidateId} na seleção ${reportId}`);
-      
-      res.json({ 
-        success: true,
-        reportId,
-        candidateId,
-        category 
-      });
     } catch (error) {
       console.error('Error saving candidate category:', error);
       res.status(500).json({ message: 'Failed to save category' });

@@ -2315,6 +2315,70 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
+  async getCandidateCategories(selectionId: string): Promise<any[]> {
+    try {
+      const reportId = `selection_${selectionId}`;
+      const categoriesRef = collection(firebaseDb, 'candidateCategories');
+      const q = query(categoriesRef, where('reportId', '==', reportId));
+      const snapshot = await getDocs(q);
+      
+      const categories = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      console.log(`📋 [STORAGE] Categorias encontradas para ${reportId}:`, categories.length);
+      return categories;
+    } catch (error) {
+      console.error('Erro ao buscar categorias por selectionId:', error);
+      return [];
+    }
+  }
+
+  async saveCandidateCategory(reportId: string, candidateId: string, category: string, clientId: number): Promise<any> {
+    try {
+      const categoriesRef = collection(firebaseDb, 'candidateCategories');
+      
+      // Check if category already exists for this candidate and report
+      const existingQuery = query(
+        categoriesRef,
+        where('reportId', '==', reportId),
+        where('candidateId', '==', candidateId)
+      );
+      
+      const existingSnapshot = await getDocs(existingQuery);
+      
+      const categoryData = {
+        reportId,
+        candidateId,
+        category,
+        clientId,
+        updatedAt: new Date()
+      };
+      
+      if (!existingSnapshot.empty) {
+        // Update existing category
+        const docRef = existingSnapshot.docs[0].ref;
+        await updateDoc(docRef, categoryData);
+        console.log(`✅ [STORAGE] Categoria atualizada: ${candidateId} -> ${category}`);
+      } else {
+        // Create new category
+        const newCategoryData = {
+          ...categoryData,
+          id: `${reportId}_${candidateId}`,
+          createdAt: new Date()
+        };
+        await addDoc(categoriesRef, newCategoryData);
+        console.log(`✅ [STORAGE] Nova categoria criada: ${candidateId} -> ${category}`);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao salvar categoria:', error);
+      throw error;
+    }
+  }
+
 }
 
 export const storage = new FirebaseStorage();
