@@ -194,16 +194,41 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     setDragOverFolder(folderId || 'general');
   };
 
-  const handleDragLeave = () => {
-    setDragOverFolder(null);
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Check if we're actually leaving the drop zone
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverFolder(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent, folderId?: string) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverFolder(null);
     
     const reportId = e.dataTransfer.getData('text/plain');
-    if (!reportId || !folderId) return;
+    console.log('🎯 Dropping:', { reportId, folderId });
+    
+    if (!reportId) {
+      console.log('❌ No reportId found');
+      return;
+    }
+
+    // Handle drop in "Geral" (remove from all folders)
+    if (folderId === 'general') {
+      console.log('✅ Removing from all folders (moving to Geral)');
+      removeReportMutation.mutate(reportId);
+      return;
+    }
+
+    if (!folderId) {
+      console.log('❌ No folderId found');
+      return;
+    }
 
     // Check if report is already in this folder
     const isAlreadyInFolder = assignments.some(a => a.reportId === reportId && a.folderId === folderId);
@@ -212,6 +237,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
       return;
     }
 
+    console.log('✅ Assigning to folder');
     // Assign to folder (API will handle moving from other folders)
     assignReportMutation.mutate({ reportId, folderId });
   };
@@ -264,17 +290,26 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
       {/* Filter Buttons */}
       <div className="flex items-center gap-3 flex-wrap">
         {/* Geral button - left aligned */}
-        <Button
-          variant={activeFilter === 'general' ? 'default' : 'outline'}
-          onClick={() => applyFilter('general')}
-          className="flex items-center gap-2"
+        <div
+          className={`relative p-2 rounded-lg border-2 transition-all duration-200 min-h-[50px] ${
+            dragOverFolder === 'general' ? 'border-blue-500 bg-blue-100 scale-105 shadow-lg' : 'border-transparent'
+          }`}
+          onDragOver={(e) => handleDragOver(e, 'general')}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, 'general')}
         >
-          <Folder className="w-4 h-4" />
-          Geral
-          <Badge variant="secondary" className="text-xs ml-1">
-            {getUnorganizedReports().length}
-          </Badge>
-        </Button>
+          <Button
+            variant={activeFilter === 'general' ? 'default' : 'outline'}
+            onClick={() => applyFilter('general')}
+            className="flex items-center gap-2 w-full"
+          >
+            <Folder className="w-4 h-4" />
+            Geral
+            <Badge variant="secondary" className="text-xs ml-1">
+              {getUnorganizedReports().length}
+            </Badge>
+          </Button>
+        </div>
 
         {/* Folder filter buttons */}
         {folders.map((folder) => {
@@ -284,8 +319,8 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
           return (
             <div
               key={folder.id}
-              className={`transition-all duration-200 ${
-                isDragOver ? 'ring-2 ring-blue-500 bg-blue-50 rounded-lg' : ''
+              className={`relative p-2 rounded-lg border-2 transition-all duration-200 min-h-[50px] ${
+                isDragOver ? 'border-blue-500 bg-blue-100 scale-105 shadow-lg' : 'border-transparent'
               }`}
               onDragOver={(e) => handleDragOver(e, folder.id)}
               onDragLeave={handleDragLeave}

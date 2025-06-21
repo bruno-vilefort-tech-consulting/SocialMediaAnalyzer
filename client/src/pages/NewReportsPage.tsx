@@ -787,6 +787,7 @@ export default function NewReportsPage() {
                         draggable
                         onDragStart={(e) => {
                           const dragId = `selection_${selection.id}`;
+                          console.log('🚀 Starting drag with ID:', dragId);
                           e.dataTransfer.setData('text/plain', dragId);
                           e.dataTransfer.effectAllowed = 'move';
                           e.stopPropagation();
