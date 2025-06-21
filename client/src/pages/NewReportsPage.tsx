@@ -688,17 +688,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                     </div>
                   )}
 
-                  {/* Análise IA (se disponível) */}
-                  {response.aiAnalysis && response.aiAnalysis !== 'Análise IA pendente' && (
-                    <div>
-                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                        Análise IA
-                      </h4>
-                      <div className="bg-green-50 p-3 rounded-md">
-                        <p className="text-sm">{response.aiAnalysis}</p>
-                      </div>
-                    </div>
-                  )}
+                  
                 </div>
               </CardContent>
             </Card>
