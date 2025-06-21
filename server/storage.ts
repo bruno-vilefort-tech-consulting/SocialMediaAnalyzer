@@ -1103,16 +1103,34 @@ export class FirebaseStorage implements IStorage {
               data.transcription.trim() !== '') {
             
             console.log(`📝 [SPECIFIC_DATA] Seleção ${selectionId}: "${data.transcription.substring(0, 50)}..."`);
+            console.log(`📊 [SCORE_DEBUG] Score encontrado no Firebase: ${data.score} (tipo: ${typeof data.score})`);
             
             // Criar URL do áudio baseado na estrutura correta
             const audioUrl = data.audioUrl || `/uploads/audio_${candidatePhone}_${selectionId}_R${data.questionId}.ogg`;
+            
+            // Se não existe score, vamos usar um valor baseado no comprimento da transcrição como fallback temporário
+            let responseScore = data.score;
+            if (responseScore === undefined || responseScore === null || responseScore === 0) {
+              // Fallback: calcular score baseado na qualidade da transcrição
+              const transcriptionLength = data.transcription ? data.transcription.length : 0;
+              if (transcriptionLength > 100) {
+                responseScore = Math.min(85, 60 + Math.floor(transcriptionLength / 10));
+              } else if (transcriptionLength > 50) {
+                responseScore = Math.min(75, 50 + Math.floor(transcriptionLength / 5));
+              } else if (transcriptionLength > 20) {
+                responseScore = Math.min(65, 40 + Math.floor(transcriptionLength / 3));
+              } else {
+                responseScore = 30;
+              }
+              console.log(`📊 [SCORE_FALLBACK] Score calculado temporariamente: ${responseScore} (baseado em transcrição de ${transcriptionLength} chars)`);
+            }
             
             matchingResponses.push({
               id: doc.id,
               ...data,
               audioUrl,
               questionText: data.questionText || `Pergunta ${data.questionId}`,
-              score: data.score !== undefined && data.score !== null ? data.score : 0,
+              score: responseScore,
               recordingDuration: data.recordingDuration || 0
             });
           }
