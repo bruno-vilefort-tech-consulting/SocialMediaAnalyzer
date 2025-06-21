@@ -244,24 +244,12 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     }
   };
 
-  // Apply filter when activeFilter changes or data updates - prevent infinite loop
+  // Apply filter when data changes
   useEffect(() => {
     if (!reports || !assignments) return;
     
-    // Use a ref to track if we've already applied the filter for this data state
-    const currentDataHash = `${reports.length}-${assignments.length}-${activeFilter}`;
-    
-    if (activeFilter === 'general') {
-      const assignedReportIds = assignments.map(a => a.reportId);
-      const unassignedReports = reports.filter(r => !assignedReportIds.includes(r.id));
-      onFilterChange(unassignedReports);
-    } else {
-      const folderAssignments = assignments.filter(a => a.folderId === activeFilter);
-      const folderReportIds = folderAssignments.map(a => a.reportId);
-      const folderReports = reports.filter(r => folderReportIds.includes(r.id));
-      onFilterChange(folderReports);
-    }
-  }, [reports?.length, assignments?.length, activeFilter]);
+    applyFilter(activeFilter);
+  }, [reports?.length, assignments?.length]);
 
   if (!selectedClientId) {
     return (

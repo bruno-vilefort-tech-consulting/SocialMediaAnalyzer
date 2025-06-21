@@ -78,6 +78,7 @@ export default function NewReportsPage() {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('#3B82F6');
   const [filteredReports, setFilteredReports] = useState<any[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Cores disponíveis para pastas
   const folderColors = [
@@ -747,10 +748,7 @@ export default function NewReportsPage() {
                   setSelectedSelection(selection);
                 }
               }}
-              onFilterChange={(filtered) => {
-                setFilteredReports(filtered);
-                setIsInitialLoad(false);
-              }}
+              onFilterChange={setFilteredReports}
             />
             
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
@@ -771,7 +769,7 @@ export default function NewReportsPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {(!isInitialLoad && filteredReports.length >= 0 ? 
+                {(filteredReports.length > 0 ? 
                   filteredReports.map(report => selections.find(s => s.id.toString() === report.selectionId)).filter(Boolean) : 
                   selections
                 )
