@@ -553,7 +553,7 @@ export default function CandidatesManagementPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 pt-[0px] pb-[0px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Users className="h-6 w-6" />
@@ -597,7 +597,6 @@ export default function CandidatesManagementPage() {
           </Button>
         </div>
       </div>
-
       {/* Filtros */}
       <div className="flex gap-4 items-center">
         {/* Campo de busca */}
@@ -634,7 +633,6 @@ export default function CandidatesManagementPage() {
           </Select>
         )}
       </div>
-
       {/* Lista de candidatos */}
       <div className="grid gap-4">
         {paginatedCandidates.length === 0 ? (
@@ -724,7 +722,6 @@ export default function CandidatesManagementPage() {
           })
         )}
       </div>
-
       {/* Paginação */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6">
@@ -767,7 +764,6 @@ export default function CandidatesManagementPage() {
           </div>
         </div>
       )}
-
       {/* Dialog para editar candidato */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
@@ -815,7 +811,6 @@ export default function CandidatesManagementPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Dialog para gerenciar listas do candidato */}
       <Dialog open={isListsDialogOpen} onOpenChange={(open) => {
         setIsListsDialogOpen(open);
@@ -892,7 +887,6 @@ export default function CandidatesManagementPage() {
           </div>
         </DialogContent>
       </Dialog>
-
       {/* Dialog para novo candidato */}
       <Dialog open={isNewCandidateDialogOpen} onOpenChange={setIsNewCandidateDialogOpen}>
         <DialogContent>
