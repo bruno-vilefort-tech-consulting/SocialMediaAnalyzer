@@ -470,6 +470,29 @@ class InteractiveInterviewService {
         const transcriptionId = `candidato_${interview.selectionId}_${interview.currentQuestion + 1}`;
         const responseId = `${interview.selectionId}_${interview.candidateId}_R${interview.currentQuestion + 1}_${Date.now()}`;
         
+        // Calcular pontuação usando IA (0-100)
+        let pontuacao = 50; // Valor padrão caso falhe
+        try {
+          const { candidateEvaluationService } = await import('./candidateEvaluationService');
+          const openaiApiKey = process.env.OPENAI_API_KEY;
+          
+          if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
+            console.log(`🤖 [EVALUATION] Iniciando avaliação da resposta...`);
+            pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
+              responseId,
+              currentQuestion.pergunta,
+              responseText,
+              currentQuestion.respostaPerfeita,
+              openaiApiKey
+            );
+            console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
+          } else {
+            console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+          }
+        } catch (evaluationError) {
+          console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
+        }
+        
         await storage.createResponse({
           id: responseId,
           selectionId: interview.selectionId,
@@ -481,7 +504,7 @@ class InteractiveInterviewService {
           transcription: responseText,
           transcriptionId: transcriptionId, // Nova nomenclatura para transcrições
           timestamp: new Date().toISOString(),
-          score: 0,
+          score: pontuacao, // Pontuação de 0-100 calculada pela IA
           aiAnalysis: '',
           recordingDuration: 0,
           // Dados do candidato real para referência

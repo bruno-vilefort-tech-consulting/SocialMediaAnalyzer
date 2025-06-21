@@ -223,6 +223,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **ID removido**: Interface sem IDs visíveis conforme solicitação do usuário
   - **Design otimizado**: Nome, status e botão "Ver Relatório" alinhados horizontalmente
 
+- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA IMPLEMENTADO - Avaliação automática 0-100 para cada resposta de candidato
+  - **Arquivo criado**: candidateEvaluationService.ts - serviço separado conforme solicitado
+  - **Prompt ChatGPT integrado**: Critérios de 70 pontos (conteúdo) + 25 pontos (coerência) + 5 pontos (profissionalismo)
+  - **Cálculo automático**: Pontuação calculada instantaneamente quando candidato responde via WhatsApp
+  - **Interface atualizada**: Pontuação 0-100 exibida no topo direito de cada resposta com cores (verde/amarelo/laranja/vermelho)
+  - **Processamento único**: Avaliação acontece apenas uma vez por resposta e é salva no banco de dados
+  - **Integração completa**: Funciona tanto no interactiveInterviewService quanto no whatsappQRService
+
 - June 21, 2025: 🗂️ SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Relatórios persistem mesmo após deleção de seleções
   - **Schema Report expandido**: Entidade completamente independente com ID único (report_[selectionId]_[timestamp])
   - **Geração automática**: Relatórios criados automaticamente ao final de cada entrevista via WhatsApp

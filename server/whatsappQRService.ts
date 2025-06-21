@@ -1029,12 +1029,37 @@ export class WhatsAppQRService {
           questionIndex: currentQuestionIndex
         });
         
+        // Calcular pontuação usando IA (0-100)
+        let pontuacao = 50; // Valor padrão caso falhe
+        try {
+          const { candidateEvaluationService } = await import('./candidateEvaluationService');
+          const openaiApiKey = config.openaiApiKey;
+          
+          if (openaiApiKey && currentQuestion.respostaPerfeita && transcription) {
+            console.log(`🤖 [EVALUATION] Iniciando avaliação da resposta...`);
+            const responseId = `whatsapp_response_${Date.now()}`;
+            
+            pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
+              responseId,
+              currentQuestion.pergunta,
+              transcription,
+              currentQuestion.respostaPerfeita,
+              openaiApiKey
+            );
+            console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
+          } else {
+            console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+          }
+        } catch (evaluationError) {
+          console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
+        }
+
         const response = await storage.createResponse({
           interviewId: currentInterview.id,
           questionId: currentQuestion.id,
           responseText: transcription,
           audioUrl: audioFileName,
-          score: null,
+          score: pontuacao, // Pontuação de 0-100 calculada pela IA
           feedback: null
         });
         

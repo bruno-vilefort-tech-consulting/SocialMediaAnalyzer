@@ -601,12 +601,27 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
             <Card key={response.id} className="overflow-hidden">
               <CardContent className="p-4">
                 <div className="space-y-4">
-                  {/* Pergunta */}
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                      Pergunta {index + 1}
-                    </h4>
-                    <p className="font-medium">{response.questionText}</p>
+                  {/* Pergunta com Pontuação no topo direito */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm text-muted-foreground mb-1">
+                        Pergunta {index + 1}
+                      </h4>
+                      <p className="font-medium">{response.questionText}</p>
+                    </div>
+                    {/* Pontuação 0-100 no topo direito */}
+                    {response.score !== null && response.score !== undefined && (
+                      <div className="ml-4 flex-shrink-0">
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          response.score >= 80 ? 'bg-green-100 text-green-800' :
+                          response.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                          response.score >= 40 ? 'bg-orange-100 text-orange-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {response.score}/100
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Transcrição */}
@@ -655,7 +670,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                           {response.score && (
                             <div className="ml-auto">
                               <Badge variant="outline">
-                                Score: {response.score}/10
+                                Score: {response.score}/100
                               </Badge>
                             </div>
                           )}
