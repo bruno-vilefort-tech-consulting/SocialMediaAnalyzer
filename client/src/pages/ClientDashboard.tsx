@@ -148,11 +148,18 @@ export default function ClientDashboard() {
                             <FileText className="h-5 w-5 text-blue-600" />
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-slate-900">{report.jobData?.nomeVaga || 'Relatório'}</div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {report.selectionName || report.jobData?.nomeVaga || 'Relatório'}
+                            </div>
                             <div className="text-xs text-slate-500 flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
                               {new Date(report.createdAt?.seconds * 1000 || report.createdAt).toLocaleDateString('pt-BR')}
                             </div>
+                            {report.jobData?.nomeVaga && (
+                              <div className="text-xs text-slate-400 mt-1">
+                                Vaga: {report.jobData.nomeVaga}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="text-right">
