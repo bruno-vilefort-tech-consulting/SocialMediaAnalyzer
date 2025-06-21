@@ -22,15 +22,26 @@ app.use(express.urlencoded({ extended: false }));
 // Servir arquivos de áudio estáticos com Content-Type correto
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
   setHeaders: (res, filePath) => {
+    // Headers CORS essenciais para áudio
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+    
     if (filePath.endsWith('.ogg')) {
-      res.setHeader('Content-Type', 'audio/ogg; codecs=opus');
+      // Testar diferentes tipos MIME para compatibilidade
+      res.setHeader('Content-Type', 'audio/ogg');
     } else if (filePath.endsWith('.webm')) {
       res.setHeader('Content-Type', 'audio/webm');
     } else if (filePath.endsWith('.mp3')) {
       res.setHeader('Content-Type', 'audio/mpeg');
     }
+    
+    // Headers essenciais para streaming de áudio
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cache-Control', 'no-cache'); // Temporário para debug
+    
+    console.log(`🎵 [AUDIO_SERVE] Servindo: ${filePath} com Content-Type: ${res.getHeader('Content-Type')}`);
   }
 }));
 

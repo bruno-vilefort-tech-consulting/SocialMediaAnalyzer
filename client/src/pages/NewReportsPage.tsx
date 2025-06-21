@@ -427,6 +427,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
   // Controlar reprodução do áudio
   const toggleAudio = (audioUrl: string, responseId: string) => {
     try {
+      console.log(`🎵 [AUDIO_DEBUG] Tentando reproduzir: ${audioUrl}`);
       const currentState = audioStates[responseId];
       
       // Parar todos os outros áudios
@@ -439,16 +440,34 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
 
       // Criar novo player se não existir
       if (!audioRefs.current[responseId]) {
-        const audio = new Audio(audioUrl);
+        console.log(`🎵 [AUDIO_DEBUG] Criando novo player para: ${responseId}`);
+        const audio = new Audio();
+        
+        // Configurações importantes para compatibilidade
+        audio.crossOrigin = 'anonymous';
+        audio.preload = 'auto';
+        
+        // Tentar múltiplos formatos se necessário
+        audio.volume = 1.0;
+        
         audioRefs.current[responseId] = audio;
 
+        audio.addEventListener('loadstart', () => {
+          console.log(`🎵 [AUDIO_DEBUG] Iniciando carregamento: ${audioUrl}`);
+        });
+
         audio.addEventListener('loadedmetadata', () => {
+          console.log(`🎵 [AUDIO_DEBUG] Metadata carregada - Duration: ${audio.duration}s`);
           updateAudioState(responseId, { 
             duration: audio.duration,
             currentTime: 0,
             progress: 0,
             isPlaying: false 
           });
+        });
+
+        audio.addEventListener('canplay', () => {
+          console.log(`🎵 [AUDIO_DEBUG] Áudio pronto para reprodução`);
         });
 
         audio.addEventListener('timeupdate', () => {
@@ -460,6 +479,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         });
 
         audio.addEventListener('ended', () => {
+          console.log(`🎵 [AUDIO_DEBUG] Reprodução finalizada`);
           updateAudioState(responseId, { 
             isPlaying: false,
             currentTime: 0,
@@ -468,22 +488,53 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         });
 
         audio.addEventListener('error', (e) => {
-          console.error('Erro ao carregar áudio:', e);
+          console.error('🎵 [AUDIO_ERROR] Erro ao carregar áudio:', e);
+          console.error('🎵 [AUDIO_ERROR] URL:', audioUrl);
+          console.error('🎵 [AUDIO_ERROR] Error code:', audio.error?.code);
+          console.error('🎵 [AUDIO_ERROR] Error message:', audio.error?.message);
+          console.error('🎵 [AUDIO_ERROR] Network state:', audio.networkState);
+          console.error('🎵 [AUDIO_ERROR] Ready state:', audio.readyState);
+          
+          // Tentar URL alternativa ou conversão
+          if (audioUrl.includes('.ogg')) {
+            console.log('🎵 [AUDIO_ERROR] Tentando URL direta...');
+            const directUrl = audioUrl.replace('/uploads/', '/uploads/');
+            audio.src = directUrl;
+          }
+          
           updateAudioState(responseId, { isPlaying: false });
         });
+
+        // Definir URL após configurar eventos
+        audio.src = audioUrl;
       }
 
       const audio = audioRefs.current[responseId];
       
       if (currentState?.isPlaying) {
+        console.log(`🎵 [AUDIO_DEBUG] Pausando áudio`);
         audio.pause();
         updateAudioState(responseId, { isPlaying: false });
       } else {
-        audio.play();
-        updateAudioState(responseId, { isPlaying: true });
+        console.log(`🎵 [AUDIO_DEBUG] Iniciando reprodução`);
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log(`🎵 [AUDIO_DEBUG] Reprodução iniciada com sucesso`);
+              updateAudioState(responseId, { isPlaying: true });
+            })
+            .catch(error => {
+              console.error('🎵 [AUDIO_ERROR] Erro ao iniciar reprodução:', error);
+              updateAudioState(responseId, { isPlaying: false });
+            });
+        } else {
+          updateAudioState(responseId, { isPlaying: true });
+        }
       }
     } catch (error) {
-      console.error('Erro ao reproduzir áudio:', error);
+      console.error('🎵 [AUDIO_ERROR] Erro geral ao reproduzir áudio:', error);
       updateAudioState(responseId, { isPlaying: false });
     }
   };
