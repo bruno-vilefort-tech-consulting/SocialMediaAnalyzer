@@ -73,6 +73,48 @@ export default function NewReportsPage() {
     progress: number;
   } }>({});
 
+  // Estados para o botão Nova Pasta
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderColor, setNewFolderColor] = useState('#3B82F6');
+
+  // Cores disponíveis para pastas
+  const folderColors = [
+    { name: 'Azul', value: '#3B82F6' },
+    { name: 'Verde', value: '#10B981' },
+    { name: 'Amarelo', value: '#F59E0B' },
+    { name: 'Vermelho', value: '#EF4444' },
+    { name: 'Roxo', value: '#8B5CF6' },
+    { name: 'Rosa', value: '#EC4899' },
+    { name: 'Laranja', value: '#F97316' },
+    { name: 'Cinza', value: '#6B7280' }
+  ];
+
+  // Mutation para criar pasta
+  const createFolderMutation = useMutation({
+    mutationFn: async (folderData: { name: string; color: string; clientId: string }) => {
+      const response = await apiRequest('/api/report-folders', 'POST', folderData);
+      return response.json();
+    },
+    onSuccess: () => {
+      setNewFolderName('');
+      setNewFolderColor('#3B82F6');
+      setIsCreateDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/report-folders'] });
+    }
+  });
+
+  // Função para criar pasta
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim() || !selectedClientId) return;
+    
+    createFolderMutation.mutate({
+      name: newFolderName.trim(),
+      color: newFolderColor,
+      clientId: selectedClientId
+    });
+  };
+
   // Extrair reportId e selectedSelection da URL
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const reportId = urlParams.get('reportId');

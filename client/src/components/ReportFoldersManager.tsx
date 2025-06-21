@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Folder, FolderOpen, FolderPlus, Edit3, Trash2, MoreVertical, GripVertical, FileText, X } from 'lucide-react';
+import { Folder, FolderOpen, Edit3, Trash2, MoreVertical, GripVertical, FileText, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -53,7 +54,6 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<ReportFolder | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<ReportFolder | null>(null);
@@ -62,6 +62,18 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   const [draggedReport, setDraggedReport] = useState<Report | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  // Cores disponíveis para pastas
+  const folderColors = [
+    { name: 'Azul', value: '#3B82F6' },
+    { name: 'Verde', value: '#10B981' },
+    { name: 'Amarelo', value: '#F59E0B' },
+    { name: 'Vermelho', value: '#EF4444' },
+    { name: 'Roxo', value: '#8B5CF6' },
+    { name: 'Rosa', value: '#EC4899' },
+    { name: 'Laranja', value: '#F97316' },
+    { name: 'Cinza', value: '#6B7280' }
+  ];
 
   // Fetch folders
   const { data: folders = [], isLoading: loadingFolders } = useQuery({
@@ -96,23 +108,10 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     enabled: !!selectedClientId && folders.length > 0
   });
 
-  // Create folder mutation
-  const createFolderMutation = useMutation({
-    mutationFn: async (data: { name: string; color: string; clientId: string }) => {
-      const response = await apiRequest('/api/report-folders', 'POST', data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Pasta criada com sucesso!" });
-      setIsCreateDialogOpen(false);
-      setNewFolderName('');
-      setNewFolderColor('#3b82f6');
-      queryClient.invalidateQueries({ queryKey: ['/api/report-folders'] });
-    },
-    onError: () => {
-      toast({ title: "Erro ao criar pasta", variant: "destructive" });
-    }
-  });
+  // Create folder function (moved to main page)
+  const handleCreateFolder = () => {
+    // This function is now handled in the main NewReportsPage
+  };
 
   // Update folder mutation
   const updateFolderMutation = useMutation({
@@ -253,15 +252,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     setExpandedFolders(newExpanded);
   };
 
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) return;
-    
-    createFolderMutation.mutate({
-      name: newFolderName.trim(),
-      color: newFolderColor,
-      clientId: selectedClientId
-    });
-  };
+
 
   const handleEditFolder = () => {
     if (!selectedFolder || !newFolderName.trim()) return;
@@ -294,65 +285,6 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
   return (
     <div className="space-y-6">
-      {/* Header with create button */}
-      <div className="flex items-center justify-between">
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <FolderPlus className="w-4 h-4" />
-              Nova Pasta
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Criar Nova Pasta</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Nome da Pasta</label>
-                <Input
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Digite o nome da pasta"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Cor da Pasta</label>
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {folderColors.map((color) => (
-                    <button
-                      key={color.value}
-                      onClick={() => setNewFolderColor(color.value)}
-                      className={`w-12 h-12 rounded-lg border-2 transition-all ${
-                        newFolderColor === color.value ? 'border-gray-900 scale-110' : 'border-gray-300'
-                      }`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.name}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  onClick={handleCreateFolder}
-                  disabled={!newFolderName.trim() || createFolderMutation.isPending}
-                  className="flex-1"
-                >
-                  Criar Pasta
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsCreateDialogOpen(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
       {loadingFolders ? (
         <div className="flex items-center justify-center py-12">
