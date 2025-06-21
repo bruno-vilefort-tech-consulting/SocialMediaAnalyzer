@@ -130,14 +130,22 @@ export default function NewReportsPage() {
 
   // Função para obter categoria do candidato diretamente dos dados carregados
   const getCandidateCategory = (candidateId: number): string | undefined => {
-    if (!selectedSelection || !categories) return undefined;
+    if (!selectedSelection) return undefined;
     
-    const categoryData = categories.find((cat: any) => 
-      cat.candidateId === candidateId.toString() && 
-      cat.reportId === `selection_${selectedSelection.id}`
-    );
+    // Verificar primeiro no estado local (para resposta imediata após clique)
+    const localKey = `selection_${selectedSelection.id}_${candidateId}`;
+    const localCategory = candidateCategories[localKey];
     
-    return categoryData?.category || candidateCategories[`selection_${selectedSelection.id}_${candidateId}`];
+    // Verificar nos dados carregados do Firebase (se disponível e é array)
+    if (Array.isArray(categories) && categories.length > 0) {
+      const categoryData = categories.find((cat: any) => 
+        cat.candidateId === candidateId.toString() && 
+        cat.reportId === `selection_${selectedSelection.id}`
+      );
+      return categoryData?.category || localCategory;
+    }
+    
+    return localCategory;
   };
 
   // Mutation para salvar categoria do candidato

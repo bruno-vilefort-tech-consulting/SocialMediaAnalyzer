@@ -223,6 +223,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **ID removido**: Interface sem IDs visíveis conforme solicitação do usuário
   - **Design otimizado**: Nome, status e botão "Ver Relatório" alinhados horizontalmente
 
+- June 21, 2025: 🎯 SISTEMA DE CATEGORIZAÇÃO DE CANDIDATOS IMPLEMENTADO - Botões de avaliação funcionais com persistência
+  - **Problema resolvido**: Botões não ficavam selecionados após clique e não persistiam após refresh
+  - **Firebase storage implementado**: Sistema salva categorias em coleção candidateCategories
+  - **API endpoints criados**: GET e POST /api/candidate-categories para carregar e salvar categorias
+  - **Interface corrigida**: 4 botões (Melhor, Mediano, Em dúvida, Não) com cores específicas
+  - **Loop infinito corrigido**: Erro "Maximum update depth exceeded" resolvido
+  - **Estado híbrido**: Combina estado local para resposta imediata e Firebase para persistência
+  - **Validação de tipos**: getCandidateCategory() verifica se categories é array antes de usar .find()
+  - **Sistema funcional**: Categorias persistem após clique e refresh da página
+
 - June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA OTIMIZADO - Cálculo único e eficiente sem desperdício de API
   - **Problema resolvido**: Score mudava constantemente a cada visualização da página
   - **Temperature zero**: Mudança de 0.1/0.3 para 0 nos serviços AI para resultados determinísticos
