@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar, GripVertical } from 'lucide-react';
 import ReportFoldersManager from '@/components/ReportFoldersManager';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -704,14 +704,28 @@ export default function NewReportsPage() {
                     return (
                       <Card 
                         key={selection.id}
-                        className="group cursor-pointer hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50"
-                        onClick={() => setSelectedSelection(selection)}
+                        className="group cursor-move hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', `selection_${selection.id}`);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          // Só abrir relatório se não estiver arrastando
+                          if (!e.defaultPrevented) {
+                            setSelectedSelection(selection);
+                          }
+                        }}
                       >
                         <CardContent className="p-0">
                           <div className="relative overflow-hidden rounded-lg">
                             {/* Header colorido */}
-                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
-                              <h3 className="font-bold text-lg text-white line-clamp-1 text-center">
+                            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white relative">
+                              <div className="absolute top-2 right-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <GripVertical className="h-4 w-4 text-white" />
+                              </div>
+                              <h3 className="font-bold text-lg text-white line-clamp-1 text-center pr-6">
                                 {selection.name}
                               </h3>
                             </div>
@@ -765,10 +779,19 @@ export default function NewReportsPage() {
                               <Button 
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm group-hover:shadow-md transition-all"
                                 size="sm"
+                                onMouseDown={(e) => e.stopPropagation()} // Previne conflito com drag
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedSelection(selection);
+                                }}
                               >
                                 <BarChart3 className="h-4 w-4 mr-2" />
                                 Ver Relatório
                               </Button>
+                              <div className="text-xs text-center text-gray-500 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <GripVertical className="h-3 w-3 mx-auto mb-1" />
+                                Arraste para organizar em pastas
+                              </div>
                             </div>
                             
                             {/* Overlay de hover */}
