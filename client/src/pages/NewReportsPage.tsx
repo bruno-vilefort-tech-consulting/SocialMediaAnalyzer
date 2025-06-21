@@ -7,8 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, UserPlus } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
@@ -59,29 +58,7 @@ export default function NewReportsPage() {
   const { user } = useAuth();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
-  const [showCreateCandidatesDialog, setShowCreateCandidatesDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('analise');
-
-  // Mutation para criar candidatos fictícios
-  const createTestCandidatesMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('/api/create-test-candidates', {
-        method: 'POST'
-      });
-      return response;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-      setShowCreateCandidatesDialog(false);
-      console.log('✅ Candidatos fictícios criados com sucesso:', data);
-    },
-    onError: (error) => {
-      console.error('❌ Erro ao criar candidatos fictícios:', error);
-      setShowCreateCandidatesDialog(false);
-    }
-  });
   const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
   const [candidateCategories, setCandidateCategories] = useState<{ [key: string]: string }>({});
   const [audioStates, setAudioStates] = useState<{ [key: string]: { 
@@ -425,19 +402,7 @@ export default function NewReportsPage() {
 
         {selectedClientId && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
-              
-              {/* Botão para criar candidatos fictícios - apenas para testes */}
-              <Button 
-                onClick={() => setShowCreateCandidatesDialog(true)}
-                variant="outline"
-                className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Criar 20 Candidatos Teste
-              </Button>
-            </div>
+            <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
             
             {loadingSelections ? (
               <div className="flex items-center justify-center py-12">
@@ -487,37 +452,7 @@ export default function NewReportsPage() {
           </div>
         )}
 
-        {/* Dialog para confirmar criação de candidatos fictícios */}
-        <AlertDialog open={showCreateCandidatesDialog} onOpenChange={setShowCreateCandidatesDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Criar Candidatos Fictícios</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação criará 20 candidatos fictícios baseados no "Daniel Vendedor" com áudios e transcrições reais para o relatório "Comercial 5". 
-                <br /><br />
-                <strong>Dados que serão criados:</strong>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>20 candidatos com nomes fictícios</li>
-                  <li>40 transcrições (2 por candidato)</li>
-                  <li>20 entrevistas completas</li>
-                  <li>Scores de 75 e 65 pontos</li>
-                </ul>
-                <br />
-                Deseja continuar?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => createTestCandidatesMutation.mutate()}
-                disabled={createTestCandidatesMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {createTestCandidatesMutation.isPending ? 'Criando...' : 'Criar Candidatos'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+
       </div>
     );
   }

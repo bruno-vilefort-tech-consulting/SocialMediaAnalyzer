@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 21, 2025: 🎯 20 CANDIDATOS FICTÍCIOS CRIADOS - Sistema populado com dados de teste baseados no Daniel Vendedor
+  - **Script automatizado**: createTestCandidates.ts executado com sucesso
+  - **20 candidatos fictícios**: Carlos Silva, Ana Paula, Roberto Santos, Mariana Costa, Felipe Oliveira, etc.
+  - **40 transcrições reais**: 2 por candidato usando as mesmas do Daniel Vendedor
+  - **Scores autênticos**: 75 e 65 pontos por resposta, mantendo dados reais
+  - **Vinculação correta**: Todos ligados ao relatório "Comercial 5" (seleção 1750476614396)
+  - **Estrutura preservada**: Nenhuma modificação no banco de dados, apenas adição de dados
+  - **Sistema funcional**: Candidatos aparecem no sistema de categorização em 4 colunas
+
 - June 21, 2025: 📊 SISTEMA DE CATEGORIZAÇÃO EM 4 COLUNAS IMPLEMENTADO - Layout visual completo para avaliação de candidatos
   - **Layout 4 colunas**: "Melhor" (verde), "Mediano" (amarelo), "Em dúvida" (laranja), "Reprovado" (vermelho)
   - **Todos os candidatos visíveis**: Sistema mostra candidatos da lista da vaga, não apenas os que responderam
