@@ -470,27 +470,45 @@ class InteractiveInterviewService {
         const transcriptionId = `candidato_${interview.selectionId}_${interview.currentQuestion + 1}`;
         const responseId = `${interview.selectionId}_${interview.candidateId}_R${interview.currentQuestion + 1}_${Date.now()}`;
         
-        // Calcular pontuação usando IA (0-100)
+        // Verificar se já existe score calculado para evitar recálculos desnecessários
         let pontuacao = 50; // Valor padrão caso falhe
-        try {
-          const { candidateEvaluationService } = await import('./candidateEvaluationService');
-          const openaiApiKey = process.env.OPENAI_API_KEY;
-          
-          if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
-            console.log(`🤖 [EVALUATION] Iniciando avaliação da resposta...`);
-            pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
-              responseId,
-              currentQuestion.pergunta,
-              responseText,
-              currentQuestion.respostaPerfeita,
-              openaiApiKey
-            );
-            console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
-          } else {
-            console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+        
+        // Buscar respostas existentes para verificar se já foi calculado
+        const existingResponses = await storage.getResponsesBySelectionAndCandidate(
+          interview.selectionId, 
+          interview.candidateId, 
+          interview.clientId
+        );
+        const existingResponse = existingResponses.find(r => 
+          r.questionId === (interview.currentQuestion + 1) && r.score !== null && r.score !== undefined
+        );
+        
+        if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined) {
+          // Usar score já calculado para evitar gasto desnecessário de API
+          pontuacao = existingResponse.score;
+          console.log(`♻️ [EVALUATION] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo)`);
+        } else {
+          // Calcular pontuação usando IA apenas se não existe
+          try {
+            const { candidateEvaluationService } = await import('./candidateEvaluationService');
+            const openaiApiKey = process.env.OPENAI_API_KEY;
+            
+            if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
+              console.log(`🤖 [EVALUATION] Calculando pontuação pela primeira vez...`);
+              pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
+                responseId,
+                currentQuestion.pergunta,
+                responseText,
+                currentQuestion.respostaPerfeita,
+                openaiApiKey
+              );
+              console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
+            } else {
+              console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+            }
+          } catch (evaluationError) {
+            console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
           }
-        } catch (evaluationError) {
-          console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
         }
         
         await storage.createResponse({

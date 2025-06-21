@@ -1071,29 +1071,38 @@ export class WhatsAppQRService {
           questionIndex: currentQuestionIndex
         });
         
-        // Calcular pontuação usando IA (0-100)
+        // Verificar se já existe resposta para esta pergunta para evitar recálculos
+        const existingResponse = existingResponses.find(r => r.questionId === currentQuestion.id);
         let pontuacao = 50; // Valor padrão caso falhe
-        try {
-          const { candidateEvaluationService } = await import('./candidateEvaluationService');
-          const openaiApiKey = config.openaiApiKey;
-          
-          if (openaiApiKey && currentQuestion.respostaPerfeita && transcription) {
-            console.log(`🤖 [EVALUATION] Iniciando avaliação da resposta...`);
-            const responseId = `whatsapp_response_${Date.now()}`;
+        
+        if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined) {
+          // Usar score já calculado para evitar gasto desnecessário de API
+          pontuacao = existingResponse.score;
+          console.log(`♻️ [EVALUATION] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo)`);
+        } else {
+          // Calcular pontuação usando IA apenas se não existe
+          try {
+            const { candidateEvaluationService } = await import('./candidateEvaluationService');
+            const openaiApiKey = config.openaiApiKey;
             
-            pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
-              responseId,
-              currentQuestion.pergunta,
-              transcription,
-              currentQuestion.respostaPerfeita,
-              openaiApiKey
-            );
-            console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
-          } else {
-            console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+            if (openaiApiKey && currentQuestion.respostaPerfeita && transcription) {
+              console.log(`🤖 [EVALUATION] Calculando pontuação pela primeira vez...`);
+              const responseId = `whatsapp_response_${Date.now()}`;
+              
+              pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
+                responseId,
+                currentQuestion.pergunta,
+                transcription,
+                currentQuestion.respostaPerfeita,
+                openaiApiKey
+              );
+              console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
+            } else {
+              console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
+            }
+          } catch (evaluationError) {
+            console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
           }
-        } catch (evaluationError) {
-          console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
         }
 
         const response = await storage.createResponse({

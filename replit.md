@@ -223,13 +223,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **ID removido**: Interface sem IDs visíveis conforme solicitação do usuário
   - **Design otimizado**: Nome, status e botão "Ver Relatório" alinhados horizontalmente
 
-- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA IMPLEMENTADO - Avaliação automática 0-100 para cada resposta de candidato
-  - **Arquivo criado**: candidateEvaluationService.ts - serviço separado conforme solicitado
-  - **Prompt ChatGPT integrado**: Critérios de 70 pontos (conteúdo) + 25 pontos (coerência) + 5 pontos (profissionalismo)
-  - **Cálculo automático**: Pontuação calculada instantaneamente quando candidato responde via WhatsApp
-  - **Interface atualizada**: Pontuação 0-100 exibida no topo direito de cada resposta com cores (verde/amarelo/laranja/vermelho)
-  - **Processamento único**: Avaliação acontece apenas uma vez por resposta e é salva no banco de dados
-  - **Integração completa**: Funciona tanto no interactiveInterviewService quanto no whatsappQRService
+- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA OTIMIZADO - Cálculo único e eficiente sem desperdício de API
+  - **Problema resolvido**: Score mudava constantemente a cada visualização da página
+  - **Temperature zero**: Mudança de 0.1/0.3 para 0 nos serviços AI para resultados determinísticos
+  - **Verificação de score existente**: Sistema verifica se pontuação já foi calculada antes de chamar API
+  - **Economia de API**: Evita recálculos desnecessários da OpenAI preservando custos
+  - **Processamento único**: Avaliação acontece apenas uma vez após transcrição e é salva permanentemente
+  - **Correção de tipos**: Score 0 agora é preservado corretamente (r.score !== undefined && r.score !== null)
+  - **Logs informativos**: Sistema indica quando usa score já calculado vs quando calcula pela primeira vez
 
 - June 21, 2025: 🗂️ SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Relatórios persistem mesmo após deleção de seleções
   - **Schema Report expandido**: Entidade completamente independente com ID único (report_[selectionId]_[timestamp])
