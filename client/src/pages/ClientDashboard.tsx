@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, Users, Mic, PieChart, Plus, Upload, ClipboardList, BarChart } from "lucide-react";
+import { Briefcase, Users, Mic, PieChart, Plus, Upload, ClipboardList, BarChart, FileText, Calendar } from "lucide-react";
 
 export default function ClientDashboard() {
   const { user } = useAuth();
@@ -12,6 +12,10 @@ export default function ClientDashboard() {
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["/api/client/stats"],
+  });
+
+  const { data: reports, isLoading: isLoadingReports } = useQuery({
+    queryKey: ["/api/reports"],
   });
 
   const handleQuickAction = (path: string) => {
@@ -113,30 +117,60 @@ export default function ClientDashboard() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Entrevistas Recentes</CardTitle>
+              <CardTitle>Últimos Relatórios</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {(!stats || stats.monthlyInterviews === 0) ? (
+                {isLoadingReports ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-16 bg-slate-200 rounded-lg"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (!reports || reports.length === 0) ? (
                   <div className="text-center text-slate-500 py-8">
-                    <Mic className="h-8 w-8 mx-auto mb-2" />
-                    <div className="text-sm">Nenhuma entrevista realizada ainda</div>
-                    <div className="text-xs mt-1">As entrevistas aparecerão aqui quando iniciadas</div>
+                    <FileText className="h-8 w-8 mx-auto mb-2" />
+                    <div className="text-sm">Nenhum relatório gerado ainda</div>
+                    <div className="text-xs mt-1">Os relatórios aparecerão aqui quando as seleções forem criadas</div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <Users className="text-primary" />
+                  <div className="space-y-3">
+                    {reports.slice(0, 4).map((report: any) => (
+                      <div 
+                        key={report.id} 
+                        className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
+                        onClick={() => setLocation(`/relatorios?reportId=${report.id}`)}
+                      >
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-slate-900">{report.jobData?.nomeVaga || 'Relatório'}</div>
+                            <div className="text-xs text-slate-500 flex items-center">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {new Date(report.createdAt?.seconds * 1000 || report.createdAt).toLocaleDateString('pt-BR')}
+                            </div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-slate-900">Sistema Configurado</div>
-                          <div className="text-xs text-slate-500">Pronto para receber candidatos</div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="text-xs">
+                            {report.candidatesData?.length || 0} candidatos
+                          </Badge>
                         </div>
                       </div>
-                      <Badge variant="outline">Ativo</Badge>
-                    </div>
+                    ))}
+                    {reports.length > 4 && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full mt-3"
+                        onClick={() => setLocation("/relatorios")}
+                      >
+                        Ver todos os relatórios
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

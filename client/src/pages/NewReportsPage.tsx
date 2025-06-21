@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useMutation } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
+import { useLocation } from 'wouter';
 
 interface Selection {
   id: number;
@@ -56,6 +57,7 @@ const CANDIDATE_CATEGORIES = ['Melhor', 'Mediano', 'Em dúvida', 'Não'] as cons
 
 export default function NewReportsPage() {
   const { user } = useAuth();
+  const [location] = useLocation();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedSelection, setSelectedSelection] = useState<Selection | null>(null);
   const [activeTab, setActiveTab] = useState('analise');
@@ -68,10 +70,25 @@ export default function NewReportsPage() {
     progress: number;
   } }>({});
 
+  // Extrair reportId da URL
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const reportId = urlParams.get('reportId');
+
   // Buscar clientes (apenas para masters)
   const { data: clients = [] } = useQuery({
     queryKey: ['/api/clients'],
     enabled: user?.role === 'master'
+  });
+
+  // Buscar relatório específico se reportId estiver na URL
+  const { data: specificReport } = useQuery({
+    queryKey: ['/api/reports', reportId],
+    queryFn: async () => {
+      if (!reportId) return null;
+      const response = await apiRequest(`/api/reports/${reportId}`, 'GET');
+      return response.json();
+    },
+    enabled: !!reportId
   });
 
   // Buscar seleções
