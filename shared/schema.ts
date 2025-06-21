@@ -69,11 +69,18 @@ export interface WhatsAppConnection {
 }
 
 // Report Folder types
-export const insertReportFolderSchema = createInsertSchema(reportFolders);
+export const insertReportFolderSchema = createInsertSchema(reportFolders).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
 export type InsertReportFolder = z.infer<typeof insertReportFolderSchema>;
 export type ReportFolder = typeof reportFolders.$inferSelect;
 
-export const insertReportFolderAssignmentSchema = createInsertSchema(reportFolderAssignments);
+export const insertReportFolderAssignmentSchema = createInsertSchema(reportFolderAssignments).omit({ 
+  id: true, 
+  assignedAt: true 
+});
 export type InsertReportFolderAssignment = z.infer<typeof insertReportFolderAssignmentSchema>;
 export type ReportFolderAssignment = typeof reportFolderAssignments.$inferSelect;
 

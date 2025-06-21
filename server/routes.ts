@@ -4444,17 +4444,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/report-folders", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
-      const data = insertReportFolderSchema.parse(req.body);
-      
-      // Set clientId based on user role
+      // Set clientId based on user role BEFORE validation
       const clientId = req.user?.role === 'master' 
-        ? data.clientId 
+        ? req.body.clientId 
         : req.user!.clientId.toString();
       
-      const folder = await storage.createReportFolder({
-        ...data,
-        clientId
+      console.log('🗂️ Creating folder:', { 
+        userRole: req.user?.role, 
+        userClientId: req.user?.clientId, 
+        bodyClientId: req.body.clientId,
+        finalClientId: clientId,
+        body: req.body 
       });
+      
+      // Parse data with clientId included
+      const dataToValidate = {
+        ...req.body,
+        clientId
+      };
+      
+      console.log('🗂️ Data to validate:', dataToValidate);
+      
+      const data = insertReportFolderSchema.parse(dataToValidate);
+      
+      console.log('🗂️ Validated data:', data);
+      
+      const folder = await storage.createReportFolder(data);
       
       res.status(201).json(folder);
     } catch (error) {
