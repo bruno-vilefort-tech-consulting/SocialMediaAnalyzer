@@ -195,8 +195,8 @@ export default function NewReportsPage() {
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
-  const getCandidateCategory = (candidateId: number): string => {
-    if (!selectedSelection) return 'Não';
+  const getCandidateCategory = (candidateId: number): string | null => {
+    if (!selectedSelection) return null;
     
     // Verificar primeiro no estado local (para resposta imediata após clique)
     const localKey = `selection_${selectedSelection.id}_${candidateId}`;
@@ -208,10 +208,23 @@ export default function NewReportsPage() {
         cat.candidateId === candidateId.toString() && 
         cat.reportId === `selection_${selectedSelection.id}`
       );
-      return categoryData?.category || localCategory || 'Não';
+      if (categoryData?.category) {
+        return categoryData.category;
+      }
     }
     
-    return localCategory || 'Não';
+    // Se há categoria local, retornar ela
+    if (localCategory) {
+      return localCategory;
+    }
+    
+    // Se não há categoria definida, retornar null (nenhum botão selecionado)
+    return null;
+  };
+
+  // Função auxiliar para obter categoria com fallback para "Não" (para uso nas colunas)
+  const getCandidateCategoryWithFallback = (candidateId: number): string => {
+    return getCandidateCategory(candidateId) || 'Não';
   };
 
   // Mutation para salvar categoria do candidato
@@ -745,12 +758,12 @@ export default function NewReportsPage() {
                         <h3 className="font-semibold text-red-700">Reprovado</h3>
                       </div>
                       <div className="text-sm text-red-600">
-                        {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length} candidatos
+                        {allCandidatesWithStatus.filter(c => getCandidateCategoryWithFallback(c.candidate.id) === 'Não').length} candidatos
                       </div>
                     </div>
                     <div className="space-y-2">
                       {allCandidatesWithStatus
-                        .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Não')
+                        .filter(candidate => getCandidateCategoryWithFallback(candidate.candidate.id) === 'Não')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
                           const averageScore = responsesWithScore.length > 0 
@@ -780,7 +793,7 @@ export default function NewReportsPage() {
                             </Card>
                           );
                         })}
-                      {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Não').length === 0 && (
+                      {allCandidatesWithStatus.filter(c => getCandidateCategoryWithFallback(c.candidate.id) === 'Não').length === 0 && (
                         <div className="text-center py-6 text-muted-foreground text-sm">
                           Nenhum candidato nesta categoria
                         </div>
