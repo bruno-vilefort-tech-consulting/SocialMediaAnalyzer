@@ -375,7 +375,7 @@ export default function NewReportsPage() {
                               {/* Coluna 1: Nome do Candidato */}
                               <div className="col-span-1">
                                 <p className="font-medium">{candidate.candidate.name}</p>
-                                <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
+                                <p className="text-sm text-muted-foreground">{candidate.candidate.phone}</p>
                               </div>
                               
                               {/* Coluna 2: Status da Entrevista */}
