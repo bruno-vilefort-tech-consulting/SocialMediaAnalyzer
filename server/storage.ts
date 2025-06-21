@@ -2281,7 +2281,7 @@ export class FirebaseStorage implements IStorage {
       const categoryId = `${reportId}_${candidateId}`;
       const categoryData = {
         reportId,
-        candidateId,
+        candidateId: candidateId.toString(), // Garantir que sempre seja string
         category,
         clientId,
         updatedAt: new Date()
@@ -2299,7 +2299,7 @@ export class FirebaseStorage implements IStorage {
         });
       }
 
-      console.log(`✅ Categoria ${category} salva para candidato ${candidateId} no relatório ${reportId}`);
+      console.log(`✅ [STORAGE] Categoria ${category} salva para candidato ${candidateId} (string: ${candidateId.toString()}) no relatório ${reportId}`);
       return { id: categoryId, ...categoryData };
     } catch (error) {
       console.error('❌ Erro ao salvar categoria do candidato:', error);

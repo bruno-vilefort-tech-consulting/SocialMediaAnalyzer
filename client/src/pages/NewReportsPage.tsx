@@ -189,6 +189,7 @@ export default function NewReportsPage() {
     queryFn: async () => {
       if (!selectedSelection) return [];
       const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
+      console.log(`🔍 [CATEGORIA_DEBUG] Categorias carregadas do Firebase:`, response);
       return response || [];
     },
     enabled: !!selectedSelection
@@ -201,23 +202,35 @@ export default function NewReportsPage() {
     // Verificar primeiro no estado local (para resposta imediata após clique)
     const localKey = `selection_${selectedSelection.id}_${candidateId}`;
     const localCategory = candidateCategories[localKey];
+    console.log(`🔍 [CATEGORIA_DEBUG] Buscando categoria para candidato ${candidateId}:`);
+    console.log(`🔍 [CATEGORIA_DEBUG] - Local key: ${localKey}`);
+    console.log(`🔍 [CATEGORIA_DEBUG] - Local category: ${localCategory}`);
+    console.log(`🔍 [CATEGORIA_DEBUG] - Categories array length: ${categories?.length || 0}`);
     
     // Verificar nos dados carregados do Firebase (se disponível e é array)
     if (Array.isArray(categories) && categories.length > 0) {
-      const categoryData = categories.find((cat: any) => 
-        cat.candidateId === candidateId.toString() && 
-        cat.reportId === `selection_${selectedSelection.id}`
-      );
+      const reportId = `selection_${selectedSelection.id}`;
+      console.log(`🔍 [CATEGORIA_DEBUG] - Procurando reportId: ${reportId}, candidateId: ${candidateId.toString()}`);
+      
+      const categoryData = categories.find((cat: any) => {
+        const match = cat.candidateId === candidateId.toString() && cat.reportId === reportId;
+        console.log(`🔍 [CATEGORIA_DEBUG] - Checking: candidateId=${cat.candidateId}, reportId=${cat.reportId}, category=${cat.category}, match=${match}`);
+        return match;
+      });
+      
       if (categoryData?.category) {
+        console.log(`🔍 [CATEGORIA_DEBUG] - Firebase category found: ${categoryData.category}`);
         return categoryData.category;
       }
     }
     
     // Se há categoria local, retornar ela
     if (localCategory) {
+      console.log(`🔍 [CATEGORIA_DEBUG] - Returning local category: ${localCategory}`);
       return localCategory;
     }
     
+    console.log(`🔍 [CATEGORIA_DEBUG] - No category found, returning null`);
     // Se não há categoria definida, retornar null (nenhum botão selecionado)
     return null;
   };
@@ -238,12 +251,16 @@ export default function NewReportsPage() {
       });
     },
     onSuccess: (data, variables) => {
+      console.log(`✅ [CATEGORIA_DEBUG] Categoria salva com sucesso:`, variables);
+      
       // Atualizar estado local imediatamente para resposta visual rápida
       const key = `${variables.reportId}_${variables.candidateId}`;
       setCandidateCategories(prev => ({
         ...prev,
         [key]: variables.category
       }));
+      
+      console.log(`✅ [CATEGORIA_DEBUG] Estado local atualizado - key: ${key}, category: ${variables.category}`);
       
       // Invalidar consulta para recarregar dados do banco
       queryClient.invalidateQueries({
