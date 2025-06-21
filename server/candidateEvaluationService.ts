@@ -29,28 +29,39 @@ interface EvaluationResult {
 export class CandidateEvaluationService {
   private openai: OpenAI | null = null;
 
-  async initialize(apiKey: string): Promise<void> {
-    if (!apiKey) {
-      throw new Error('OpenAI API Key é obrigatória para avaliação de candidatos');
+  async initialize(): Promise<void> {
+    try {
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('OPENAI_API_KEY não configurada');
+      }
+      
+      this.openai = new OpenAI({
+        apiKey: apiKey
+      });
+      console.log('✅ [EVALUATION] CandidateEvaluationService inicializado com OpenAI API Key');
+    } catch (error) {
+      console.error('❌ [EVALUATION] Erro ao inicializar:', error.message);
+      this.openai = null;
     }
-    
-    this.openai = new OpenAI({ 
-      apiKey: apiKey
-    });
-    
-    console.log('✅ [EVALUATION] Serviço de avaliação de candidatos inicializado');
   }
 
   async evaluateResponse(request: EvaluationRequest): Promise<EvaluationResult> {
+    // Auto-inicializar se necessário
     if (!this.openai) {
-      throw new Error('Serviço de avaliação não foi inicializado');
+      await this.initialize();
+    }
+
+    if (!this.openai) {
+      console.log('⚠️ [EVALUATION] OpenAI não disponível - usando fallback');
+      return this.getFallbackEvaluation();
     }
 
     try {
-      console.log('🤖 [EVALUATION] Iniciando avaliação de resposta...');
-      console.log('📝 [EVALUATION] Pergunta:', request.pergunta.substring(0, 50) + '...');
-      console.log('💭 [EVALUATION] Resposta candidato:', request.respostaCandidato.substring(0, 50) + '...');
-      console.log('⭐ [EVALUATION] Resposta perfeita:', request.respostaPerfeita.substring(0, 50) + '...');
+      console.log('🤖 [IA_EVALUATION] Iniciando avaliação detalhada com OpenAI...');
+      console.log('📝 [IA_INPUT] Pergunta:', request.pergunta.substring(0, 80) + '...');
+      console.log('📝 [IA_INPUT] Resposta candidato:', request.respostaCandidato.substring(0, 80) + '...');
+      console.log('📝 [IA_INPUT] Resposta perfeita:', request.respostaPerfeita.substring(0, 80) + '...');
 
       const prompt = this.buildEvaluationPrompt(request);
       
@@ -59,7 +70,7 @@ export class CandidateEvaluationService {
         messages: [
           {
             role: "system",
-            content: "Você é um avaliador especialista de entrevistas de RH. Analise as respostas de forma objetiva e imparcial."
+            content: "Você é um avaliador especialista de entrevistas de RH. Analise as respostas de forma objetiva e imparcial, comparando sempre com a resposta perfeita fornecida."
           },
           {
             role: "user",
@@ -75,21 +86,22 @@ export class CandidateEvaluationService {
         throw new Error('Resposta vazia da OpenAI');
       }
 
-      console.log('📊 [EVALUATION] Resposta bruta da OpenAI:', content);
+      console.log('📊 [IA_OUTPUT] Resposta bruta da OpenAI:', content.substring(0, 200) + '...');
       
       const result = this.parseEvaluationResponse(content);
       
-      console.log('✅ [EVALUATION] Avaliação concluída:', {
+      console.log('✅ [IA_FINAL] Avaliação IA concluída:', {
         pontuacaoGeral: result.pontuacaoGeral,
         conteudo: result.conteudo,
         coerencia: result.coerencia,
-        tom: result.tom
+        tom: result.tom,
+        feedback: result.feedback ? result.feedback.substring(0, 50) + '...' : 'Sem feedback'
       });
 
       return result;
 
     } catch (error) {
-      console.error('❌ [EVALUATION] Erro na avaliação:', error.message);
+      console.error('❌ [IA_ERROR] Erro na avaliação:', error.message);
       
       // Fallback: retorna pontuação neutra em caso de erro
       return this.getFallbackEvaluation();
