@@ -128,21 +128,17 @@ export default function NewReportsPage() {
     enabled: !!selectedSelection
   });
 
-  // Effect para atualizar estado local com as categorias carregadas
-  React.useEffect(() => {
-    if (selectedSelection) {
-      if (categories && categories.length > 0) {
-        const categoryMap: { [key: string]: string } = {};
-        categories.forEach((cat: any) => {
-          const key = `selection_${selectedSelection.id}_${cat.candidateId}`;
-          categoryMap[key] = cat.category;
-        });
-        setCandidateCategories(categoryMap);
-      } else {
-        setCandidateCategories({});
-      }
-    }
-  }, [categories, selectedSelection?.id]);
+  // Função para obter categoria do candidato diretamente dos dados carregados
+  const getCandidateCategory = (candidateId: number): string | undefined => {
+    if (!selectedSelection || !categories) return undefined;
+    
+    const categoryData = categories.find((cat: any) => 
+      cat.candidateId === candidateId.toString() && 
+      cat.reportId === `selection_${selectedSelection.id}`
+    );
+    
+    return categoryData?.category || candidateCategories[`selection_${selectedSelection.id}_${candidateId}`];
+  };
 
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
@@ -155,13 +151,14 @@ export default function NewReportsPage() {
       });
     },
     onSuccess: (data, variables) => {
-      // Atualizar estado local imediatamente
+      // Atualizar estado local imediatamente para resposta visual rápida
+      const key = `${variables.reportId}_${variables.candidateId}`;
       setCandidateCategories(prev => ({
         ...prev,
-        [`${variables.reportId}_${variables.candidateId}`]: variables.category
+        [key]: variables.category
       }));
       
-      // Invalidar cache para recarregar do banco
+      // Invalidar consulta para recarregar dados do banco
       queryClient.invalidateQueries({
         queryKey: ['/api/candidate-categories', selectedSelection?.id]
       });
@@ -411,8 +408,8 @@ export default function NewReportsPage() {
                                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                                   <Button
                                     size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
-                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
+                                    variant={getCandidateCategory(candidate.candidate.id) === 'Melhor' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
                                     onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
                                     disabled={setCategoryMutation.isPending}
                                     title="Melhor"
@@ -421,8 +418,8 @@ export default function NewReportsPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
-                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
+                                    variant={getCandidateCategory(candidate.candidate.id) === 'Mediano' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
                                     onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
                                     disabled={setCategoryMutation.isPending}
                                     title="Mediano"
@@ -431,8 +428,8 @@ export default function NewReportsPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
-                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
+                                    variant={getCandidateCategory(candidate.candidate.id) === 'Em dúvida' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
                                     onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
                                     disabled={setCategoryMutation.isPending}
                                     title="Em dúvida"
@@ -441,8 +438,8 @@ export default function NewReportsPage() {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
-                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
+                                    variant={getCandidateCategory(candidate.candidate.id) === 'Não' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
                                     onClick={() => setCategory(candidate.candidate.id, 'Não')}
                                     disabled={setCategoryMutation.isPending}
                                     title="Não"
