@@ -184,15 +184,34 @@ export default function NewReportsPage() {
   }, [user]);
 
   // Query para buscar categorias dos candidatos quando uma seleção é escolhida
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['/api/candidate-categories', selectedSelection?.id],
     queryFn: async () => {
-      if (!selectedSelection) return [];
+      if (!selectedSelection) {
+        console.log(`🔍 [CATEGORIA_DEBUG] Nenhuma seleção escolhida, retornando array vazio`);
+        return [];
+      }
+      console.log(`🔍 [CATEGORIA_DEBUG] Buscando categorias para seleção: ${selectedSelection.id}`);
       const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
-      console.log(`🔍 [CATEGORIA_DEBUG] Categorias carregadas do Firebase:`, response);
-      return response || [];
+      const data = await response.json();
+      console.log(`🔍 [CATEGORIA_DEBUG] Response completa do Firebase:`, data);
+      console.log(`🔍 [CATEGORIA_DEBUG] Data é array:`, Array.isArray(data));
+      console.log(`🔍 [CATEGORIA_DEBUG] Data length:`, data?.length || 0);
+      if (data && Array.isArray(data)) {
+        data.forEach((cat, index) => {
+          console.log(`🔍 [CATEGORIA_DEBUG] Categoria ${index}:`, {
+            id: cat.id,
+            candidateId: cat.candidateId,
+            reportId: cat.reportId,
+            category: cat.category
+          });
+        });
+      }
+      return data || [];
     },
-    enabled: !!selectedSelection
+    enabled: !!selectedSelection,
+    staleTime: 0, // Sempre buscar dados frescos
+    cacheTime: 0   // Não manter cache
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
@@ -243,12 +262,13 @@ export default function NewReportsPage() {
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
     mutationFn: async ({ reportId, candidateId, category }: { reportId: string; candidateId: string; category: string }) => {
-      return apiRequest('/api/candidate-categories', 'POST', { 
+      const response = await apiRequest('/api/candidate-categories', 'POST', { 
         reportId, 
         candidateId, 
         category, 
         clientId: user?.clientId 
       });
+      return response.json();
     },
     onSuccess: (data, variables) => {
       console.log(`✅ [CATEGORIA_DEBUG] Categoria salva com sucesso:`, variables);
