@@ -4423,6 +4423,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Report Folders API endpoints
+  app.get("/api/report-folders", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user?.role === 'master' 
+        ? req.query.clientId as string
+        : req.user!.clientId.toString();
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const folders = await storage.getReportFoldersByClientId(clientId);
+      res.json(folders);
+    } catch (error) {
+      console.error('Error fetching report folders:', error);
+      res.status(500).json({ message: 'Failed to fetch report folders' });
+    }
+  });
+
+  app.post("/api/report-folders", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const data = insertReportFolderSchema.parse(req.body);
+      
+      // Set clientId based on user role
+      const clientId = req.user?.role === 'master' 
+        ? data.clientId 
+        : req.user!.clientId.toString();
+      
+      const folder = await storage.createReportFolder({
+        ...data,
+        clientId
+      });
+      
+      res.status(201).json(folder);
+    } catch (error) {
+      console.error('Error creating report folder:', error);
+      res.status(500).json({ message: 'Failed to create report folder' });
+    }
+  });
+
+  app.put("/api/report-folders/:id", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      
+      // Check if folder exists and user has permission
+      const existingFolder = await storage.getReportFolderById(id);
+      if (!existingFolder) {
+        return res.status(404).json({ message: 'Folder not found' });
+      }
+
+      if (req.user?.role === 'client' && existingFolder.clientId !== req.user.clientId.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const folder = await storage.updateReportFolder(id, data);
+      res.json(folder);
+    } catch (error) {
+      console.error('Error updating report folder:', error);
+      res.status(500).json({ message: 'Failed to update report folder' });
+    }
+  });
+
+  app.delete("/api/report-folders/:id", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if folder exists and user has permission
+      const existingFolder = await storage.getReportFolderById(id);
+      if (!existingFolder) {
+        return res.status(404).json({ message: 'Folder not found' });
+      }
+
+      if (req.user?.role === 'client' && existingFolder.clientId !== req.user.clientId.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      await storage.deleteReportFolder(id);
+      res.json({ message: 'Folder deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting report folder:', error);
+      res.status(500).json({ message: 'Failed to delete report folder' });
+    }
+  });
+
+  // Report Folder Assignments API endpoints
+  app.get("/api/report-folders/:folderId/reports", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { folderId } = req.params;
+      
+      // Check if folder exists and user has permission
+      const folder = await storage.getReportFolderById(folderId);
+      if (!folder) {
+        return res.status(404).json({ message: 'Folder not found' });
+      }
+
+      if (req.user?.role === 'client' && folder.clientId !== req.user.clientId.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const assignments = await storage.getReportFolderAssignments(folderId);
+      res.json(assignments);
+    } catch (error) {
+      console.error('Error fetching folder assignments:', error);
+      res.status(500).json({ message: 'Failed to fetch folder assignments' });
+    }
+  });
+
+  app.post("/api/report-folders/assign", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const data = insertReportFolderAssignmentSchema.parse(req.body);
+      
+      // Check permissions for folder
+      const folder = await storage.getReportFolderById(data.folderId);
+      
+      if (!folder) {
+        return res.status(404).json({ message: 'Folder not found' });
+      }
+
+      if (req.user?.role === 'client' && folder.clientId !== req.user.clientId.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const assignment = await storage.assignReportToFolder(data);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error('Error assigning report to folder:', error);
+      res.status(500).json({ message: 'Failed to assign report to folder' });
+    }
+  });
+
+  app.delete("/api/report-folders/assign/:reportId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const { reportId } = req.params;
+      
+      await storage.removeReportFromFolder(reportId);
+      res.json({ message: 'Report removed from folder successfully' });
+    } catch (error) {
+      console.error('Error removing report from folder:', error);
+      res.status(500).json({ message: 'Failed to remove report from folder' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
