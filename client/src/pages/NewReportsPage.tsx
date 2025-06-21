@@ -707,7 +707,9 @@ export default function NewReportsPage() {
                         className="group cursor-move hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50"
                         draggable
                         onDragStart={(e) => {
-                          e.dataTransfer.setData('text/plain', `selection_${selection.id}`);
+                          const dragId = `selection_${selection.id}`;
+                          console.log('🎯 Starting drag for report:', dragId, selection.name);
+                          e.dataTransfer.setData('text/plain', dragId);
                           e.dataTransfer.effectAllowed = 'move';
                           e.stopPropagation();
                         }}

@@ -215,17 +215,36 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     e.preventDefault();
     setDragOverFolder(null);
     
-    if (!draggedReport) return;
+    // Get dragged data
+    const dragData = e.dataTransfer.getData('text/plain');
+    let reportId = '';
+    
+    console.log('🗂️ Drop detected:', { dragData, folderId, draggedReport });
+    
+    // Handle both internal report drag and external selection drag
+    if (draggedReport) {
+      reportId = draggedReport.id;
+      console.log('🗂️ Using internal dragged report:', reportId);
+    } else if (dragData.startsWith('selection_')) {
+      // Convert selection ID to report format
+      reportId = dragData; // Keep as selection_ID format
+      console.log('🗂️ Using external selection drag:', reportId);
+    } else {
+      console.log('🗂️ No valid drag data found, aborting');
+      return;
+    }
 
     if (folderId) {
       // Move to folder
+      console.log('🗂️ Moving to folder:', { reportId, folderId });
       assignReportMutation.mutate({
-        reportId: draggedReport.id,
+        reportId,
         folderId
       });
     } else {
       // Remove from folder (move to unorganized)
-      removeReportMutation.mutate(draggedReport.id);
+      console.log('🗂️ Moving to unorganized:', reportId);
+      removeReportMutation.mutate(reportId);
     }
     
     setDraggedReport(null);
@@ -361,8 +380,19 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
                 className={`transition-all duration-200 ${
                   isDragOver ? 'ring-2 ring-blue-500 bg-blue-50' : ''
                 }`}
-                onDragOver={(e) => handleDragOver(e, folder.id)}
-                onDragLeave={handleDragLeave}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  setDragOverFolder(folder.id);
+                }}
+                onDragLeave={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX;
+                  const y = e.clientY;
+                  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                    setDragOverFolder(null);
+                  }
+                }}
                 onDrop={(e) => handleDrop(e, folder.id)}
               >
                 <CardHeader className="pb-3">
@@ -467,8 +497,19 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
             className={`transition-all duration-200 ${
               dragOverFolder === 'unorganized' ? 'ring-2 ring-gray-500 bg-gray-50' : ''
             }`}
-            onDragOver={(e) => handleDragOver(e)}
-            onDragLeave={handleDragLeave}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              setDragOverFolder('unorganized');
+            }}
+            onDragLeave={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX;
+              const y = e.clientY;
+              if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                setDragOverFolder(null);
+              }
+            }}
             onDrop={(e) => handleDrop(e)}
           >
             <CardHeader>
