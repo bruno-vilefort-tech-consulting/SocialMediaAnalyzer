@@ -483,7 +483,7 @@ class InteractiveInterviewService {
           r.questionId === (interview.currentQuestion + 1) && r.score !== null && r.score !== undefined
         );
         
-        if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined) {
+        if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined && existingResponse.score > 0) {
           // Usar score já calculado para evitar gasto desnecessário de API
           pontuacao = existingResponse.score;
           console.log(`♻️ [SCORE_OTIMIZADO] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo e economia de API)`);
@@ -492,25 +492,35 @@ class InteractiveInterviewService {
           try {
             const { candidateEvaluationService } = await import('./candidateEvaluationService');
             
-            // Verificar se OpenAI está configurada no master settings
-            const masterSettings = await storage.getMasterSettings();
-            const openaiApiKey = masterSettings?.openaiApiKey;
+            // Usar a OPENAI_API_KEY do ambiente (configurada pelo usuário)
+            const openaiApiKey = process.env.OPENAI_API_KEY;
             
             if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
-              console.log(`🤖 [SCORE_CALCULADO_PRIMEIRA_VEZ] Calculando pontuação pela primeira vez - será salva permanentemente...`);
-              pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
-                responseId,
-                currentQuestion.pergunta,
-                responseText,
-                currentQuestion.respostaPerfeita,
-                openaiApiKey
-              );
-              console.log(`📊 [SCORE_SALVO] Pontuação calculada e será salva: ${pontuacao}/100 - futuras visualizações lerão do banco`);
+              console.log(`🤖 [IA_REAL] Calculando pontuação com IA pela primeira vez usando prompt detalhado...`);
+              
+              // Usar o sistema de avaliação completo com prompt detalhado
+              const evaluationResult = await candidateEvaluationService.evaluateResponse({
+                pergunta: currentQuestion.pergunta,
+                respostaCandidato: responseText,
+                respostaPerfeita: currentQuestion.respostaPerfeita
+              });
+              
+              pontuacao = evaluationResult.pontuacaoGeral;
+              console.log(`📊 [IA_SCORE_SALVO] Score calculado pela IA: ${pontuacao}/100`);
+              console.log(`📊 [IA_DETALHES] Conteúdo: ${evaluationResult.conteudo}/70, Coerência: ${evaluationResult.coerencia}/25, Tom: ${evaluationResult.tom}/5`);
+              
+              // Salvar também o feedback da IA se disponível
+              if (evaluationResult.feedback) {
+                console.log(`📝 [IA_FEEDBACK] ${evaluationResult.feedback}`);
+              }
+              
             } else {
-              console.log(`⚠️ [EVALUATION] OpenAI não configurada ou dados insuficientes - usando pontuação padrão`);
+              console.log(`⚠️ [EVALUATION] OpenAI API Key não configurada ou dados insuficientes - usando pontuação padrão`);
+              pontuacao = 0;
             }
           } catch (evaluationError) {
-            console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
+            console.log(`❌ [EVALUATION] Erro na avaliação IA:`, evaluationError.message);
+            pontuacao = 0;
           }
         }
         

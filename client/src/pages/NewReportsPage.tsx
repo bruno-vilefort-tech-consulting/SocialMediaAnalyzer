@@ -728,7 +728,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                       <p className="font-medium">{response.questionText}</p>
                     </div>
                     {/* Pontuação 0-100 no topo direito */}
-                    {response.score !== null && response.score !== undefined && response.score > 0 && (
+                    {response.score !== null && response.score !== undefined && response.score > 0 ? (
                       <div className="ml-4 flex-shrink-0">
                         <div className={`px-3 py-1 rounded-full text-sm font-bold ${
                           response.score >= 80 ? 'bg-green-100 text-green-800' :
@@ -737,6 +737,12 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                           'bg-red-100 text-red-800'
                         }`}>
                           {response.score}/100
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ml-4 flex-shrink-0">
+                        <div className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-600">
+                          Processando...
                         </div>
                       </div>
                     )}
@@ -785,10 +791,21 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                             <span>{formatTime(audioState.currentTime)} / {formatTime(audioState.duration)}</span>
                           </div>
                           
-                          {response.score && response.score > 0 && (
+                          {response.score && response.score > 0 ? (
                             <div className="ml-auto">
-                              <Badge variant="outline">
-                                Score: {response.score}/100
+                              <Badge variant="outline" className={
+                                response.score >= 80 ? 'border-green-500 text-green-700' :
+                                response.score >= 60 ? 'border-yellow-500 text-yellow-700' :
+                                response.score >= 40 ? 'border-orange-500 text-orange-700' :
+                                'border-red-500 text-red-700'
+                              }>
+                                Score IA: {response.score}/100
+                              </Badge>
+                            </div>
+                          ) : (
+                            <div className="ml-auto">
+                              <Badge variant="outline" className="border-gray-400 text-gray-600">
+                                IA Processando...
                               </Badge>
                             </div>
                           )}

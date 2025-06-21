@@ -1108,21 +1108,14 @@ export class FirebaseStorage implements IStorage {
             // Criar URL do áudio baseado na estrutura correta
             const audioUrl = data.audioUrl || `/uploads/audio_${candidatePhone}_${selectionId}_R${data.questionId}.ogg`;
             
-            // Se não existe score, vamos usar um valor baseado no comprimento da transcrição como fallback temporário
+            // Usar score real calculado pela IA (salvo no banco após transcrição)
             let responseScore = data.score;
             if (responseScore === undefined || responseScore === null || responseScore === 0) {
-              // Fallback: calcular score baseado na qualidade da transcrição
-              const transcriptionLength = data.transcription ? data.transcription.length : 0;
-              if (transcriptionLength > 100) {
-                responseScore = Math.min(85, 60 + Math.floor(transcriptionLength / 10));
-              } else if (transcriptionLength > 50) {
-                responseScore = Math.min(75, 50 + Math.floor(transcriptionLength / 5));
-              } else if (transcriptionLength > 20) {
-                responseScore = Math.min(65, 40 + Math.floor(transcriptionLength / 3));
-              } else {
-                responseScore = 30;
-              }
-              console.log(`📊 [SCORE_FALLBACK] Score calculado temporariamente: ${responseScore} (baseado em transcrição de ${transcriptionLength} chars)`);
+              // Scores 0 ou null significa que ainda não foi processado pela IA ou houve erro
+              responseScore = null; // Não exibir score até ser calculado pela IA
+              console.log(`📊 [SCORE_PENDING] Score ainda não calculado pela IA para esta resposta`);
+            } else {
+              console.log(`📊 [SCORE_REAL] Score IA encontrado: ${responseScore}/100`);
             }
             
             matchingResponses.push({

@@ -233,14 +233,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Validação de tipos**: getCandidateCategory() verifica se categories é array antes de usar .find()
   - **Sistema funcional**: Categorias persistem após clique e refresh da página
 
-- June 21, 2025: 🎯 SISTEMA DE PONTUAÇÃO IA CORRIGIDO - Cálculo único após transcrição e leitura do banco implementada
-  - **Problema principal resolvido**: Sistema calculava score toda vez que acessava painel causando lentidão e custos API
-  - **Cálculo único implementado**: Score calculado apenas uma vez após transcrição do áudio via WhatsApp
-  - **Persistência no banco**: Scores salvos permanentemente no Firebase e apenas lidos nas visualizações
-  - **Economia de API garantida**: Sistema verifica se score existe antes de chamar OpenAI evitando recálculos
-  - **Logs otimizados**: Indicadores claros quando usa score já calculado vs primeira vez
-  - **Performance melhorada**: Carregamento do painel mais rápido sem chamadas desnecessárias à API
-  - **Validação de dados**: Preserva scores 0 corretamente e evita valores undefined/null
+- June 21, 2025: 🤖 SISTEMA IA REAL IMPLEMENTADO - Prompt detalhado calculando scores únicos com OpenAI
+  - **IA real ativada**: Sistema agora usa candidateEvaluationService com prompt completo de 3 critérios
+  - **Prompt detalhado**: Avalia Conteúdo (70pts), Coerência (25pts) e Tom (5pts) comparando com resposta perfeita
+  - **Cálculo único**: Score calculado apenas uma vez após transcrição e salvo permanentemente no Firebase
+  - **OPENAI_API_KEY configurada**: Sistema usa chave real do ambiente em vez de configurações master
+  - **Logs IA detalhados**: Mostra entrada, processamento e resultado final da avaliação OpenAI
+  - **Interface melhorada**: Mostra "IA Processando..." quando score ainda não calculado
+  - **JSON estruturado**: Resposta OpenAI em formato JSON com pontuações parciais e feedback
+  - **Performance garantida**: Uma chamada API por resposta, depois sempre lê do banco de dados
 
 - June 21, 2025: 🗂️ SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Relatórios persistem mesmo após deleção de seleções
   - **Schema Report expandido**: Entidade completamente independente com ID único (report_[selectionId]_[timestamp])
