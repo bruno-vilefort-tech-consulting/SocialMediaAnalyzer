@@ -223,6 +223,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **ID removido**: Interface sem IDs visíveis conforme solicitação do usuário
   - **Design otimizado**: Nome, status e botão "Ver Relatório" alinhados horizontalmente
 
+- June 21, 2025: 🗂️ SISTEMA DE RELATÓRIOS INDEPENDENTES IMPLEMENTADO - Relatórios persistem mesmo após deleção de seleções
+  - **Schema Report expandido**: Entidade completamente independente com ID único (report_[selectionId]_[timestamp])
+  - **Geração automática**: Relatórios criados automaticamente ao final de cada entrevista via WhatsApp
+  - **Proteção contra deleção**: Relatórios preservados mesmo se seleção original for deletada
+  - **Aba Relatórios**: Nova aba principal no painel mostrando todos os relatórios independentes
+  - **Player inline funcional**: Timeline clicável com controles play/pause e navegação temporal
+  - **Dados completos preservados**: JobData, candidatesData, responseData mantidos permanentemente
+  - **Auto-geração em deleção**: Sistema gera relatório automaticamente antes de deletar seleção se não existir
+  - **Interface reorganizada**: Aba "Relatórios" como primeira opção, sistema focado em persistência de dados
+
 - June 20, 2025: ✅ OTIMIZAÇÃO DO SISTEMA DE ÁUDIO - Duplicação de arquivos eliminada para economia de espaço
   - **Problema identificado**: Sistema criava arquivos duplicados (nomenclatura correta + "_fixed")
   - **Verificação implementada**: Checa se arquivo já existe antes de criar novo
