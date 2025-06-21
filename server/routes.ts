@@ -16,6 +16,8 @@ import { whatsappManager } from "./whatsappManager";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
+import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);
@@ -2938,6 +2940,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('TTS Preview error:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Create test candidates endpoint
+  app.post("/api/create-test-candidates", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      console.log("🚀 Iniciando criação de candidatos fictícios...");
+      
+      // Verificar se candidatos de teste já existem
+      const existingCandidates = await checkTestCandidatesExist();
+      if (existingCandidates) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Candidatos fictícios já existem no sistema' 
+        });
+      }
+
+      // Criar os candidatos fictícios
+      await createTestCandidates();
+      
+      console.log("✅ Candidatos fictícios criados com sucesso!");
+      
+      res.json({
+        success: true,
+        message: '20 candidatos fictícios criados com sucesso para o relatório Comercial 5',
+        details: {
+          candidatesCreated: 20,
+          transcriptionsCreated: 40,
+          interviewsCreated: 20,
+          selectionId: '1750476614396'
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erro ao criar candidatos fictícios:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao criar candidatos fictícios',
+        error: error.message 
+      });
+    }
+  });
+
+  // Check if test candidates exist endpoint
+  app.get("/api/check-test-candidates", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      const exists = await checkTestCandidatesExist();
+      res.json({ exists });
+    } catch (error) {
+      console.error('❌ Erro ao verificar candidatos de teste:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao verificar candidatos de teste' 
+      });
     }
   });
 
