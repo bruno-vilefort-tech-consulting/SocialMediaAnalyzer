@@ -47,9 +47,10 @@ interface ReportFoldersManagerProps {
   selectedClientId: string;
   reports: Report[];
   onReportSelect: (report: Report) => void;
+  onFilterChange: (filteredReports: Report[]) => void;
 }
 
-export default function ReportFoldersManager({ selectedClientId, reports, onReportSelect }: ReportFoldersManagerProps) {
+export default function ReportFoldersManager({ selectedClientId, reports, onReportSelect, onFilterChange }: ReportFoldersManagerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -61,7 +62,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   const [newFolderColor, setNewFolderColor] = useState('#3b82f6');
   const [draggedReport, setDraggedReport] = useState<Report | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<string>('general');
 
   // Cores disponíveis para pastas
   const folderColors = [
@@ -79,39 +80,21 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   const { data: folders = [], isLoading: loadingFolders } = useQuery({
     queryKey: ['/api/report-folders', selectedClientId],
     queryFn: async () => {
-      if (!selectedClientId) return [];
-      const params = user?.role === 'master' ? `?clientId=${selectedClientId}` : '';
-      const response = await apiRequest(`/api/report-folders${params}`, 'GET');
+      const response = await apiRequest('/api/report-folders');
       return response.json();
     },
     enabled: !!selectedClientId
   });
 
   // Fetch folder assignments
-  const { data: assignments = [] } = useQuery({
+  const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ['/api/report-folder-assignments', selectedClientId],
     queryFn: async () => {
-      if (!selectedClientId || !folders.length) return [];
-      
-      const allAssignments: FolderAssignment[] = [];
-      for (const folder of folders) {
-        try {
-          const response = await apiRequest(`/api/report-folders/${folder.id}/reports`, 'GET');
-          const folderAssignments = await response.json();
-          allAssignments.push(...folderAssignments);
-        } catch (error) {
-          // Error handled silently
-        }
-      }
-      return allAssignments;
+      const response = await apiRequest('/api/report-folder-assignments');
+      return response.json();
     },
-    enabled: !!selectedClientId && folders.length > 0
+    enabled: !!selectedClientId
   });
-
-  // Create folder function (moved to main page)
-  const handleCreateFolder = () => {
-    // This function is now handled in the main NewReportsPage
-  };
 
   // Update folder mutation
   const updateFolderMutation = useMutation({
@@ -144,6 +127,10 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
       setFolderToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['/api/report-folders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/report-folder-assignments'] });
+      // Reset to general filter if deleted folder was active
+      if (folderToDelete && activeFilter === folderToDelete.id) {
+        setActiveFilter('general');
+      }
     },
     onError: () => {
       toast({ title: "Erro ao deletar pasta", variant: "destructive" });
@@ -198,12 +185,13 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   const handleDragStart = (e: React.DragEvent, report: Report) => {
     setDraggedReport(report);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', report.id);
   };
 
   const handleDragOver = (e: React.DragEvent, folderId?: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverFolder(folderId || 'unorganized');
+    setDragOverFolder(folderId || 'general');
   };
 
   const handleDragLeave = () => {
@@ -214,45 +202,23 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     e.preventDefault();
     setDragOverFolder(null);
     
-    // Get dragged data
-    const dragData = e.dataTransfer.getData('text/plain');
-    let reportId = '';
-    
-    // Handle both internal report drag and external selection drag
-    if (draggedReport) {
-      reportId = draggedReport.id;
-    } else if (dragData.startsWith('selection_')) {
-      // Convert selection ID to report format
-      reportId = dragData; // Keep as selection_ID format
-    } else {
+    const reportId = e.dataTransfer.getData('text/plain');
+    if (!reportId || !folderId) return;
+
+    // Check if report is already in this folder
+    const isAlreadyInFolder = assignments.some(a => a.reportId === reportId && a.folderId === folderId);
+    if (isAlreadyInFolder) {
+      toast({ title: "Relatório já está nesta pasta", variant: "destructive" });
       return;
     }
 
-    if (folderId) {
-      // Move to folder
-      assignReportMutation.mutate({
-        reportId,
-        folderId
-      });
-    } else {
-      // Remove from folder (move to unorganized)
-      removeReportMutation.mutate(reportId);
-    }
-    
-    setDraggedReport(null);
+    // Remove from current folder first, then assign to new one
+    removeReportMutation.mutate(reportId, {
+      onSuccess: () => {
+        assignReportMutation.mutate({ reportId, folderId });
+      }
+    });
   };
-
-  const toggleFolderExpansion = (folderId: string) => {
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId);
-    } else {
-      newExpanded.add(folderId);
-    }
-    setExpandedFolders(newExpanded);
-  };
-
-
 
   const handleEditFolder = () => {
     if (!selectedFolder || !newFolderName.trim()) return;
@@ -264,6 +230,31 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     });
   };
 
+  // Filter logic
+  const applyFilter = (filter: string) => {
+    setActiveFilter(filter);
+    
+    if (filter === 'general') {
+      // Show reports not in any folder
+      const assignedReportIds = assignments.map(a => a.reportId);
+      const unassignedReports = reports.filter(r => !assignedReportIds.includes(r.id));
+      onFilterChange(unassignedReports);
+    } else {
+      // Show reports in specific folder
+      const folderAssignments = assignments.filter(a => a.folderId === filter);
+      const folderReportIds = folderAssignments.map(a => a.reportId);
+      const folderReports = reports.filter(r => folderReportIds.includes(r.id));
+      onFilterChange(folderReports);
+    }
+  };
+
+  // Apply initial filter when data loads
+  useEffect(() => {
+    if (reports.length > 0 && assignments.length >= 0) {
+      applyFilter(activeFilter);
+    }
+  }, [reports, assignments, activeFilter]);
+
   if (!selectedClientId) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -274,138 +265,80 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
   return (
     <div className="space-y-6">
+      {/* Filter Buttons */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Geral button - left aligned */}
+        <Button
+          variant={activeFilter === 'general' ? 'default' : 'outline'}
+          onClick={() => applyFilter('general')}
+          className="flex items-center gap-2"
+        >
+          <Folder className="w-4 h-4" />
+          Geral
+          <Badge variant="secondary" className="text-xs ml-1">
+            {getUnorganizedReports().length}
+          </Badge>
+        </Button>
 
-      {loadingFolders ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Folders */}
-          {folders.map((folder) => {
-            const reportsInFolder = getReportsInFolder(folder.id);
-            const isExpanded = expandedFolders.has(folder.id);
-            const isDragOver = dragOverFolder === folder.id;
-            
-            return (
-              <Card 
-                key={folder.id}
-                className={`transition-all duration-200 ${
-                  isDragOver ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-                }`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                  setDragOverFolder(folder.id);
-                }}
-                onDragLeave={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX;
-                  const y = e.clientY;
-                  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                    setDragOverFolder(null);
-                  }
-                }}
-                onDrop={(e) => handleDrop(e, folder.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3 w-fit">
-                    <button
-                      onClick={() => toggleFolderExpansion(folder.id)}
-                      className="flex items-center gap-2 hover:bg-gray-100 p-2 rounded-lg transition-colors"
-                    >
-                      {isExpanded ? (
-                        <FolderOpen className="w-6 h-6" style={{ color: folder.color }} />
-                      ) : (
-                        <Folder className="w-6 h-6" style={{ color: folder.color }} />
-                      )}
-                      <span className="font-semibold">{folder.name}</span>
-                    </button>
-                    <Badge variant="secondary" className="text-xs">
-                      {reportsInFolder.length} relatórios
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedFolder(folder);
-                          setNewFolderName(folder.name);
-                          setNewFolderColor(folder.color);
-                          setIsEditDialogOpen(true);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFolderToDelete(folder)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                {isExpanded && (
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      {reportsInFolder.length === 0 ? (
-                        <div className="text-center py-6 text-muted-foreground text-sm border-2 border-dashed rounded-lg">
-                          Arraste relatórios aqui para organizá-los
-                        </div>
-                      ) : (
-                        reportsInFolder.map((report) => (
-                          <div
-                            key={report.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, report)}
-                            className="group p-3 border rounded-lg hover:bg-gray-50 cursor-move transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                                <FileText className="w-4 h-4 text-blue-500" />
-                                <div>
-                                  <div className="font-medium">{report.selectionName}</div>
-                                  <div className="text-sm text-muted-foreground">{report.jobName}</div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => onReportSelect(report)}
-                                  className="h-8"
-                                >
-                                  Ver Relatório
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeReportMutation.mutate(report.id)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
+        {/* Folder filter buttons */}
+        {folders.map((folder) => {
+          const reportsInFolder = getReportsInFolder(folder.id);
+          const isDragOver = dragOverFolder === folder.id;
 
-          
-        </div>
-      )}
+          return (
+            <div
+              key={folder.id}
+              className={`transition-all duration-200 ${
+                isDragOver ? 'ring-2 ring-blue-500 bg-blue-50 rounded-lg' : ''
+              }`}
+              onDragOver={(e) => handleDragOver(e, folder.id)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, folder.id)}
+            >
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={activeFilter === folder.id ? 'default' : 'outline'}
+                  onClick={() => applyFilter(folder.id)}
+                  className="flex items-center gap-2"
+                  style={{ 
+                    borderColor: activeFilter === folder.id ? folder.color : undefined,
+                    backgroundColor: activeFilter === folder.id ? folder.color : undefined
+                  }}
+                >
+                  <Folder className="w-4 h-4" style={{ color: activeFilter === folder.id ? 'white' : folder.color }} />
+                  {folder.name}
+                  <Badge variant="secondary" className="text-xs ml-1">
+                    {reportsInFolder.length}
+                  </Badge>
+                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedFolder(folder);
+                      setNewFolderName(folder.name);
+                      setNewFolderColor(folder.color);
+                      setIsEditDialogOpen(true);
+                    }}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFolderToDelete(folder)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Edit folder dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -466,7 +399,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja deletar a pasta "{folderToDelete?.name}"? 
-              Todos os relatórios nesta pasta voltarão para a seção "Não Organizados".
+              Todos os relatórios nesta pasta voltarão para a seção "Geral".
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -77,6 +77,7 @@ export default function NewReportsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState('#3B82F6');
+  const [filteredReports, setFilteredReports] = useState<any[]>([]);
 
   // Cores disponíveis para pastas
   const folderColors = [
