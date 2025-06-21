@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar, GripVertical } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar, GripVertical, FolderPlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import ReportFoldersManager from '@/components/ReportFoldersManager';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -259,25 +261,10 @@ export default function NewReportsPage() {
     queryKey: ['/api/candidate-categories', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) {
-        console.log(`🔍 [CATEGORIA_DEBUG] Nenhuma seleção escolhida, retornando array vazio`);
         return [];
       }
-      console.log(`🔍 [CATEGORIA_DEBUG] Buscando categorias para seleção: ${selectedSelection.id}`);
       const response = await apiRequest(`/api/candidate-categories?selectionId=${selectedSelection.id}`, 'GET');
       const data = await response.json();
-      console.log(`🔍 [CATEGORIA_DEBUG] Response completa do Firebase:`, data);
-      console.log(`🔍 [CATEGORIA_DEBUG] Data é array:`, Array.isArray(data));
-      console.log(`🔍 [CATEGORIA_DEBUG] Data length:`, data?.length || 0);
-      if (data && Array.isArray(data)) {
-        data.forEach((cat, index) => {
-          console.log(`🔍 [CATEGORIA_DEBUG] Categoria ${index}:`, {
-            id: cat.id,
-            candidateId: cat.candidateId,
-            reportId: cat.reportId,
-            category: cat.category
-          });
-        });
-      }
       return data || [];
     },
     enabled: !!selectedSelection,
@@ -292,35 +279,25 @@ export default function NewReportsPage() {
     // Verificar primeiro no estado local (para resposta imediata após clique)
     const localKey = `selection_${selectedSelection.id}_${candidateId}`;
     const localCategory = candidateCategories[localKey];
-    console.log(`🔍 [CATEGORIA_DEBUG] Buscando categoria para candidato ${candidateId}:`);
-    console.log(`🔍 [CATEGORIA_DEBUG] - Local key: ${localKey}`);
-    console.log(`🔍 [CATEGORIA_DEBUG] - Local category: ${localCategory}`);
-    console.log(`🔍 [CATEGORIA_DEBUG] - Categories array length: ${categories?.length || 0}`);
     
     // Verificar nos dados carregados do Firebase (se disponível e é array)
     if (Array.isArray(categories) && categories.length > 0) {
       const reportId = `selection_${selectedSelection.id}`;
-      console.log(`🔍 [CATEGORIA_DEBUG] - Procurando reportId: ${reportId}, candidateId: ${candidateId.toString()}`);
       
       const categoryData = categories.find((cat: any) => {
         const match = cat.candidateId === candidateId.toString() && cat.reportId === reportId;
-        console.log(`🔍 [CATEGORIA_DEBUG] - Checking: candidateId=${cat.candidateId}, reportId=${cat.reportId}, category=${cat.category}, match=${match}`);
         return match;
       });
       
       if (categoryData?.category) {
-        console.log(`🔍 [CATEGORIA_DEBUG] - Firebase category found: ${categoryData.category}`);
         return categoryData.category;
       }
     }
     
     // Se há categoria local, retornar ela
     if (localCategory) {
-      console.log(`🔍 [CATEGORIA_DEBUG] - Returning local category: ${localCategory}`);
       return localCategory;
     }
-    
-    console.log(`🔍 [CATEGORIA_DEBUG] - No category found, returning null`);
     // Se não há categoria definida, retornar null (nenhum botão selecionado)
     return null;
   };
@@ -342,8 +319,6 @@ export default function NewReportsPage() {
       return response.json();
     },
     onSuccess: (data, variables) => {
-      console.log(`✅ [CATEGORIA_DEBUG] Categoria salva com sucesso:`, variables);
-      
       // Atualizar estado local imediatamente para resposta visual rápida
       const key = `${variables.reportId}_${variables.candidateId}`;
       setCandidateCategories(prev => ({
@@ -351,15 +326,13 @@ export default function NewReportsPage() {
         [key]: variables.category
       }));
       
-      console.log(`✅ [CATEGORIA_DEBUG] Estado local atualizado - key: ${key}, category: ${variables.category}`);
-      
       // Invalidar consulta para recarregar dados do banco
       queryClient.invalidateQueries({
         queryKey: ['/api/candidate-categories', selectedSelection?.id]
       });
     },
     onError: (error) => {
-      console.error('❌ Erro ao salvar categoria:', error);
+      // Error handled silently
     }
   });
 
@@ -628,6 +601,64 @@ export default function NewReportsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+          {selectedClientId && (
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <FolderPlus className="w-4 h-4" />
+                  Nova Pasta
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Criar Nova Pasta</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Nome da Pasta</label>
+                    <Input
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      placeholder="Digite o nome da pasta"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Cor da Pasta</label>
+                    <div className="grid grid-cols-4 gap-2 mt-2">
+                      {folderColors.map((color) => (
+                        <button
+                          key={color.value}
+                          onClick={() => setNewFolderColor(color.value)}
+                          className={`w-12 h-12 rounded-lg border-2 transition-all ${
+                            newFolderColor === color.value ? 'border-gray-900 scale-110' : 'border-gray-300'
+                          }`}
+                          style={{ backgroundColor: color.value }}
+                          title={color.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      onClick={handleCreateFolder}
+                      disabled={!newFolderName.trim() || createFolderMutation.isPending}
+                      className="flex-1"
+                    >
+                      Criar Pasta
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsCreateDialogOpen(false)}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
         {user?.role === 'master' && (
           <Card>
@@ -708,7 +739,6 @@ export default function NewReportsPage() {
                         draggable
                         onDragStart={(e) => {
                           const dragId = `selection_${selection.id}`;
-                          console.log('🎯 Starting drag for report:', dragId, selection.name);
                           e.dataTransfer.setData('text/plain', dragId);
                           e.dataTransfer.effectAllowed = 'move';
                           e.stopPropagation();
@@ -1354,7 +1384,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
   // Controlar reprodução do áudio
   const toggleAudio = (audioUrl: string, responseId: string) => {
     try {
-      console.log(`🎵 [AUDIO_DEBUG] Tentando reproduzir: ${audioUrl}`);
       const currentState = audioStates[responseId];
       
       // Parar todos os outros áudios
@@ -1367,7 +1396,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
 
       // Criar novo player se não existir
       if (!audioRefs.current[responseId]) {
-        console.log(`🎵 [AUDIO_DEBUG] Criando novo player para: ${responseId}`);
         const audio = new Audio();
         
         // Configurações importantes para compatibilidade
@@ -1380,11 +1408,10 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         audioRefs.current[responseId] = audio;
 
         audio.addEventListener('loadstart', () => {
-          console.log(`🎵 [AUDIO_DEBUG] Iniciando carregamento: ${audioUrl}`);
+          // Loading started
         });
 
         audio.addEventListener('loadedmetadata', () => {
-          console.log(`🎵 [AUDIO_DEBUG] Metadata carregada - Duration: ${audio.duration}s`);
           updateAudioState(responseId, { 
             duration: audio.duration,
             currentTime: 0,
@@ -1394,7 +1421,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         });
 
         audio.addEventListener('canplay', () => {
-          console.log(`🎵 [AUDIO_DEBUG] Áudio pronto para reprodução`);
+          // Audio ready to play
         });
 
         audio.addEventListener('timeupdate', () => {
@@ -1406,7 +1433,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         });
 
         audio.addEventListener('ended', () => {
-          console.log(`🎵 [AUDIO_DEBUG] Reprodução finalizada`);
           updateAudioState(responseId, { 
             isPlaying: false,
             currentTime: 0,
@@ -1415,16 +1441,8 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         });
 
         audio.addEventListener('error', (e) => {
-          console.error('🎵 [AUDIO_ERROR] Erro ao carregar áudio:', e);
-          console.error('🎵 [AUDIO_ERROR] URL:', audioUrl);
-          console.error('🎵 [AUDIO_ERROR] Error code:', audio.error?.code);
-          console.error('🎵 [AUDIO_ERROR] Error message:', audio.error?.message);
-          console.error('🎵 [AUDIO_ERROR] Network state:', audio.networkState);
-          console.error('🎵 [AUDIO_ERROR] Ready state:', audio.readyState);
-          
           // Tentar URL alternativa ou conversão
           if (audioUrl.includes('.ogg')) {
-            console.log('🎵 [AUDIO_ERROR] Tentando URL direta...');
             const directUrl = audioUrl.replace('/uploads/', '/uploads/');
             audio.src = directUrl;
           }
@@ -1439,21 +1457,17 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
       const audio = audioRefs.current[responseId];
       
       if (currentState?.isPlaying) {
-        console.log(`🎵 [AUDIO_DEBUG] Pausando áudio`);
         audio.pause();
         updateAudioState(responseId, { isPlaying: false });
       } else {
-        console.log(`🎵 [AUDIO_DEBUG] Iniciando reprodução`);
         const playPromise = audio.play();
         
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
-              console.log(`🎵 [AUDIO_DEBUG] Reprodução iniciada com sucesso`);
               updateAudioState(responseId, { isPlaying: true });
             })
             .catch(error => {
-              console.error('🎵 [AUDIO_ERROR] Erro ao iniciar reprodução:', error);
               updateAudioState(responseId, { isPlaying: false });
             });
         } else {
@@ -1461,7 +1475,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
         }
       }
     } catch (error) {
-      console.error('🎵 [AUDIO_ERROR] Erro geral ao reproduzir áudio:', error);
       updateAudioState(responseId, { isPlaying: false });
     }
   };

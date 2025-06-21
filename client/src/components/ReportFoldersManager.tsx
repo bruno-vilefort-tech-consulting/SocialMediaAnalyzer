@@ -88,7 +88,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
           const folderAssignments = await response.json();
           allAssignments.push(...folderAssignments);
         } catch (error) {
-          console.error(`Error fetching assignments for folder ${folder.id}:`, error);
+          // Error handled silently
         }
       }
       return allAssignments;
@@ -219,31 +219,24 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     const dragData = e.dataTransfer.getData('text/plain');
     let reportId = '';
     
-    console.log('🗂️ Drop detected:', { dragData, folderId, draggedReport });
-    
     // Handle both internal report drag and external selection drag
     if (draggedReport) {
       reportId = draggedReport.id;
-      console.log('🗂️ Using internal dragged report:', reportId);
     } else if (dragData.startsWith('selection_')) {
       // Convert selection ID to report format
       reportId = dragData; // Keep as selection_ID format
-      console.log('🗂️ Using external selection drag:', reportId);
     } else {
-      console.log('🗂️ No valid drag data found, aborting');
       return;
     }
 
     if (folderId) {
       // Move to folder
-      console.log('🗂️ Moving to folder:', { reportId, folderId });
       assignReportMutation.mutate({
         reportId,
         folderId
       });
     } else {
       // Remove from folder (move to unorganized)
-      console.log('🗂️ Moving to unorganized:', reportId);
       removeReportMutation.mutate(reportId);
     }
     
@@ -303,7 +296,6 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     <div className="space-y-6">
       {/* Header with create button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Pastas de Trabalho</h2>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -492,73 +484,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
             );
           })}
 
-          {/* Unorganized reports */}
-          <Card 
-            className={`transition-all duration-200 ${
-              dragOverFolder === 'unorganized' ? 'ring-2 ring-gray-500 bg-gray-50' : ''
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.dataTransfer.dropEffect = 'move';
-              setDragOverFolder('unorganized');
-            }}
-            onDragLeave={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX;
-              const y = e.clientY;
-              if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-                setDragOverFolder(null);
-              }
-            }}
-            onDrop={(e) => handleDrop(e)}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-500" />
-                Relatórios Não Organizados
-                <Badge variant="outline" className="text-xs">
-                  {getUnorganizedReports().length} relatórios
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {getUnorganizedReports().length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground text-sm">
-                    Todos os relatórios estão organizados em pastas
-                  </div>
-                ) : (
-                  getUnorganizedReports().map((report) => (
-                    <div
-                      key={report.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, report)}
-                      className="group p-3 border rounded-lg hover:bg-gray-50 cursor-move transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                          <FileText className="w-4 h-4 text-blue-500" />
-                          <div>
-                            <div className="font-medium">{report.selectionName}</div>
-                            <div className="text-sm text-muted-foreground">{report.jobName}</div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onReportSelect(report)}
-                          className="h-8"
-                        >
-                          Ver Relatório
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          
         </div>
       )}
 
