@@ -413,67 +413,78 @@ export default function NewReportsPage() {
                       const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
                       
                       return (
-                        <div 
-                          key={candidate.candidate.id} 
-                          className="grid grid-cols-4 gap-4 p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow"
-                        >
-                          {/* Nome do Candidato */}
-                          <div>
-                            <p className="font-medium">{candidate.candidate.name}</p>
-                            <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
-                          </div>
-                          
-                          {/* Status da Entrevista */}
-                          <div className="flex items-center gap-2">
-                            {isCompleted ? (
-                              <Badge variant="default" className="bg-green-100 text-green-800">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Finalizada
-                              </Badge>
-                            ) : completedResponses > 0 ? (
-                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Em andamento
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-red-50 text-red-700">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Não iniciada
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {/* Respostas Completas */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
-                              {completedResponses}/{totalQuestions}
-                            </span>
-                            {totalQuestions > 0 && (
-                              <Progress 
-                                value={(completedResponses / totalQuestions) * 100} 
-                                className="w-20 h-2"
-                              />
-                            )}
-                          </div>
-                          
-                          {/* Pontuação Final */}
-                          <div className="text-right">
-                            {candidate.calculatedScore > 0 ? (
-                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
-                                candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
-                                candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {candidate.calculatedScore.toFixed(1)}
+                        <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-0">
+                            <div 
+                              className="grid grid-cols-4 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
+                            >
+                              {/* Nome do Candidato */}
+                              <div>
+                                <p className="font-medium">{candidate.candidate.name}</p>
+                                <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
                               </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                Sem pontuação
-                              </span>
+                              
+                              {/* Status da Entrevista */}
+                              <div className="flex items-center gap-2">
+                                {isCompleted ? (
+                                  <Badge variant="default" className="bg-green-100 text-green-800">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    Finalizada
+                                  </Badge>
+                                ) : completedResponses > 0 ? (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Em andamento
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="bg-red-50 text-red-700">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Não iniciada
+                                  </Badge>
+                                )}
+                              </div>
+                              
+                              {/* Respostas Completas */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  {completedResponses}/{totalQuestions}
+                                </span>
+                                {totalQuestions > 0 && (
+                                  <Progress 
+                                    value={(completedResponses / totalQuestions) * 100} 
+                                    className="w-20 h-2"
+                                  />
+                                )}
+                              </div>
+                              
+                              {/* Pontuação Final */}
+                              <div className="text-right">
+                                {candidate.calculatedScore > 0 ? (
+                                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
+                                    candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
+                                    candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {candidate.calculatedScore.toFixed(1)}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">
+                                    Sem pontuação
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Detalhes expandidos inline */}
+                            {expandedCandidate === candidate.candidate.id && (
+                              <div className="border-t bg-gray-50 p-6">
+                                <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                              </div>
                             )}
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                 </div>
