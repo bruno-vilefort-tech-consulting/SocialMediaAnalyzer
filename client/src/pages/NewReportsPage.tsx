@@ -549,7 +549,7 @@ export default function NewReportsPage() {
                         <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
                             <div 
-                              className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors pl-[16px] pr-[16px] pt-[6px] pb-[6px]"
                               onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
                             >
                               {/* Coluna 1: Nome do Candidato */}
