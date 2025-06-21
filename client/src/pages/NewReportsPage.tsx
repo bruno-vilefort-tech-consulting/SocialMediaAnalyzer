@@ -36,6 +36,7 @@ interface InterviewCandidate {
     totalScore: number;
   };
   responses: InterviewResponse[];
+  calculatedScore: number;
 }
 
 interface InterviewResponse {
@@ -294,7 +295,7 @@ export default function NewReportsPage() {
                         <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
                             <div 
-                              className="grid grid-cols-4 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
                             >
                               {/* Nome do Candidato */}
@@ -336,22 +337,65 @@ export default function NewReportsPage() {
                                 )}
                               </div>
                               
-                              {/* Pontuação Final */}
-                              <div className="text-right">
-                                {candidate.calculatedScore > 0 ? (
-                                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
-                                    candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
-                                    candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                    candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
-                                    'bg-red-100 text-red-800'
-                                  }`}>
-                                    {candidate.calculatedScore.toFixed(1)}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-sm">
-                                    Sem pontuação
-                                  </span>
-                                )}
+                              {/* Botões de Categorização + Pontuação Final */}
+                              <div className="flex items-center justify-end gap-2">
+                                {/* 4 Botões de Categorização */}
+                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
+                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-green-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
+                                    disabled={setCategoryMutation.isPending}
+                                  >
+                                    <ThumbsUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
+                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700' : 'hover:bg-yellow-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
+                                    disabled={setCategoryMutation.isPending}
+                                  >
+                                    <Meh className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
+                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700' : 'hover:bg-orange-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
+                                    disabled={setCategoryMutation.isPending}
+                                  >
+                                    <AlertTriangle className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
+                                    className={`h-8 px-2 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700' : 'hover:bg-red-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Não')}
+                                    disabled={setCategoryMutation.isPending}
+                                  >
+                                    <ThumbsDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+
+                                {/* Pontuação Final */}
+                                <div>
+                                  {candidate.calculatedScore > 0 ? (
+                                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-lg font-bold ${
+                                      candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
+                                      candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                      candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                      {candidate.calculatedScore.toFixed(1)}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">
+                                      Sem pontuação
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             
