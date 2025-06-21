@@ -110,6 +110,72 @@ export default function NewReportsPage() {
     enabled: !!selectedSelection
   });
 
+  // Buscar TODOS os candidatos da lista da seleção (incluindo os que não responderam)
+  const { data: allCandidatesInList = [], isLoading: loadingAllCandidates } = useQuery({
+    queryKey: ['selection-all-candidates', selectedSelection?.id],
+    queryFn: async () => {
+      if (!selectedSelection) return [];
+      
+      try {
+        // Buscar dados da seleção para obter o listId
+        const selectionRes = await apiRequest(`/api/selections/${selectedSelection.id}`, 'GET');
+        const selectionData = await selectionRes.json();
+        
+        if (!selectionData.listId) return [];
+        
+        // Buscar todos os candidatos da lista
+        const candidatesRes = await apiRequest(`/api/candidate-lists/${selectionData.listId}/candidates`, 'GET');
+        const candidatesData = await candidatesRes.json();
+        
+        return Array.isArray(candidatesData) ? candidatesData : [];
+      } catch (error) {
+        console.error('Error fetching all candidates in list:', error);
+        return [];
+      }
+    },
+    enabled: !!selectedSelection
+  });
+
+  // Combinar todos os candidatos da lista com os dados de entrevista
+  const allCandidatesWithStatus = React.useMemo(() => {
+    if (!allCandidatesInList.length) return interviewCandidates;
+
+    // Criar um map dos candidatos que já fizeram entrevista
+    const interviewMap = new Map();
+    interviewCandidates.forEach(candidate => {
+      interviewMap.set(candidate.candidate.id, candidate);
+    });
+
+    // Combinar todos os candidatos da lista
+    return allCandidatesInList.map(candidate => {
+      const existingInterview = interviewMap.get(candidate.id);
+      
+      if (existingInterview) {
+        // Candidato já tem entrevista registrada
+        return existingInterview;
+      } else {
+        // Candidato ainda não fez entrevista - criar estrutura padrão
+        return {
+          candidate: {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.whatsapp || candidate.phone || ''
+          },
+          interview: {
+            id: `pending_${candidate.id}`,
+            status: 'pending',
+            createdAt: null,
+            completedAt: null,
+            totalScore: 0
+          },
+          responses: [],
+          calculatedScore: 0
+        };
+      }
+    });
+  }, [allCandidatesInList, interviewCandidates]);
+
   // Definir cliente padrão para usuários cliente
   React.useEffect(() => {
     if (user?.role === 'client' && user.clientId) {
@@ -129,8 +195,8 @@ export default function NewReportsPage() {
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
-  const getCandidateCategory = (candidateId: number): string | undefined => {
-    if (!selectedSelection) return undefined;
+  const getCandidateCategory = (candidateId: number): string => {
+    if (!selectedSelection) return 'Não';
     
     // Verificar primeiro no estado local (para resposta imediata após clique)
     const localKey = `selection_${selectedSelection.id}_${candidateId}`;
@@ -142,10 +208,10 @@ export default function NewReportsPage() {
         cat.candidateId === candidateId.toString() && 
         cat.reportId === `selection_${selectedSelection.id}`
       );
-      return categoryData?.category || localCategory;
+      return categoryData?.category || localCategory || 'Não';
     }
     
-    return localCategory;
+    return localCategory || 'Não';
   };
 
   // Mutation para salvar categoria do candidato
@@ -503,17 +569,17 @@ export default function NewReportsPage() {
               </p>
             </CardHeader>
             <CardContent>
-              {loadingCandidates ? (
+              {(loadingCandidates || loadingAllCandidates) ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Carregando candidatos...</p>
                 </div>
-              ) : interviewCandidates.length === 0 ? (
+              ) : allCandidatesWithStatus.length === 0 ? (
                 <div className="text-center py-12">
                   <Star className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Nenhum candidato encontrado</h3>
                   <p className="text-muted-foreground">
-                    Ainda não há candidatos que receberam convites para esta seleção.
+                    Ainda não há candidatos cadastrados nesta seleção.
                   </p>
                 </div>
               ) : (
@@ -526,11 +592,11 @@ export default function NewReportsPage() {
                         <h3 className="font-semibold text-green-700">Melhor</h3>
                       </div>
                       <div className="text-sm text-green-600">
-                        {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length} candidatos
+                        {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length} candidatos
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {interviewCandidates
+                      {allCandidatesWithStatus
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Melhor')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
@@ -571,7 +637,7 @@ export default function NewReportsPage() {
                             </Card>
                           );
                         })}
-                      {interviewCandidates.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length === 0 && (
+                      {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length === 0 && (
                         <div className="text-center py-6 text-muted-foreground text-sm">
                           Nenhum candidato nesta categoria
                         </div>
