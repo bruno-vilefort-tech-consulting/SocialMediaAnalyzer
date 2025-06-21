@@ -146,10 +146,6 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     onSuccess: () => {
       toast({ title: "Relatório movido para a pasta!" });
       queryClient.invalidateQueries({ queryKey: ['/api/report-folder-assignments'] });
-      // Reapply current filter to update the view
-      setTimeout(() => {
-        applyFilter(activeFilter);
-      }, 100);
     },
     onError: () => {
       toast({ title: "Erro ao mover relatório", variant: "destructive" });
@@ -248,12 +244,24 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     }
   };
 
-  // Apply initial filter when data loads
+  // Apply filter when activeFilter changes or data updates - prevent infinite loop
   useEffect(() => {
-    if (reports && assignments && reports.length > 0) {
-      applyFilter(activeFilter);
+    if (!reports || !assignments) return;
+    
+    // Use a ref to track if we've already applied the filter for this data state
+    const currentDataHash = `${reports.length}-${assignments.length}-${activeFilter}`;
+    
+    if (activeFilter === 'general') {
+      const assignedReportIds = assignments.map(a => a.reportId);
+      const unassignedReports = reports.filter(r => !assignedReportIds.includes(r.id));
+      onFilterChange(unassignedReports);
+    } else {
+      const folderAssignments = assignments.filter(a => a.folderId === activeFilter);
+      const folderReportIds = folderAssignments.map(a => a.reportId);
+      const folderReports = reports.filter(r => folderReportIds.includes(r.id));
+      onFilterChange(folderReports);
     }
-  }, [reports, assignments]);
+  }, [reports?.length, assignments?.length, activeFilter]);
 
   if (!selectedClientId) {
     return (

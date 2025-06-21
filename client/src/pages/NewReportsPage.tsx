@@ -747,7 +747,10 @@ export default function NewReportsPage() {
                   setSelectedSelection(selection);
                 }
               }}
-              onFilterChange={(filtered) => setFilteredReports(filtered)}
+              onFilterChange={(filtered) => {
+                setFilteredReports(filtered);
+                setIsInitialLoad(false);
+              }}
             />
             
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
@@ -768,7 +771,7 @@ export default function NewReportsPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {(filteredReports.length > 0 ? 
+                {(!isInitialLoad && filteredReports.length >= 0 ? 
                   filteredReports.map(report => selections.find(s => s.id.toString() === report.selectionId)).filter(Boolean) : 
                   selections
                 )
