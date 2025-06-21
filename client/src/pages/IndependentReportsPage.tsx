@@ -471,7 +471,7 @@ export default function IndependentReportsPage() {
                             <div className="text-sm text-muted-foreground">Score Médio</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-2xl font-bold">{report.jobData.questions.length}</div>
+                            <div className="text-2xl font-bold">{report.jobData?.questions?.length || 0}</div>
                             <div className="text-sm text-muted-foreground">Perguntas</div>
                           </div>
                         </div>
