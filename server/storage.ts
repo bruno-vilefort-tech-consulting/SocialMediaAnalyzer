@@ -2420,17 +2420,32 @@ export class FirebaseStorage implements IStorage {
   // Report Folders - Sistema de pastas de trabalho
   async getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]> {
     try {
+      console.log(`🗂️ Buscando pastas para cliente: ${clientId}`);
+      
+      // Use simpler query without orderBy to avoid index requirements
       const foldersRef = collection(firebaseDb, 'reportFolders');
-      const q = query(foldersRef, where('clientId', '==', clientId), orderBy('position', 'asc'));
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocs(foldersRef);
       
-      const folders = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ReportFolder[];
+      const allFolders = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          clientId: data.clientId,
+          color: data.color || '#3b82f6',
+          position: data.position || 0,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date()
+        };
+      }) as ReportFolder[];
       
-      console.log(`📁 Pastas encontradas para cliente ${clientId}: ${folders.length}`);
-      return folders;
+      // Filter by clientId in memory and sort by position
+      const clientFolders = allFolders
+        .filter(folder => folder.clientId === clientId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      
+      console.log(`📁 Pastas encontradas para cliente ${clientId}: ${clientFolders.length}`);
+      return clientFolders;
     } catch (error) {
       console.error('❌ Erro ao buscar pastas:', error);
       return [];

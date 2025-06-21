@@ -4434,11 +4434,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
+      console.log('🗂️ Fetching folders for client:', clientId);
       const folders = await storage.getReportFoldersByClientId(clientId);
+      console.log('🗂️ Found folders:', folders.length);
       res.json(folders);
     } catch (error) {
-      console.error('Error fetching report folders:', error);
-      res.status(500).json({ message: 'Failed to fetch report folders' });
+      console.error('❌ Erro ao buscar pastas:', error);
+      res.json([]); // Return empty array instead of error to prevent UI breaking
     }
   });
 
