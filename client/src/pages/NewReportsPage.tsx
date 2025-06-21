@@ -317,10 +317,11 @@ export default function NewReportsPage() {
               ) : (
                 <div className="space-y-3">
                   {/* Cabeçalho da tabela */}
-                  <div className="grid grid-cols-4 gap-4 p-3 bg-gray-50 rounded-lg font-medium text-sm text-muted-foreground">
+                  <div className="grid grid-cols-5 gap-4 p-3 bg-gray-50 rounded-lg font-medium text-sm text-muted-foreground">
                     <div>Nome do Candidato</div>
                     <div>Status da Entrevista</div>
-                    <div>Respostas Completas / Avaliação</div>
+                    <div>Respostas Completas</div>
+                    <div>Avaliação</div>
                     <div className="text-right">Pontuação Final</div>
                   </div>
                   
@@ -350,17 +351,17 @@ export default function NewReportsPage() {
                         <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
                             <div 
-                              className="grid grid-cols-12 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
                             >
-                              {/* Coluna 1-4: Nome do Candidato */}
-                              <div className="col-span-4">
+                              {/* Coluna 1: Nome do Candidato */}
+                              <div className="col-span-1">
                                 <p className="font-medium">{candidate.candidate.name}</p>
                                 <p className="text-sm text-muted-foreground">{candidate.candidate.email}</p>
                               </div>
                               
-                              {/* Coluna 5-6: Status da Entrevista */}
-                              <div className="col-span-2 flex items-center gap-2">
+                              {/* Coluna 2: Status da Entrevista */}
+                              <div className="col-span-1 flex items-center gap-2">
                                 {isCompleted ? (
                                   <Badge variant="default" className="bg-green-100 text-green-800">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -379,70 +380,67 @@ export default function NewReportsPage() {
                                 )}
                               </div>
                               
-                              {/* Coluna 7-8: Respostas Completas e Avaliação */}
-                              <div className="col-span-2">
-                                <div className="space-y-2">
-                                  {/* Respostas Completas */}
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">
-                                      {completedResponses}/{totalQuestions}
-                                    </span>
-                                    {totalQuestions > 0 && (
-                                      <Progress 
-                                        value={(completedResponses / totalQuestions) * 100} 
-                                        className="w-20 h-2"
-                                      />
-                                    )}
-                                  </div>
-                                  
-                                  {/* Avaliação (4 Botões de Categorização) */}
-                                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                      size="sm"
-                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
-                                      onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
-                                      disabled={setCategoryMutation.isPending}
-                                      title="Melhor"
-                                    >
-                                      <ThumbsUp className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
-                                      onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
-                                      disabled={setCategoryMutation.isPending}
-                                      title="Mediano"
-                                    >
-                                      <Meh className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
-                                      onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
-                                      disabled={setCategoryMutation.isPending}
-                                      title="Em dúvida"
-                                    >
-                                      <AlertTriangle className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
-                                      onClick={() => setCategory(candidate.candidate.id, 'Não')}
-                                      disabled={setCategoryMutation.isPending}
-                                      title="Não"
-                                    >
-                                      <ThumbsDown className="h-3 w-3" />
-                                    </Button>
-                                  </div>
+                              {/* Coluna 3: Respostas Completas */}
+                              <div className="col-span-1 flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  {completedResponses}/{totalQuestions}
+                                </span>
+                                {totalQuestions > 0 && (
+                                  <Progress 
+                                    value={(completedResponses / totalQuestions) * 100} 
+                                    className="w-16 h-2"
+                                  />
+                                )}
+                              </div>
+                              
+                              {/* Coluna 4: Avaliação (4 Botões de Categorização) */}
+                              <div className="col-span-1">
+                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
+                                    disabled={setCategoryMutation.isPending}
+                                    title="Melhor"
+                                  >
+                                    <ThumbsUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
+                                    disabled={setCategoryMutation.isPending}
+                                    title="Mediano"
+                                  >
+                                    <Meh className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
+                                    disabled={setCategoryMutation.isPending}
+                                    title="Em dúvida"
+                                  >
+                                    <AlertTriangle className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'default' : 'outline'}
+                                    className={`h-7 px-1.5 ${candidateCategories[`selection_${selectedSelection?.id}_${candidate.candidate.id}`] === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
+                                    onClick={() => setCategory(candidate.candidate.id, 'Não')}
+                                    disabled={setCategoryMutation.isPending}
+                                    title="Não"
+                                  >
+                                    <ThumbsDown className="h-3 w-3" />
+                                  </Button>
                                 </div>
                               </div>
 
-                              {/* Coluna 9-12: Pontuação Final */}
-                              <div className="col-span-4 text-center">
+                              {/* Coluna 5: Pontuação Final */}
+                              <div className="col-span-1 text-center">
                                 <div>
                                   {candidate.calculatedScore > 0 ? (
                                     <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${
