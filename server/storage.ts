@@ -830,9 +830,63 @@ export class FirebaseStorage implements IStorage {
   // Selections
   async getSelectionsByClientId(clientId: number): Promise<Selection[]> {
     const snapshot = await getDocs(collection(firebaseDb, "selections"));
-    return snapshot.docs
+    const selections = snapshot.docs
       .map(doc => ({ id: parseInt(doc.id), ...doc.data() } as Selection))
       .filter(selection => selection.clientId === clientId);
+
+    // Para cada seleção, calcular estatísticas de candidatos
+    const selectionsWithStats = await Promise.all(
+      selections.map(async (selection) => {
+        try {
+          // Buscar candidatos da lista da seleção
+          const candidateListsSnapshot = await getDocs(collection(firebaseDb, "candidateListMemberships"));
+          const candidatesInList = candidateListsSnapshot.docs
+            .map(doc => doc.data())
+            .filter(membership => membership.listId === selection.candidateListId);
+
+          // Buscar entrevistas desta seleção
+          const interviewsSnapshot = await getDocs(collection(firebaseDb, "interviews"));
+          const selectionInterviews = interviewsSnapshot.docs
+            .map(doc => doc.data())
+            .filter(interview => interview.selectionId === selection.id.toString());
+
+          // Contar entrevistas finalizadas (que têm respostas completas)
+          let completedInterviews = 0;
+          for (const interview of selectionInterviews) {
+            const responsesSnapshot = await getDocs(collection(firebaseDb, "responses"));
+            const interviewResponses = responsesSnapshot.docs
+              .map(doc => doc.data())
+              .filter(response => response.interviewId === interview.id);
+            
+            // Verificar se tem respostas com transcrição
+            const completedResponses = interviewResponses.filter(response => 
+              response.transcription && 
+              response.transcription !== 'Aguardando resposta via WhatsApp' &&
+              response.transcription.trim() !== ''
+            );
+
+            if (completedResponses.length > 0) {
+              completedInterviews++;
+            }
+          }
+
+          return {
+            ...selection,
+            totalCandidates: candidatesInList.length,
+            completedInterviews
+          };
+        } catch (error) {
+          console.error(`Erro ao calcular estatísticas para seleção ${selection.id}:`, error);
+          return {
+            ...selection,
+            totalCandidates: 0,
+            completedInterviews: 0
+          };
+        }
+      })
+    );
+
+    return selectionsWithStats;
   }
 
   async getSelectionById(id: number): Promise<Selection | undefined> {

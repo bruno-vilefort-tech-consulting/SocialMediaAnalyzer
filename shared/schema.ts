@@ -249,7 +249,10 @@ export type Candidate = typeof candidates.$inferSelect;
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
 export type CandidateListMembership = typeof candidateListMemberships.$inferSelect;
 export type InsertCandidateListMembership = z.infer<typeof insertCandidateListMembershipSchema>;
-export type Selection = typeof selections.$inferSelect;
+export type Selection = typeof selections.$inferSelect & {
+  totalCandidates?: number;
+  completedInterviews?: number;
+};
 export type InsertSelection = z.infer<typeof insertSelectionSchema>;
 export type Interview = typeof interviews.$inferSelect;
 export type InsertInterview = z.infer<typeof insertInterviewSchema>;

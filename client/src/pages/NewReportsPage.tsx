@@ -694,6 +694,27 @@ export default function NewReportsPage() {
                             
                             {/* Conteúdo */}
                             <div className="p-4 space-y-3">
+                              {/* Estatísticas de candidatos */}
+                              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600">Candidatos totais:</span>
+                                  <span className="font-semibold text-gray-900">{selection.totalCandidates || 0}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600">Finalizaram testes:</span>
+                                  <span className="font-semibold text-green-600">{selection.completedInterviews || 0}</span>
+                                </div>
+                                {selection.totalCandidates > 0 && (
+                                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div 
+                                      className="bg-green-500 h-2 rounded-full transition-all" 
+                                      style={{ 
+                                        width: `${((selection.completedInterviews || 0) / selection.totalCandidates) * 100}%` 
+                                      }}
+                                    ></div>
+                                  </div>
+                                )}
+                              </div>
                               
                               {/* Data de criação */}
                               <div className="flex items-center gap-2 text-xs text-gray-500">
