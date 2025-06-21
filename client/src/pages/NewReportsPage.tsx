@@ -689,22 +689,8 @@ export default function NewReportsPage() {
                           <div className="relative overflow-hidden rounded-lg">
                             {/* Header colorido */}
                             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-5 w-5" />
-                                  <Badge 
-                                    variant={selection.status === 'enviado' ? 'secondary' : 'outline'}
-                                    className="bg-white/20 text-white border-white/30 hover:bg-white/30"
-                                  >
-                                    {selection.status}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs opacity-80">
-                                  #{selection.id.toString().slice(-4)}
-                                </div>
-                              </div>
                               <h3 className="font-bold text-lg text-white line-clamp-1">
-                                {selection.jobName || 'Vaga não identificada'}
+                                {selection.name}
                               </h3>
                             </div>
                             
