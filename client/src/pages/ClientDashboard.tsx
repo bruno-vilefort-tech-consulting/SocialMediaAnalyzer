@@ -117,7 +117,7 @@ export default function ClientDashboard() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>Últimas Seleções</CardTitle>
+              <CardTitle>Últimos Relatórios</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -132,16 +132,26 @@ export default function ClientDashboard() {
                 ) : (!selections || selections.length === 0) ? (
                   <div className="text-center text-slate-500 py-8">
                     <FileText className="h-8 w-8 mx-auto mb-2" />
-                    <div className="text-sm">Nenhuma seleção criada ainda</div>
-                    <div className="text-xs mt-1">As seleções aparecerão aqui quando forem criadas</div>
+                    <div className="text-sm">Nenhum relatório disponível ainda</div>
+                    <div className="text-xs mt-1">Os relatórios aparecerão aqui quando as seleções forem criadas</div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {selections.slice(0, 4).map((selection: any) => (
+                    {selections
+                      .sort((a: any, b: any) => {
+                        const dateA = new Date(a.createdAt?.seconds * 1000 || a.createdAt);
+                        const dateB = new Date(b.createdAt?.seconds * 1000 || b.createdAt);
+                        return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
+                      })
+                      .slice(0, 4)
+                      .map((selection: any) => (
                       <div 
                         key={selection.id} 
                         className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors"
-                        onClick={() => setLocation("/relatorios")}
+                        onClick={() => {
+                          // Navegar diretamente para o relatório específico desta seleção
+                          setLocation(`/relatorios?selectedSelection=${selection.id}`);
+                        }}
                       >
                         <div className="flex items-center">
                           <div className="h-10 w-10 bg-blue-50 rounded-lg flex items-center justify-center">
@@ -175,7 +185,7 @@ export default function ClientDashboard() {
                         className="w-full mt-3"
                         onClick={() => setLocation("/relatorios")}
                       >
-                        Ver todas as seleções
+                        Ver todos os relatórios
                       </Button>
                     )}
                   </div>

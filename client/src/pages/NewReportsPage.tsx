@@ -70,9 +70,10 @@ export default function NewReportsPage() {
     progress: number;
   } }>({});
 
-  // Extrair reportId da URL
+  // Extrair reportId e selectedSelection da URL
   const urlParams = new URLSearchParams(location.split('?')[1] || '');
   const reportId = urlParams.get('reportId');
+  const selectedSelectionId = urlParams.get('selectedSelection');
 
   // Buscar clientes (apenas para masters)
   const { data: clients = [] } = useQuery({
@@ -122,6 +123,25 @@ export default function NewReportsPage() {
       }
     }
   }, [specificReport, reportId, user]);
+
+  // Efeito para navegar diretamente para uma seleção específica via parâmetro selectedSelection
+  useEffect(() => {
+    if (selectedSelectionId && selectionsData.length > 0) {
+      const targetSelection = selectionsData.find((s: any) => s.id.toString() === selectedSelectionId);
+      if (targetSelection) {
+        // Configurar cliente automaticamente se for master
+        if (user?.role === 'master') {
+          setSelectedClientId(targetSelection.clientId.toString());
+        }
+        
+        // Selecionar a seleção
+        setSelectedSelection(targetSelection);
+        
+        // Navegar para a aba de candidatos
+        setActiveTab('candidatos');
+      }
+    }
+  }, [selectedSelectionId, selectionsData, user]);
 
   // Buscar seleções
   const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
