@@ -157,14 +157,26 @@ export default function ApiConfigPage() {
     enabled: !isMaster && !!user?.clientId,
   });
 
-  // Status WhatsApp Evolution API - Novo sistema para clientes
-  const whatsappEndpoint = "/api/whatsapp-client/status";
+  // Evolution API endpoints
+  const evolutionEndpoint = '/api/evolution/status';
+  const whatsappEndpoint = '/api/whatsapp-client/status'; // Fallback para Baileys
+  
+  // Preferir Evolution API, fallback para Baileys
+  const { data: evolutionStatus } = useQuery({
+    queryKey: [evolutionEndpoint],
+    queryFn: () => apiRequest(evolutionEndpoint),
+    refetchInterval: 5000,
+    staleTime: 4000,
+    retry: 1
+  });
+
   const { data: whatsappStatus, isLoading: whatsappLoading, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [whatsappEndpoint],
     refetchInterval: 15000,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 10000,
+    enabled: !evolutionStatus, // Só usar Baileys se Evolution não estiver disponível
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(whatsappEndpoint, {
@@ -180,6 +192,9 @@ export default function ApiConfigPage() {
     }
   });
 
+  // Usar Evolution como prioridade, fallback para Baileys
+  const activeWhatsappStatus = evolutionStatus || whatsappStatus;
+
   // Estados para configurações master
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o");
@@ -188,6 +203,10 @@ export default function ApiConfigPage() {
   // Estado para configuração de voz (cliente)
   const [selectedVoice, setSelectedVoice] = useState<string>("nova");
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  
+  // Estados para teste WhatsApp
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('Teste de conexão WhatsApp');
 
   // Inicializar valores das configurações carregadas
   React.useEffect(() => {
@@ -209,9 +228,6 @@ export default function ApiConfigPage() {
     }
   }, [apiConfig, voiceSetting, isMaster]);
 
-  // Estados para WhatsApp Evolution API
-  const [whatsappPhone, setWhatsappPhone] = useState("");
-  const [whatsappMessage, setWhatsappMessage] = useState("Esta é uma mensagem de teste do sistema de entrevistas.");
   const [showPhoneLogin, setShowPhoneLogin] = useState(false);
 
 
