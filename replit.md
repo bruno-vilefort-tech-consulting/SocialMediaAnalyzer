@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
+  - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
+  - **Ícones de pasta preenchidos**: Pastas ativas mostram ícone preenchido com a cor personalizada
+  - **Botões de ação redesenhados**: Ícone Settings para configurar e Trash2 para excluir, com hover states refinados
+  - **Animações suaves**: Botões de ação aparecem com slide-in ao passar mouse, transições de 300ms
+  - **Container elevado**: Botões de ação em container branco com shadow e bordas arredondadas
+  - **Estados hover aprimorados**: Cores específicas azul para editar, vermelho para excluir
+  - **Botão Geral estilizado**: Design consistente com FileText icon e cores diferenciadas
+  - **Sistema funcional**: Drag-and-drop, filtros, e organização funcionando perfeitamente
+
 - June 22, 2025: ✅ CONTAGEM CORRETA DE ENTREVISTAS IMPLEMENTADA - Sistema agora mostra números reais de candidatos que finalizaram
   - **Problema identificado**: Cards mostravam 20 finalizados quando apenas 1 candidato completou 100% das respostas
   - **Contagem dinâmica**: Sistema conta candidatos baseado nos dados reais do relatório (interviewCandidates)
