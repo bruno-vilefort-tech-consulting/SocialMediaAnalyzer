@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Componente simples para renderizar QR Code
 const QRCodeRenderer = ({ qrCode }: { qrCode: string }) => {
-  console.log('🔍 QRCodeRenderer recebeu:', {
+  console.log('🔍 [QR DEBUG] QRCodeRenderer chamado:', {
     hasQrCode: !!qrCode,
     qrCodeLength: qrCode?.length,
     isDataUrl: qrCode?.startsWith('data:image/'),
@@ -194,6 +194,11 @@ export default function ApiConfigPage() {
 
   // Estado local para forçar re-render do QR Code
   const [qrCodeKey, setQrCodeKey] = useState(0);
+  
+  // DEBUG: Log completo dos dados recebidos
+  console.log('🔍 [QR DEBUG] Evolution Status completo:', evolutionStatus);
+  console.log('🔍 [QR DEBUG] QR Code existe:', !!evolutionStatus?.qrCode);
+  console.log('🔍 [QR DEBUG] QR Code length:', evolutionStatus?.qrCode?.length);
   
   // SEMPRE usar Evolution API 
   const activeWhatsappStatus = evolutionStatus;
@@ -776,8 +781,15 @@ export default function ApiConfigPage() {
                   </div>
                 </div>
 
-                {/* QR Code Display - FORÇAR EXIBIÇÃO */}
-                {evolutionStatus?.qrCode && (
+                {/* QR Code Display - DEBUG + FORÇAR EXIBIÇÃO */}
+                {(() => {
+                  console.log('🔍 [QR DEBUG] Verificando condição render:', {
+                    evolutionStatusExists: !!evolutionStatus,
+                    qrCodeExists: !!evolutionStatus?.qrCode,
+                    qrCodeValue: evolutionStatus?.qrCode?.substring(0, 100)
+                  });
+                  return evolutionStatus?.qrCode;
+                })() && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-between">
