@@ -166,8 +166,8 @@ export default function ApiConfigPage() {
   // Estado para controlar quando mostrar QR Code
   const [shouldShowQR, setShouldShowQR] = useState(false);
   
-  // Preferir Evolution API, fallback para Baileys
-  const { data: evolutionStatus } = useQuery({
+  // Preferir Evolution API, fallback para Baileys - só executa após clique
+  const { data: evolutionStatus, refetch: refetchEvolutionStatus } = useQuery({
     queryKey: [evolutionEndpoint],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
@@ -193,7 +193,8 @@ export default function ApiConfigPage() {
       
       return data;
     },
-    refetchInterval: 5000,
+    enabled: shouldShowQR, // 👈 só dispara depois do clique "Conectar"
+    refetchInterval: shouldShowQR ? 5000 : false,
     staleTime: 0,
     retry: 1
   });
@@ -833,8 +834,8 @@ export default function ApiConfigPage() {
                   </div>
                 </div>
 
-                {/* QR Code Display - só mostra se usuário clicou conectar */}
-                {shouldDisplayQR && evolutionStatus?.qrCode && (
+                {/* QR Code Display - só mostra se usuário clicou conectar E tem QR Code */}
+                {shouldShowQR && evolutionStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-between">

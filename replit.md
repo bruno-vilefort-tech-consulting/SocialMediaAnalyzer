@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🎯 UX CORRIGIDA - QR Code só aparece quando usuário clica "Conectar" (ChatGPT Solution)
+  - **Problema identificado**: useQuery executava automaticamente mesmo com shouldShowQR = false
+  - **Solução aplicada**: enabled: shouldShowQR no useQuery para impedir fetch automático
+  - **refetch() manual**: Força primeira chamada apenas após clique do botão
+  - **refetchInterval condicional**: Só atualiza quando shouldShowQR = true
+  - **Fluxo correto implementado**: Página carrega → Botão "Conectar" → QR Code aparece
+  - **UX perfeita**: Sistema não mostra QR Code antigo de sessões anteriores
+  
 - June 22, 2025: 🎯 UX MELHORADA - QR Code só aparece quando usuário clica "Conectar"
   - **Problema corrigido**: QR Code aparecia automaticamente ao acessar Configurações
   - **Controle de exibição**: useState shouldShowQR controla quando mostrar QR Code
