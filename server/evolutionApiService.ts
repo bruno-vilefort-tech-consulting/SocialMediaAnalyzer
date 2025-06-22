@@ -41,7 +41,33 @@ class EvolutionApiService {
    */
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
-      console.log(`🔗 [Evolution] Conectando cliente ${clientId}...`);
+      console.log(`🔗 [Evolution] Verificando configuração para cliente ${clientId}...`);
+      console.log(`🔗 [Evolution] API URL: ${this.apiUrl}`);
+      console.log(`🔗 [Evolution] API Key presente: ${this.apiKey ? 'SIM' : 'NÃO'}`);
+      
+      // Verificar se a configuração está presente
+      if (!this.apiUrl || this.apiUrl === 'https://evo-api.repl.co' || !this.apiKey || this.apiKey === 'digite_uma_chave_longasegura') {
+        console.log(`⚠️ [Evolution] Configuração não encontrada - redirecionando para Baileys`);
+        throw new Error('Evolution API não configurada - usando Baileys como fallback');
+      }
+
+      // Testar conectividade com Evolution API
+      console.log(`🔗 [Evolution] Testando conectividade...`);
+      const testResponse = await fetch(`${this.apiUrl}/health`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(5000) // Timeout de 5s
+      });
+
+      if (!testResponse.ok) {
+        console.log(`⚠️ [Evolution] API não acessível (${testResponse.status}) - usando Baileys`);
+        throw new Error(`Evolution API inacessível: HTTP ${testResponse.status}`);
+      }
+
+      console.log(`✅ [Evolution] API acessível - prosseguindo com conexão...`);
       
       // Verificar se já existe conexão ativa
       const existingConnection = await this.getConnectionStatus(clientId);
@@ -54,6 +80,7 @@ class EvolutionApiService {
 
       // Obter ou criar instanceId
       const instanceId = await this.getOrCreateInstanceId(clientId);
+      console.log(`📱 [Evolution] Usando instanceId: ${instanceId}`);
       
       // Criar instância na Evolution API
       const createResponse = await fetch(`${this.apiUrl}/instance`, {
@@ -67,11 +94,14 @@ class EvolutionApiService {
           token: `${clientId}_token`,
           qrcode: true,
           webhook: process.env.WA_WEBHOOK || ''
-        })
+        }),
+        signal: AbortSignal.timeout(10000) // Timeout de 10s
       });
 
       if (!createResponse.ok) {
-        throw new Error(`Evolution API retornou ${createResponse.status}`);
+        const errorText = await createResponse.text();
+        console.log(`❌ [Evolution] Erro ao criar instância: ${createResponse.status} - ${errorText}`);
+        throw new Error(`Evolution API erro ${createResponse.status}: ${errorText}`);
       }
 
       const createData: EvolutionApiResponse = await createResponse.json();
@@ -81,7 +111,8 @@ class EvolutionApiService {
       const qrResponse = await fetch(`${this.apiUrl}/instance/${instanceId}/qr`, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`
-        }
+        },
+        signal: AbortSignal.timeout(10000)
       });
 
       if (qrResponse.ok) {
@@ -101,26 +132,25 @@ class EvolutionApiService {
           this.connections.set(clientId, connection);
           await this.saveConnectionToDatabase(clientId, connection);
 
-          console.log(`✅ [Evolution] QR Code gerado para cliente ${clientId}`);
+          console.log(`✅ [Evolution] QR Code gerado para cliente ${clientId}, tamanho: ${qrCode.length}`);
           return {
             success: true,
             qrCode,
-            message: 'QR Code gerado com sucesso - escaneie com seu WhatsApp'
+            message: 'QR Code gerado via Evolution API - escaneie com seu WhatsApp'
           };
         }
       }
 
-      return {
-        success: false,
-        message: 'Falha ao gerar QR Code via Evolution API'
-      };
+      const qrError = await qrResponse.text();
+      console.log(`❌ [Evolution] Erro ao buscar QR Code: ${qrResponse.status} - ${qrError}`);
+      throw new Error(`Falha ao obter QR Code: ${qrResponse.status}`);
 
     } catch (error) {
-      console.error(`❌ [Evolution] Erro ao conectar cliente ${clientId}:`, error);
-      return {
-        success: false,
-        message: `Erro na conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      };
+      console.error(`❌ [Evolution] Erro completo para cliente ${clientId}:`, error);
+      
+      // Se Evolution API falhar, usar Baileys como fallback  
+      console.log(`🔄 [Evolution] Redirecionando para Baileys como fallback...`);
+      throw error; // Relançar erro para forçar fallback
     }
   }
 

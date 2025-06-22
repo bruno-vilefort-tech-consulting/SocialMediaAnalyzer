@@ -540,14 +540,14 @@ export default function ApiConfigPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">Método de Conexão:</span>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  evolutionStatus ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  activeWhatsappStatus?.method === 'evolution' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
-                  {evolutionStatus ? 'Evolution API' : 'Baileys (Legacy)'}
+                  {activeWhatsappStatus?.method === 'evolution' ? 'Evolution API' : 'Baileys (Legacy)'}
                 </span>
               </div>
-              {evolutionStatus && (
+              {activeWhatsappStatus?.instanceId && (
                 <span className="text-xs text-muted-foreground">
-                  ID: {evolutionStatus.instanceId}
+                  ID: {activeWhatsappStatus.instanceId}
                 </span>
               )}
             </div>
@@ -568,7 +568,7 @@ export default function ApiConfigPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      const disconnectUrl = evolutionStatus ? '/api/evolution/disconnect' : '/api/whatsapp-client/disconnect';
+                      const disconnectUrl = activeWhatsappStatus?.method === 'evolution' ? '/api/evolution/disconnect' : '/api/whatsapp-client/disconnect';
                       fetch(disconnectUrl, {
                         method: 'POST',
                         headers: {
@@ -745,7 +745,7 @@ export default function ApiConfigPage() {
                     
                     try {
                       // Usar Evolution API se disponível, senão Baileys
-                      const testUrl = evolutionStatus ? '/api/evolution/test' : '/api/whatsapp-client/test';
+                      const testUrl = activeWhatsappStatus?.method === 'evolution' ? '/api/evolution/test' : '/api/whatsapp-client/test';
                       
                       const response = await fetch(testUrl, {
                         method: 'POST',
