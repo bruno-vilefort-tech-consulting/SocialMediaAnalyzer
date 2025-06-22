@@ -192,8 +192,19 @@ export default function ApiConfigPage() {
     }
   });
 
-  // Usar Evolution como prioridade, fallback para Baileys
-  const activeWhatsappStatus = evolutionStatus || whatsappStatus;
+  // Usar Evolution como prioridade apenas se tiver QR Code, senão Baileys
+  const activeWhatsappStatus = (evolutionStatus?.qrCode) ? evolutionStatus : whatsappStatus;
+  
+  // Debug do status ativo
+  console.log('🔍 Debug activeWhatsappStatus:', {
+    evolutionStatus: !!evolutionStatus,
+    whatsappStatus: !!whatsappStatus,
+    activeHasQrCode: !!activeWhatsappStatus?.qrCode,
+    activeMethod: activeWhatsappStatus?.method,
+    qrCodeLength: activeWhatsappStatus?.qrCode?.length || 0,
+    evolutionQrCode: evolutionStatus?.qrCode?.length || 0,
+    baileyQrCode: whatsappStatus?.qrCode?.length || 0
+  });
 
   // Estados para configurações master
   const [openaiApiKey, setOpenaiApiKey] = useState("");
@@ -619,19 +630,25 @@ export default function ApiConfigPage() {
                         
                         const data = await response.json();
                         console.log('🔗 Evolution Connect Response:', data);
+                        console.log('🔗 QR Code presente na resposta:', !!data.qrCode);
+                        console.log('🔗 Tamanho do QR Code:', data.qrCode?.length || 0);
                         
                         if (data.success) {
-                          // Atualizar queries
+                          console.log('🔗 Invalidando queries...');
+                          
+                          // Atualizar queries imediatamente
                           queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
                           queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
                           
+                          // Refetch com delay menor
                           setTimeout(() => {
+                            console.log('🔗 Fazendo refetch das queries...');
                             queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
                             queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
-                          }, 1000);
+                          }, 500);
                           
                           toast({ 
-                            title: "Sucesso!",
+                            title: "QR Code gerado com sucesso!",
                             description: data.message 
                           });
                         } else {
@@ -660,12 +677,13 @@ export default function ApiConfigPage() {
                 </div>
 
                 {/* QR Code Display */}
+
                 {activeWhatsappStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
                         <QrCode className="h-5 w-5" />
-                        <span className="font-medium">Escaneie o QR Code com seu WhatsApp</span>
+                        <span className="font-medium">Escaneie o QR Code com seu WhatsApp ({activeWhatsappStatus.method})</span>
                       </div>
                       
                       <div className="flex justify-center">
@@ -681,6 +699,8 @@ export default function ApiConfigPage() {
                     </div>
                   </div>
                 )}
+                
+
               </div>
             )}
 

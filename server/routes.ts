@@ -3170,7 +3170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isConnected: status.isConnected,
         qrCode: status.qrCode,
         phoneNumber: status.phoneNumber,
-        lastConnection: status.lastConnection
+        lastConnection: status.lastConnection,
+        method: 'baileys', // Identificar que este é o sistema Baileys
+        instanceId: `baileys_${user.clientId}`
       });
     } catch (error) {
       console.error('❌ Erro Evolution API status:', error);
