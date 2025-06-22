@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Building, 
   Settings, 
@@ -15,7 +16,9 @@ import {
   LogOut,
   MessageCircle,
   FileText,
-  Smartphone
+  Smartphone,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,6 +29,13 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
+
+  // Query para buscar status do WhatsApp
+  const { data: whatsappStatus } = useQuery({
+    queryKey: ['/api/whatsapp-client/status'],
+    enabled: user?.role === 'client', // Só buscar para clientes
+    refetchInterval: 5000, // Atualizar a cada 5 segundos
+  });
 
   const masterMenuItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
