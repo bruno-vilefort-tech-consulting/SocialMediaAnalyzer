@@ -3097,7 +3097,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { from, to } = req.query;
-      const clientId = user.clientId.toString();
+      const clientId = user.clientId;
+      
+      console.log(`📊 [STATISTICS] Buscando estatísticas para clientId: ${clientId} no período ${fromDate.toISOString()} até ${toDate.toISOString()}`);
       
       const fromDate = new Date(from as string);
       const toDate = new Date(to as string);
@@ -3105,9 +3107,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar todos os candidatos do cliente e filtrar por data no código
       const candidatesQuery = query(
         collection(firebaseDb, 'candidates'),
-        where('clientId', '==', user.clientId)
+        where('clientId', '==', clientId)
       );
       const candidatesSnapshot = await getDocs(candidatesQuery);
+      
+      console.log(`📊 [CANDIDATES] Total candidatos encontrados para clientId ${clientId}: ${candidatesSnapshot.size}`);
       
       // Filtrar candidatos por período
       let candidatesRegistered = 0;
@@ -3126,9 +3130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar todos os relatórios do cliente (dados imutáveis) e filtrar por data no código
       const reportsQuery = query(
         collection(firebaseDb, 'reports'),
-        where('clientId', '==', user.clientId)
+        where('clientId', '==', clientId)
       );
       const reportsSnapshot = await getDocs(reportsQuery);
+      
+      console.log(`📊 [REPORTS] Total relatórios encontrados para clientId ${clientId}: ${reportsSnapshot.size}`);
       
       // Filtrar relatórios por período
       let interviewsSent = 0;
@@ -3204,6 +3210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interviewsCompleted,
         completionRate: Math.round(completionRate * 10) / 10 // Arredondar para 1 casa decimal
       };
+
+      console.log(`📊 [STATISTICS] Resultado final para clientId ${clientId}:`, statistics);
 
 
       res.json(statistics);
