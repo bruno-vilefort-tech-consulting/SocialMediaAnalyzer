@@ -2634,6 +2634,109 @@ export class FirebaseStorage implements IStorage {
       throw error;
     }
   }
+
+  // Report Folder Assignments - Implementações que estavam faltando
+  async getAllReportFolderAssignments(): Promise<ReportFolderAssignment[]> {
+    try {
+      console.log('📋 Buscando todos os assignments de pastas');
+      const snapshot = await getDocs(collection(firebaseDb, "reportFolderAssignments"));
+      const assignments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ReportFolderAssignment));
+      console.log(`📋 Encontrados ${assignments.length} assignments totais`);
+      return assignments;
+    } catch (error) {
+      console.error('Erro ao buscar assignments:', error);
+      return [];
+    }
+  }
+
+  async getAllReportFolderAssignmentsByClientId(clientId: string): Promise<ReportFolderAssignment[]> {
+    try {
+      console.log('📋 Buscando assignments por clientId:', clientId);
+      
+      // Primeiro buscar todas as pastas do cliente
+      const foldersQuery = query(
+        collection(firebaseDb, "reportFolders"),
+        where("clientId", "==", clientId)
+      );
+      const foldersSnapshot = await getDocs(foldersQuery);
+      const folderIds = foldersSnapshot.docs.map(doc => doc.id);
+      
+      console.log(`📁 Cliente tem ${folderIds.length} pastas:`, folderIds);
+      
+      if (folderIds.length === 0) {
+        console.log('📋 Cliente não tem pastas, retornando array vazio');
+        return [];
+      }
+      
+      // Buscar assignments dessas pastas
+      const allAssignments: ReportFolderAssignment[] = [];
+      
+      for (const folderId of folderIds) {
+        const assignmentsQuery = query(
+          collection(firebaseDb, "reportFolderAssignments"),
+          where("folderId", "==", folderId)
+        );
+        const assignmentsSnapshot = await getDocs(assignmentsQuery);
+        
+        const folderAssignments = assignmentsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ReportFolderAssignment));
+        
+        allAssignments.push(...folderAssignments);
+      }
+      
+      console.log(`📋 Encontrados ${allAssignments.length} assignments para cliente ${clientId}`);
+      return allAssignments;
+    } catch (error) {
+      console.error('Erro ao buscar assignments por cliente:', error);
+      return [];
+    }
+  }
+
+  async createReportFolderAssignment(assignment: InsertReportFolderAssignment): Promise<ReportFolderAssignment> {
+    try {
+      const assignmentId = `${assignment.reportId}_${assignment.folderId}`;
+      const assignmentData = {
+        ...assignment,
+        id: assignmentId,
+        assignedAt: new Date()
+      };
+      
+      await setDoc(doc(firebaseDb, "reportFolderAssignments", assignmentId), assignmentData);
+      console.log(`✅ Assignment criado: ${assignmentId}`);
+      return assignmentData as ReportFolderAssignment;
+    } catch (error) {
+      console.error('Erro ao criar assignment:', error);
+      throw error;
+    }
+  }
+
+  async deleteReportFolderAssignment(reportId: string): Promise<void> {
+    try {
+      console.log('🗑️ Removendo assignments para report:', reportId);
+      
+      const assignmentsQuery = query(
+        collection(firebaseDb, "reportFolderAssignments"),
+        where("reportId", "==", reportId)
+      );
+      const snapshot = await getDocs(assignmentsQuery);
+      
+      const batch = writeBatch(firebaseDb);
+      snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+      console.log(`✅ Removidos ${snapshot.docs.length} assignments para ${reportId}`);
+    } catch (error) {
+      console.error('Erro ao remover assignments:', error);
+      throw error;
+    }
+  }
 }
 
 export const storage = new FirebaseStorage();
