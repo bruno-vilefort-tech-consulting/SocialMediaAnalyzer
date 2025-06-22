@@ -1041,7 +1041,7 @@ export class FirebaseStorage implements IStorage {
       console.log(`🔍 Buscando candidatos da seleção ${selectionId} com dados de entrevista`);
 
       // Buscar a seleção para obter o listId
-      const selectionDoc = await this.db.collection('selections').doc(selectionId.toString()).get();
+      const selectionDoc = await firebaseDb.collection('selections').doc(selectionId.toString()).get();
       if (!selectionDoc.exists) {
         console.log(`❌ Seleção ${selectionId} não encontrada`);
         return [];
@@ -1056,7 +1056,7 @@ export class FirebaseStorage implements IStorage {
       }
 
       // Buscar candidatos da lista
-      const candidatesSnapshot = await this.db.collection('candidateListMemberships')
+      const candidatesSnapshot = await firebaseDb.collection('candidateListMemberships')
         .where('listId', '==', listId)
         .get();
 
@@ -1071,13 +1071,13 @@ export class FirebaseStorage implements IStorage {
         const memberData = memberDoc.data();
 
         // Buscar dados do candidato
-        const candidateDoc = await this.db.collection('candidates').doc(memberData.candidateId.toString()).get();
+        const candidateDoc = await firebaseDb.collection('candidates').doc(memberData.candidateId.toString()).get();
         if (!candidateDoc.exists) continue;
 
         const candidateData = candidateDoc.data();
 
         // Buscar dados de entrevista
-        const interviewSnapshot = await this.db.collection('interviews')
+        const interviewSnapshot = await firebaseDb.collection('interviews')
           .where('candidateId', '==', memberData.candidateId)
           .where('selectionId', '==', selectionId)
           .get();
@@ -1090,7 +1090,7 @@ export class FirebaseStorage implements IStorage {
           interviewData = interviewDoc.data();
 
           // Buscar respostas
-          const responsesSnapshot = await this.db.collection('interviewResponses')
+          const responsesSnapshot = await firebaseDb.collection('interviewResponses')
             .where('interviewId', '==', interviewDoc.id)
             .get();
 
