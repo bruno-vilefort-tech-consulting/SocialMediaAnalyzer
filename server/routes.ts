@@ -16,7 +16,7 @@ import { whatsappManager } from "./whatsappManager";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
@@ -3103,24 +3103,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const fromDate = new Date(from as string);
       const toDate = new Date(to as string);
+
+      console.log(`📊 Datas convertidas - De: ${fromDate.toISOString()}, Até: ${toDate.toISOString()}`);
       
       // Buscar candidatos cadastrados no período
-      const candidatesSnapshot = await firebaseDb.collection('candidates')
-        .where('clientId', '==', user.clientId)
-        .where('createdAt', '>=', fromDate)
-        .where('createdAt', '<=', toDate)
-        .get();
-      
+      const candidatesQuery = query(
+        collection(firebaseDb, 'candidates'),
+        where('clientId', '==', user.clientId),
+        where('createdAt', '>=', Timestamp.fromDate(fromDate)),
+        where('createdAt', '<=', Timestamp.fromDate(toDate))
+      );
+      const candidatesSnapshot = await getDocs(candidatesQuery);
       const candidatesRegistered = candidatesSnapshot.size;
+      
+      console.log(`📊 Candidatos encontrados no período: ${candidatesRegistered}`);
 
       // Buscar seleções (entrevistas enviadas) no período
-      const selectionsSnapshot = await firebaseDb.collection('selections')
-        .where('clientId', '==', user.clientId)
-        .where('createdAt', '>=', fromDate)
-        .where('createdAt', '<=', toDate)
-        .get();
-
+      const selectionsQuery = query(
+        collection(firebaseDb, 'selections'),
+        where('clientId', '==', user.clientId),
+        where('createdAt', '>=', Timestamp.fromDate(fromDate)),
+        where('createdAt', '<=', Timestamp.fromDate(toDate))
+      );
+      const selectionsSnapshot = await getDocs(selectionsQuery);
       const interviewsSent = selectionsSnapshot.size;
+      
+      console.log(`📊 Seleções encontradas no período: ${interviewsSent}`);
 
       // Buscar entrevistas finalizadas (candidatos que responderam todas as perguntas)
       let interviewsCompleted = 0;
@@ -3133,9 +3141,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         try {
           // Buscar job da seleção para contar perguntas
-          const jobSnapshot = await firebaseDb.collection('jobs')
-            .where('id', '==', selectionData.jobId)
-            .get();
+          const jobQuery = query(
+            collection(firebaseDb, 'jobs'),
+            where('id', '==', selectionData.jobId)
+          );
+          const jobSnapshot = await getDocs(jobQuery);
 
           if (!jobSnapshot.empty) {
             const jobData = jobSnapshot.docs[0].data();
@@ -3143,27 +3153,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (totalQuestions > 0) {
               // Buscar candidatos da lista de seleção
-              const candidatesListSnapshot = await firebaseDb.collection('candidateListMemberships')
-                .where('candidateListId', '==', selectionData.candidateListId)
-                .get();
+              const candidatesListQuery = query(
+                collection(firebaseDb, 'candidateListMemberships'),
+                where('candidateListId', '==', selectionData.candidateListId)
+              );
+              const candidatesListSnapshot = await getDocs(candidatesListQuery);
 
               for (const memberDoc of candidatesListSnapshot.docs) {
                 const memberData = memberDoc.data();
                 
                 // Buscar candidato para pegar telefone
-                const candidateDoc = await firebaseDb.collection('candidates')
-                  .doc(memberData.candidateId.toString())
-                  .get();
+                const candidateDoc = await getDocs(query(
+                  collection(firebaseDb, 'candidates'),
+                  where('id', '==', memberData.candidateId)
+                ));
 
-                if (candidateDoc.exists) {
-                  const candidateData = candidateDoc.data();
+                if (!candidateDoc.empty) {
+                  const candidateData = candidateDoc.docs[0].data();
                   const candidatePhone = candidateData.whatsapp || candidateData.phone;
 
                   // Contar respostas do candidato para esta seleção
-                  const responsesSnapshot = await firebaseDb.collection('interviewResponses')
-                    .where('phone', '==', candidatePhone)
-                    .where('selectionId', '==', selectionId.toString())
-                    .get();
+                  const responsesQuery = query(
+                    collection(firebaseDb, 'interviewResponses'),
+                    where('phone', '==', candidatePhone),
+                    where('selectionId', '==', selectionId.toString())
+                  );
+                  const responsesSnapshot = await getDocs(responsesQuery);
 
                   // Verificar se candidato finalizou todas as perguntas
                   if (responsesSnapshot.size >= totalQuestions) {
