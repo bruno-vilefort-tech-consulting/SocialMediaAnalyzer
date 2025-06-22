@@ -823,7 +823,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="flex justify-center">
-                        <QRCodeRenderer key={`qr-${qrCodeKey}-${activeWhatsappStatus.qrCode?.length || 0}`} qrCode={activeWhatsappStatus.qrCode} />
+                        <QRCodeRenderer key={`qr-${qrCodeKey}-${evolutionStatus?.qrCode?.length || 0}`} qrCode={evolutionStatus?.qrCode || ''} />
                       </div>
                       
                       <div className="text-sm text-blue-600 dark:text-blue-400">
