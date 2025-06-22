@@ -3150,79 +3150,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Contar entrevistas iniciadas e finalizadas baseado nas respostas reais do Firebase
+      // Contar entrevistas iniciadas baseado em todas as respostas do cliente no período
       let interviewsStarted = 0;
       
-      for (const reportDoc of validReports) {
-        const reportData = reportDoc.data();
+      try {
+        // Buscar todas as respostas do cliente
+        const allResponsesQuery = query(
+          collection(firebaseDb, 'interviewResponses'),
+          where('clientId', '==', user.clientId)
+        );
+        const allResponsesSnapshot = await getDocs(allResponsesQuery);
         
-        try {
-          // Buscar respostas da seleção específica do relatório
-          const selectionId = reportData.selectionId;
+        if (allResponsesSnapshot.size > 0) {
+          // Agrupar por seleção e telefone para contagem única
+          const interviewsByKey = new Map();
           
-          if (selectionId) {
-            // Buscar todas as respostas desta seleção
-            const responsesQuery = query(
-              collection(firebaseDb, 'interviewResponses'),
-              where('selectionId', '==', selectionId.toString()),
-              where('clientId', '==', user.clientId)
-            );
-            const responsesSnapshot = await getDocs(responsesQuery);
+          allResponsesSnapshot.docs.forEach(doc => {
+            const responseData = doc.data();
+            const selectionId = responseData.selectionId;
+            const phone = responseData.phone;
             
-            console.log(`🔍 [DEBUG SELECTION ${selectionId}] Respostas encontradas: ${responsesSnapshot.size}`);
-            
-            // Agrupar respostas por telefone do candidato
-            const candidateResponses = new Map();
-            responsesSnapshot.docs.forEach(doc => {
-              const responseData = doc.data();
-              const phone = responseData.phone;
-              
-              if (!candidateResponses.has(phone)) {
-                candidateResponses.set(phone, []);
-              }
-              candidateResponses.get(phone).push(responseData);
+            // Verificar se é de uma seleção válida do período
+            const isValidSelection = validReports.some(report => {
+              const reportSelectionId = report.data().selectionId;
+              return reportSelectionId && reportSelectionId.toString() === selectionId?.toString();
             });
             
-            console.log(`🔍 [DEBUG SELECTION ${selectionId}] Candidatos únicos: ${candidateResponses.size}`);
-            
-            // Para cada candidato, verificar se iniciou e se completou a entrevista
-            for (const [phone, responses] of candidateResponses) {
-              if (responses.length > 0) {
-                // Ordenar respostas por ordem de pergunta
-                responses.sort((a, b) => (a.questionOrder || 0) - (b.questionOrder || 0));
+            if (isValidSelection && selectionId && phone) {
+              const key = `${selectionId}_${phone}`;
+              if (!interviewsByKey.has(key)) {
+                interviewsByKey.set(key, []);
+              }
+              interviewsByKey.get(key).push(responseData);
+            }
+          });
+          
+          // Para cada entrevista única, verificar se foi iniciada e completada
+          for (const responses of interviewsByKey.values()) {
+            if (responses.length > 0) {
+              // Ordenar por ordem de pergunta
+              responses.sort((a, b) => (a.questionOrder || 0) - (b.questionOrder || 0));
+              
+              // Verificar se a primeira resposta tem transcrição válida (entrevista iniciada)
+              const firstResponse = responses[0];
+              const hasValidFirstResponse = firstResponse.transcription && 
+                                            firstResponse.transcription !== "Aguardando resposta via WhatsApp";
+              
+              if (hasValidFirstResponse) {
+                interviewsStarted++;
                 
-                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Total respostas: ${responses.length}`);
+                // Verificar se todas as respostas têm transcrição (entrevista completada)
+                const allCompleted = responses.every(response => 
+                  response.transcription && 
+                  response.transcription !== "Aguardando resposta via WhatsApp"
+                );
                 
-                // Verificar se iniciou (primeira resposta tem transcrição)
-                const firstResponse = responses[0];
-                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Primeira transcrição: "${firstResponse.transcription || 'NULL'}"`);
-                
-                const hasValidFirstResponse = firstResponse.transcription && 
-                                              firstResponse.transcription !== "Aguardando resposta via WhatsApp";
-                
-                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Tem primeira resposta válida: ${hasValidFirstResponse}`);
-                
-                if (hasValidFirstResponse) {
-                  interviewsStarted++;
-                  console.log(`🔍 [DEBUG] Entrevista iniciada contada! Total agora: ${interviewsStarted}`);
-                  
-                  // Verificar se completou (todas as respostas têm transcrição)
-                  const allCompleted = responses.every(response => 
-                    response.transcription && 
-                    response.transcription !== "Aguardando resposta via WhatsApp"
-                  );
-                  
-                  if (allCompleted) {
-                    interviewsCompleted++;
-                    console.log(`🔍 [DEBUG] Entrevista completada contada! Total agora: ${interviewsCompleted}`);
-                  }
+                if (allCompleted) {
+                  interviewsCompleted++;
                 }
               }
             }
           }
-        } catch (reportError) {
-          console.log(`❌ Erro ao processar relatório ${reportDoc.id}:`, reportError.message);
         }
+      } catch (error) {
+        console.log(`❌ Erro ao buscar respostas:`, error.message);
       }
 
       console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
