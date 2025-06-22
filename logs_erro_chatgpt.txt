@@ -1,0 +1,103 @@
+LOGS COMPLETOS DO ERRO WHATSAPP BAILEYS - PARA CHATGPT
+
+PROBLEMA: QR Code gerado mas conexão falha com erro 515 "Stream Errored"
+
+QR CODE GERADO CORRETAMENTE:
+✅ QR String original do Baileys: 8146 caracteres
+✅ Conversão para DataURL: data:image/png;base64,... (válida)
+✅ Frontend exibe QR Code sem problemas
+
+LOGS CRÍTICOS DO ERRO:
+
+1. GERAÇÃO DO QR CODE (SUCESSO):
+🐛 [DEBUG] ========= QR STRING ORIGINAL COMPLETA =========
+🐛 [DEBUG] QR String length: 304
+🐛 [DEBUG] QR String válida: true
+🐛 [DEBUG] QR contém @ (WhatsApp): true
+🐛 [DEBUG] QR String completa: [STRING_QR_ORIGINAL_DO_BAILEYS]
+
+2. CONNECTION UPDATE EVENTS:
+🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
+  "isNewLogin": true
+}
+
+🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
+  "connection": "close",
+  "lastDisconnect": {
+    "error": {
+      "data": {
+        "tag": "stream:error",
+        "attrs": {
+          "code": "515"
+        }
+      },
+      "isBoom": true,
+      "isServer": true,
+      "output": {
+        "statusCode": 515,
+        "payload": {
+          "statusCode": 515,
+          "error": "Unknown",
+          "message": "Stream Errored (restart required)"
+        },
+        "headers": {}
+      }
+    },
+    "date": "2025-06-22T21:02:18.090Z"
+  }
+}
+
+3. ERRO FINAL (CRASH):
+Error: Timed Out
+    at /home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/generics.js:151:32
+  data: {
+    stack: 'Error\n' +
+      '    at promiseTimeout (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/generics.js:146:19)\n' +
+      '    at waitForMessage (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:120:61)\n' +
+      '    at query (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:144:13)\n' +
+      '    at uploadPreKeys (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:201:9)\n' +
+      '    at uploadPreKeysToServerIfRequired (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:213:13)'
+  },
+  isBoom: true,
+  isServer: false,
+  output: {
+    statusCode: 408,
+    payload: {
+      statusCode: 408,
+      error: 'Request Time-out',
+      message: 'Timed Out'
+    }
+  }
+
+CONFIGURAÇÃO BAILEYS ATUAL:
+const socket = this.baileys.makeWASocket({
+  auth: state,
+  printQRInTerminal: false,
+  logger: logger,
+  browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+  markOnlineOnConnect: false,
+  generateHighQualityLinkPreview: false,
+  defaultQueryTimeoutMs: 60000,
+  connectTimeoutMs: 60000,
+  keepAliveIntervalMs: 30000,
+  qrTimeout: 120000,
+  retryRequestDelayMs: 2000,
+  maxMsgRetryCount: 3,
+  syncFullHistory: false,
+  fireInitQueries: false,
+  shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
+  emitOwnEvents: false
+});
+
+ANÁLISE DO ERRO:
+1. QR Code é gerado e válido
+2. Celular escaneia e tenta conectar
+3. Baileys recebe "isNewLogin": true (celular conectou)
+4. Stream error 515 ocorre imediatamente
+5. Timeout no uploadPreKeys para WhatsApp servers
+6. Sistema crasha com "Timed Out" 408
+
+PERGUNTA PARA CHATGPT:
+Como resolver erro 515 "Stream Errored" + timeout no uploadPreKeys do Baileys? 
+QR Code conecta no celular mas falha no handshake com servidores WhatsApp.
+Sistema roda no Replit, pode ser firewall/network issue?
