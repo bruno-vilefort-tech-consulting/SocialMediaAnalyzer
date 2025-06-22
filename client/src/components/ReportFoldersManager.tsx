@@ -155,12 +155,20 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   // Remove report from folder mutation
   const removeReportMutation = useMutation({
     mutationFn: async (reportId: string) => {
+      console.log('🔄 Executando mutation remove:', reportId);
       const response = await apiRequest(`/api/report-folders/assign/${reportId}`, 'DELETE');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, reportId) => {
+      console.log('✅ Mutation remove sucesso:', { data, reportId });
       toast({ title: "Relatório removido da pasta!" });
       queryClient.invalidateQueries({ queryKey: ['/api/report-folder-assignments'] });
+      
+      // Força atualização do filtro atual
+      setTimeout(() => {
+        console.log('🔄 Forçando atualização do filtro após remove');
+        applyFilter(activeFilter);
+      }, 100);
     },
     onError: () => {
       toast({ title: "Erro ao remover relatório", variant: "destructive" });
@@ -211,7 +219,7 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     setDragOverFolder(null);
     
     const reportId = e.dataTransfer.getData('text/plain');
-    console.log('🎯 Dropping:', { reportId, folderId });
+    console.log('🎯 Dropping:', { reportId, folderId, currentAssignments: assignments.length });
     
     if (!reportId) {
       console.log('❌ No reportId found');
@@ -221,6 +229,8 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     // Handle drop in "Geral" (remove from all folders)
     if (folderId === 'general') {
       console.log('✅ Removing from all folders (moving to Geral)');
+      const currentAssignment = assignments.find(a => a.reportId === reportId);
+      console.log('🔍 Current assignment:', currentAssignment);
       removeReportMutation.mutate(reportId);
       return;
     }
@@ -232,6 +242,9 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
     // Check if report is already in this folder
     const isAlreadyInFolder = assignments.some(a => a.reportId === reportId && a.folderId === folderId);
+    const currentAssignment = assignments.find(a => a.reportId === reportId);
+    console.log('🔍 Assignment check:', { isAlreadyInFolder, currentAssignment, targetFolder: folderId });
+    
     if (isAlreadyInFolder) {
       toast({ title: "Relatório já está nesta pasta", variant: "destructive" });
       return;
@@ -254,18 +267,21 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
   // Filter logic
   const applyFilter = (filter: string) => {
+    console.log('🔍 ApplyFilter chamado:', { filter, totalReports: reports.length, totalAssignments: assignments.length });
     setActiveFilter(filter);
     
     if (filter === 'general') {
       // Show reports not in any folder
       const assignedReportIds = assignments.map(a => a.reportId);
       const unassignedReports = reports.filter(r => !assignedReportIds.includes(r.id));
+      console.log('📋 Filtro General:', { assignedReportIds, unassignedReports: unassignedReports.length });
       onFilterChange(unassignedReports);
     } else {
       // Show reports in specific folder
       const folderAssignments = assignments.filter(a => a.folderId === filter);
       const folderReportIds = folderAssignments.map(a => a.reportId);
       const folderReports = reports.filter(r => folderReportIds.includes(r.id));
+      console.log('📁 Filtro Pasta:', { filter, folderAssignments, folderReportIds, folderReports: folderReports.length });
       onFilterChange(folderReports);
     }
   };
