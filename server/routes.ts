@@ -3088,6 +3088,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Statistics endpoint for client dashboard
+  app.get("/api/statistics", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { from, to } = req.query;
+      const clientId = user.clientId.toString();
+      
+      console.log(`📊 Buscando estatísticas para cliente ${clientId} de ${from} até ${to}`);
+
+      const fromDate = new Date(from as string);
+      const toDate = new Date(to as string);
+      
+      // Buscar candidatos cadastrados no período
+      const candidatesSnapshot = await firebaseDb.collection('candidates')
+        .where('clientId', '==', user.clientId)
+        .where('createdAt', '>=', fromDate)
+        .where('createdAt', '<=', toDate)
+        .get();
+      
+      const candidatesRegistered = candidatesSnapshot.size;
+
+      // Buscar seleções (entrevistas enviadas) no período
+      const selectionsSnapshot = await firebaseDb.collection('selections')
+        .where('clientId', '==', user.clientId)
+        .where('createdAt', '>=', fromDate)
+        .where('createdAt', '<=', toDate)
+        .get();
+
+      const interviewsSent = selectionsSnapshot.size;
+
+      // Buscar entrevistas finalizadas (candidatos que responderam todas as perguntas)
+      let interviewsCompleted = 0;
+      let completionRate = 0;
+
+      // Para cada seleção, verificar quantos candidatos finalizaram todas as perguntas
+      for (const selectionDoc of selectionsSnapshot.docs) {
+        const selectionData = selectionDoc.data();
+        const selectionId = selectionData.id || selectionDoc.id;
+
+        try {
+          // Buscar job da seleção para contar perguntas
+          const jobSnapshot = await firebaseDb.collection('jobs')
+            .where('id', '==', selectionData.jobId)
+            .get();
+
+          if (!jobSnapshot.empty) {
+            const jobData = jobSnapshot.docs[0].data();
+            const totalQuestions = jobData.questions ? jobData.questions.length : 0;
+
+            if (totalQuestions > 0) {
+              // Buscar candidatos da lista de seleção
+              const candidatesListSnapshot = await firebaseDb.collection('candidateListMemberships')
+                .where('candidateListId', '==', selectionData.candidateListId)
+                .get();
+
+              for (const memberDoc of candidatesListSnapshot.docs) {
+                const memberData = memberDoc.data();
+                
+                // Buscar candidato para pegar telefone
+                const candidateDoc = await firebaseDb.collection('candidates')
+                  .doc(memberData.candidateId.toString())
+                  .get();
+
+                if (candidateDoc.exists) {
+                  const candidateData = candidateDoc.data();
+                  const candidatePhone = candidateData.whatsapp || candidateData.phone;
+
+                  // Contar respostas do candidato para esta seleção
+                  const responsesSnapshot = await firebaseDb.collection('interviewResponses')
+                    .where('phone', '==', candidatePhone)
+                    .where('selectionId', '==', selectionId.toString())
+                    .get();
+
+                  // Verificar se candidato finalizou todas as perguntas
+                  if (responsesSnapshot.size >= totalQuestions) {
+                    interviewsCompleted++;
+                  }
+                }
+              }
+            }
+          }
+        } catch (selectionError) {
+          console.log(`❌ Erro ao processar seleção ${selectionId}:`, selectionError.message);
+        }
+      }
+
+      // Calcular taxa de conclusão
+      if (interviewsSent > 0) {
+        completionRate = (interviewsCompleted / interviewsSent) * 100;
+      }
+
+      const statistics = {
+        candidatesRegistered,
+        interviewsSent,
+        interviewsCompleted,
+        completionRate: Math.round(completionRate * 10) / 10 // Arredondar para 1 casa decimal
+      };
+
+      console.log(`📊 Estatísticas calculadas para cliente ${clientId}:`, statistics);
+      res.json(statistics);
+
+    } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas:', error);
+      res.status(500).json({ 
+        candidatesRegistered: 0,
+        interviewsSent: 0,
+        interviewsCompleted: 0,
+        completionRate: 0
+      });
+    }
+  });
+
   // Evolution API Routes
   app.post("/api/evolution/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {

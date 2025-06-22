@@ -18,7 +18,8 @@ import {
   FileText,
   Smartphone,
   Wifi,
-  WifiOff
+  WifiOff,
+  TrendingUp
 } from "lucide-react";
 
 interface SidebarProps {
@@ -69,6 +70,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
+    { path: "/estatisticas", label: "Estatísticas", icon: TrendingUp },
     { path: "/configuracoes", label: "Configurações", icon: Settings },
   ];
 

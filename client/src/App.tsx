@@ -25,6 +25,7 @@ import InterviewDemoPage from "@/pages/InterviewDemoPage";
 
 import NewReportsPage from "@/pages/NewReportsPage";
 import IndependentReportsPage from "@/pages/IndependentReportsPage";
+import StatisticsPage from "@/pages/StatisticsPage";
 import UnauthorizedPage from "@/pages/UnauthorizedPage";
 
 import NotFound from "@/pages/not-found";
@@ -129,6 +130,14 @@ function Router() {
         <PrivateRoute allowedRoles={['master', 'client']}>
           <Layout>
             <NewReportsPage />
+          </Layout>
+        </PrivateRoute>
+      </Route>
+
+      <Route path="/estatisticas">
+        <PrivateRoute allowedRoles={['client']}>
+          <Layout>
+            <StatisticsPage />
           </Layout>
         </PrivateRoute>
       </Route>
