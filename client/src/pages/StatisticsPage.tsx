@@ -32,11 +32,21 @@ export default function StatisticsPage() {
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
 
   // Buscar estatísticas baseadas no período selecionado
-  const { data: statistics, isLoading } = useQuery({
+  const { data: statistics, isLoading, error } = useQuery({
     queryKey: ['/api/statistics', user?.clientId, dateRange.from.toISOString(), dateRange.to.toISOString()],
-    queryFn: () => apiRequest(`/api/statistics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`),
+    queryFn: async () => {
+      const response = await apiRequest(`/api/statistics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`);
+      return response.json();
+    },
     enabled: !!user?.clientId
   });
+
+  // Debug logs
+  console.log('📊 [FRONTEND DEBUG] Statistics data:', statistics);
+  console.log('📊 [FRONTEND DEBUG] isLoading:', isLoading);
+  console.log('📊 [FRONTEND DEBUG] error:', error);
+  console.log('📊 [FRONTEND DEBUG] user?.clientId:', user?.clientId);
+  console.log('📊 [FRONTEND DEBUG] dateRange:', dateRange);
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
@@ -74,6 +84,12 @@ export default function StatisticsPage() {
     interviewsCompleted: statistics?.interviewsCompleted || 0,
     completionRate: statistics?.completionRate || 0
   };
+
+  // Debug log do statsData final
+  console.log('📊 [FRONTEND DEBUG] statsData final:', statsData);
+  console.log('📊 [FRONTEND DEBUG] candidatesRegistered value:', statsData.candidatesRegistered);
+  console.log('📊 [FRONTEND DEBUG] statistics object:', statistics);
+  console.log('📊 [FRONTEND DEBUG] statistics keys:', Object.keys(statistics || {}));
 
   return (
     <div className="space-y-6">
