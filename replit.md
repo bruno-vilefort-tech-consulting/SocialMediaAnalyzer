@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: ✅ ENTREVISTAS INICIADAS IMPLEMENTADAS - Contagem precisa para cobrança baseada em dados imutáveis
+  - **Sistema de cobrança funcional**: "Entrevistas Iniciadas" conta candidatos que completaram entrevistas nos relatórios
+  - **Dados imutáveis**: Usa campo completedInterviews dos relatórios para contagem histórica precisa
+  - **Cobrança justa**: Só conta quando candidato efetivamente respondeu perguntas (completedInterviews > 0)
+  - **Interface atualizada**: Card "Entrevistas Iniciadas" no lugar de "Entrevistas Enviadas"
+  - **Painel do plano**: Barra de progresso usa entrevistas iniciadas para cálculo de cobrança
+  - **Taxa de conclusão**: Calcula finalizadas ÷ iniciadas para métrica de sucesso
+  - **Sistema validado**: Contando corretamente 3 entrevistas iniciadas conforme dados reais
+
 - June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS BASEADO EM RELATÓRIOS IMPLEMENTADO - Dados históricos imutáveis e precisos
   - **Contagem baseada em relatórios**: Entrevistas enviadas agora contam relatórios (dados permanentes) em vez de seleções (podem ser deletadas)
   - **Métricas históricas**: Sistema conta candidatos cadastrados e entrevistas finalizadas por período selecionado
