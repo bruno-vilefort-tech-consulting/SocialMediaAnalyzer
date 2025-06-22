@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,12 +34,7 @@ export default function StatisticsPage() {
   // Buscar estatísticas baseadas no período selecionado
   const { data: statistics, isLoading } = useQuery({
     queryKey: ['/api/statistics', user?.clientId, dateRange.from.toISOString(), dateRange.to.toISOString()],
-    queryFn: () => 
-      fetch(`/api/statistics?clientId=${user?.clientId}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      }).then(res => res.json()),
+    queryFn: () => apiRequest(`/api/statistics?from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`),
     enabled: !!user?.clientId
   });
 
