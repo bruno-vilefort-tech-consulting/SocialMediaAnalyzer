@@ -519,7 +519,24 @@ export default function ApiConfigPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            {whatsappStatus?.isConnected ? (
+            {/* Status Badge */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Método de Conexão:</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  evolutionStatus ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {evolutionStatus ? 'Evolution API' : 'Baileys (Legacy)'}
+                </span>
+              </div>
+              {evolutionStatus && (
+                <span className="text-xs text-muted-foreground">
+                  ID: {evolutionStatus.instanceId}
+                </span>
+              )}
+            </div>
+
+            {activeWhatsappStatus?.isConnected ? (
               <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
@@ -528,20 +545,22 @@ export default function ApiConfigPage() {
                   <div>
                     <h4 className="font-medium text-green-900 dark:text-green-100">WhatsApp Conectado</h4>
                     <p className="text-sm text-green-700 dark:text-green-300">
-                      {whatsappStatus.phoneNumber ? `Telefone: ${whatsappStatus.phoneNumber}` : 'Conexão ativa'}
+                      {activeWhatsappStatus.phoneNumber ? `Telefone: ${activeWhatsappStatus.phoneNumber}` : 'Conexão ativa'}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      fetch('/api/whatsapp-client/disconnect', {
+                      const disconnectUrl = evolutionStatus ? '/api/evolution/disconnect' : '/api/whatsapp-client/disconnect';
+                      fetch(disconnectUrl, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
                           'Content-Type': 'application/json'
                         }
                       }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
                         queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
                         toast({ title: "WhatsApp desconectado" });
                       });
@@ -571,7 +590,10 @@ export default function ApiConfigPage() {
                   </div>
                   <Button
                     onClick={() => {
-                      fetch('/api/whatsapp-client/connect', {
+                      // Tentar Evolution API primeiro, fallback para Baileys
+                      const connectUrl = '/api/evolution/connect';
+                      
+                      fetch(connectUrl, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -580,22 +602,42 @@ export default function ApiConfigPage() {
                       })
                       .then(res => res.json())
                       .then(data => {
-                        console.log('🔗 Connect Response:', data);
+                        console.log('🔗 Evolution Connect Response:', data);
                         if (data.success) {
-                          queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                          queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
                           setTimeout(() => {
-                            queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                            queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
                           }, 1000);
                           
                           toast({ 
-                            title: "Conectando WhatsApp...",
+                            title: "Conectando WhatsApp via Evolution API...",
                             description: data.message 
                           });
                         } else {
-                          toast({ 
-                            title: "Erro na conexão", 
-                            description: data.message,
-                            variant: "destructive" 
+                          // Fallback para Baileys em caso de erro
+                          console.log('🔄 Tentando fallback para Baileys...');
+                          fetch('/api/whatsapp-client/connect', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                              'Content-Type': 'application/json'
+                            }
+                          })
+                          .then(res => res.json())
+                          .then(fallbackData => {
+                            if (fallbackData.success) {
+                              queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                              toast({ 
+                                title: "Conectando WhatsApp via Baileys...",
+                                description: fallbackData.message 
+                              });
+                            } else {
+                              toast({ 
+                                title: "Erro na conexão", 
+                                description: data.message || fallbackData.message,
+                                variant: "destructive" 
+                              });
+                            }
                           });
                         }
                       })
@@ -618,7 +660,7 @@ export default function ApiConfigPage() {
                 </div>
 
                 {/* QR Code Display */}
-                {whatsappStatus?.qrCode && (
+                {activeWhatsappStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
@@ -627,7 +669,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="flex justify-center">
-                        <QRCodeRenderer qrCode={whatsappStatus.qrCode} />
+                        <QRCodeRenderer qrCode={activeWhatsappStatus.qrCode} />
                       </div>
                       
                       <div className="text-sm text-blue-600 dark:text-blue-400">
@@ -643,7 +685,7 @@ export default function ApiConfigPage() {
             )}
 
             {/* Teste de Envio WhatsApp */}
-            {whatsappStatus?.isConnected && (
+            {activeWhatsappStatus?.isConnected && (
               <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border">
                 <h4 className="font-medium flex items-center gap-2">
                   <Send className="h-4 w-4" />
@@ -686,7 +728,10 @@ export default function ApiConfigPage() {
                     }
                     
                     try {
-                      const response = await fetch('/api/whatsapp-client/test', {
+                      // Usar Evolution API se disponível, senão Baileys
+                      const testUrl = evolutionStatus ? '/api/evolution/test' : '/api/whatsapp-client/test';
+                      
+                      const response = await fetch(testUrl, {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,

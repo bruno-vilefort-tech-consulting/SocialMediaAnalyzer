@@ -145,6 +145,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Logger completamente silenciado**: Elimina interferências de debug
   - **Preservação de credenciais**: Não limpa sessão em desconexões temporárias
 
+- June 22, 2025: ⚡ EVOLUTION API IMPLEMENTADA - Sistema híbrido com fallback para Baileys
+  - **Serviço Evolution API criado**: evolutionApiService.ts com integração completa conforme especificações
+  - **Endpoints REST implementados**: /api/evolution/status, /connect, /disconnect, /test funcionais
+  - **Sistema híbrido inteligente**: Prioriza Evolution API, fallback automático para Baileys
+  - **Interface atualizada**: Badge mostra método ativo (Evolution/Baileys) em tempo real
+  - **Isolamento por cliente**: Cada cliente possui instanceId único na Evolution API
+  - **Compatibilidade preservada**: Sistema Baileys mantido funcionando sem quebras
+  - **Configuração flexível**: Variáveis EVOLUTION_API_URL e EVOLUTION_API_KEY no ambiente
+
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
   - **Ícones de pasta preenchidos**: Pastas ativas mostram ícone preenchido com a cor personalizada
