@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Folder, FolderOpen, Edit3, Trash2, MoreVertical, GripVertical, FileText, X } from 'lucide-react';
+import { Folder, FolderOpen, Settings, Trash2, MoreVertical, GripVertical, FileText, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -337,11 +337,25 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
           <Button
             variant={activeFilter === 'general' ? 'default' : 'outline'}
             onClick={() => applyFilter('general')}
-            className="flex items-center gap-2 w-full"
+            className={`flex items-center gap-2 w-full transition-all duration-200 hover:shadow-md ${
+              activeFilter === 'general' 
+                ? 'bg-gray-700 text-white shadow-lg border-gray-700' 
+                : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+            }`}
           >
-            <Folder className="w-4 h-4" />
-            Geral
-            <Badge variant="secondary" className="text-xs ml-1">
+            <FileText 
+              className="w-4 h-4" 
+              fill={activeFilter === 'general' ? 'white' : 'none'}
+            />
+            <span className="font-medium">Geral</span>
+            <Badge 
+              variant="secondary" 
+              className={`text-xs ml-1 transition-colors ${
+                activeFilter === 'general' 
+                  ? 'bg-gray-600 text-gray-100' 
+                  : 'bg-gray-200 text-gray-700'
+              }`}
+            >
               {getUnorganizedReports().length}
             </Badge>
           </Button>
@@ -362,44 +376,61 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, folder.id)}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 group">
                 <Button
                   variant={activeFilter === folder.id ? 'default' : 'outline'}
                   onClick={() => applyFilter(folder.id)}
-                  className="flex items-center gap-2"
+                  className={`flex items-center gap-2 transition-all duration-200 hover:shadow-md ${
+                    activeFilter === folder.id ? 'shadow-lg' : ''
+                  }`}
                   style={{ 
-                    borderColor: activeFilter === folder.id ? folder.color : undefined,
-                    backgroundColor: activeFilter === folder.id ? folder.color : undefined
+                    borderColor: folder.color,
+                    backgroundColor: activeFilter === folder.id ? `${folder.color}20` : 'transparent',
+                    color: activeFilter === folder.id ? folder.color : undefined
                   }}
                 >
-                  <Folder className="w-4 h-4" style={{ color: activeFilter === folder.id ? 'white' : folder.color }} />
-                  {folder.name}
-                  <Badge variant="secondary" className="text-xs ml-1">
+                  <Folder 
+                    className="w-4 h-4" 
+                    style={{ color: folder.color }} 
+                    fill={activeFilter === folder.id ? folder.color : 'none'}
+                  />
+                  <span className="font-medium">{folder.name}</span>
+                  <Badge 
+                    variant="secondary" 
+                    className="text-xs ml-1 bg-gray-100 text-gray-700"
+                  >
                     {reportsInFolder.length}
                   </Badge>
                 </Button>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedFolder(folder);
-                      setNewFolderName(folder.name);
-                      setNewFolderColor(folder.color);
-                      setIsEditDialogOpen(true);
-                    }}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFolderToDelete(folder)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                
+                {/* Botões de ação melhorados */}
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                  <div className="flex items-center gap-1 bg-white rounded-lg shadow-md border border-gray-200 p-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFolder(folder);
+                        setNewFolderName(folder.name);
+                        setNewFolderColor(folder.color);
+                        setIsEditDialogOpen(true);
+                      }}
+                      className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 rounded-md"
+                      title="Configurar pasta"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <div className="w-px h-5 bg-gray-300" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setFolderToDelete(folder)}
+                      className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 transition-all duration-200 rounded-md"
+                      title="Excluir pasta"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
