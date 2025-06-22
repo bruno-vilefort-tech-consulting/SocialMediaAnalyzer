@@ -158,10 +158,13 @@ export class ClientWhatsAppService {
               console.log(`✅ [BAILEYS] QR DataURL gerado, length: ${qrCodeDataUrl.length}`);
               console.log(`🔍 [BAILEYS] DataURL válido:`, qrCodeDataUrl.startsWith('data:image/png;base64,'));
               
-              // SALVAR QR STRING ORIGINAL PARA DEBUG
-              console.log(`🐛 [DEBUG] QR String original completa:`, qr);
-              console.log(`🐛 [DEBUG] QR String é válida:`, qr.length > 100);
-              console.log(`🐛 [DEBUG] QR contém dados WhatsApp:`, qr.includes('@'));
+              // SALVAR QR STRING ORIGINAL PARA DEBUG COMPLETO
+              console.log(`🐛 [DEBUG] ========= QR STRING ORIGINAL COMPLETA =========`);
+              console.log(`🐛 [DEBUG] QR String length:`, qr.length);
+              console.log(`🐛 [DEBUG] QR String válida:`, qr.length > 100);
+              console.log(`🐛 [DEBUG] QR contém @ (WhatsApp):`, qr.includes('@'));
+              console.log(`🐛 [DEBUG] QR String completa:`, qr);
+              console.log(`🐛 [DEBUG] ============================================`);
               
               // Atualizar configuração do cliente com DataURL
               await this.updateClientConfig(clientId, {
@@ -281,7 +284,9 @@ export class ClientWhatsAppService {
         });
 
         socket.ev.on('creds.update', (creds) => {
-          console.log(`🔐 [BAILEYS] Credenciais atualizadas para cliente ${clientId}`);
+          console.log(`🔐 [BAILEYS] CREDENCIAIS ATUALIZADAS para cliente ${clientId}!`);
+          console.log(`🔐 [BAILEYS] Tipo de credenciais:`, Object.keys(creds || {}));
+          console.log(`🔐 [BAILEYS] Promise resolvida:`, resolved);
           saveCreds();
         });
 

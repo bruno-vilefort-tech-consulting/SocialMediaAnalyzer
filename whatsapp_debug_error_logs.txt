@@ -1,0 +1,65 @@
+ERRO NO CELULAR - DEBUG COMPLETO PARA CHATGPT
+
+PROBLEMA OBSERVADO:
+- QR Code gerado corretamente (7862 caracteres)
+- Celular tenta conectar mas dá bug/erro
+- Sistema não recebe eventos de conexão
+
+LOGS CAPTURADOS:
+
+FRONTEND:
+✅ QR Code exibido: 7862 chars
+✅ DataURL válido: data:image/png;base64,...
+✅ Image carregada com sucesso no navegador
+
+BACKEND:
+🔄 Evolution API conectando via Baileys
+📱 QR String gerada pelo Baileys (original)
+🖼️ Conversão para DataURL bem-sucedida
+⏰ Timeout configurado para 5 minutos
+
+EVENTOS ESPERADOS MAS NÃO RECEBIDOS:
+❌ connection.update com state 'connecting' 
+❌ connection.update com state 'open'
+❌ Credenciais salvas (creds.update)
+
+POSSÍVEIS CAUSAS DO BUG NO CELULAR:
+
+1. QR CODE CORROMPIDO:
+   - String original do Baileys pode estar truncada
+   - Conversão toDataURL alterando dados essenciais
+   - Headers/metadata WhatsApp ausentes
+
+2. BAILEYS CONFIGURATION ISSUES:
+   - Browser fingerprint ['Replit WhatsApp Bot', 'Chrome', '1.0.0'] rejeitado
+   - useMultiFileAuthState com path incorreto
+   - Configurações de socket inadequadas para WhatsApp Web
+
+3. NETWORK/REPLIT LIMITATIONS:
+   - Firewall bloqueando conexões WebSocket do WhatsApp
+   - SSL/TLS certificates inadequados
+   - Headers de rede incorretos
+
+4. TIMEOUT/TIMING ISSUES:
+   - Socket fechando prematuramente
+   - Promise resolvendo antes do handshake
+   - KeepAlive settings muito baixos
+
+5. SESSION MANAGEMENT:
+   - Multiple sessions conflitando
+   - Credenciais antigas corrompidas
+   - Auth state inconsistente
+
+LOGS TÉCNICOS NECESSÁRIOS:
+- QR string original COMPLETA do Baileys
+- Todos os connection.update events recebidos
+- WebSocket readyState durante conexão
+- Erros específicos do lastDisconnect
+- Status do socket após escaneamento
+
+NEXT STEPS:
+1. Capturar QR string original sem conversão
+2. Log completo de todos os eventos Baileys
+3. Verificar se WebSocket permanece ativo
+4. Testar sem conversão toDataURL
+5. Verificar browser fingerprint alternativo
