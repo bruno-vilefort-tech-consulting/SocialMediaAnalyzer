@@ -47,7 +47,23 @@ class WhatsAppBaileyService {
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
       const sock = makeWASocket({ 
-        auth: state, 
+        auth: state,
+        printQRInTerminal: false,
+        logger: {
+          level: 'silent',
+          child: () => ({ level: 'silent' }),
+          trace: () => {},
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          fatal: () => {}
+        },
+        defaultQueryTimeoutMs: 20000,
+        connectTimeoutMs: 15000,
+        keepAliveIntervalMs: 20000,
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 2, 
         printQRInTerminal: false,
         browser: ["WhatsApp Business", "Chrome", "118.0.0.0"],
         connectTimeoutMs: 60000,

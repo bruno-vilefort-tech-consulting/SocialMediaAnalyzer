@@ -18,7 +18,6 @@ import { firebaseDb } from "./db";
 import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
-import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);

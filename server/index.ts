@@ -81,17 +81,8 @@ app.use((req, res, next) => {
   // Skip Firebase initialization due to quota issues - system will work with existing data
   console.log('📊 Sistema iniciando com dados existentes (Firebase quota management)');
 
-  // Inicializar WhatsApp Baileys Service
-  console.log('📱 WhatsApp Baileys Service: Inicializando sistema de entrevistas...');
-  
-  try {
-    const { whatsappBaileyService } = await import('./whatsappBaileyService');
-    await whatsappBaileyService.restoreConnections();
-    console.log('✅ WhatsApp Baileys Service inicializado com sucesso');
-  } catch (error) {
-    console.log('⚠️ WhatsApp Baileys Service: Erro na inicialização -', error.message);
-    console.log('📱 WhatsApp Baileys Service: Funcionará sob demanda');
-  }
+  // Inicializar WhatsApp Baileys Service - removido para evitar timeout no startup
+  console.log('📱 WhatsApp Baileys Service: Configurado para funcionamento sob demanda');
 
   const server = await registerRoutes(app);
 
