@@ -3106,27 +3106,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 Datas convertidas - De: ${fromDate.toISOString()}, Até: ${toDate.toISOString()}`);
       
-      // Buscar candidatos cadastrados no período
+      // Buscar todos os candidatos do cliente e filtrar por data no código
       const candidatesQuery = query(
         collection(firebaseDb, 'candidates'),
-        where('clientId', '==', user.clientId),
-        where('createdAt', '>=', Timestamp.fromDate(fromDate)),
-        where('createdAt', '<=', Timestamp.fromDate(toDate))
+        where('clientId', '==', user.clientId)
       );
       const candidatesSnapshot = await getDocs(candidatesQuery);
-      const candidatesRegistered = candidatesSnapshot.size;
+      
+      // Filtrar candidatos por período
+      let candidatesRegistered = 0;
+      candidatesSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdDate = data.createdAt.toDate();
+          if (createdDate >= fromDate && createdDate <= toDate) {
+            candidatesRegistered++;
+          }
+        }
+      });
       
       console.log(`📊 Candidatos encontrados no período: ${candidatesRegistered}`);
 
-      // Buscar seleções (entrevistas enviadas) no período
+      // Buscar todas as seleções do cliente e filtrar por data no código
       const selectionsQuery = query(
         collection(firebaseDb, 'selections'),
-        where('clientId', '==', user.clientId),
-        where('createdAt', '>=', Timestamp.fromDate(fromDate)),
-        where('createdAt', '<=', Timestamp.fromDate(toDate))
+        where('clientId', '==', user.clientId)
       );
       const selectionsSnapshot = await getDocs(selectionsQuery);
-      const interviewsSent = selectionsSnapshot.size;
+      
+      // Filtrar seleções por período
+      let interviewsSent = 0;
+      const validSelections = [];
+      selectionsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdDate = data.createdAt.toDate();
+          if (createdDate >= fromDate && createdDate <= toDate) {
+            interviewsSent++;
+            validSelections.push(doc);
+          }
+        }
+      });
       
       console.log(`📊 Seleções encontradas no período: ${interviewsSent}`);
 
@@ -3134,8 +3154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Para cada seleção, verificar quantos candidatos finalizaram todas as perguntas
-      for (const selectionDoc of selectionsSnapshot.docs) {
+      // Para cada seleção válida do período, verificar quantos candidatos finalizaram todas as perguntas
+      for (const selectionDoc of validSelections) {
         const selectionData = selectionDoc.data();
         const selectionId = selectionData.id || selectionDoc.id;
 
