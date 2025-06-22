@@ -3165,9 +3165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (candidate.responses && Array.isArray(candidate.responses) && candidate.responses.length > 0) {
                 // Verificar se a primeira resposta tem transcrição válida
                 const firstResponse = candidate.responses[0];
-                return firstResponse && 
-                       firstResponse.transcription && 
-                       firstResponse.transcription !== "Aguardando resposta via WhatsApp";
+                // Verificar tanto transcription quanto responseText
+                const hasValidTranscription = firstResponse.transcription && 
+                                              firstResponse.transcription !== "Aguardando resposta via WhatsApp";
+                const hasValidResponseText = firstResponse.responseText && 
+                                             firstResponse.responseText !== "Aguardando resposta via WhatsApp";
+                return hasValidTranscription || hasValidResponseText;
               }
               return false;
             });
@@ -3178,10 +3181,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const completedCandidates = reportData.responseData.filter(candidate => {
               if (candidate.responses && Array.isArray(candidate.responses)) {
                 // Verificar se todas as respostas têm transcrições válidas
-                return candidate.responses.every(response => 
-                  response.transcription && 
-                  response.transcription !== "Aguardando resposta via WhatsApp"
-                );
+                return candidate.responses.every(response => {
+                  const hasValidTranscription = response.transcription && 
+                                                response.transcription !== "Aguardando resposta via WhatsApp";
+                  const hasValidResponseText = response.responseText && 
+                                               response.responseText !== "Aguardando resposta via WhatsApp";
+                  return hasValidTranscription || hasValidResponseText;
+                });
               }
               return false;
             });
@@ -3195,6 +3201,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
       console.log(`📊 Entrevistas finalizadas no período: ${interviewsCompleted}`);
+      
+      // Debug detalhado dos relatórios encontrados
+      console.log(`🔍 [DEBUG REPORTS] Total de relatórios processados: ${validReports.length}`);
+      for (const reportDoc of validReports) {
+        const reportData = reportDoc.data();
+        console.log(`🔍 [DEBUG REPORT] ID: ${reportDoc.id}`);
+        console.log(`🔍 [DEBUG REPORT] responseData exists: ${!!reportData.responseData}`);
+        console.log(`🔍 [DEBUG REPORT] responseData is array: ${Array.isArray(reportData.responseData)}`);
+        console.log(`🔍 [DEBUG REPORT] responseData length: ${reportData.responseData?.length || 0}`);
+        
+        // Verificar todas as propriedades do relatório
+        console.log(`🔍 [DEBUG REPORT] Keys: ${Object.keys(reportData).join(', ')}`);
+        
+        if (reportData.responseData && Array.isArray(reportData.responseData)) {
+          reportData.responseData.forEach((candidate, index) => {
+            console.log(`🔍 [DEBUG CANDIDATE ${index}] Nome: ${candidate.candidateName || candidate.name}`);
+            console.log(`🔍 [DEBUG CANDIDATE ${index}] Keys: ${Object.keys(candidate).join(', ')}`);
+            console.log(`🔍 [DEBUG CANDIDATE ${index}] Responses array: ${Array.isArray(candidate.responses)}`);
+            console.log(`🔍 [DEBUG CANDIDATE ${index}] Responses length: ${candidate.responses?.length || 0}`);
+            
+            if (candidate.responses && candidate.responses.length > 0) {
+              const firstResponse = candidate.responses[0];
+              console.log(`🔍 [DEBUG FIRST RESPONSE] Keys: ${Object.keys(firstResponse).join(', ')}`);
+              console.log(`🔍 [DEBUG FIRST RESPONSE] responseText: "${firstResponse.responseText || 'NULL'}"`);
+              console.log(`🔍 [DEBUG FIRST RESPONSE] transcription: "${firstResponse.transcription || 'NULL'}"`);
+              console.log(`🔍 [DEBUG FIRST RESPONSE] Has valid transcription: ${!!(firstResponse.transcription && firstResponse.transcription !== "Aguardando resposta via WhatsApp")}`);
+              console.log(`🔍 [DEBUG FIRST RESPONSE] Has valid responseText: ${!!(firstResponse.responseText && firstResponse.responseText !== "Aguardando resposta via WhatsApp")}`);
+            }
+          });
+        }
+      }
 
       // Calcular taxa de conclusão baseada em entrevistas iniciadas
       if (interviewsStarted > 0) {
