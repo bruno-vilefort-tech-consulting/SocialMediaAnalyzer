@@ -127,6 +127,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Restauração automática**: Sistema detecta sessões perdidas e restaura automaticamente
   - **Teste de mensagens**: Funcionalidade de teste funcional com sistema de retry automático
 
+- June 22, 2025: 📊 INDICADOR VISUAL WHATSAPP IMPLEMENTADO - Status em tempo real na sidebar para clientes
+  - **Componente visual criado**: Caixinha elegante acima do perfil do usuário na sidebar
+  - **Status em tempo real**: Atualização automática a cada 5 segundos via API
+  - **Design responsivo**: Funciona tanto na sidebar desktop quanto mobile
+  - **Cores dinâmicas**: Verde para conectado, vermelho para desconectado
+  - **Ícones informativos**: Wifi/WifiOff com animação de pulse no status
+  - **Exclusivo para clientes**: Só aparece para usuários com role 'client'
+  - **Hover states**: Efeitos visuais sutis ao passar mouse sobre o indicador
+
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
   - **Ícones de pasta preenchidos**: Pastas ativas mostram ícone preenchido com a cor personalizada

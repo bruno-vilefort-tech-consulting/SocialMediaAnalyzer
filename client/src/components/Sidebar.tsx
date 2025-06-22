@@ -97,6 +97,57 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </nav>
         
+        {/* WhatsApp Status Indicator - Only for clients */}
+        {user?.role === 'client' && (
+          <div className="absolute bottom-20 w-52 p-3">
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border transition-all duration-300",
+              whatsappStatus?.isConnected 
+                ? "bg-green-50 border-green-200 hover:bg-green-100" 
+                : "bg-red-50 border-red-200 hover:bg-red-100"
+            )}>
+              <div className="flex items-center space-x-3">
+                <div className={cn(
+                  "p-2 rounded-full",
+                  whatsappStatus?.isConnected 
+                    ? "bg-green-100" 
+                    : "bg-red-100"
+                )}>
+                  {whatsappStatus?.isConnected ? (
+                    <Wifi className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-red-600" />
+                  )}
+                </div>
+                <div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    whatsappStatus?.isConnected 
+                      ? "text-green-700" 
+                      : "text-red-700"
+                  )}>
+                    WhatsApp
+                  </div>
+                  <div className={cn(
+                    "text-xs",
+                    whatsappStatus?.isConnected 
+                      ? "text-green-600" 
+                      : "text-red-600"
+                  )}>
+                    {whatsappStatus?.isConnected ? 'Conectado' : 'Desconectado'}
+                  </div>
+                </div>
+              </div>
+              <div className={cn(
+                "w-2 h-2 rounded-full animate-pulse",
+                whatsappStatus?.isConnected 
+                  ? "bg-green-500" 
+                  : "bg-red-500"
+              )} />
+            </div>
+          </div>
+        )}
+        
         {/* User Profile */}
         <div className="absolute bottom-0 w-52 p-4 border-t border-slate-200 bg-white">
           <div className="flex items-center">
@@ -167,6 +218,57 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             })}
           </div>
         </nav>
+        
+        {/* Mobile WhatsApp Status Indicator - Only for clients */}
+        {user?.role === 'client' && (
+          <div className="absolute bottom-20 w-52 p-3">
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg border transition-all duration-300",
+              whatsappStatus?.isConnected 
+                ? "bg-green-50 border-green-200 hover:bg-green-100" 
+                : "bg-red-50 border-red-200 hover:bg-red-100"
+            )}>
+              <div className="flex items-center space-x-3">
+                <div className={cn(
+                  "p-2 rounded-full",
+                  whatsappStatus?.isConnected 
+                    ? "bg-green-100" 
+                    : "bg-red-100"
+                )}>
+                  {whatsappStatus?.isConnected ? (
+                    <Wifi className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-red-600" />
+                  )}
+                </div>
+                <div>
+                  <div className={cn(
+                    "text-sm font-medium",
+                    whatsappStatus?.isConnected 
+                      ? "text-green-700" 
+                      : "text-red-700"
+                  )}>
+                    WhatsApp
+                  </div>
+                  <div className={cn(
+                    "text-xs",
+                    whatsappStatus?.isConnected 
+                      ? "text-green-600" 
+                      : "text-red-600"
+                  )}>
+                    {whatsappStatus?.isConnected ? 'Conectado' : 'Desconectado'}
+                  </div>
+                </div>
+              </div>
+              <div className={cn(
+                "w-2 h-2 rounded-full animate-pulse",
+                whatsappStatus?.isConnected 
+                  ? "bg-green-500" 
+                  : "bg-red-500"
+              )} />
+            </div>
+          </div>
+        )}
         
         {/* Mobile User Profile */}
         <div className="absolute bottom-0 w-52 p-4 border-t border-slate-200 bg-white">
