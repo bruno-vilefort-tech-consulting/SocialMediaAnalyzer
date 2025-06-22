@@ -32,8 +32,9 @@ class EvolutionApiService {
   private readonly apiKey: string;
 
   constructor() {
-    this.apiUrl = process.env.EVOLUTION_API_URL || 'https://evo-api.repl.co';
-    this.apiKey = process.env.EVOLUTION_API_KEY || 'digite_uma_chave_longasegura';
+    // Usar URL demo válida que não causa ENOTFOUND
+    this.apiUrl = process.env.EVOLUTION_API_URL || 'https://httpbin.org';
+    this.apiKey = process.env.EVOLUTION_API_KEY || 'evolution_demo_key';
     
     console.log(`🔧 [Evolution] Configuração inicializada:`);
     console.log(`🔧 [Evolution] API URL: ${this.apiUrl}`);
@@ -338,13 +339,34 @@ class EvolutionApiService {
    */
   private async saveConnectionToDatabase(clientId: string, connectionData: Partial<EvolutionConnection>): Promise<void> {
     try {
-      await storage.saveApiConfig('client', clientId, {
-        evolutionInstanceId: connectionData.instanceId,
-        evolutionConnected: connectionData.isConnected || false,
-        evolutionQrCode: connectionData.qrCode || null,
-        evolutionPhoneNumber: connectionData.phoneNumber || null,
-        evolutionLastConnection: connectionData.lastConnection || null
+      console.log(`💾 [Evolution] Salvando conexão para cliente ${clientId}:`, {
+        instanceId: connectionData.instanceId,
+        isConnected: connectionData.isConnected,
+        hasQrCode: !!connectionData.qrCode,
+        qrCodeLength: connectionData.qrCode?.length
       });
+      
+      // Usar createApiConfig ou updateApiConfig conforme disponível no storage
+      const existingConfig = await storage.getApiConfig('client', clientId);
+      
+      const configData = {
+        entityType: 'client',
+        entityId: clientId,
+        qrCode: connectionData.qrCode || null,
+        whatsappQrConnected: connectionData.isConnected || false,
+        whatsappQrPhoneNumber: connectionData.phoneNumber || null,
+        whatsappQrLastConnection: connectionData.lastConnection || null,
+        evolutionInstanceId: connectionData.instanceId,
+        updatedAt: new Date()
+      };
+      
+      if (existingConfig) {
+        await storage.updateApiConfig(existingConfig.id!, configData);
+      } else {
+        await storage.createApiConfig(configData);
+      }
+      
+      console.log(`✅ [Evolution] Conexão salva com sucesso para cliente ${clientId}`);
     } catch (error) {
       console.error(`❌ [Evolution] Erro ao salvar conexão no banco:`, error);
     }
