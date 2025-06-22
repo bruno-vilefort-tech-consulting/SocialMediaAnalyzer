@@ -832,45 +832,53 @@ export default function NewReportsPage() {
                             
                             {/* Conteúdo */}
                             <div className="p-4 space-y-3">
-                              {/* Estatísticas de candidatos */}
-                              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-600">Candidatos totais:</span>
-                                  <span className="font-semibold text-gray-900">{selection.totalCandidates || 0}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-600">Finalizaram testes:</span>
-                                  <span className="font-semibold text-green-600">{selection.completedInterviews || 0}</span>
+                              {/* Estatísticas de candidatos com layout em grid */}
+                              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3">
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                  <div>
+                                    <div className="text-2xl font-bold text-gray-900">{selection.totalCandidates || 0}</div>
+                                    <div className="text-xs text-gray-600">Total</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-2xl font-bold text-green-600">{selection.completedInterviews || 0}</div>
+                                    <div className="text-xs text-gray-600">Finalizaram</div>
+                                  </div>
                                 </div>
                                 {selection.totalCandidates > 0 && (
-                                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                    <div 
-                                      className="bg-green-500 h-2 rounded-full transition-all" 
-                                      style={{ 
-                                        width: `${((selection.completedInterviews || 0) / selection.totalCandidates) * 100}%` 
-                                      }}
-                                    ></div>
+                                  <div className="mt-3">
+                                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                                      <span>Progresso</span>
+                                      <span>{Math.round(((selection.completedInterviews || 0) / selection.totalCandidates) * 100)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                      <div 
+                                        className="bg-green-500 h-2 rounded-full transition-all" 
+                                        style={{ 
+                                          width: `${((selection.completedInterviews || 0) / selection.totalCandidates) * 100}%` 
+                                        }}
+                                      ></div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
                               
-                              {/* Data de criação */}
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <Calendar className="h-3 w-3" />
-                                <span>Criado em {createdDate.toLocaleDateString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit', 
-                                  year: 'numeric'
-                                })}</span>
-                              </div>
-                              
-                              {/* Horário */}
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <Clock className="h-3 w-3" />
-                                <span>{createdDate.toLocaleTimeString('pt-BR', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}</span>
+                              {/* Data e horário numa linha só */}
+                              <div className="flex items-center justify-between text-xs text-gray-500 bg-white rounded-lg p-2 border border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-3 w-3" />
+                                  <span>{createdDate.toLocaleDateString('pt-BR', {
+                                    day: '2-digit',
+                                    month: '2-digit', 
+                                    year: 'numeric'
+                                  })}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{createdDate.toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}</span>
+                                </div>
                               </div>
                             </div>
                             
