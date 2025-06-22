@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔧 CORREÇÃO ERRO 515/428 V3 IMPLEMENTADA - Versão exata WhatsApp Web e configurações de rede otimizadas
+  - **Problema identificado**: Stream error 515/428 após isNewLogin por protocolo desatualizado
+  - **Versão WAWeb real**: fetchLatestBaileysVersion() para alinhar protocolo exato
+  - **Keep-alive agressivo**: 15s ping interval + 60s idle timeout para Replit
+  - **Credenciais protegidas**: Salvamento imediato + retry automático em falhas
+  - **Presença ativa**: sendPresenceUpdate('available') após conexão para confirmar
+  - **Reconexão inteligente**: Limpa sessão e recria após erros 515/428 com delay 10s
+  - **Logs melhorados**: Debug completo de versões e estados de conexão
+  
 - June 22, 2025: 🔧 CORREÇÃO ERRO 515 IMPLEMENTADA - Timeouts aumentados e reconexão automática para stream errors
   - **Problema identificado**: Stream error 515 + timeout no uploadPreKeys causando crash
   - **Timeouts aumentados**: defaultQueryTimeoutMs e connectTimeoutMs para 120s, qrTimeout para 180s

@@ -20,6 +20,7 @@ interface WhatsAppSession {
 export class ClientWhatsAppService {
   private sessions: Map<string, WhatsAppSession> = new Map();
   private baileys: any = null;
+  private waVersion: any = null;
 
   constructor() {
     this.initializeBaileys();
@@ -90,20 +91,22 @@ export class ClientWhatsAppService {
       };
 
       const socket = this.baileys.makeWASocket({
+        version: this.waVersion,      // 👈 Usar versão exata do WhatsApp Web
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        browser: ['Replit-Bot', 'Chrome', '1.0.0'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 120000, // 2 minutos para resolver timeout
-        connectTimeoutMs: 120000,      // 2 minutos para conexão
-        keepAliveIntervalMs: 30000,
-        qrTimeout: 180000,            // 3 minutos para QR Code
-        retryRequestDelayMs: 5000,    // Aumentado para 5s entre retries
-        maxMsgRetryCount: 5,          // Mais tentativas
+        defaultQueryTimeoutMs: 120000,
+        connectTimeoutMs: 120000,
+        keepAliveIntervalMs: 15000,   // 👈 Ping a cada 15s (mais agressivo)
+        networkIdleTimeoutMs: 60000,  // 👈 Considera inativo só após 60s
+        qrTimeout: 180000,
+        retryRequestDelayMs: 5000,
+        maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: false,
+        fireInitQueries: false,       // 👈 Não disparar queries automáticas
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
@@ -201,6 +204,14 @@ export class ClientWhatsAppService {
             console.log(`🎉 [BAILEYS] WhatsApp CONECTADO com sucesso para cliente ${clientId}!`);
             console.log(`📱 [BAILEYS] Socket user data:`, socket.user);
             
+            // Enviar presença para confirmar conexão ativa
+            try {
+              await socket.sendPresenceUpdate('available');
+              console.log(`✅ [BAILEYS] Presença 'available' enviada`);
+            } catch (presenceError) {
+              console.warn(`⚠️ [BAILEYS] Erro ao enviar presença:`, presenceError);
+            }
+            
             const phoneNumber = socket.user?.id?.split(':')[0] || null;
             console.log(`📞 [BAILEYS] Número do telefone extraído:`, phoneNumber);
             
@@ -241,52 +252,69 @@ export class ClientWhatsAppService {
           }
 
           if (connection === 'close') {
-            const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-            const shouldReconnect = reason !== 401 && reason !== 403;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== 401;
             
-            console.log(`🔌 [${clientId}] Conexão fechada - Código: ${reason}, Reconectar: ${shouldReconnect}`);
+            console.log(`❌ [BAILEYS] Conexão fechada para cliente ${clientId}:`, statusCode);
+            console.log(`🔍 [BAILEYS] lastDisconnect completo:`, lastDisconnect);
+            console.log(`🔍 [BAILEYS] Promise já resolvida:`, resolved);
             
-            // Atualizar status no banco apenas se não for reconectável
-            if (!shouldReconnect) {
-              await this.updateClientConfig(clientId, {
-                isConnected: false,
-                qrCode: null,
-                phoneNumber: null
-              });
+            // Tratamento específico para erros 515/428 "Stream/Connection Errored"
+            if (statusCode === 515 || statusCode === 428) {
+              console.log(`🔧 [BAILEYS] Stream/Connection error ${statusCode} detectado, tentando reconexão automática...`);
+              console.log(`🔧 [BAILEYS] Mensagem de erro:`, lastDisconnect?.error?.output?.payload?.message);
               
-              // Só limpar sessão em casos específicos (logout real)
-              if (reason === 401) {
-                console.log(`🧹 [${clientId}] Logout detectado - limpando credenciais`);
-                try {
-                  await this.clearClientSession(clientId);
-                } catch (clearError) {
-                  console.error(`❌ Erro ao limpar sessão: ${clearError}`);
-                }
+              if (!resolved) {
+                clearTimeout(timeoutId);
+                resolved = true;
+                resolve({
+                  success: false,
+                  message: `Stream/Connection error ${statusCode} - reconexão necessária`
+                });
               }
               
-              // Remove sessão da memória apenas se não reconectável
+              // Limpar sessão atual e reconectar com delay maior
               this.sessions.delete(clientId);
-            } else {
-              console.log(`🔄 [${clientId}] Desconexão temporária - mantendo credenciais`);
-              // Atualizar apenas status de conexão
-              await this.updateClientConfig(clientId, {
-                isConnected: false
-              });
+              
+              setTimeout(async () => {
+                console.log(`🔄 [BAILEYS] Reconectando após erro ${statusCode} com nova sessão...`);
+                try {
+                  await this.clearClientSession(clientId);
+                  await this.connectClient(clientId);
+                } catch (reconnectError) {
+                  console.error(`❌ [BAILEYS] Falha na reconexão:`, reconnectError);
+                }
+              }, 10000); // Delay maior para errors críticos
+              return;
             }
             
             if (!resolved) {
+              console.log(`❌ [BAILEYS] Conexão fechada antes de completar - resolvendo promise`);
               clearTimeout(timeoutId);
               resolved = true;
-              resolve({ 
-                success: false, 
-                message: shouldReconnect 
-                  ? 'Conexão perdida temporariamente - suas credenciais foram preservadas'
-                  : 'Sessão expirada - será necessário escanear novo QR Code'
+              resolve({
+                success: false,
+                message: `Conexão WhatsApp fechada (código: ${statusCode})`
+              });
+            }
+            
+            if (shouldReconnect && statusCode !== 515 && statusCode !== 428) {
+              console.log(`🔄 [BAILEYS] Tentando reconectar automaticamente...`);
+            } else if (statusCode === 401) {
+              console.log(`🧹 [BAILEYS] Limpando credenciais devido ao erro 401...`);
+              await this.clearClientSession(clientId);
+              await this.updateClientConfig(clientId, {
+                isConnected: false,
+                phoneNumber: null,
+                qrCode: null,
+                lastConnection: new Date(),
+                clientId
               });
             }
           }
         });
 
+        // Salvar credenciais imediatamente a cada atualização
         socket.ev.on('creds.update', async (creds) => {
           console.log(`🔐 [BAILEYS] CREDENCIAIS ATUALIZADAS para cliente ${clientId}!`);
           console.log(`🔐 [BAILEYS] Tipo de credenciais:`, Object.keys(creds || {}));
@@ -294,9 +322,18 @@ export class ClientWhatsAppService {
           
           try {
             await saveCreds();
-            console.log(`✅ [BAILEYS] Credenciais salvas com sucesso`);
+            console.log(`✅ [BAILEYS] Credenciais salvas imediatamente`);
           } catch (saveError) {
-            console.error(`❌ [BAILEYS] Erro ao salvar credenciais:`, saveError);
+            console.error(`❌ [BAILEYS] ERRO CRÍTICO ao salvar credenciais:`, saveError);
+            // Tentar salvar novamente após delay
+            setTimeout(async () => {
+              try {
+                await saveCreds();
+                console.log(`✅ [BAILEYS] Credenciais salvas na segunda tentativa`);
+              } catch (retryError) {
+                console.error(`❌ [BAILEYS] Falha definitiva ao salvar:`, retryError);
+              }
+            }, 1000);
           }
         });
 
