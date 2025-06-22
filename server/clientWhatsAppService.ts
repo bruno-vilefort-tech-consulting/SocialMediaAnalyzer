@@ -154,6 +154,11 @@ export class ClientWhatsAppService {
               console.log(`✅ [BAILEYS] QR DataURL gerado, length: ${qrCodeDataUrl.length}`);
               console.log(`🔍 [BAILEYS] DataURL válido:`, qrCodeDataUrl.startsWith('data:image/png;base64,'));
               
+              // SALVAR QR STRING ORIGINAL PARA DEBUG
+              console.log(`🐛 [DEBUG] QR String original completa:`, qr);
+              console.log(`🐛 [DEBUG] QR String é válida:`, qr.length > 100);
+              console.log(`🐛 [DEBUG] QR contém dados WhatsApp:`, qr.includes('@'));
+              
               // Atualizar configuração do cliente com DataURL
               await this.updateClientConfig(clientId, {
                 qrCode: qrCodeDataUrl,
@@ -182,9 +187,11 @@ export class ClientWhatsAppService {
           }
 
           if (connection === 'open') {
-            console.log(`✅ WhatsApp conectado para cliente ${clientId}`);
+            console.log(`🎉 [BAILEYS] WhatsApp CONECTADO com sucesso para cliente ${clientId}!`);
+            console.log(`📱 [BAILEYS] Socket user data:`, socket.user);
             
             const phoneNumber = socket.user?.id?.split(':')[0] || null;
+            console.log(`📞 [BAILEYS] Número do telefone extraído:`, phoneNumber);
             
             await this.updateClientConfig(clientId, {
               isConnected: true,
@@ -193,6 +200,8 @@ export class ClientWhatsAppService {
               qrCode: null,
               clientId
             });
+            
+            console.log(`💾 [BAILEYS] Configuração atualizada - Cliente conectado!`);
 
             // Armazenar sessão ativa
             const session: WhatsAppSession = {
@@ -267,7 +276,15 @@ export class ClientWhatsAppService {
           }
         });
 
-        socket.ev.on('creds.update', saveCreds);
+        socket.ev.on('creds.update', (creds) => {
+          console.log(`🔐 [BAILEYS] Credenciais atualizadas para cliente ${clientId}`);
+          saveCreds();
+        });
+
+        // Event listener para quando a conexão é estabelecida
+        socket.ev.on('connection.update', (update) => {
+          console.log(`🔄 [BAILEYS] CONNECTION UPDATE COMPLETO:`, JSON.stringify(update, null, 2));
+        });
         
         // Adicionar heartbeat para manter conexão viva
         const heartbeatInterval = setInterval(() => {
