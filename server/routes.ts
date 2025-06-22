@@ -3376,54 +3376,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📱 [WHATSAPP TEST] Telefone: ${phoneNumber}`);
       console.log(`📱 [WHATSAPP TEST] Mensagem: ${message.substring(0, 50)}...`);
       
-      // Usar o serviço WhatsApp Baileys que está funcionando
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      // Usar o clientWhatsAppService corrigido
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
       const clientIdStr = user.clientId.toString();
       
-      // Verificar se o WhatsApp está conectado para este cliente
-      const status = whatsappBaileyService.getStatus(clientIdStr);
-      console.log(`📱 [WHATSAPP TEST] Status do WhatsApp para cliente ${clientIdStr}:`, status);
+      // Enviar mensagem teste usando o serviço correto
+      const result = await clientWhatsAppService.sendTestMessage(clientIdStr, phoneNumber, message);
       
-      if (!status.isConnected) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'WhatsApp não está conectado. Conecte primeiro usando o QR Code.' 
-        });
-      }
-
-      // Formatar número de telefone se necessário
-      let formattedPhone = phoneNumber.replace(/\D/g, ''); // Remove caracteres não numéricos
-      
-      // Se não começar com código do país, adicionar 55 (Brasil)
-      if (!formattedPhone.startsWith('55') && formattedPhone.length === 11) {
-        formattedPhone = '55' + formattedPhone;
-      }
-      
-      // Adicionar @s.whatsapp.net se não tiver
-      if (!formattedPhone.includes('@')) {
-        formattedPhone = formattedPhone + '@s.whatsapp.net';
-      }
-      
-      console.log(`📱 [WHATSAPP TEST] Número formatado: ${formattedPhone}`);
-      
-      // Enviar mensagem usando o serviço Baileys
-      const result = await whatsappBaileyService.sendMessage(
-        clientIdStr,
-        formattedPhone,
-        message
-      );
-      
-      if (result) {
-        console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso para ${phoneNumber}`);
+      if (result.success) {
+        console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso`);
         res.json({ 
           success: true, 
-          message: 'Mensagem de teste enviada com sucesso!' 
+          message: result.message 
         });
       } else {
-        console.log(`❌ [WHATSAPP TEST] Falha no envio para ${phoneNumber}`);
+        console.log(`❌ [WHATSAPP TEST] Falha no envio: ${result.message}`);
         res.status(400).json({ 
           success: false, 
-          message: 'Falha ao enviar mensagem. Verifique se o número está correto e se o WhatsApp está conectado.' 
+          message: result.message 
         });
       }
       
