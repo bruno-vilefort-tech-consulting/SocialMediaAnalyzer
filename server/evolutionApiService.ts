@@ -214,18 +214,24 @@ class EvolutionApiService {
    */
   async getConnectionStatus(clientId: string): Promise<EvolutionConnection | null> {
     try {
+      console.log(`🔍 [Evolution] Verificando status para cliente ${clientId}...`);
+      
       // Verificar cache local primeiro
       let connection = this.connections.get(clientId);
+      console.log(`📱 [Evolution] Conexão na memória:`, !!connection);
       
       // Se não existe local, buscar do banco
       if (!connection) {
+        console.log(`📱 [Evolution] Buscando no banco...`);
         connection = await this.getConnectionFromDatabase(clientId);
         if (connection) {
+          console.log(`📱 [Evolution] Conexão encontrada no banco, salvando na memória`);
           this.connections.set(clientId, connection);
         }
       }
 
       if (!connection) {
+        console.log(`❌ [Evolution] Nenhuma conexão encontrada para cliente ${clientId}`);
         return null;
       }
 
@@ -252,6 +258,14 @@ class EvolutionApiService {
         console.warn(`⚠️ [Evolution] Falha ao verificar status para ${clientId}:`, statusError);
       }
 
+      console.log(`📱 [Evolution] Status final:`, {
+        hasConnection: !!connection,
+        isConnected: connection.isConnected,
+        hasQrCode: !!connection.qrCode,
+        qrCodeLength: connection.qrCode?.length,
+        instanceId: connection.instanceId
+      });
+      
       return connection;
 
     } catch (error) {
@@ -376,14 +390,23 @@ class EvolutionApiService {
         return null;
       }
 
-      return {
+      const connection = {
         clientId,
         instanceId: config.evolutionInstanceId,
         isConnected: config.evolutionConnected || false,
-        qrCode: config.evolutionQrCode || undefined,
-        phoneNumber: config.evolutionPhoneNumber || undefined,
-        lastConnection: config.evolutionLastConnection || undefined
+        qrCode: config.qrCode || config.evolutionQrCode || null,
+        phoneNumber: config.evolutionPhoneNumber || null,
+        lastConnection: config.evolutionLastConnection || null
       };
+      
+      console.log(`📋 [Evolution] Conexão do banco para ${clientId}:`, {
+        hasQrCode: !!connection.qrCode,
+        qrCodeLength: connection.qrCode?.length,
+        hasInstanceId: !!connection.instanceId,
+        isConnected: connection.isConnected
+      });
+      
+      return connection;
     } catch (error) {
       console.error(`❌ [Evolution] Erro ao buscar conexão do banco:`, error);
       return null;
