@@ -15,6 +15,7 @@ import { whatsappQRService } from "./whatsappQRService";
 import { whatsappManager } from "./whatsappManager";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
+import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
@@ -4572,7 +4573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Buscar respostas da seleção para contar finalizadas
           console.log(`🔍 Buscando respostas da seleção ${selection.id}`);
           
-          const responsesSnapshot = await firebaseDb.collection('interviewResponses')
+          const responsesSnapshot = await admin.firestore().collection('interviewResponses')
             .where('selectionId', '==', selection.id.toString())
             .get();
           
