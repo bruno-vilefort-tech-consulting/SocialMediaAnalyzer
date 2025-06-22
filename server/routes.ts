@@ -3150,14 +3150,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Para cada relatório válido do período, contar candidatos que finalizaram entrevistas
+      // Contar entrevistas iniciadas e finalizadas baseado nos relatórios
+      let interviewsStarted = 0;
+      
       for (const reportDoc of validReports) {
         const reportData = reportDoc.data();
         
         try {
-          // Verificar se o relatório tem dados de candidatos com respostas completas
+          // Verificar se o relatório tem dados de candidatos
           if (reportData.responseData && Array.isArray(reportData.responseData)) {
-            // Contar candidatos que têm todas as respostas (sem "Aguardando resposta via WhatsApp")
+            
+            // Contar candidatos que iniciaram entrevista (têm transcrição da primeira pergunta)
+            const startedCandidates = reportData.responseData.filter(candidate => {
+              if (candidate.responses && Array.isArray(candidate.responses) && candidate.responses.length > 0) {
+                // Verificar se a primeira resposta tem transcrição válida
+                const firstResponse = candidate.responses[0];
+                return firstResponse && 
+                       firstResponse.transcription && 
+                       firstResponse.transcription !== "Aguardando resposta via WhatsApp";
+              }
+              return false;
+            });
+            
+            interviewsStarted += startedCandidates.length;
+            
+            // Contar candidatos que finalizaram entrevista (têm todas as respostas com transcrições válidas)
             const completedCandidates = reportData.responseData.filter(candidate => {
               if (candidate.responses && Array.isArray(candidate.responses)) {
                 // Verificar se todas as respostas têm transcrições válidas
@@ -3176,14 +3193,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Calcular taxa de conclusão
-      if (interviewsSent > 0) {
-        completionRate = (interviewsCompleted / interviewsSent) * 100;
+      // Calcular taxa de conclusão baseada em entrevistas iniciadas
+      if (interviewsStarted > 0) {
+        completionRate = (interviewsCompleted / interviewsStarted) * 100;
       }
 
       const statistics = {
         candidatesRegistered,
         interviewsSent,
+        interviewsStarted,
         interviewsCompleted,
         completionRate: Math.round(completionRate * 10) / 10 // Arredondar para 1 casa decimal
       };
