@@ -164,9 +164,32 @@ export default function ApiConfigPage() {
   // Preferir Evolution API, fallback para Baileys
   const { data: evolutionStatus } = useQuery({
     queryKey: [evolutionEndpoint],
-    queryFn: () => apiRequest(evolutionEndpoint),
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      console.log('🌐 [EVOLUTION QUERY] Fazendo request direto para:', evolutionEndpoint);
+      
+      const response = await fetch(evolutionEndpoint, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('🌐 [EVOLUTION QUERY] Dados recebidos:', data);
+      console.log('🌐 [EVOLUTION QUERY] QR Code presente:', !!data.qrCode);
+      console.log('🌐 [EVOLUTION QUERY] QR Code length:', data.qrCode?.length || 0);
+      
+      return data;
+    },
     refetchInterval: 5000,
-    staleTime: 4000,
+    staleTime: 0,
     retry: 1
   });
 

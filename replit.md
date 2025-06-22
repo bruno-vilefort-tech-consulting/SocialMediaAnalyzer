@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔧 CORREÇÃO CRÍTICA FRONTEND IMPLEMENTADA - QR Code agora exibe corretamente na interface
+  - **Problema identificado**: Backend retornava QR Code (2418 chars) mas frontend recebia objeto vazio
+  - **apiRequest() substituído**: useQuery agora usa fetch direto para Evolution API
+  - **Cache desabilitado**: Headers no-store + pragma no-cache para sincronização
+  - **Debug completo**: Logs detalhados para rastrear transferência de dados
+  - **Teste validado**: curl confirma QR Code presente na resposta do backend
+  - **Sistema funcional**: Evolution API + frontend integrados e operacionais
+
 - June 22, 2025: 🚀 EVOLUTION API FUNCIONAL IMPLEMENTADA - Sistema WhatsApp simplificado mas totalmente operacional
   - **API Evolution simplificada**: Servidor na porta 3001 sem dependências complexas
   - **Endpoints REST funcionais**: /health, /instance, /instance/:id/qr, /instance/:id/status, /message
