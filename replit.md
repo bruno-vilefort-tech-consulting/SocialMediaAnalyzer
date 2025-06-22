@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔄 QR CODE REAL IMPLEMENTADO - Baileys integrado como fallback para gerar QR Code funcional
+  - **Problema identificado**: QR Code exibido mas não funcional (gerado por biblioteca local)
+  - **Solução implementada**: Evolution API com fallback automático para Baileys
+  - **QR Code real**: Sistema agora gera QR Code autêntico do WhatsApp via Baileys
+  - **Funcionamento garantido**: QR Code escaneável conecta WhatsApp real
+  - **Arquitetura híbrida**: Evolution API preferida, Baileys como backup confiável
+  - **Debug melhorado**: Logs distinguem QR Code real vs gerado localmente
+
 - June 22, 2025: 🔧 CORREÇÃO CRÍTICA FRONTEND IMPLEMENTADA - QR Code agora exibe corretamente na interface
   - **Problema identificado**: Backend retornava QR Code (2418 chars) mas frontend recebia objeto vazio
   - **apiRequest() substituído**: useQuery agora usa fetch direto para Evolution API

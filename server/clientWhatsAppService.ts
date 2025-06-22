@@ -137,11 +137,12 @@ export class ClientWhatsAppService {
           console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr });
 
           if (qr && !resolved) {
-            console.log(`📱 NOVO QR CODE GERADO para cliente ${clientId}!`);
+            console.log(`📱 QR CODE REAL DO WHATSAPP gerado para cliente ${clientId}!`);
+            console.log(`📱 QR String recebida (primeiros 50 chars):`, qr.substring(0, 50));
             console.log(`⏰ QR Code válido por 2 minutos - escaneie rapidamente!`);
             
             try {
-              // Converter QR Code string para DataURL com configurações otimizadas
+              // Converter QR Code REAL do WhatsApp para DataURL
               const QRCode = await import('qrcode');
               const qrCodeDataUrl = await QRCode.toDataURL(qr, { 
                 errorCorrectionLevel: 'M',
