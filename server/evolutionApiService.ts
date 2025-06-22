@@ -92,37 +92,6 @@ class EvolutionApiService {
         qrCode: qrCodeDataUrl,
         message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
       };
-
-      // Testar conectividade com Evolution API
-      console.log(`🔗 [Evolution] Testando conectividade...`);
-      const testResponse = await fetch(`${this.apiUrl}/health`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        signal: AbortSignal.timeout(5000) // Timeout de 5s
-      });
-
-      if (!testResponse.ok) {
-        console.log(`⚠️ [Evolution] API não acessível (${testResponse.status}) - usando Baileys`);
-        throw new Error(`Evolution API inacessível: HTTP ${testResponse.status}`);
-      }
-
-      console.log(`✅ [Evolution] API acessível - prosseguindo com conexão...`);
-      
-      // Verificar se já existe conexão ativa
-      const existingConnection = await this.getConnectionStatus(clientId);
-      if (existingConnection?.isConnected) {
-        return {
-          success: true,
-          message: `WhatsApp já conectado para cliente ${clientId}`
-        };
-      }
-
-      // Obter ou criar instanceId
-      const instanceId = await this.getOrCreateInstanceId(clientId);
-      console.log(`📱 [Evolution] Usando instanceId: ${instanceId}`);
       
       // Criar instância na Evolution API
       const createResponse = await fetch(`${this.apiUrl}/instance`, {
