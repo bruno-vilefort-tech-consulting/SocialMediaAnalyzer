@@ -369,18 +369,18 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
           return (
             <div
               key={folder.id}
-              className={`relative p-2 rounded-lg border-2 transition-all duration-200 min-h-[50px] ${
-                isDragOver ? 'border-blue-500 bg-blue-100 scale-105 shadow-lg' : 'border-transparent'
+              className={`relative rounded-lg border-2 transition-all duration-200 ${
+                isDragOver ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-lg' : 'border-transparent'
               }`}
               onDragOver={(e) => handleDragOver(e, folder.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, folder.id)}
             >
-              <div className="flex items-center gap-3 group">
+              <div className="relative group">
                 <Button
                   variant={activeFilter === folder.id ? 'default' : 'outline'}
                   onClick={() => applyFilter(folder.id)}
-                  className={`flex items-center gap-2 transition-all duration-200 hover:shadow-md ${
+                  className={`flex items-center gap-2 w-full pr-12 transition-all duration-200 hover:shadow-md ${
                     activeFilter === folder.id ? 'shadow-lg' : ''
                   }`}
                   style={{ 
@@ -403,32 +403,35 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
                   </Badge>
                 </Button>
                 
-                {/* Botões de ação melhorados */}
-                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                  <div className="flex items-center gap-1 bg-white rounded-lg shadow-md border border-gray-200 p-1.5">
+                {/* Botões de ação integrados no canto direito */}
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  <div className="flex items-center gap-0.5">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedFolder(folder);
                         setNewFolderName(folder.name);
                         setNewFolderColor(folder.color);
                         setIsEditDialogOpen(true);
                       }}
-                      className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 rounded-md"
+                      className="h-6 w-6 p-0 hover:bg-blue-100 hover:text-blue-600 transition-all duration-200 rounded"
                       title="Configurar pasta"
                     >
-                      <Settings className="w-4 h-4" />
+                      <Settings className="w-3 h-3" />
                     </Button>
-                    <div className="w-px h-5 bg-gray-300" />
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setFolderToDelete(folder)}
-                      className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 transition-all duration-200 rounded-md"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFolderToDelete(folder);
+                      }}
+                      className="h-6 w-6 p-0 hover:bg-red-100 hover:text-red-600 transition-all duration-200 rounded"
                       title="Excluir pasta"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
