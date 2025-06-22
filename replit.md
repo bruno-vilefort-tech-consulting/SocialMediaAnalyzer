@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔧 CORREÇÃO TIMEOUT UPLOADPREKEYS IMPLEMENTADA - Solução para limitações de rede Replit
+  - **Problema identificado**: Timeout 408 no uploadPreKeys + error 428 por limitações WebSocket Replit
+  - **mobile: true aplicado**: Usa mmg.whatsapp.net em vez de web.whatsapp.com (menos bloqueado)
+  - **Timeouts aumentados**: defaultQueryTimeoutMs e connectTimeoutMs para 180s (3 minutos)
+  - **fireInitQueries: true**: Envia init queries logo após abertura da conexão
+  - **Tratamento 408/428**: Reconexão automática para erros de timeout e conexão terminada
+  - **Sistema adaptado**: Configurado especificamente para ambiente Replit com limitações de rede
+  
 - June 22, 2025: 🔧 CORREÇÃO USERAGENT NULL IMPLEMENTADA - Fallback robusto para versão WhatsApp Web
   - **Problema identificado**: getUserAgent tentando acessar version[0] quando version é null
   - **Fallback implementado**: [2, 2419, 6] quando fetchLatestBaileysVersion() falha

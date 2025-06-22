@@ -115,17 +115,18 @@ export class ClientWhatsAppService {
         printQRInTerminal: false,
         logger: logger,
         browser: ['Replit-Bot', 'Chrome', '1.0.0'], // Garantido 3 strings
+        mobile: true,                 // 👈 Usa mmg.whatsapp.net (menos bloqueado)
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 120000,
-        connectTimeoutMs: 120000,
+        defaultQueryTimeoutMs: 180000, // 👈 3 minutos para uploadPreKeys
+        connectTimeoutMs: 180000,     // 👈 3 minutos para conexão
         keepAliveIntervalMs: 15000,
         networkIdleTimeoutMs: 60000,
         qrTimeout: 180000,
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: false,
+        fireInitQueries: true,        // 👈 Enviar init queries após abrir
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
@@ -278,9 +279,9 @@ export class ClientWhatsAppService {
             console.log(`🔍 [BAILEYS] lastDisconnect completo:`, lastDisconnect);
             console.log(`🔍 [BAILEYS] Promise já resolvida:`, resolved);
             
-            // Tratamento específico para erros 515/428 "Stream/Connection Errored"
-            if (statusCode === 515 || statusCode === 428) {
-              console.log(`🔧 [BAILEYS] Stream/Connection error ${statusCode} detectado, tentando reconexão automática...`);
+            // Tratamento específico para erros 408/428/515 "Timeout/Connection Errored"
+            if (statusCode === 408 || statusCode === 428 || statusCode === 515) {
+              console.log(`🔧 [BAILEYS] Error ${statusCode} detectado (timeout/connection), tentando reconexão automática...`);
               console.log(`🔧 [BAILEYS] Mensagem de erro:`, lastDisconnect?.error?.output?.payload?.message);
               
               if (!resolved) {
@@ -288,22 +289,22 @@ export class ClientWhatsAppService {
                 resolved = true;
                 resolve({
                   success: false,
-                  message: `Stream/Connection error ${statusCode} - reconexão necessária`
+                  message: `Error ${statusCode} - problema de rede/timeout, reconexão necessária`
                 });
               }
               
-              // Limpar sessão atual e reconectar com delay maior
+              // Limpar sessão atual e reconectar com delay
               this.sessions.delete(clientId);
               
               setTimeout(async () => {
-                console.log(`🔄 [BAILEYS] Reconectando após erro ${statusCode} com nova sessão...`);
+                console.log(`🔄 [BAILEYS] Reconectando após erro ${statusCode} (timeout/rede)...`);
                 try {
                   await this.clearClientSession(clientId);
                   await this.connectClient(clientId);
                 } catch (reconnectError) {
                   console.error(`❌ [BAILEYS] Falha na reconexão:`, reconnectError);
                 }
-              }, 10000); // Delay maior para errors críticos
+              }, 5000); // 5s para timeouts de rede
               return;
             }
             
