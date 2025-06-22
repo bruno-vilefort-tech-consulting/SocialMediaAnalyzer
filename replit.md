@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS COM COBRANÇA POR ENGAJAMENTO IMPLEMENTADO - Métrica "Entrevistas Iniciadas" para cobrança real
-  - **Entrevistas Iniciadas**: Nova métrica conta candidatos que responderam pelo menos a primeira pergunta (base para cobrança)
-  - **Lógica de cobrança**: Sistema cobra quando candidato se engaja realmente, não apenas quando recebe convite
-  - **5 métricas principais**: Candidatos cadastrados, Entrevistas enviadas, Iniciadas, Finalizadas e Taxa de conclusão
-  - **Baseado em relatórios**: Dados históricos imutáveis que não diminuem com deleções de seleções
-  - **Taxa de conclusão corrigida**: Calculada com base em entrevistas iniciadas (não enviadas) para ser mais precisa
-  - **Interface 5 colunas**: Layout responsivo adaptado para nova métrica com ícone personalizado
-  - **Plano contratado atualizado**: Utilização baseada em entrevistas iniciadas para refletir cobrança real
+- June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS BASEADO EM RELATÓRIOS IMPLEMENTADO - Dados históricos imutáveis e precisos
+  - **Contagem baseada em relatórios**: Entrevistas enviadas agora contam relatórios (dados permanentes) em vez de seleções (podem ser deletadas)
+  - **Métricas históricas**: Sistema conta candidatos cadastrados e entrevistas finalizadas por período selecionado
+  - **Dados imutáveis**: Estatísticas não diminuem quando seleções são deletadas, mantendo histórico correto
+  - **Filtros de período funcionais**: Mês atual, anterior, últimos 3 meses, período personalizado
+  - **Interface responsiva**: Cards com métricas principais e painel do plano contratado
+  - **Endpoint robusto**: /api/statistics com filtros em memória para evitar problemas de índices Firebase
+  - **Autenticação corrigida**: apiRequest com .json() adequado para receber dados do backend
 
 - June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS IMPLEMENTADO - Painel completo para clientes com métricas em tempo real
   - **Menu "Estatísticas" adicionado**: Novo botão no menu lateral exclusivo para clientes

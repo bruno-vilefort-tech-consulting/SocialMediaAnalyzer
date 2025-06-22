@@ -3097,9 +3097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { from, to } = req.query;
-      const clientId = user.clientId;
-      
-      console.log(`📊 [STATISTICS] Buscando estatísticas para clientId: ${clientId} no período ${fromDate.toISOString()} até ${toDate.toISOString()}`);
+      const clientId = user.clientId.toString();
       
       const fromDate = new Date(from as string);
       const toDate = new Date(to as string);
@@ -3107,11 +3105,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar todos os candidatos do cliente e filtrar por data no código
       const candidatesQuery = query(
         collection(firebaseDb, 'candidates'),
-        where('clientId', '==', clientId)
+        where('clientId', '==', user.clientId)
       );
       const candidatesSnapshot = await getDocs(candidatesQuery);
-      
-      console.log(`📊 [CANDIDATES] Total candidatos encontrados para clientId ${clientId}: ${candidatesSnapshot.size}`);
       
       // Filtrar candidatos por período
       let candidatesRegistered = 0;
@@ -3130,11 +3126,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Buscar todos os relatórios do cliente (dados imutáveis) e filtrar por data no código
       const reportsQuery = query(
         collection(firebaseDb, 'reports'),
-        where('clientId', '==', clientId)
+        where('clientId', '==', user.clientId)
       );
       const reportsSnapshot = await getDocs(reportsQuery);
-      
-      console.log(`📊 [REPORTS] Total relatórios encontrados para clientId ${clientId}: ${reportsSnapshot.size}`);
       
       // Filtrar relatórios por período
       let interviewsSent = 0;
@@ -3156,30 +3150,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Para cada relatório válido do período, contar entrevistas iniciadas e finalizadas
-      let interviewsStarted = 0;
-      
+      // Para cada relatório válido do período, contar candidatos que finalizaram entrevistas
       for (const reportDoc of validReports) {
         const reportData = reportDoc.data();
         
         try {
-          // Verificar se o relatório tem dados de candidatos com respostas
+          // Verificar se o relatório tem dados de candidatos com respostas completas
           if (reportData.responseData && Array.isArray(reportData.responseData)) {
-            
-            // Contar candidatos que iniciaram a entrevista (responderam pelo menos a primeira pergunta)
-            const startedCandidates = reportData.responseData.filter(candidate => {
-              if (candidate.responses && Array.isArray(candidate.responses) && candidate.responses.length > 0) {
-                // Verificar se a primeira resposta tem transcrição válida
-                const firstResponse = candidate.responses[0];
-                return firstResponse.transcription && 
-                       firstResponse.transcription !== "Aguardando resposta via WhatsApp";
-              }
-              return false;
-            });
-            
-            interviewsStarted += startedCandidates.length;
-            
-            // Contar candidatos que finalizaram a entrevista (responderam todas as perguntas)
+            // Contar candidatos que têm todas as respostas (sem "Aguardando resposta via WhatsApp")
             const completedCandidates = reportData.responseData.filter(candidate => {
               if (candidate.responses && Array.isArray(candidate.responses)) {
                 // Verificar se todas as respostas têm transcrições válidas
@@ -3198,20 +3176,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Calcular taxa de conclusão baseada em entrevistas iniciadas
-      if (interviewsStarted > 0) {
-        completionRate = (interviewsCompleted / interviewsStarted) * 100;
+      // Calcular taxa de conclusão
+      if (interviewsSent > 0) {
+        completionRate = (interviewsCompleted / interviewsSent) * 100;
       }
 
       const statistics = {
         candidatesRegistered,
         interviewsSent,
-        interviewsStarted,
         interviewsCompleted,
         completionRate: Math.round(completionRate * 10) / 10 // Arredondar para 1 casa decimal
       };
-
-      console.log(`📊 [STATISTICS] Resultado final para clientId ${clientId}:`, statistics);
 
 
       res.json(statistics);
