@@ -31,6 +31,8 @@ const QRCodeRenderer = ({ qrCode }: { qrCode: string }) => {
           src={qrCode} 
           alt="QR Code WhatsApp" 
           className="w-64 h-64 border-2 border-gray-300 rounded-lg shadow-lg"
+          onLoad={() => console.log('✅ [FRONTEND] QR Code image carregada com sucesso')}
+          onError={(e) => console.error('❌ [FRONTEND] Erro ao carregar QR Code:', e)}
         />
       </div>
     );

@@ -143,20 +143,20 @@ export class ClientWhatsAppService {
             console.log(`⏰ QR Code válido por 2 minutos - escaneie rapidamente!`);
             
             try {
-              // Converter QR Code REAL do WhatsApp para DataURL
-              const QRCode = await import('qrcode');
-              const qrCodeDataUrl = await QRCode.toDataURL(qr, { 
+              // Converter QR Code REAL do WhatsApp para DataURL (configuração corrigida)
+              const { toDataURL } = await import('qrcode');
+              const qrCodeDataUrl = await toDataURL(qr, {
                 errorCorrectionLevel: 'M',
-                type: 'image/png',
-                quality: 0.92,
+                width: 400,
                 margin: 1,
                 color: {
-                  dark: '#000000FF',
-                  light: '#FFFFFFFF'
-                },
-                width: 400
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
               });
-              console.log(`🖼️ QR Code convertido para DataURL, length: ${qrCodeDataUrl.length}`);
+              console.log(`🖼️ [BAILEYS] QR Code convertido corretamente para DataURL, length: ${qrCodeDataUrl.length}`);
+              console.log(`🖼️ [BAILEYS] QR String original length: ${qr.length}`);
+              console.log(`🖼️ [BAILEYS] QR Code DataURL preview:`, qrCodeDataUrl.substring(0, 100));
               
               // Atualizar configuração do cliente com DataURL
               await this.updateClientConfig(clientId, {
