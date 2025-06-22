@@ -1,0 +1,87 @@
+ERRO NO CELULAR: "Não foi possível conectar o dispositivo. Tente novamente mais tarde"
+
+LOGS COMPLETOS PARA CHATGPT:
+
+PROGRESSO OBSERVADO:
+✅ QR Code gerado (7830 caracteres)
+✅ Celular escaneia e tenta conectar
+✅ Credenciais atualizadas no sistema: [ 'account', 'me', 'signalIdentities', 'platform' ]
+✅ isNewLogin: true (celular conectou inicialmente)
+❌ Stream error 515 imediato após credenciais
+❌ Mensagem de erro no celular
+
+SEQUÊNCIA DE EVENTOS:
+1. QR Code escaneado no celular
+2. Credenciais WhatsApp recebidas:
+🔐 [BAILEYS] CREDENCIAIS ATUALIZADAS para cliente 1749849987543!
+🔐 [BAILEYS] Tipo de credenciais: [ 'account', 'me', 'signalIdentities', 'platform' ]
+🔐 [BAILEYS] Promise resolvida: true
+
+3. Login inicial detectado:
+🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
+  "isNewLogin": true
+}
+
+4. Erro 515 imediato:
+🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
+  "connection": "close",
+  "lastDisconnect": {
+    "error": {
+      "data": {
+        "tag": "stream:error",
+        "attrs": {
+          "code": "515"
+        }
+      },
+      "isBoom": true,
+      "isServer": true,
+      "output": {
+        "statusCode": 515,
+        "payload": {
+          "statusCode": 515,
+          "error": "Unknown",
+          "message": "Stream Errored (restart required)"
+        },
+        "headers": {}
+      }
+    },
+    "date": "2025-06-22T21:07:55.482Z"
+  }
+}
+
+CONFIGURAÇÃO BAILEYS ATUAL:
+const socket = this.baileys.makeWASocket({
+  auth: state,
+  printQRInTerminal: false,
+  logger: logger,
+  browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+  markOnlineOnConnect: false,
+  generateHighQualityLinkPreview: false,
+  defaultQueryTimeoutMs: 120000, // 2 minutos para resolver timeout
+  connectTimeoutMs: 120000,      // 2 minutos para conexão
+  keepAliveIntervalMs: 30000,
+  qrTimeout: 180000,            // 3 minutos para QR Code
+  retryRequestDelayMs: 5000,    // Aumentado para 5s entre retries
+  maxMsgRetryCount: 5,          // Mais tentativas
+  syncFullHistory: false,
+  fireInitQueries: false,
+  shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
+  emitOwnEvents: false
+});
+
+PROBLEMA IDENTIFICADO:
+- QR Code funciona (credenciais são recebidas)
+- isNewLogin: true (celular conecta)
+- Stream error 515 mata conexão imediatamente
+- Celular mostra erro "Não foi possível conectar"
+
+AMBIENTE:
+- Plataforma: Replit
+- Baileys: @whiskeysockets/baileys (latest)
+- Node.js: v20.18.1
+
+PERGUNTA PARA CHATGPT:
+Como resolver stream error 515 que ocorre imediatamente após isNewLogin=true? 
+Credenciais são recebidas mas conexão falha com "Stream Errored (restart required)".
+Celular mostra "Não foi possível conectar o dispositivo".
+Possível problema de rede/firewall no Replit?
