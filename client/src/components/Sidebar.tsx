@@ -30,12 +30,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
 
-  // Query para buscar status do WhatsApp
+  // WhatsApp status (Evolution API com fallback para Baileys)
+  const { data: evolutionStatus } = useQuery({
+    queryKey: ['/api/evolution/status'],
+    queryFn: () => apiRequest('/api/evolution/status'),
+    refetchInterval: 5000,
+    staleTime: 4000,
+    enabled: user?.role === 'client',
+    retry: 1
+  });
+
   const { data: whatsappStatus } = useQuery({
     queryKey: ['/api/whatsapp-client/status'],
-    enabled: user?.role === 'client', // Só buscar para clientes
-    refetchInterval: 5000, // Atualizar a cada 5 segundos
+    queryFn: () => apiRequest('/api/whatsapp-client/status'),
+    refetchInterval: 5000,
+    staleTime: 4000,
+    enabled: user?.role === 'client' && !evolutionStatus
   });
+
+  // Priorizar Evolution API
+  const activeWhatsappStatus = evolutionStatus || whatsappStatus;
 
   const masterMenuItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
