@@ -15,33 +15,70 @@ import { useAuth } from "@/hooks/useAuth";
 
 // Componente simples para renderizar QR Code
 const QRCodeRenderer = ({ qrCode }: { qrCode: string }) => {
+  console.log('🔍 QRCodeRenderer recebeu:', {
+    hasQrCode: !!qrCode,
+    qrCodeLength: qrCode?.length,
+    isDataUrl: qrCode?.startsWith('data:image/'),
+    preview: qrCode?.substring(0, 50) + '...'
+  });
+
+  // Se o qrCode já é uma data URL, usar diretamente
+  if (qrCode && qrCode.startsWith('data:image/')) {
+    console.log('✅ Exibindo QR Code direto (data URL)');
+    return (
+      <div className="flex justify-center">
+        <img 
+          src={qrCode} 
+          alt="QR Code WhatsApp" 
+          className="w-64 h-64 border-2 border-gray-300 rounded-lg shadow-lg"
+        />
+      </div>
+    );
+  }
+
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
   
   useEffect(() => {
-    if (qrCode) {
-      // Usar biblioteca qrcode para gerar imagem
+    if (qrCode && !qrCode.startsWith('data:image/')) {
+      console.log('🔄 Gerando QR Code a partir de string...');
+      // Apenas se não for uma data URL, gerar QR Code
       import('qrcode').then(QRCode => {
-        QRCode.toDataURL(qrCode, { width: 256, margin: 2 })
-          .then(url => setQrCodeImage(url))
-          .catch(err => console.error('Erro ao gerar QR Code:', err));
+        QRCode.toDataURL(qrCode, { 
+          width: 256, 
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        })
+          .then(url => {
+            console.log('✅ QR Code gerado com sucesso');
+            setQrCodeImage(url);
+          })
+          .catch(err => console.error('❌ Erro ao gerar QR Code:', err));
       });
     }
   }, [qrCode]);
 
-  if (!qrCodeImage) {
+  if (!qrCodeImage && qrCode && !qrCode.startsWith('data:image/')) {
     return (
-      <div className="w-48 h-48 bg-gray-100 flex items-center justify-center rounded">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="w-64 h-64 bg-gray-100 flex items-center justify-center rounded-lg border-2 border-gray-300">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">Gerando QR Code...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <img 
-      src={qrCodeImage} 
-      alt="QR Code WhatsApp" 
-      className="w-48 h-48 mx-auto"
-    />
+    <div className="flex justify-center">
+      <img 
+        src={qrCodeImage || qrCode} 
+        alt="QR Code WhatsApp" 
+        className="w-64 h-64 border-2 border-gray-300 rounded-lg shadow-lg"
+      />
+    </div>
   );
 };
 
@@ -590,11 +627,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="flex justify-center">
-                        <img 
-                          src={whatsappStatus.qrCode} 
-                          alt="QR Code WhatsApp" 
-                          className="border rounded-lg shadow-sm max-w-xs"
-                        />
+                        <QRCodeRenderer qrCode={whatsappStatus.qrCode} />
                       </div>
                       
                       <div className="text-sm text-blue-600 dark:text-blue-400">
