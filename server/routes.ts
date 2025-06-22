@@ -3161,7 +3161,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         const allResponsesSnapshot = await getDocs(allResponsesQuery);
         
+        // Usar dados dos relatórios para contagem de entrevistas iniciadas
+        for (const reportDoc of validReports) {
+          const reportData = reportDoc.data();
+          const completed = reportData.completedInterviews || 0;
+          
+          // Para cobrança: assumir que se houve entrevistas completadas, houve entrevistas iniciadas
+          if (completed > 0) {
+            interviewsStarted += completed;
+            interviewsCompleted += completed;
+          }
+        }
+        
+        console.log(`🔍 [DEBUG] Contagem final: ${interviewsStarted} iniciadas, ${interviewsCompleted} completadas`);
+        
         if (allResponsesSnapshot.size > 0) {
+          // Debug: mostrar exemplo de resposta
+          const firstResponse = allResponsesSnapshot.docs[0].data();
+          console.log(`🔍 [DEBUG] Exemplo resposta:`, {
+            selectionId: firstResponse.selectionId,
+            phone: firstResponse.phone,
+            transcription: firstResponse.transcription?.substring(0, 50),
+            clientId: firstResponse.clientId
+          });
           // Agrupar por seleção e telefone para contagem única
           const interviewsByKey = new Map();
           
@@ -3171,10 +3193,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const phone = responseData.phone;
             
             // Verificar se é de uma seleção válida do período
-            const isValidSelection = validReports.some(report => {
-              const reportSelectionId = report.data().selectionId;
-              return reportSelectionId && reportSelectionId.toString() === selectionId?.toString();
-            });
+            const validSelectionIds = validReports.map(r => r.data().selectionId?.toString());
+            const isValidSelection = validSelectionIds.includes(selectionId?.toString());
+            
+            console.log(`🔍 [DEBUG] Resposta ${selectionId}/${phone}: válida=${isValidSelection}`);
             
             if (isValidSelection && selectionId && phone) {
               const key = `${selectionId}_${phone}`;
@@ -3184,6 +3206,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               interviewsByKey.get(key).push(responseData);
             }
           });
+          
+          console.log(`🔍 [DEBUG] Entrevistas agrupadas: ${interviewsByKey.size}`);
           
           // Para cada entrevista única, verificar se foi iniciada e completada
           for (const responses of interviewsByKey.values()) {
@@ -3195,6 +3219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const firstResponse = responses[0];
               const hasValidFirstResponse = firstResponse.transcription && 
                                             firstResponse.transcription !== "Aguardando resposta via WhatsApp";
+              
+              console.log(`🔍 [DEBUG] Primeira resposta: "${firstResponse.transcription?.substring(0, 50)}" - válida: ${hasValidFirstResponse}`);
               
               if (hasValidFirstResponse) {
                 interviewsStarted++;
