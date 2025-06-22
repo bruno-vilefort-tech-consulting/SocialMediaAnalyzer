@@ -3096,29 +3096,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 Evolution API: Redirecionando para sistema Baileys para cliente ${user.clientId}`);
+      const clientId = user.clientId.toString();
+      console.log(`🔗 [Evolution] Tentando conectar cliente ${clientId} via Evolution API...`);
       
-      try {
-        // Usar o sistema Baileys existente que já funciona
-        const { clientWhatsAppService } = await import('./clientWhatsAppService');
-        console.log(`📱 clientWhatsAppService importado com sucesso`);
-        
-        const result = await clientWhatsAppService.connectClient(user.clientId.toString());
-        console.log(`📱 Resultado Baileys connect:`, result);
-        
-        res.json(result);
-      } catch (connectError) {
-        console.error(`❌ Erro específico ao conectar via Baileys:`, connectError);
-        res.status(500).json({ 
-          success: false, 
-          message: `Erro específico: ${connectError.message}` 
-        });
-      }
+      // Forçar uso da Evolution API
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const result = await evolutionApiService.connectClient(clientId);
+      
+      console.log(`🔗 [Evolution] Resultado da conexão Evolution API:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0,
+        message: result.message
+      });
+      
+      res.json(result);
     } catch (error) {
       console.error('❌ Erro Evolution API connect:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Erro interno ao conectar Evolution API' 
+        message: `Erro ao conectar via Evolution API: ${error.message}` 
       });
     }
   });
@@ -3130,11 +3127,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔌 Evolution API: Desconectando via sistema Baileys para cliente ${user.clientId}`);
+      const clientId = user.clientId.toString();
+      console.log(`🔌 [Evolution] Desconectando cliente ${clientId} via Evolution API...`);
       
-      // Usar o sistema Baileys existente que já funciona
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
-      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
+      // Usar Evolution API
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const result = await evolutionApiService.disconnectClient(clientId);
       
       res.json(result);
     } catch (error) {
@@ -3156,48 +3154,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientId = user.clientId.toString();
       console.log(`🔗 [Evolution] Verificando status para cliente ${clientId}...`);
       
-      try {
-        // Tentar Evolution API primeiro
-        const { evolutionApiService } = await import('./evolutionApiService');
-        const connection = await evolutionApiService.getConnectionStatus(clientId);
-        
-        if (connection && connection.qrCode) {
-          console.log(`📱 [Evolution] Status via Evolution API encontrado com QR Code`);
-          return res.json({
-            isConnected: connection.isConnected,
-            qrCode: connection.qrCode,
-            phoneNumber: connection.phoneNumber || null,
-            lastConnection: connection.lastConnection,
-            method: 'evolution',
-            instanceId: connection.instanceId
-          });
-        }
-        
-        console.log(`📱 [Evolution] Evolution API sem QR Code, usando Baileys como fallback`);
-        
-      } catch (evolutionError) {
-        console.log(`📱 [Evolution] Fallback para Baileys para cliente ${clientId}`);
-      }
+      // Usar Evolution API diretamente
+      const { evolutionApiService } = await import('./evolutionApiService');
+      const connection = await evolutionApiService.getConnectionStatus(clientId);
       
-      // Fallback para Baileys
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
-      const status = await clientWhatsAppService.getClientStatus(clientId);
-      
-      console.log(`📱 [Evolution] Status via Baileys:`, {
-        isConnected: status.isConnected,
-        hasQrCode: !!status.qrCode,
-        qrCodeLength: status.qrCode?.length || 0,
-        phoneNumber: status.phoneNumber,
-        method: 'baileys'
+      console.log(`📱 [Evolution] Status Evolution API:`, {
+        hasConnection: !!connection,
+        isConnected: connection?.isConnected || false,
+        hasQrCode: !!connection?.qrCode,
+        qrCodeLength: connection?.qrCode?.length || 0,
+        instanceId: connection?.instanceId
       });
       
       res.json({
-        isConnected: status.isConnected,
-        qrCode: status.qrCode,
-        phoneNumber: status.phoneNumber,
-        lastConnection: status.lastConnection,
-        method: 'baileys',
-        instanceId: `baileys_${clientId}`
+        isConnected: connection?.isConnected || false,
+        qrCode: connection?.qrCode || null,
+        phoneNumber: connection?.phoneNumber || null,
+        lastConnection: connection?.lastConnection || null,
+        method: 'evolution',
+        instanceId: connection?.instanceId || `evolution_${clientId}`
       });
     } catch (error) {
       console.error('❌ Erro Evolution API status:', error);
@@ -3205,7 +3180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isConnected: false,
         qrCode: null,
         phoneNumber: null,
-        lastConnection: null
+        lastConnection: null,
+        method: 'evolution'
       });
     }
   });
