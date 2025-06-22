@@ -769,10 +769,7 @@ export default function NewReportsPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {(filteredReports.length > 0 ? 
-                  filteredReports.map(report => selections.find(s => s.id.toString() === report.selectionId)).filter(Boolean) : 
-                  selections
-                )
+                {filteredReports.map(report => selections.find(s => s.id.toString() === report.selectionId)).filter(Boolean)
                   .sort((a: Selection, b: Selection) => {
                     const dateA = new Date(a.createdAt?.seconds * 1000 || a.createdAt);
                     const dateB = new Date(b.createdAt?.seconds * 1000 || b.createdAt);
