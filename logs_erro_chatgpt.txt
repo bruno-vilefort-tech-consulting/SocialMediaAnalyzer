@@ -1,62 +1,34 @@
-LOGS COMPLETOS DO ERRO WHATSAPP BAILEYS - PARA CHATGPT
+ERRO WHATSAPP BAILEYS - TIMEOUT UPLOADPREKEYS + ERROR 428
 
-PROBLEMA: QR Code gerado mas conexão falha com erro 515 "Stream Errored"
+PROBLEMA ATUAL:
+✅ getUserAgent corrigido (version array válido)
+✅ QR Code sendo gerado (7978 caracteres)
+✅ fetchLatestBaileysVersion() funcionando - versão: [ 2, 3000, 1023223821 ]
+❌ TIMEOUT em uploadPreKeys após gerar QR Code
+❌ Error 428 "Connection Terminated by Server"
+❌ Promise rejeitada não tratada - statusCode 408
 
-QR CODE GERADO CORRETAMENTE:
-✅ QR String original do Baileys: 8146 caracteres
-✅ Conversão para DataURL: data:image/png;base64,... (válida)
-✅ Frontend exibe QR Code sem problemas
+LOGS COMPLETOS DO ERRO:
 
-LOGS CRÍTICOS DO ERRO:
+🌐 WA Web version obtida: [ 2, 3000, 1023223821 ]
+🔧 Criando socket com versão: [ 2, 3000, 1023223821 ]
 
-1. GERAÇÃO DO QR CODE (SUCESSO):
-🐛 [DEBUG] ========= QR STRING ORIGINAL COMPLETA =========
-🐛 [DEBUG] QR String length: 304
-🐛 [DEBUG] QR String válida: true
-🐛 [DEBUG] QR contém @ (WhatsApp): true
-🐛 [DEBUG] QR String completa: [STRING_QR_ORIGINAL_DO_BAILEYS]
+✅ [BAILEYS] QR DataURL gerado, length: 7978
+🔍 [BAILEYS] DataURL válido: true
 
-2. CONNECTION UPDATE EVENTS:
-🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
-  "isNewLogin": true
-}
-
-🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
-  "connection": "close",
-  "lastDisconnect": {
-    "error": {
-      "data": {
-        "tag": "stream:error",
-        "attrs": {
-          "code": "515"
-        }
-      },
-      "isBoom": true,
-      "isServer": true,
-      "output": {
-        "statusCode": 515,
-        "payload": {
-          "statusCode": 515,
-          "error": "Unknown",
-          "message": "Stream Errored (restart required)"
-        },
-        "headers": {}
-      }
-    },
-    "date": "2025-06-22T21:02:18.090Z"
-  }
-}
-
-3. ERRO FINAL (CRASH):
-Error: Timed Out
-    at /home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/generics.js:151:32
+❌ [BAILEYS] Promise rejeitada não tratada: Error: Timed Out
+    at /home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/generics.js:151:32 {
   data: {
     stack: 'Error\n' +
       '    at promiseTimeout (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/generics.js:146:19)\n' +
       '    at waitForMessage (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:120:61)\n' +
       '    at query (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:144:13)\n' +
-      '    at uploadPreKeys (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:201:9)\n' +
-      '    at uploadPreKeysToServerIfRequired (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:213:13)'
+      '    at /home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:204:19)\n' +
+      '    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n' +
+      '    at async Object.transaction (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Utils/auth-utils.js:135:26)\n' +
+      '    at async uploadPreKeys (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:201:9)\n' +
+      '    at async uploadPreKeysToServerIfRequired (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:213:13)\n' +
+      '    at async WebSocketClient.<anonymous> (/home/runner/workspace/node_modules/@whiskeysockets/baileys/lib/Socket/socket.js:514:9)'
   },
   isBoom: true,
   isServer: false,
@@ -66,38 +38,57 @@ Error: Timed Out
       statusCode: 408,
       error: 'Request Time-out',
       message: 'Timed Out'
+    },
+    headers: {}
+  }
+}
+
+DEPOIS DO TIMEOUT, ERRO 428:
+🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO: {
+  "connection": "close",
+  "lastDisconnect": {
+    "error": {
+      "output": {
+        "statusCode": 428,
+        "payload": {
+          "statusCode": 428,
+          "error": "Precondition Required",
+          "message": "Connection Terminated by Server"
+        }
+      }
     }
   }
+}
 
-CONFIGURAÇÃO BAILEYS ATUAL:
-const socket = this.baileys.makeWASocket({
-  auth: state,
-  printQRInTerminal: false,
-  logger: logger,
-  browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
-  markOnlineOnConnect: false,
-  generateHighQualityLinkPreview: false,
-  defaultQueryTimeoutMs: 60000,
-  connectTimeoutMs: 60000,
-  keepAliveIntervalMs: 30000,
-  qrTimeout: 120000,
-  retryRequestDelayMs: 2000,
-  maxMsgRetryCount: 3,
-  syncFullHistory: false,
-  fireInitQueries: false,
-  shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
-  emitOwnEvents: false
-});
+CONFIGURAÇÃO ATUAL BAILEYS:
+version: [ 2, 3000, 1023223821 ]  // fetchLatestBaileysVersion() real
+defaultQueryTimeoutMs: 120000
+connectTimeoutMs: 120000
+keepAliveIntervalMs: 15000
+networkIdleTimeoutMs: 60000
+qrTimeout: 180000
+retryRequestDelayMs: 5000
+maxMsgRetryCount: 5
+fireInitQueries: false
 
-ANÁLISE DO ERRO:
-1. QR Code é gerado e válido
-2. Celular escaneia e tenta conectar
-3. Baileys recebe "isNewLogin": true (celular conectou)
-4. Stream error 515 ocorre imediatamente
-5. Timeout no uploadPreKeys para WhatsApp servers
-6. Sistema crasha com "Timed Out" 408
+SEQUÊNCIA DE EVENTOS:
+1. fetchLatestBaileysVersion() obtém [ 2, 3000, 1023223821 ] ✅
+2. makeWASocket() criado com versão válida ✅
+3. QR Code gerado corretamente (7978 chars) ✅
+4. uploadPreKeys tenta fazer handshake criptográfico ❌
+5. waitForMessage timeout após 120s (statusCode 408) ❌
+6. Servidor termina conexão (statusCode 428) ❌
+7. Sistema tenta reconectar automaticamente ↻
 
-PERGUNTA PARA CHATGPT:
-Como resolver erro 515 "Stream Errored" + timeout no uploadPreKeys do Baileys? 
-QR Code conecta no celular mas falha no handshake com servidores WhatsApp.
-Sistema roda no Replit, pode ser firewall/network issue?
+AMBIENTE:
+- Plataforma: Replit (limitações de rede conhecidas)
+- Baileys: @whiskeysockets/baileys (latest)
+- Node.js: v20.18.1
+- Versão WA real: [ 2, 3000, 1023223821 ]
+
+QUESTÃO PARA CHATGPT:
+1. Como resolver timeout no uploadPreKeys (sincronização de chaves criptográficas)?
+2. QR Code é gerado mas processo falha no handshake com servidores WhatsApp
+3. Error 408 + 428 indicam problemas de rede/firewall no Replit?
+4. Precisa configurar proxy, usar Evolution API externa ou outro método?
+5. Possível solução alternativa que funcione no ambiente Replit?
