@@ -156,7 +156,6 @@ export default function StatisticsPage() {
           </div>
         </div>
       </div>
-
       {/* Estatísticas de Entrevistas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
@@ -223,7 +222,6 @@ export default function StatisticsPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* Painel do Plano Contratado */}
       <Card>
         <CardHeader>
@@ -252,7 +250,7 @@ export default function StatisticsPage() {
                   <span className="font-semibold text-slate-900">1.000</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Utilizadas</span>
+                  <span className="text-sm text-slate-600">Entrevistas Iniciadas</span>
                   <span className="font-semibold text-slate-900">{(statsData.interviewsStarted || 0).toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
