@@ -665,7 +665,18 @@ export default function ApiConfigPage() {
                     {activeWhatsappStatus?.qrCode && (
                       <Button
                         onClick={async () => {
+                          console.log('🔄 [DEBUG] Iniciando atualização de QR Code...');
+                          console.log('🔄 [DEBUG] ActiveWhatsappStatus atual:', activeWhatsappStatus);
+                          
                           try {
+                            // Mostrar feedback imediato
+                            toast({
+                              title: "Atualizando QR Code...",
+                              description: "Desconectando sessão atual..."
+                            });
+                            
+                            console.log('🔄 [DEBUG] Enviando disconnect...');
+                            
                             // Desconectar primeiro
                             const disconnectResponse = await fetch('/api/evolution/disconnect', {
                               method: 'POST',
@@ -675,39 +686,72 @@ export default function ApiConfigPage() {
                               }
                             });
                             
+                            const disconnectData = await disconnectResponse.json();
+                            console.log('🔄 [DEBUG] Disconnect response:', disconnectData);
+                            
+                            // Limpar cache imediatamente após disconnect
+                            console.log('🔄 [DEBUG] Invalidando queries após disconnect...');
+                            queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                            queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                            
                             // Aguardar um pouco e reconectar
+                            console.log('🔄 [DEBUG] Aguardando 2 segundos antes de reconectar...');
                             setTimeout(async () => {
-                              const connectResponse = await fetch('/api/evolution/connect', {
-                                method: 'POST',
-                                headers: {
-                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                                  'Content-Type': 'application/json'
+                              try {
+                                console.log('🔄 [DEBUG] Enviando connect...');
+                                
+                                const connectResponse = await fetch('/api/evolution/connect', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                    'Content-Type': 'application/json'
+                                  }
+                                });
+                                
+                                const connectData = await connectResponse.json();
+                                console.log('🔄 [DEBUG] Connect response:', connectData);
+                                
+                                if (connectData.success) {
+                                  console.log('🔄 [DEBUG] Novo QR Code recebido, invalidando cache...');
+                                  
+                                  // Invalidar e forçar refetch
+                                  queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                                  queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                                  
+                                  // Forçar atualização imediata
+                                  setTimeout(() => {
+                                    console.log('🔄 [DEBUG] Forçando refetch das queries...');
+                                    queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
+                                    queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                                  }, 200);
+                                  
+                                  toast({
+                                    title: "QR Code atualizado!",
+                                    description: "Novo QR Code gerado com sucesso"
+                                  });
+                                } else {
+                                  console.error('🔄 [DEBUG] Falha na reconexão:', connectData);
+                                  toast({
+                                    title: "Erro na reconexão",
+                                    description: connectData.message || "Falha ao gerar novo QR Code",
+                                    variant: "destructive"
+                                  });
                                 }
-                              });
-                              
-                              const data = await connectResponse.json();
-                              
-                              if (data.success) {
-                                queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
-                                queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
-                                
-                                setTimeout(() => {
-                                  queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
-                                  queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
-                                }, 500);
-                                
+                              } catch (connectError) {
+                                console.error('🔄 [DEBUG] Erro no connect:', connectError);
                                 toast({
-                                  title: "QR Code atualizado!",
-                                  description: "Novo QR Code gerado com sucesso"
+                                  title: "Erro na reconexão",
+                                  description: "Falha ao conectar novamente",
+                                  variant: "destructive"
                                 });
                               }
-                            }, 1000);
+                            }, 2000);
                             
                           } catch (error) {
-                            console.error('Erro ao atualizar QR Code:', error);
+                            console.error('🔄 [DEBUG] Erro geral na atualização:', error);
                             toast({
                               title: "Erro ao atualizar",
-                              description: "Tente novamente",
+                              description: "Falha na comunicação com o servidor",
                               variant: "destructive"
                             });
                           }
