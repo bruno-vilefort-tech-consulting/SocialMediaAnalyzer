@@ -176,7 +176,7 @@ export default function ApiConfigPage() {
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 10000,
-    enabled: !evolutionStatus, // Só usar Baileys se Evolution não estiver disponível
+    enabled: false, // Desabilitar Baileys - usar apenas Evolution API
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(whatsappEndpoint, {
@@ -195,8 +195,8 @@ export default function ApiConfigPage() {
   // Estado local para forçar re-render do QR Code
   const [qrCodeKey, setQrCodeKey] = useState(0);
   
-  // Usar Evolution como prioridade apenas se tiver QR Code, senão Baileys
-  const activeWhatsappStatus = (evolutionStatus?.qrCode) ? evolutionStatus : whatsappStatus;
+  // SEMPRE usar Evolution API 
+  const activeWhatsappStatus = evolutionStatus;
   
 
 
@@ -776,15 +776,14 @@ export default function ApiConfigPage() {
                   </div>
                 </div>
 
-                {/* QR Code Display */}
-
-                {activeWhatsappStatus?.qrCode && (
+                {/* QR Code Display - FORÇAR EXIBIÇÃO */}
+                {evolutionStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300 flex-1">
                           <QrCode className="h-5 w-5" />
-                          <span className="font-medium">Escaneie o QR Code com seu WhatsApp ({activeWhatsappStatus.method})</span>
+                          <span className="font-medium">Escaneie o QR Code com seu WhatsApp (Evolution API)</span>
                         </div>
                         
                         <Button
