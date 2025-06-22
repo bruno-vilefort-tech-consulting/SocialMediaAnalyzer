@@ -4569,27 +4569,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Para cada seleção, calcular estatísticas
       for (const selection of selections) {
         try {
-          // Buscar candidatos da entrevista
-          const interviewCandidates = await storage.getInterviewCandidatesBySelectionId(selection.id.toString());
+          // Buscar respostas da seleção para contar finalizadas
+          console.log(`🔍 Buscando respostas da seleção ${selection.id}`);
           
-          // Contar candidatos que completaram todas as respostas
-          let completedCount = 0;
+          const responsesSnapshot = await firebaseDb.collection('interviewResponses')
+            .where('selectionId', '==', selection.id.toString())
+            .get();
           
-          for (const candidate of interviewCandidates) {
-            if (candidate.responses && candidate.responses.length > 0) {
-              // Verificar se todas as respostas têm transcrição válida
-              const completedResponses = candidate.responses.filter(r => 
-                r.transcription && 
-                r.transcription !== 'Aguardando resposta via WhatsApp' && 
-                r.transcription.trim() !== ''
-              );
-              
-              // Se todas as respostas estão completas, contar como finalizado
-              if (completedResponses.length === candidate.responses.length && candidate.responses.length > 0) {
-                completedCount++;
-              }
+          console.log(`📊 Total de respostas encontradas para seleção ${selection.id}:`, responsesSnapshot.size);
+          
+          // Contar candidatos únicos com respostas válidas
+          const candidatesWithValidResponses = new Set();
+          
+          responsesSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.transcription && 
+                data.transcription !== 'Aguardando resposta via WhatsApp' && 
+                data.transcription.trim() !== '') {
+              candidatesWithValidResponses.add(data.phone);
             }
-          }
+          });
+          
+          const completedCount = candidatesWithValidResponses.size;
+          console.log(`📊 Seleção ${selection.id}: ${completedCount} candidatos finalizaram`);
           
           // Buscar total de candidatos da lista
           let totalCandidates = 0;
@@ -4601,7 +4603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stats[selection.id] = {
             completed: completedCount,
             total: totalCandidates,
-            inProgress: Math.max(0, interviewCandidates.length - completedCount)
+            inProgress: Math.max(0, candidatesWithValidResponses.size)
           };
           
           console.log(`📊 Seleção ${selection.id}: ${completedCount}/${totalCandidates} completas`);

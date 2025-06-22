@@ -1041,6 +1041,7 @@ export class FirebaseStorage implements IStorage {
       console.log(`🔍 Buscando candidatos da seleção ${selectionId} com dados de entrevista`);
 
       // Buscar a seleção para obter o listId
+      const { firebaseDb } = require('./db.js');
       const selectionDoc = await firebaseDb.collection('selections').doc(selectionId.toString()).get();
       if (!selectionDoc.exists) {
         console.log(`❌ Seleção ${selectionId} não encontrada`);
@@ -1076,26 +1077,20 @@ export class FirebaseStorage implements IStorage {
 
         const candidateData = candidateDoc.data();
 
-        // Buscar dados de entrevista
-        const interviewSnapshot = await firebaseDb.collection('interviews')
-          .where('candidateId', '==', memberData.candidateId)
-          .where('selectionId', '==', selectionId)
+        // Buscar respostas diretamente por telefone e seleção
+        const responsesSnapshot = await firebaseDb.collection('interviewResponses')
+          .where('phone', '==', candidateData.whatsapp)
+          .where('selectionId', '==', selectionId.toString())
           .get();
 
-        let interviewData = null;
-        let responses = [];
+        const responses = responsesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        if (!interviewSnapshot.empty) {
-          const interviewDoc = interviewSnapshot.docs[0];
-          interviewData = interviewDoc.data();
-
-          // Buscar respostas
-          const responsesSnapshot = await firebaseDb.collection('interviewResponses')
-            .where('interviewId', '==', interviewDoc.id)
-            .get();
-
-          responses = responsesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
+        // Criar dados de entrevista baseados nas respostas
+        const interviewData = {
+          candidateId: memberData.candidateId,
+          selectionId: selectionId,
+          status: responses.length > 0 ? 'in_progress' : 'pending'
+        };
 
         candidates.push({
           candidate: {
