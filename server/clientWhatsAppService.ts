@@ -47,7 +47,7 @@ export class ClientWhatsAppService {
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
-      console.log(`🔗 Iniciando conexão WhatsApp para cliente ${clientId}...`);
+      console.log(`🔗 [BAILEYS] Iniciando conexão REAL WhatsApp para cliente ${clientId}...`);
       
       if (!this.baileys) {
         await this.initializeBaileys();
@@ -137,8 +137,9 @@ export class ClientWhatsAppService {
           console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr });
 
           if (qr && !resolved) {
-            console.log(`📱 QR CODE REAL DO WHATSAPP gerado para cliente ${clientId}!`);
-            console.log(`📱 QR String recebida (primeiros 50 chars):`, qr.substring(0, 50));
+            console.log(`📱 [BAILEYS] QR CODE AUTÊNTICO DO WHATSAPP gerado para cliente ${clientId}!`);
+            console.log(`📱 [BAILEYS] QR String original (primeiros 50 chars):`, qr.substring(0, 50));
+            console.log(`📱 [BAILEYS] Este é um QR Code REAL que conecta ao WhatsApp!`);
             console.log(`⏰ QR Code válido por 2 minutos - escaneie rapidamente!`);
             
             try {
@@ -171,7 +172,7 @@ export class ClientWhatsAppService {
               resolve({
                 success: true,
                 qrCode: qrCodeDataUrl,
-                message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
+                message: 'QR Code REAL do WhatsApp gerado - funcional para conexão'
               });
             } catch (error) {
               console.error(`❌ Erro ao converter QR Code para cliente ${clientId}:`, error);
