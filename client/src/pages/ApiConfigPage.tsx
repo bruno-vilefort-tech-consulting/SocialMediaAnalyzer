@@ -833,22 +833,8 @@ export default function ApiConfigPage() {
                   </div>
                 </div>
 
-                {/* QR Code Display - DEBUG + FORÇAR EXIBIÇÃO */}
-                {(() => {
-                  console.log('🔍 [QR DEBUG] Verificando condição render:', {
-                    evolutionStatusExists: !!evolutionStatus,
-                    qrCodeExists: !!evolutionStatus?.qrCode,
-                    qrCodeValue: evolutionStatus?.qrCode?.substring(0, 100)
-                  });
-                  
-                  // TESTE: Criar QR Code fake para debug se não existir
-                  if (!evolutionStatus?.qrCode) {
-                    console.log('🔧 [QR DEBUG] QR Code não encontrado, criando fake para teste visual...');
-                    // Não usar fake, apenas debuggar
-                  }
-                  
-                  return evolutionStatus?.qrCode;
-                })() && (
+                {/* QR Code Display - só mostra se usuário clicou conectar */}
+                {shouldDisplayQR && evolutionStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
                       <div className="flex items-center justify-between">
@@ -860,6 +846,8 @@ export default function ApiConfigPage() {
                         <Button
                           onClick={async () => {
                             try {
+                              setShouldShowQR(false); // Ocultar QR Code
+                              
                               const response = await fetch('/api/evolution/disconnect', {
                                 method: 'POST',
                                 headers: {
