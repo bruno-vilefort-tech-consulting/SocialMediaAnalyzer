@@ -346,11 +346,9 @@ class EvolutionApiService {
         qrCodeLength: connectionData.qrCode?.length
       });
       
-      // Usar createApiConfig ou updateApiConfig conforme disponível no storage
-      const existingConfig = await storage.getApiConfig('client', clientId);
-      
+      // Usar upsertApiConfig que é o método correto disponível
       const configData = {
-        entityType: 'client',
+        entityType: 'client' as const,
         entityId: clientId,
         qrCode: connectionData.qrCode || null,
         whatsappQrConnected: connectionData.isConnected || false,
@@ -360,11 +358,7 @@ class EvolutionApiService {
         updatedAt: new Date()
       };
       
-      if (existingConfig) {
-        await storage.updateApiConfig(existingConfig.id!, configData);
-      } else {
-        await storage.createApiConfig(configData);
-      }
+      await storage.upsertApiConfig(configData);
       
       console.log(`✅ [Evolution] Conexão salva com sucesso para cliente ${clientId}`);
     } catch (error) {
