@@ -3166,14 +3166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         instanceId: connection?.instanceId
       });
       
-      res.json({
+      const responseData = {
         isConnected: connection?.isConnected || false,
         qrCode: connection?.qrCode || null,
         phoneNumber: connection?.phoneNumber || null,
         lastConnection: connection?.lastConnection || null,
         method: 'evolution',
         instanceId: connection?.instanceId || `evolution_${clientId}`
+      };
+      
+      console.log(`📤 [Evolution] Response enviada:`, {
+        hasQrCode: !!responseData.qrCode,
+        qrCodeLength: responseData.qrCode?.length || 0,
+        isConnected: responseData.isConnected
       });
+      
+      res.json(responseData);
     } catch (error) {
       console.error('❌ Erro Evolution API status:', error);
       res.status(500).json({ 
