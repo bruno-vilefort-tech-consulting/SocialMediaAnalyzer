@@ -3242,6 +3242,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ Erro ao buscar respostas:`, error.message);
       }
 
+      // Debug: listar candidatos específicos que iniciaram entrevistas
+      const candidatesWithInterviews = [];
+      
+      for (const reportDoc of validReports) {
+        const reportData = reportDoc.data();
+        if (reportData.completedInterviews && reportData.completedInterviews > 0) {
+          // Buscar candidatos neste relatório
+          if (reportData.candidatesData && Array.isArray(reportData.candidatesData)) {
+            reportData.candidatesData.forEach((candidate: any) => {
+              if (reportData.responseData && Array.isArray(reportData.responseData)) {
+                const candidateResponses = reportData.responseData.filter((response: any) => 
+                  response.phone === candidate.phone || response.candidatePhone === candidate.phone
+                );
+                
+                if (candidateResponses.length > 0) {
+                  const hasValidResponses = candidateResponses.some((response: any) => 
+                    response.transcription && 
+                    response.transcription !== "Aguardando resposta via WhatsApp"
+                  );
+                  
+                  if (hasValidResponses) {
+                    candidatesWithInterviews.push({
+                      nome: candidate.name || candidate.nome,
+                      telefone: candidate.phone,
+                      vaga: reportData.jobData?.name || 'Vaga não especificada',
+                      data: reportData.createdAt.toDate().toLocaleDateString('pt-BR')
+                    });
+                  }
+                }
+              }
+            });
+          }
+        }
+      }
+      
+      console.log(`📋 Total de candidatos únicos que iniciaram entrevistas: ${candidatesWithInterviews.length}`);
+      candidatesWithInterviews.forEach((candidate, index) => {
+        console.log(`${index + 1}. Nome: ${candidate.nome || 'N/A'}, Telefone: ${candidate.telefone || 'N/A'}, Vaga: ${candidate.vaga || 'N/A'}, Data: ${candidate.data || 'N/A'}`);
+      });
+
       console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
       console.log(`📊 Entrevistas finalizadas no período: ${interviewsCompleted}`);
       
