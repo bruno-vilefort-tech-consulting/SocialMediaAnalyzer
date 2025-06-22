@@ -1,0 +1,81 @@
+Guia de correção – erro “Cannot read properties of null (reading '0')” em getUserAgent
+
+============================================================
+POR QUE ACONTECE
+------------------------------------------------------------
+• A função **getUserAgent** dentro do Baileys tenta acessar **version[0]**.
+• Se o campo **version** passado para `makeWASocket()` estiver `null` ou
+  `undefined`, ocorre o TypeError mostrado nos logs.
+• Na maioria dos casos, isso acontece quando `fetchLatestBaileysVersion()`
+  falha (problema de rede/firewall) ou sua chamada não foi `await`‑ada
+  corretamente, resultando em `this.waVersion === undefined`.
+
+============================================================
+PASSO A PASSO DE CORREÇÃO
+------------------------------------------------------------
+1. **Busque a versão de forma assíncrona e aguarde o resultado**
+
+   ```ts
+   import makeWASocket, { fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+
+   async function getWaSocket () {
+     let waVersion: number[]
+
+     try {
+       const fetched = await fetchLatestBaileysVersion()
+       waVersion = fetched.version                      // <-- array [major, minor, patch]
+       console.log('WA Web version obtida:', waVersion)
+     } catch (err) {
+       console.error('Não foi possível buscar versão WA, usando fallback:', err)
+       waVersion = [2, 2419, 6]                         // Fallback estável (Jun/2025)
+     }
+
+     const { state, saveCreds } = await useMultiFileAuthState('auth')
+
+     const sock = makeWASocket({
+       version: waVersion,                              // ✅ sempre array válido
+       auth: state,
+       // browser pode ser omitido; se mantiver, garanta 3 strings
+       browser: ['Replit‑Bot', 'Chrome', '1.0.0'],
+       keepAliveIntervalMs: 15000,
+       networkIdleTimeoutMs: 60000,
+       connectTimeoutMs: 120000,
+       defaultQueryTimeoutMs: 120000,
+       qrTimeout: 180000,
+       fireInitQueries: false,
+       shouldIgnoreJid: jid => jid.includes('@newsletter')
+     })
+
+     sock.ev.on('creds.update', saveCreds)
+     return sock
+   }
+
+   export const socket = await getWaSocket()
+   ```
+
+2. **Verifique se o array `browser` contém 3 strings**
+   Caso prefira não definir, remova totalmente a opção `browser`.
+   Baileys criará um user‑agent padrão.
+
+3. **Captura de erros de rede do `fetchLatestBaileysVersion()`**
+   Replit pode bloquear requisições externas. O `catch` acima garante fallback.
+
+4. **Teste localmente**
+   Execute o mesmo código em máquina local ou VPS para confirmar que o problema
+   não é restrição de rede do Replit.
+
+5. **Atualize Baileys se necessário**
+   ```
+   npm i @whiskeysockets/baileys@latest
+   ```
+
+6. **Reimplante no Replit**
+   • Suba o novo arquivo de serviço com a lógica de fallback.
+   • Faça `npm restart` ou `pm2 restart all`.
+
+============================================================
+RESUMO RÁPIDO
+------------------------------------------------------------
+*Erro*: TypeError em `getUserAgent` → **version** chegou `null`.
+*Fix*: sempre forneça um array `[major, minor, patch]`, usando
+`await fetchLatestBaileysVersion()` + fallback manual.

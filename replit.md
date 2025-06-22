@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔧 CORREÇÃO USERAGENT NULL IMPLEMENTADA - Fallback robusto para versão WhatsApp Web
+  - **Problema identificado**: getUserAgent tentando acessar version[0] quando version é null
+  - **Fallback implementado**: [2, 2419, 6] quando fetchLatestBaileysVersion() falha
+  - **Validação dupla**: Verificação antes de criar socket + logs detalhados
+  - **Array browser garantido**: Sempre 3 strings ['Replit-Bot', 'Chrome', '1.0.0']
+  - **Tratamento de erro de rede**: try/catch para problemas de conectividade Replit
+  - **Sistema robusto**: Funcionará mesmo com limitações de rede externa
+  
 - June 22, 2025: 🔧 CORREÇÃO ERRO 515/428 V3 IMPLEMENTADA - Versão exata WhatsApp Web e configurações de rede otimizadas
   - **Problema identificado**: Stream error 515/428 após isNewLogin por protocolo desatualizado
   - **Versão WAWeb real**: fetchLatestBaileysVersion() para alinhar protocolo exato

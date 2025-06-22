@@ -30,6 +30,17 @@ export class ClientWhatsAppService {
     try {
       this.baileys = await import('@whiskeysockets/baileys');
       console.log('📱 Baileys inicializado para ClientWhatsAppService');
+      
+      // Buscar versão WhatsApp Web com fallback robusto
+      try {
+        const fetched = await this.baileys.fetchLatestBaileysVersion();
+        this.waVersion = fetched.version; // array [major, minor, patch]
+        console.log('🌐 WA Web version obtida:', this.waVersion);
+      } catch (versionError) {
+        console.error('⚠️ Não foi possível buscar versão WA, usando fallback:', versionError);
+        this.waVersion = [2, 2419, 6]; // Fallback estável (Jun/2025)
+        console.log('🔄 Usando versão fallback:', this.waVersion);
+      }
     } catch (error) {
       console.error('❌ Erro ao inicializar Baileys:', error);
     }
@@ -90,23 +101,31 @@ export class ClientWhatsAppService {
         silent: () => {}
       };
 
+      // Garantir que temos uma versão válida antes de criar o socket
+      if (!this.waVersion || !Array.isArray(this.waVersion)) {
+        console.log('⚠️ Versão inválida detectada, forçando fallback...');
+        this.waVersion = [2, 2419, 6]; // Fallback garantido
+      }
+
+      console.log('🔧 Criando socket com versão:', this.waVersion);
+
       const socket = this.baileys.makeWASocket({
-        version: this.waVersion,      // 👈 Usar versão exata do WhatsApp Web
+        version: this.waVersion,      // ✅ Sempre array válido [major, minor, patch]
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        browser: ['Replit-Bot', 'Chrome', '1.0.0'],
+        browser: ['Replit-Bot', 'Chrome', '1.0.0'], // Garantido 3 strings
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 120000,
         connectTimeoutMs: 120000,
-        keepAliveIntervalMs: 15000,   // 👈 Ping a cada 15s (mais agressivo)
-        networkIdleTimeoutMs: 60000,  // 👈 Considera inativo só após 60s
+        keepAliveIntervalMs: 15000,
+        networkIdleTimeoutMs: 60000,
         qrTimeout: 180000,
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: false,       // 👈 Não disparar queries automáticas
+        fireInitQueries: false,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
