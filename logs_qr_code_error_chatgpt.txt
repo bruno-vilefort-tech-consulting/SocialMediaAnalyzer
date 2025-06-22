@@ -1,0 +1,82 @@
+LOGS DE ERRO QR CODE WHATSAPP - PARA CHATGPT
+
+## PROBLEMA:
+QR Code está sendo gerado com sucesso (7918 caracteres) mas aparece automaticamente na interface mesmo sem usuário clicar "Conectar".
+
+## LOGS DO BACKEND (server/clientWhatsAppService.ts):
+```
+🔗 [BAILEYS] Iniciando conexão REAL WhatsApp para cliente 1749849987543...
+🔧 Criando socket com versão: [ 2, 3000, 1023223821 ]
+✅ [Evolution] QR Code REAL obtido do Baileys: 7918 chars
+💾 [Evolution] Salvando conexão para cliente 1749849987543: {
+  instanceId: 'client_1749849987543_1750628455966',
+  isConnected: false,
+  hasQrCode: true,
+  qrCodeLength: 7918
+}
+🔗 [Evolution] Resultado da conexão Evolution API: {
+  success: true,
+  hasQrCode: true,
+  qrCodeLength: 7918,
+  message: 'QR Code funcional do WhatsApp gerado via Baileys'
+}
+```
+
+## LOGS DO FRONTEND (ApiConfigPage.tsx):
+```
+🌐 [EVOLUTION QUERY] Fazendo request direto para: /api/evolution/status
+🌐 [EVOLUTION QUERY] Dados recebidos: {
+  isConnected: false,
+  qrCode: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZAAAAGQCAYAAACAvzbMAAAAAklEQVR4AewaftIAABbZ...",
+  phoneNumber: null,
+  lastConnection: "2025-06-22T21:40:58.762Z",
+  method: "evolution",
+  instanceId: "client_1749849987543_1750628455966"
+}
+🌐 [EVOLUTION QUERY] QR Code presente: true
+🌐 [EVOLUTION QUERY] QR Code length: 7918
+🔍 [QR DEBUG] Evolution Status completo: { isConnected: false, qrCode: "data:image/png;base64,..." }
+🔍 [QR DEBUG] QR Code existe: true
+🔍 [QR DEBUG] QR Code length: 7918
+```
+
+## CONFIGURAÇÃO ATUAL DO COMPONENT (ApiConfigPage.tsx):
+```javascript
+// Estado para controlar quando mostrar QR Code
+const [shouldShowQR, setShouldShowQR] = useState(false);
+
+// Só mostrar QR Code se usuário clicou para conectar OU já está conectado
+const shouldDisplayQR = shouldShowQR && (activeWhatsappStatus?.qrCode || activeWhatsappStatus?.isConnected);
+
+// Renderização condicional
+{shouldDisplayQR && evolutionStatus?.qrCode && (
+  <div className="space-y-4 p-4 bg-blue-50">
+    {/* QR Code aqui */}
+  </div>
+)}
+```
+
+## PROBLEMA IDENTIFICADO:
+O QR Code continua aparecendo automaticamente mesmo com shouldShowQR = false inicial. O useQuery do Evolution API executa automaticamente e retorna QR Code válido, mas a interface ainda exibe mesmo sem usuário clicar "Conectar".
+
+## PERGUNTA PARA CHATGPT:
+Por que o QR Code aparece automaticamente na interface mesmo com useState(false) e condição shouldDisplayQR? Como fazer para que só apareça quando usuário explicitamente clicar no botão "Conectar WhatsApp"?
+
+## COMPORTAMENTO ATUAL VS ESPERADO:
+- ATUAL: QR Code aparece automaticamente ao carregar página de Configurações
+- ESPERADO: QR Code só aparece após usuário clicar em "Conectar WhatsApp"
+
+## CONFIGURAÇÃO USEQUERY:
+```javascript
+const { data: evolutionStatus } = useQuery({
+  queryKey: [evolutionEndpoint],
+  queryFn: async () => {
+    // Busca status sempre, mesmo quando shouldShowQR = false
+    const response = await fetch('/api/evolution/status', {...});
+    return response.json();
+  },
+  refetchInterval: shouldShowQR ? 5000 : 30000,
+  staleTime: 0,
+  enabled: !isMaster
+});
+```
