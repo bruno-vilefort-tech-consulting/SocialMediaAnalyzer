@@ -218,10 +218,21 @@ export default function ApiConfigPage() {
   // Estado local para forçar re-render do QR Code
   const [qrCodeKey, setQrCodeKey] = useState(0);
   
-  // DEBUG: Log completo dos dados recebidos
-  console.log('🔍 [QR DEBUG] Evolution Status completo:', evolutionStatus);
-  console.log('🔍 [QR DEBUG] QR Code existe:', !!evolutionStatus?.qrCode);
-  console.log('🔍 [QR DEBUG] QR Code length:', evolutionStatus?.qrCode?.length);
+  // Evolution API Debug melhorado
+  useEffect(() => {
+    console.log('🔍 [QR DEBUG] Evolution Status completo:', evolutionStatus);
+    console.log('🔍 [QR DEBUG] Tipo do evolutionStatus:', typeof evolutionStatus);
+    console.log('🔍 [QR DEBUG] QR Code existe:', !!evolutionStatus?.qrCode);
+    console.log('🔍 [QR DEBUG] QR Code length:', evolutionStatus?.qrCode?.length || null);
+    
+    if (evolutionStatus) {
+      console.log('🔍 [QR DEBUG] Todas as propriedades do evolutionStatus:');
+      Object.keys(evolutionStatus).forEach(key => {
+        const value = evolutionStatus[key];
+        console.log(`  - ${key}:`, typeof value, typeof value === 'string' ? value.substring(0, 50) + '...' : value);
+      });
+    }
+  }, [evolutionStatus]);
   
   // FORÇAR EXIBIÇÃO DO QR CODE NO CONSOLE
   if (evolutionStatus?.qrCode) {
