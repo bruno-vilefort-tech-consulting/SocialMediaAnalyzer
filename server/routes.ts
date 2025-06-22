@@ -3247,39 +3247,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const reportDoc of validReports) {
         const reportData = reportDoc.data();
+        
+        console.log(`📋 Analisando relatório ${reportData.selectionId}:`);
+        console.log(`   - completedInterviews: ${reportData.completedInterviews}`);
+        console.log(`   - candidatesData exists: ${!!reportData.candidatesData}`);
+        console.log(`   - responseData exists: ${!!reportData.responseData}`);
+        
         if (reportData.completedInterviews && reportData.completedInterviews > 0) {
-          // Buscar candidatos neste relatório
-          if (reportData.candidatesData && Array.isArray(reportData.candidatesData)) {
-            reportData.candidatesData.forEach((candidate: any) => {
-              if (reportData.responseData && Array.isArray(reportData.responseData)) {
-                const candidateResponses = reportData.responseData.filter((response: any) => 
-                  response.phone === candidate.phone || response.candidatePhone === candidate.phone
-                );
-                
-                if (candidateResponses.length > 0) {
-                  const hasValidResponses = candidateResponses.some((response: any) => 
-                    response.transcription && 
-                    response.transcription !== "Aguardando resposta via WhatsApp"
-                  );
-                  
-                  if (hasValidResponses) {
-                    candidatesWithInterviews.push({
-                      nome: candidate.name || candidate.nome,
-                      telefone: candidate.phone,
-                      vaga: reportData.jobData?.name || 'Vaga não especificada',
-                      data: reportData.createdAt.toDate().toLocaleDateString('pt-BR')
-                    });
-                  }
-                }
-              }
+          // Verificar estrutura dos dados
+          if (reportData.candidatesData) {
+            console.log(`   - Número de candidatos: ${reportData.candidatesData.length}`);
+            if (reportData.candidatesData.length > 0) {
+              const firstCandidate = reportData.candidatesData[0];
+              console.log(`   - Exemplo candidato keys: ${Object.keys(firstCandidate).join(', ')}`);
+            }
+          }
+          
+          if (reportData.responseData) {
+            console.log(`   - Número de respostas: ${reportData.responseData.length}`);
+            if (reportData.responseData.length > 0) {
+              const firstResponse = reportData.responseData[0];
+              console.log(`   - Exemplo resposta keys: ${Object.keys(firstResponse).join(', ')}`);
+            }
+          }
+          
+          // Para contagem simples: usar completedInterviews direto
+          const jobName = reportData.jobData?.name || reportData.jobName || 'Vaga não especificada';
+          const reportDate = reportData.createdAt.toDate().toLocaleDateString('pt-BR');
+          
+          for (let i = 0; i < reportData.completedInterviews; i++) {
+            candidatesWithInterviews.push({
+              nome: `Candidato ${i + 1}`,
+              vaga: jobName,
+              data: reportDate,
+              relatorio: reportData.selectionId
             });
           }
         }
       }
       
-      console.log(`📋 Total de candidatos únicos que iniciaram entrevistas: ${candidatesWithInterviews.length}`);
+      console.log(`📋 Candidatos que iniciaram entrevistas no período (${candidatesWithInterviews.length}):`);
       candidatesWithInterviews.forEach((candidate, index) => {
-        console.log(`${index + 1}. Nome: ${candidate.nome || 'N/A'}, Telefone: ${candidate.telefone || 'N/A'}, Vaga: ${candidate.vaga || 'N/A'}, Data: ${candidate.data || 'N/A'}`);
+        console.log(`${index + 1}. ${candidate.nome} - ${candidate.vaga} - ${candidate.data} (Relatório: ${candidate.relatorio})`);
       });
 
       console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
