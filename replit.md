@@ -136,6 +136,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Exclusivo para clientes**: Só aparece para usuários com role 'client'
   - **Hover states**: Efeitos visuais sutis ao passar mouse sobre o indicador
 
+- June 22, 2025: 🔧 CORREÇÃO CRÍTICA BAILEYS IMPLEMENTADA - 5 problemas fundamentais corrigidos
+  - **Estrutura de diretórios corrigida**: client-{id} → client_{id} conforme documentação
+  - **Gerenciamento de sessões melhorado**: Sistema detecta e restaura credenciais existentes
+  - **Tratamento de desconexões inteligente**: Diferencia logout real de instabilidade temporária
+  - **Configuração browser otimizada**: 'Replit WhatsApp Bot' em vez de Ubuntu/Chrome genérico
+  - **Keep-alive robusto**: Heartbeat de 25s + ping customizado para manter conexão
+  - **Logger completamente silenciado**: Elimina interferências de debug
+  - **Preservação de credenciais**: Não limpa sessão em desconexões temporárias
+
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
   - **Ícones de pasta preenchidos**: Pastas ativas mostram ícone preenchido com a cor personalizada

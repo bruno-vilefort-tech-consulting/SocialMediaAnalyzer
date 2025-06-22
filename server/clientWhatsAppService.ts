@@ -54,10 +54,29 @@ export class ClientWhatsAppService {
       }
 
       await this.ensureSessionDirectory(clientId);
+      
+      // Verificar se já existe sessão válida
+      const sessionPath = this.getSessionPath(clientId);
+      const fs = await import('fs');
+      const credsPath = `${sessionPath}/creds.json`;
+      
+      if (fs.existsSync(credsPath)) {
+        console.log(`📂 [${clientId}] Credenciais existentes encontradas - tentando restaurar sessão`);
+        try {
+          const credsContent = fs.readFileSync(credsPath, 'utf8');
+          const creds = JSON.parse(credsContent);
+          if (creds.me && creds.me.id) {
+            console.log(`✅ [${clientId}] Credenciais válidas - tentando reconexão sem QR Code`);
+          }
+        } catch (parseError) {
+          console.log(`⚠️ [${clientId}] Credenciais corrompidas - será necessário novo QR Code`);
+          await this.clearClientSession(clientId);
+        }
+      }
 
       const { state, saveCreds } = await this.baileys.useMultiFileAuthState(this.getSessionPath(clientId));
       
-      // Criar logger compatível com Baileys
+      // Criar logger completamente silenciado
       const logger = {
         level: 'silent',
         child: () => logger,
@@ -66,28 +85,29 @@ export class ClientWhatsAppService {
         info: () => {},
         warn: () => {},
         error: () => {},
-        fatal: () => {}
+        fatal: () => {},
+        silent: () => {}
       };
 
       const socket = this.baileys.makeWASocket({
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
-        markOnlineOnConnect: false,
+        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        markOnlineOnConnect: true,
         generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000,
-        qrTimeout: 120000, // 2 minutos
-        retryRequestDelayMs: 1000,
-        maxMsgRetryCount: 3,
+        keepAliveIntervalMs: 60000, // Aumentado para Replit
+        qrTimeout: 120000,
+        retryRequestDelayMs: 2000,
+        maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: false,
+        fireInitQueries: true, // Mudado para true
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false,
         getMessage: async (key: any) => {
-          return { conversation: 'Hello' };
+          return { conversation: 'Sistema de entrevistas ativo' };
         }
       });
 
@@ -231,6 +251,20 @@ export class ClientWhatsAppService {
         });
 
         socket.ev.on('creds.update', saveCreds);
+        
+        // Adicionar heartbeat para manter conexão viva
+        const heartbeatInterval = setInterval(() => {
+          if (socket.ws && socket.ws.readyState === 1) {
+            socket.ws.ping();
+          }
+        }, 25000); // Ping a cada 25 segundos
+        
+        // Limpar heartbeat quando socket fechar
+        socket.ev.on('connection.update', (update: any) => {
+          if (update.connection === 'close') {
+            clearInterval(heartbeatInterval);
+          }
+        });
       });
     } catch (error) {
       console.error(`❌ Erro ao conectar WhatsApp para cliente ${clientId}:`, error);
