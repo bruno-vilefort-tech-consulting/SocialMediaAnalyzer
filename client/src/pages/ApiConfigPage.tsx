@@ -163,6 +163,9 @@ export default function ApiConfigPage() {
   const evolutionEndpoint = '/api/evolution/status';
   const whatsappEndpoint = '/api/whatsapp-client/status'; // Fallback para Baileys
   
+  // Estado para controlar quando mostrar QR Code
+  const [shouldShowQR, setShouldShowQR] = useState(false);
+  
   // Preferir Evolution API, fallback para Baileys
   const { data: evolutionStatus } = useQuery({
     queryKey: [evolutionEndpoint],
