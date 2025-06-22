@@ -150,6 +150,15 @@ export interface IStorage {
   createReportFolder(folder: InsertReportFolder): Promise<ReportFolder>;
   updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder>;
   deleteReportFolder(id: string): Promise<void>;
+
+  // Report Folder Assignments
+  getAllReportFolderAssignments(): Promise<ReportFolderAssignment[]>;
+  getAllReportFolderAssignmentsByClientId(clientId: string): Promise<ReportFolderAssignment[]>;
+  getReportFolderAssignments(folderId: string): Promise<ReportFolderAssignment[]>;
+  createReportFolderAssignment(assignment: InsertReportFolderAssignment): Promise<ReportFolderAssignment>;
+  deleteReportFolderAssignment(reportId: string): Promise<void>;
+  updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder>;
+  deleteReportFolder(id: string): Promise<void>;
   
   // Report Folder Assignments
   getReportFolderAssignments(folderId: string): Promise<ReportFolderAssignment[]>;

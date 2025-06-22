@@ -4526,6 +4526,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Report Folder Assignments API endpoints
+  
+  // Get all assignments for current user
+  app.get("/api/report-folder-assignments", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      console.log('📋 Buscando assignments para usuário:', req.user?.role, req.user?.clientId);
+      
+      // For client users, get assignments only for their folders
+      if (req.user?.role === 'client') {
+        const assignments = await storage.getAllReportFolderAssignmentsByClientId(req.user.clientId.toString());
+        console.log('📋 Assignments encontrados para cliente:', assignments.length);
+        res.json(assignments);
+      } else {
+        // For master users, get all assignments
+        const assignments = await storage.getAllReportFolderAssignments();
+        console.log('📋 Assignments encontrados (master):', assignments.length);
+        res.json(assignments);
+      }
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      res.status(500).json({ message: 'Failed to fetch assignments' });
+    }
+  });
+
   app.get("/api/report-folders/:folderId/reports", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const { folderId } = req.params;
