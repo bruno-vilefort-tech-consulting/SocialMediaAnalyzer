@@ -3150,49 +3150,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Contar entrevistas iniciadas e finalizadas baseado nos relatórios
+      // Contar entrevistas iniciadas e finalizadas baseado nas respostas reais do Firebase
       let interviewsStarted = 0;
       
       for (const reportDoc of validReports) {
         const reportData = reportDoc.data();
         
         try {
-          // Verificar se o relatório tem dados de candidatos
-          if (reportData.responseData && Array.isArray(reportData.responseData)) {
+          // Buscar respostas da seleção específica do relatório
+          const selectionId = reportData.selectionId;
+          
+          if (selectionId) {
+            // Buscar todas as respostas desta seleção
+            const responsesQuery = query(
+              collection(firebaseDb, 'interviewResponses'),
+              where('selectionId', '==', selectionId.toString()),
+              where('clientId', '==', user.clientId)
+            );
+            const responsesSnapshot = await getDocs(responsesQuery);
             
-            // Contar candidatos que iniciaram entrevista (têm transcrição da primeira pergunta)
-            const startedCandidates = reportData.responseData.filter(candidate => {
-              if (candidate.responses && Array.isArray(candidate.responses) && candidate.responses.length > 0) {
-                // Verificar se a primeira resposta tem transcrição válida
-                const firstResponse = candidate.responses[0];
-                // Verificar tanto transcription quanto responseText
-                const hasValidTranscription = firstResponse.transcription && 
+            console.log(`🔍 [DEBUG SELECTION ${selectionId}] Respostas encontradas: ${responsesSnapshot.size}`);
+            
+            // Agrupar respostas por telefone do candidato
+            const candidateResponses = new Map();
+            responsesSnapshot.docs.forEach(doc => {
+              const responseData = doc.data();
+              const phone = responseData.phone;
+              
+              if (!candidateResponses.has(phone)) {
+                candidateResponses.set(phone, []);
+              }
+              candidateResponses.get(phone).push(responseData);
+            });
+            
+            console.log(`🔍 [DEBUG SELECTION ${selectionId}] Candidatos únicos: ${candidateResponses.size}`);
+            
+            // Para cada candidato, verificar se iniciou e se completou a entrevista
+            for (const [phone, responses] of candidateResponses) {
+              if (responses.length > 0) {
+                // Ordenar respostas por ordem de pergunta
+                responses.sort((a, b) => (a.questionOrder || 0) - (b.questionOrder || 0));
+                
+                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Total respostas: ${responses.length}`);
+                
+                // Verificar se iniciou (primeira resposta tem transcrição)
+                const firstResponse = responses[0];
+                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Primeira transcrição: "${firstResponse.transcription || 'NULL'}"`);
+                
+                const hasValidFirstResponse = firstResponse.transcription && 
                                               firstResponse.transcription !== "Aguardando resposta via WhatsApp";
-                const hasValidResponseText = firstResponse.responseText && 
-                                             firstResponse.responseText !== "Aguardando resposta via WhatsApp";
-                return hasValidTranscription || hasValidResponseText;
+                
+                console.log(`🔍 [DEBUG CANDIDATE ${phone}] Tem primeira resposta válida: ${hasValidFirstResponse}`);
+                
+                if (hasValidFirstResponse) {
+                  interviewsStarted++;
+                  console.log(`🔍 [DEBUG] Entrevista iniciada contada! Total agora: ${interviewsStarted}`);
+                  
+                  // Verificar se completou (todas as respostas têm transcrição)
+                  const allCompleted = responses.every(response => 
+                    response.transcription && 
+                    response.transcription !== "Aguardando resposta via WhatsApp"
+                  );
+                  
+                  if (allCompleted) {
+                    interviewsCompleted++;
+                    console.log(`🔍 [DEBUG] Entrevista completada contada! Total agora: ${interviewsCompleted}`);
+                  }
+                }
               }
-              return false;
-            });
-            
-            interviewsStarted += startedCandidates.length;
-            
-            // Contar candidatos que finalizaram entrevista (têm todas as respostas com transcrições válidas)
-            const completedCandidates = reportData.responseData.filter(candidate => {
-              if (candidate.responses && Array.isArray(candidate.responses)) {
-                // Verificar se todas as respostas têm transcrições válidas
-                return candidate.responses.every(response => {
-                  const hasValidTranscription = response.transcription && 
-                                                response.transcription !== "Aguardando resposta via WhatsApp";
-                  const hasValidResponseText = response.responseText && 
-                                               response.responseText !== "Aguardando resposta via WhatsApp";
-                  return hasValidTranscription || hasValidResponseText;
-                });
-              }
-              return false;
-            });
-            
-            interviewsCompleted += completedCandidates.length;
+            }
           }
         } catch (reportError) {
           console.log(`❌ Erro ao processar relatório ${reportDoc.id}:`, reportError.message);
@@ -3202,36 +3228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
       console.log(`📊 Entrevistas finalizadas no período: ${interviewsCompleted}`);
       
-      // Debug detalhado dos relatórios encontrados
-      console.log(`🔍 [DEBUG REPORTS] Total de relatórios processados: ${validReports.length}`);
-      for (const reportDoc of validReports) {
-        const reportData = reportDoc.data();
-        console.log(`🔍 [DEBUG REPORT] ID: ${reportDoc.id}`);
-        console.log(`🔍 [DEBUG REPORT] responseData exists: ${!!reportData.responseData}`);
-        console.log(`🔍 [DEBUG REPORT] responseData is array: ${Array.isArray(reportData.responseData)}`);
-        console.log(`🔍 [DEBUG REPORT] responseData length: ${reportData.responseData?.length || 0}`);
-        
-        // Verificar todas as propriedades do relatório
-        console.log(`🔍 [DEBUG REPORT] Keys: ${Object.keys(reportData).join(', ')}`);
-        
-        if (reportData.responseData && Array.isArray(reportData.responseData)) {
-          reportData.responseData.forEach((candidate, index) => {
-            console.log(`🔍 [DEBUG CANDIDATE ${index}] Nome: ${candidate.candidateName || candidate.name}`);
-            console.log(`🔍 [DEBUG CANDIDATE ${index}] Keys: ${Object.keys(candidate).join(', ')}`);
-            console.log(`🔍 [DEBUG CANDIDATE ${index}] Responses array: ${Array.isArray(candidate.responses)}`);
-            console.log(`🔍 [DEBUG CANDIDATE ${index}] Responses length: ${candidate.responses?.length || 0}`);
-            
-            if (candidate.responses && candidate.responses.length > 0) {
-              const firstResponse = candidate.responses[0];
-              console.log(`🔍 [DEBUG FIRST RESPONSE] Keys: ${Object.keys(firstResponse).join(', ')}`);
-              console.log(`🔍 [DEBUG FIRST RESPONSE] responseText: "${firstResponse.responseText || 'NULL'}"`);
-              console.log(`🔍 [DEBUG FIRST RESPONSE] transcription: "${firstResponse.transcription || 'NULL'}"`);
-              console.log(`🔍 [DEBUG FIRST RESPONSE] Has valid transcription: ${!!(firstResponse.transcription && firstResponse.transcription !== "Aguardando resposta via WhatsApp")}`);
-              console.log(`🔍 [DEBUG FIRST RESPONSE] Has valid responseText: ${!!(firstResponse.responseText && firstResponse.responseText !== "Aguardando resposta via WhatsApp")}`);
-            }
-          });
-        }
-      }
+
 
       // Calcular taxa de conclusão baseada em entrevistas iniciadas
       if (interviewsStarted > 0) {
