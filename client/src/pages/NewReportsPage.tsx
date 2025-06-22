@@ -214,6 +214,9 @@ export default function NewReportsPage() {
     enabled: !!selectedClientId || user?.role === 'client'
   });
 
+  // Cache de dados de candidatos para cada seleção
+  const [selectionCandidatesCache, setSelectionCandidatesCache] = useState<Record<number, any[]>>({});
+
   // Ordenar seleções da mais nova para a mais velha e adicionar estatísticas
   const selections = [...selectionsData].sort((a, b) => {
     const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(a.createdAt);
@@ -224,9 +227,6 @@ export default function NewReportsPage() {
     completedInterviews: interviewStats[selection.id]?.completed || 0,
     totalCandidates: interviewStats[selection.id]?.total || selection.totalCandidates || 0
   }));
-
-  // Cache de dados de candidatos para cada seleção
-  const [selectionCandidatesCache, setSelectionCandidatesCache] = useState<Record<number, any[]>>({});
 
   // Função para carregar candidatos de uma seleção específica
   const loadSelectionCandidates = async (selectionId: number) => {
