@@ -81,88 +81,76 @@ export default function StatisticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Estatísticas</h2>
-        <p className="text-slate-600">Acompanhe o desempenho das suas entrevistas e candidatos</p>
-      </div>
-
-      {/* Filtros de Período */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Período de Análise
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-            <div className="space-y-2">
-              <Label>Selecionar Período</Label>
-              <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">Mês Atual</SelectItem>
-                  <SelectItem value="last">Mês Passado</SelectItem>
-                  <SelectItem value="last3">Últimos 3 Meses</SelectItem>
-                  <SelectItem value="custom">Período Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {selectedPeriod === "custom" && (
-              <div className="flex gap-2 items-end">
-                <div className="space-y-2">
-                  <Label>Data Início</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(dateRange.from, "dd/MM/yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.from}
-                        onSelect={(date) => date && setDateRange(prev => ({ ...prev, from: date }))}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Data Fim</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(dateRange.to, "dd/MM/yyyy")}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={dateRange.to}
-                        onSelect={(date) => date && setDateRange(prev => ({ ...prev, to: date }))}
-                        locale={ptBR}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            )}
-
-            <div className="text-sm text-slate-600">
-              <strong>Período:</strong> {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
-            </div>
+      {/* Header com Filtros de Período no topo direito */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Estatísticas</h2>
+          <p className="text-slate-600">Acompanhe o desempenho das suas entrevistas e candidatos</p>
+        </div>
+        
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-3">
+          <div className="flex items-center gap-3">
+            <CalendarIcon className="h-4 w-4 text-slate-500" />
+            <Select value={selectedPeriod} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current">Mês Atual</SelectItem>
+                <SelectItem value="last">Mês Passado</SelectItem>
+                <SelectItem value="last3">Últimos 3 Meses</SelectItem>
+                <SelectItem value="custom">Período Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+
+          {selectedPeriod === "custom" && (
+            <div className="flex gap-2 items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[120px] justify-start text-left font-normal text-sm">
+                    <CalendarIcon className="mr-2 h-3 w-3" />
+                    {format(dateRange.from, "dd/MM")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.from}
+                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, from: date }))}
+                    locale={ptBR}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <span className="text-slate-400">-</span>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[120px] justify-start text-left font-normal text-sm">
+                    <CalendarIcon className="mr-2 h-3 w-3" />
+                    {format(dateRange.to, "dd/MM")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateRange.to}
+                    onSelect={(date) => date && setDateRange(prev => ({ ...prev, to: date }))}
+                    locale={ptBR}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          <div className="text-xs text-slate-500 lg:ml-3">
+            {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+          </div>
+        </div>
+      </div>
 
       {/* Estatísticas de Entrevistas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

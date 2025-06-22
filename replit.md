@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS IMPLEMENTADO - Painel completo para clientes com métricas em tempo real
+  - **Menu "Estatísticas" adicionado**: Novo botão no menu lateral exclusivo para clientes
+  - **Interface reorganizada**: Filtros de período movidos para topo direito, aproveitando melhor o espaço
+  - **Filtros de período**: Mês atual, anterior, últimos 3 meses, período personalizado com calendários
+  - **Métricas principais**: Candidatos cadastrados, entrevistas enviadas/finalizadas, taxa de conclusão
+  - **Painel do plano**: Barras de progresso para entrevistas (1000) e assessments (500) contratados
+  - **Endpoint backend funcional**: /api/statistics calculando dados reais do Firebase por período
+  - **Interface responsiva**: Layout otimizado para desktop e mobile com componentes shadcn/ui
+  - **Dados dinâmicos**: Estatísticas atualizadas automaticamente baseadas no período selecionado
+
 - June 22, 2025: 🎯 UX CORRIGIDA - QR Code só aparece quando usuário clica "Conectar" (ChatGPT Solution)
   - **Problema identificado**: useQuery executava automaticamente mesmo com shouldShowQR = false
   - **Solução aplicada**: enabled: shouldShowQR no useQuery para impedir fetch automático
