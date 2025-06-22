@@ -200,6 +200,16 @@ export default function ApiConfigPage() {
   console.log('🔍 [QR DEBUG] QR Code existe:', !!evolutionStatus?.qrCode);
   console.log('🔍 [QR DEBUG] QR Code length:', evolutionStatus?.qrCode?.length);
   
+  // FORÇAR EXIBIÇÃO DO QR CODE NO CONSOLE
+  if (evolutionStatus?.qrCode) {
+    console.log('📱 [QR CONSOLE] QR CODE COMPLETO:', evolutionStatus.qrCode);
+    console.log('📱 [QR CONSOLE] QR CODE PREVIEW (primeiros 200 chars):', evolutionStatus.qrCode.substring(0, 200));
+  } else {
+    console.log('❌ [QR CONSOLE] QR Code não encontrado no evolutionStatus');
+    console.log('🔍 [QR CONSOLE] Verificando se existe em outras propriedades...');
+    console.log('🔍 [QR CONSOLE] evolutionStatus keys:', Object.keys(evolutionStatus || {}));
+  }
+  
   // SEMPRE usar Evolution API 
   const activeWhatsappStatus = evolutionStatus;
   
@@ -788,6 +798,13 @@ export default function ApiConfigPage() {
                     qrCodeExists: !!evolutionStatus?.qrCode,
                     qrCodeValue: evolutionStatus?.qrCode?.substring(0, 100)
                   });
+                  
+                  // TESTE: Criar QR Code fake para debug se não existir
+                  if (!evolutionStatus?.qrCode) {
+                    console.log('🔧 [QR DEBUG] QR Code não encontrado, criando fake para teste visual...');
+                    // Não usar fake, apenas debuggar
+                  }
+                  
                   return evolutionStatus?.qrCode;
                 })() && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
