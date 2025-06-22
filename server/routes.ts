@@ -4549,6 +4549,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Interview statistics endpoint  
+  app.get('/api/interview-stats', authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.query;
+      
+      // Para masters, usar o clientId da query, para clients usar o próprio clientId
+      const targetClientId = req.user?.role === 'master' && clientId ? 
+        clientId.toString() : 
+        req.user?.clientId?.toString() || '';
+      
+      console.log('📊 Buscando estatísticas de entrevistas para cliente:', targetClientId);
+      
+      // Buscar todas as seleções do cliente
+      const selections = await storage.getSelectionsByClientId(parseInt(targetClientId));
+      
+      const stats = {};
+      
+      // Para cada seleção, calcular estatísticas
+      for (const selection of selections) {
+        try {
+          // Buscar candidatos da entrevista
+          const interviewCandidates = await storage.getInterviewCandidatesBySelectionId(selection.id.toString());
+          
+          // Contar candidatos que completaram todas as respostas
+          let completedCount = 0;
+          
+          for (const candidate of interviewCandidates) {
+            if (candidate.responses && candidate.responses.length > 0) {
+              // Verificar se todas as respostas têm transcrição válida
+              const completedResponses = candidate.responses.filter(r => 
+                r.transcription && 
+                r.transcription !== 'Aguardando resposta via WhatsApp' && 
+                r.transcription.trim() !== ''
+              );
+              
+              // Se todas as respostas estão completas, contar como finalizado
+              if (completedResponses.length === candidate.responses.length && candidate.responses.length > 0) {
+                completedCount++;
+              }
+            }
+          }
+          
+          // Buscar total de candidatos da lista
+          let totalCandidates = 0;
+          if (selection.listId) {
+            const allCandidates = await storage.getCandidatesByListId(selection.listId);
+            totalCandidates = allCandidates.length;
+          }
+          
+          stats[selection.id] = {
+            completed: completedCount,
+            total: totalCandidates,
+            inProgress: Math.max(0, interviewCandidates.length - completedCount)
+          };
+          
+          console.log(`📊 Seleção ${selection.id}: ${completedCount}/${totalCandidates} completas`);
+        } catch (error) {
+          console.error(`❌ Erro ao processar seleção ${selection.id}:`, error);
+          stats[selection.id] = {
+            completed: 0,
+            total: 0,
+            inProgress: 0
+          };
+        }
+      }
+      
+      console.log('📊 Estatísticas calculadas:', Object.keys(stats).length, 'seleções');
+      res.json(stats);
+    } catch (error) {
+      console.error('❌ Erro ao buscar estatísticas:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   app.get("/api/report-folders/:folderId/reports", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const { folderId } = req.params;

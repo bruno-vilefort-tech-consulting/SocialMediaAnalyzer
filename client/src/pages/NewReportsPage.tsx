@@ -196,12 +196,34 @@ export default function NewReportsPage() {
     }
   }, [selectedSelectionId, selectionsData, user]);
 
-  // Ordenar seleções da mais nova para a mais velha
+  // Query para buscar estatísticas de entrevistas completadas por seleção
+  const { data: interviewStats = {}, isLoading: loadingStats } = useQuery({
+    queryKey: ['/api/interview-stats', selectedClientId],
+    queryFn: async () => {
+      if (!selectedClientId) return {};
+      
+      try {
+        const res = await apiRequest(`/api/interview-stats?clientId=${selectedClientId}`, 'GET');
+        const data = await res.json();
+        return data || {};
+      } catch (error) {
+        console.error('Error fetching interview stats:', error);
+        return {};
+      }
+    },
+    enabled: !!selectedClientId || user?.role === 'client'
+  });
+
+  // Ordenar seleções da mais nova para a mais velha e adicionar estatísticas
   const selections = [...selectionsData].sort((a, b) => {
     const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(a.createdAt);
     const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(b.createdAt);
     return dateB.getTime() - dateA.getTime(); // Mais nova primeiro
-  });
+  }).map(selection => ({
+    ...selection,
+    completedInterviews: interviewStats[selection.id]?.completed || 0,
+    totalCandidates: interviewStats[selection.id]?.total || selection.totalCandidates || 0
+  }));
 
   // Buscar candidatos da seleção com status de entrevista
   const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
