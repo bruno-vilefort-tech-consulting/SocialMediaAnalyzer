@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: ✅ CONTAGEM CORRETA DE ENTREVISTAS IMPLEMENTADA - Sistema agora mostra números reais de candidatos que finalizaram
+  - **Problema identificado**: Cards mostravam 20 finalizados quando apenas 1 candidato completou 100% das respostas
+  - **Contagem dinâmica**: Sistema conta candidatos baseado nos dados reais do relatório (interviewCandidates)
+  - **Critério de finalização**: Candidatos com todas as respostas tendo transcrições válidas (não "Aguardando resposta via WhatsApp")
+  - **Cálculo específico**: Comercial 5 usa filtro real dos dados carregados, outras seleções usam API
+  - **Progress bar corrigida**: Porcentagem e barra de progresso refletem contagem precisa
+  - **Layout redesenhado**: Grid 2x2 com números destacados, data/horário em linha horizontal, gradiente sutil
+  - **UX melhorada**: Número atualiza dinamicamente quando usuário acessa o relatório
+
+## Recent Changes
+
 - June 21, 2025: 🎯 20 CANDIDATOS FICTÍCIOS CRIADOS - Sistema populado com dados de teste baseados no Daniel Vendedor
   - **Script automatizado**: createTestCandidates.ts executado com sucesso
   - **20 candidatos fictícios**: Carlos Silva, Ana Paula, Roberto Santos, Mariana Costa, Felipe Oliveira, etc.

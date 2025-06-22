@@ -841,7 +841,16 @@ export default function NewReportsPage() {
                                   </div>
                                   <div>
                                     <div className="text-2xl font-bold text-green-600">
-                                      {selection.id === 1750476614396 ? 20 : (selection.completedInterviews || 0)}
+                                      {selection.id === 1750476614396 
+                                        ? (interviewCandidates?.filter(candidate => {
+                                            const totalQuestions = candidate.responses?.length || 0;
+                                            const completedResponses = candidate.responses?.filter(r => 
+                                              r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
+                                            ).length || 0;
+                                            return totalQuestions > 0 && completedResponses === totalQuestions;
+                                          }).length || 0)
+                                        : (selection.completedInterviews || 0)
+                                      }
                                     </div>
                                     <div className="text-xs text-gray-600">Finalizaram</div>
                                   </div>
@@ -852,7 +861,13 @@ export default function NewReportsPage() {
                                       <span>Progresso</span>
                                       <span>
                                         {selection.id === 1750476614396 
-                                          ? Math.round((20 / selection.totalCandidates) * 100)
+                                          ? Math.round(((interviewCandidates?.filter(candidate => {
+                                              const totalQuestions = candidate.responses?.length || 0;
+                                              const completedResponses = candidate.responses?.filter(r => 
+                                                r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
+                                              ).length || 0;
+                                              return totalQuestions > 0 && completedResponses === totalQuestions;
+                                            }).length || 0) / selection.totalCandidates) * 100)
                                           : Math.round(((selection.completedInterviews || 0) / selection.totalCandidates) * 100)
                                         }%
                                       </span>
@@ -862,7 +877,13 @@ export default function NewReportsPage() {
                                         className="bg-green-500 h-2 rounded-full transition-all" 
                                         style={{ 
                                           width: `${selection.id === 1750476614396 
-                                            ? (20 / selection.totalCandidates) * 100
+                                            ? ((interviewCandidates?.filter(candidate => {
+                                                const totalQuestions = candidate.responses?.length || 0;
+                                                const completedResponses = candidate.responses?.filter(r => 
+                                                  r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
+                                                ).length || 0;
+                                                return totalQuestions > 0 && completedResponses === totalQuestions;
+                                              }).length || 0) / selection.totalCandidates) * 100
                                             : ((selection.completedInterviews || 0) / selection.totalCandidates) * 100
                                           }%` 
                                         }}
