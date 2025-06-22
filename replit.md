@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🔧 CORREÇÃO ERRO 515 IMPLEMENTADA - Timeouts aumentados e reconexão automática para stream errors
+  - **Problema identificado**: Stream error 515 + timeout no uploadPreKeys causando crash
+  - **Timeouts aumentados**: defaultQueryTimeoutMs e connectTimeoutMs para 120s, qrTimeout para 180s
+  - **Reconexão automática**: Sistema detecta erro 515 e reconecta automaticamente após 5s
+  - **Tratamento de exceções**: uncaughtException e unhandledRejection capturados
+  - **Credenciais protegidas**: saveCreds() com try/catch para evitar falhas
+  - **Sistema robusto**: Preparado para ambientes Replit com limitações de rede
+  
 - June 22, 2025: 🔄 QR CODE REAL IMPLEMENTADO - Baileys integrado como fallback para gerar QR Code funcional
   - **Problema identificado**: QR Code exibido mas não funcional (gerado por biblioteca local)
   - **Solução implementada**: Evolution API com fallback automático para Baileys

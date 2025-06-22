@@ -1,0 +1,70 @@
+Passo a passo para resolver erro 515 "Stream Errored" e timeout no uploadPreKeys:
+
+1. Atualize timeouts no makeWASocket:
+   - Aumente defaultQueryTimeoutMs e connectTimeoutMs para 2 minutos (120000 ms):
+     ```js
+     const socket = makeWASocket({
+       // ...
+       defaultQueryTimeoutMs: 120000,
+       connectTimeoutMs: 120000,
+       qrTimeout: 180000,
+     });
+     ```
+
+2. Implemente lógica de reconexão automática para código 515:
+   ```js
+   socket.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+     if (connection === 'close' && lastDisconnect?.error?.output?.statusCode === 515) {
+       console.log('Stream error 515 detectado, reiniciando socket...');
+       initSocket(); // função que re-cria o makeWASocket
+     }
+   });
+   ```
+
+3. Trate o erro de timeout no uploadPreKeys:
+   - Envolva chamadas críticas em try/catch e faça retry:
+     ```js
+     async function safeUploadPreKeys() {
+       try {
+         await socket.uploadPreKeys(preKeys);
+       } catch (err) {
+         console.warn('UploadPreKeys falhou, tentando novamente...', err);
+         await delay(5000);
+         return safeUploadPreKeys();
+       }
+     }
+     ```
+
+4. Monitore e salve credenciais:
+   ```js
+   socket.ev.on('creds.update', saveState);
+   ```
+
+5. Verifique ambiente de rede no Replit:
+   - Use serveless reverso ou deploy em VPS para garantir conexões WebSocket estáveis.
+   - Confirme IP está liberado (sem firewall bloqueando portas de saída).
+
+6. Valide handshake manual:
+   - Habilite logs detalhados:
+     ```js
+     import makeLogger from '@whiskeysockets/baileys/lib/Utils/logger';
+     const logger = makeLogger({ level: 'trace' });
+     ```
+   - Analise fluxo de `uploadPreKeys` e resposta do servidor.
+
+7. Reinicie o processo em falhas não recuperáveis:
+   ```js
+   process.on('uncaughtException', err => {
+     console.error('Erro não recuperável, reiniciando...', err);
+     process.exit(1);
+   });
+   ```
+
+8. Teste completo:
+   - Escaneie QR Code.
+   - Verifique reconexão automática ao stream:error 515.
+   - Valide que socket mantém `open` ou reconecta sem crash.
+
+9. Depuração final:
+   - Se persistir, experimente deploy em ambiente local ou VPS.
+   - Consulte documentação oficial do Baileys: https://github.com/whiskeysockets/baileys

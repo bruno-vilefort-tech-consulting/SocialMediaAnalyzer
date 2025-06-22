@@ -96,12 +96,12 @@ export class ClientWhatsAppService {
         browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 60000,
-        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 120000, // 2 minutos para resolver timeout
+        connectTimeoutMs: 120000,      // 2 minutos para conexão
         keepAliveIntervalMs: 30000,
-        qrTimeout: 120000,
-        retryRequestDelayMs: 2000,
-        maxMsgRetryCount: 3,
+        qrTimeout: 180000,            // 3 minutos para QR Code
+        retryRequestDelayMs: 5000,    // Aumentado para 5s entre retries
+        maxMsgRetryCount: 5,          // Mais tentativas
         syncFullHistory: false,
         fireInitQueries: false,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
@@ -112,21 +112,25 @@ export class ClientWhatsAppService {
         let resolved = false;
         
         // Timeout de segurança conforme documentação
+        // Timeout de 3 minutos (alinhado com qrTimeout)
         const timeoutId = setTimeout(() => {
           if (!resolved) {
-            console.log(`⏰ [${clientId}] Timeout na conexão WhatsApp (130s)`);
             resolved = true;
+            console.log(`⏰ [BAILEYS] Timeout de QR Code atingido para cliente ${clientId}`);
+            console.log(`⏰ [BAILEYS] Socket ainda ativo:`, socket.ws?.readyState === 1);
+            
             try {
               socket?.end();
             } catch (e) {
-              console.log('Socket já fechado');
+              console.log('Socket já fechado durante timeout');
             }
+            
             resolve({
               success: false,
-              message: 'Timeout - QR Code não foi escaneado a tempo. Tente novamente.'
+              message: 'Timeout: QR Code não foi escaneado em 3 minutos'
             });
           }
-        }, 300000); // 5 minutos para debug
+        }, 180000); // 3 minutos (match com qrTimeout)
 
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
@@ -283,11 +287,17 @@ export class ClientWhatsAppService {
           }
         });
 
-        socket.ev.on('creds.update', (creds) => {
+        socket.ev.on('creds.update', async (creds) => {
           console.log(`🔐 [BAILEYS] CREDENCIAIS ATUALIZADAS para cliente ${clientId}!`);
           console.log(`🔐 [BAILEYS] Tipo de credenciais:`, Object.keys(creds || {}));
           console.log(`🔐 [BAILEYS] Promise resolvida:`, resolved);
-          saveCreds();
+          
+          try {
+            await saveCreds();
+            console.log(`✅ [BAILEYS] Credenciais salvas com sucesso`);
+          } catch (saveError) {
+            console.error(`❌ [BAILEYS] Erro ao salvar credenciais:`, saveError);
+          }
         });
 
         // Event listener adicional para debug completo

@@ -5,6 +5,16 @@ import path from "path";
 
 const app = express();
 
+// Tratamento de erros não capturados para restart em falhas críticas
+process.on('uncaughtException', (err) => {
+  console.error('❌ [BAILEYS] Erro não capturado, sistema pode precisar reiniciar:', err);
+  // Não fazer exit(1) no Replit - deixar que o sistema gerencie
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ [BAILEYS] Promise rejeitada não tratada:', reason);
+});
+
 // Debug middleware ANTES de tudo
 app.use((req, res, next) => {
   console.log(`🌐 [ALL REQUESTS] ${req.method} ${req.url}`);
