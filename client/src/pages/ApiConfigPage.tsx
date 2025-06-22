@@ -195,16 +195,7 @@ export default function ApiConfigPage() {
   // Usar Evolution como prioridade apenas se tiver QR Code, senão Baileys
   const activeWhatsappStatus = (evolutionStatus?.qrCode) ? evolutionStatus : whatsappStatus;
   
-  // Debug do status ativo
-  console.log('🔍 Debug activeWhatsappStatus:', {
-    evolutionStatus: !!evolutionStatus,
-    whatsappStatus: !!whatsappStatus,
-    activeHasQrCode: !!activeWhatsappStatus?.qrCode,
-    activeMethod: activeWhatsappStatus?.method,
-    qrCodeLength: activeWhatsappStatus?.qrCode?.length || 0,
-    evolutionQrCode: evolutionStatus?.qrCode?.length || 0,
-    baileyQrCode: whatsappStatus?.qrCode?.length || 0
-  });
+
 
   // Estados para configurações master
   const [openaiApiKey, setOpenaiApiKey] = useState("");
@@ -630,19 +621,14 @@ export default function ApiConfigPage() {
                         
                         const data = await response.json();
                         console.log('🔗 Evolution Connect Response:', data);
-                        console.log('🔗 QR Code presente na resposta:', !!data.qrCode);
-                        console.log('🔗 Tamanho do QR Code:', data.qrCode?.length || 0);
                         
                         if (data.success) {
-                          console.log('🔗 Invalidando queries...');
-                          
                           // Atualizar queries imediatamente
                           queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
                           queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
                           
-                          // Refetch com delay menor
+                          // Refetch com delay menor para garantir atualização
                           setTimeout(() => {
-                            console.log('🔗 Fazendo refetch das queries...');
                             queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
                             queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
                           }, 500);

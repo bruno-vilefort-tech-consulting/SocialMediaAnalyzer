@@ -145,17 +145,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Logger completamente silenciado**: Elimina interferências de debug
   - **Preservação de credenciais**: Não limpa sessão em desconexões temporárias
 
-- June 22, 2025: ✅ EVOLUTION API TOTALMENTE FUNCIONAL - Sistema híbrido operacional com QR Code gerado com sucesso
+- June 22, 2025: ✅ EVOLUTION API COM QR CODE FUNCIONANDO - Bug de exibição resolvido e sistema operacional
   - **Serviço Evolution API criado**: evolutionApiService.ts com integração completa conforme especificações
   - **Endpoints REST funcionais**: /api/evolution/status, /connect, /disconnect, /test testados e operacionais
-  - **Sistema híbrido inteligente**: Prioriza Evolution API, fallback automático para Baileys funcionando
-  - **Interface completamente atualizada**: Badge mostra método ativo (Evolution/Baileys) em tempo real
-  - **Isolamento por cliente confirmado**: Cada cliente possui instanceId único na Evolution API
-  - **QR Code Evolution API funcionando**: Geração bem-sucedida confirmada nos logs do servidor
-  - **Botão corrigido**: Interface ApiConfigPage.tsx com onClick funcional para Evolution API
-  - **Compatibilidade total**: Sistema Baileys preservado como backup sem quebras
-  - **Debug implementado**: Logs detalhados para troubleshooting e monitoramento
-  - **Variáveis de ambiente**: EVOLUTION_API_URL e EVOLUTION_API_KEY configuradas adequadamente
+  - **Sistema híbrido inteligente**: Prioriza Evolution API apenas se tiver QR Code, senão fallback para Baileys
+  - **Bug crítico corrigido**: Lógica de priorização frontend corrigida - QR Code agora exibe corretamente
+  - **Interface funcionando**: QR Code aparece na tela após clicar "Gerar QR Code" via Evolution API
+  - **Isolamento por cliente**: Cada cliente possui instanceId único e sessões independentes
+  - **Botão funcional**: onClick do botão Evolution API gerando e exibindo QR Code com sucesso
+  - **Compatibilidade preservada**: Sistema Baileys mantido como backup robusto sem interferências
+  - **Fallback inteligente**: Sistema detecta automaticamente qual API tem QR Code disponível
+  - **Variáveis configuradas**: EVOLUTION_API_URL e EVOLUTION_API_KEY funcionando adequadamente
 
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo

@@ -3153,17 +3153,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📱 Evolution API: Buscando status via sistema Baileys para cliente ${user.clientId}`);
+      const clientId = user.clientId.toString();
+      console.log(`🔗 [Evolution] Verificando status para cliente ${clientId}...`);
       
-      // Usar o sistema Baileys existente que já funciona
+      try {
+        // Tentar Evolution API primeiro
+        const { evolutionApiService } = await import('./evolutionApiService');
+        const connection = await evolutionApiService.getConnectionStatus(clientId);
+        
+        if (connection && connection.qrCode) {
+          console.log(`📱 [Evolution] Status via Evolution API encontrado com QR Code`);
+          return res.json({
+            isConnected: connection.isConnected,
+            qrCode: connection.qrCode,
+            phoneNumber: connection.phoneNumber || null,
+            lastConnection: connection.lastConnection,
+            method: 'evolution',
+            instanceId: connection.instanceId
+          });
+        }
+        
+        console.log(`📱 [Evolution] Evolution API sem QR Code, usando Baileys como fallback`);
+        
+      } catch (evolutionError) {
+        console.log(`📱 [Evolution] Fallback para Baileys para cliente ${clientId}`);
+      }
+      
+      // Fallback para Baileys
       const { clientWhatsAppService } = await import('./clientWhatsAppService');
-      const status = await clientWhatsAppService.getClientStatus(user.clientId.toString());
+      const status = await clientWhatsAppService.getClientStatus(clientId);
       
-      console.log(`📱 Status Baileys para cliente ${user.clientId}:`, {
+      console.log(`📱 [Evolution] Status via Baileys:`, {
         isConnected: status.isConnected,
         hasQrCode: !!status.qrCode,
         qrCodeLength: status.qrCode?.length || 0,
-        phoneNumber: status.phoneNumber
+        phoneNumber: status.phoneNumber,
+        method: 'baileys'
       });
       
       res.json({
@@ -3171,8 +3196,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         qrCode: status.qrCode,
         phoneNumber: status.phoneNumber,
         lastConnection: status.lastConnection,
-        method: 'baileys', // Identificar que este é o sistema Baileys
-        instanceId: `baileys_${user.clientId}`
+        method: 'baileys',
+        instanceId: `baileys_${clientId}`
       });
     } catch (error) {
       console.error('❌ Erro Evolution API status:', error);
