@@ -1,0 +1,75 @@
+Passo a passo para corrigir erro de conexão na Evolution API:
+
+1. Verifique se a Evolution API está em execução:
+   • No terminal do servidor, rode:
+     ```
+     ps aux | grep node
+     ```
+     ou, se usar Docker:
+     ```
+     docker ps
+     ```
+   • Se não encontrar o processo, inicie com:
+     ```
+     npm start
+     ```
+     ou
+     ```
+     node server.js
+     ```
+
+2. Teste o endpoint de saúde (healthcheck):
+   ```
+   curl http://localhost:3001/health
+   ```
+   ou substitua `/health` pela rota correta (ex.: `/status`). Deve retornar HTTP 200 e um JSON.
+
+3. Ajuste a URL da API no seu código/backend:
+   • Abra o arquivo de configuração (ex.: `config.js` ou `.env`).
+   • Configure:
+     ```
+     EVOLUTION_API_URL="http://localhost:3001"
+     ```
+   • Se estiver no Replit, use o domínio público do Repl:
+     ```
+     EVOLUTION_API_URL="https://<SEU-REPL>.repl.co"
+     ```
+
+4. Desative o cache HTTP no endpoint de status:
+   • No seu Express (geralmente em `app.js` ou `server.js`), adicione antes das rotas:
+     ```js
+     app.disable('etag');
+     app.use((req, res, next) => {
+       res.set('Cache-Control', 'no-store');
+       next();
+     });
+     ```
+
+5. Limpe registros antigos de instâncias no Firebase:
+   • Acesse o Console do Firebase.
+   • Na coleção de configurações, remova documentos `client_<ID>` expirados.
+   • Isso evita inconsistências de qrCodeLength.
+
+6. Reinicie o backend:
+   • Se usar PM2:
+     ```
+     pm2 restart all
+     ```
+   • Ou pare e inicie manualmente:
+     ```
+     kill <PID>
+     npm start
+     ```
+
+7. No frontend (Replit), recarregue a página:
+   • Acesse `/api/evolution/connect` para gerar novo QR.
+   • Em seguida, verifique `/api/evolution/status` no Network do navegador.
+
+8. Verifique no console de rede:
+   • Confirme que não há erro ECONNREFUSED.
+   • O JSON deve trazer `"isConnected": true` ou `false`, sem erros de fetch.
+
+9. Caso ainda falhe:
+   • Confirme portas e CORS.
+   • Cheque se firewall ou segurança do Replit não bloqueia a porta.
+   • Ajuste `EVOLUTION_API_URL` conforme o host real.

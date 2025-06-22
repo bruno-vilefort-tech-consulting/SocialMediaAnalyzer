@@ -44,19 +44,54 @@ class EvolutionApiService {
   
   private async initializeEvolutionApi() {
     try {
+      // Verificar se Evolution API já está rodando
+      const healthCheck = await fetch(`${this.apiUrl}/health`).catch(() => null);
+      
+      if (healthCheck && healthCheck.ok) {
+        console.log('✅ [Evolution] Evolution API já está rodando');
+        return;
+      }
+      
       console.log('🚀 [Evolution] Iniciando Evolution API interna...');
       const { spawn } = require('child_process');
+      const path = require('path');
       
-      const evolutionProcess = spawn('node', ['start-evolution.js'], {
-        cwd: process.cwd(),
-        stdio: 'inherit',
-        detached: true
+      const evolutionProcess = spawn('node', ['src/main.js'], {
+        cwd: path.join(process.cwd(), 'evolution-api'),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: true,
+        env: {
+          ...process.env,
+          EVOLUTION_PORT: '3001',
+          EVOLUTION_API_KEY: this.apiKey
+        }
+      });
+      
+      evolutionProcess.stdout?.on('data', (data) => {
+        console.log(`[Evolution] ${data.toString().trim()}`);
+      });
+      
+      evolutionProcess.stderr?.on('data', (data) => {
+        console.error(`[Evolution] ${data.toString().trim()}`);
       });
       
       evolutionProcess.unref();
       
-      await new Promise(resolve => setTimeout(resolve, 8000));
-      console.log('✅ [Evolution] Evolution API inicializada');
+      // Aguardar inicialização e verificar health
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          const check = await fetch(`${this.apiUrl}/health`);
+          if (check.ok) {
+            console.log('✅ [Evolution] Evolution API inicializada com sucesso');
+            return;
+          }
+        } catch (error) {
+          // Continuar tentando
+        }
+      }
+      
+      console.warn('⚠️ [Evolution] Evolution API pode não ter inicializado corretamente');
     } catch (error) {
       console.warn('⚠️ [Evolution] Erro ao inicializar Evolution API:', error);
     }

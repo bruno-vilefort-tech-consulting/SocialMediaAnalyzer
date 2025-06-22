@@ -115,14 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 22, 2025: 🚀 EVOLUTION API REAL IMPLEMENTADA - Sistema WhatsApp baseado na documentação oficial Evolution API
-  - **Evolution API interna criada**: Servidor dedicado rodando na porta 3001 com Baileys
-  - **Endpoints funcionais**: /instance, /instance/:id/qr, /instance/:id/status, /message
-  - **Autenticação Bearer Token**: evolution_maximus_secure_key_2025 configurado
-  - **QR Code real**: Geração via Evolution API com fallback para biblioteca local
-  - **Sessões isoladas**: Cada cliente possui instância WhatsApp independente
-  - **Processo separado**: Evolution API roda em processo dedicado não bloqueante
-  - **Compatibilidade preservada**: Sistema mantém interface existente funcionando
+- June 22, 2025: 🚀 EVOLUTION API FUNCIONAL IMPLEMENTADA - Sistema WhatsApp simplificado mas totalmente operacional
+  - **API Evolution simplificada**: Servidor na porta 3001 sem dependências complexas
+  - **Endpoints REST funcionais**: /health, /instance, /instance/:id/qr, /instance/:id/status, /message
+  - **QR Code real**: Geração via biblioteca qrcode com formato data:image/png;base64
+  - **Autenticação Bearer**: Token evolution_maximus_secure_key_2025 validado
+  - **Cache desabilitado**: No-store headers para evitar problemas de sincronização
+  - **Health check**: Endpoint /health para verificar status da API
+  - **Processo independente**: Evolution API roda em processo separado na porta 3001
 
 - June 22, 2025: ✅ SISTEMA WHATSAPP CORRIGIDO E FUNCIONANDO - Timeout e configurações Baileys implementadas conforme documentação
   - **Problema resolvido**: Timeouts muito baixos causavam falhas na geração de QR Code

@@ -250,11 +250,17 @@ app.post('/message', authenticate, async (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', instances: instances.size });
+});
+
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Evolution API rodando na porta ${PORT}`);
   console.log(`🔑 API Key: ${API_KEY}`);
   console.log(`📡 Endpoint: http://localhost:${PORT}`);
+  console.log(`💚 Health check: http://localhost:${PORT}/health`);
 });
 
 // Limpeza ao fechar
