@@ -126,12 +126,16 @@ export class ClientWhatsAppService {
               message: 'Timeout - QR Code não foi escaneado a tempo. Tente novamente.'
             });
           }
-        }, 130000); // 2 minutos + 10 segundos de buffer
+        }, 300000); // 5 minutos para debug
 
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
           
-          console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr, qrLength: qr?.length || 0 });
+          console.log(`🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO:`, JSON.stringify(update, null, 2));
+          console.log(`🔄 [BAILEYS] Estado da conexão:`, connection);
+          console.log(`🔄 [BAILEYS] Tem QR Code:`, !!qr);
+          console.log(`🔄 [BAILEYS] Promise resolvida:`, resolved);
+          console.log(`🔄 [BAILEYS] Timestamp:`, new Date().toISOString());
 
           if (qr && !resolved) {
             console.log(`📱 [BAILEYS] QR CODE AUTÊNTICO recebido para cliente ${clientId}!`);
@@ -281,9 +285,9 @@ export class ClientWhatsAppService {
           saveCreds();
         });
 
-        // Event listener para quando a conexão é estabelecida
+        // Event listener adicional para debug completo
         socket.ev.on('connection.update', (update) => {
-          console.log(`🔄 [BAILEYS] CONNECTION UPDATE COMPLETO:`, JSON.stringify(update, null, 2));
+          console.log(`🐛 [BAILEYS] EVENT LISTENER ADICIONAL:`, JSON.stringify(update, null, 2));
         });
         
         // Adicionar heartbeat para manter conexão viva

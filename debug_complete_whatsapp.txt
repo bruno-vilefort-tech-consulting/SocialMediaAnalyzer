@@ -1,0 +1,63 @@
+DEBUG COMPLETO - QR CODE CONECTA NO CELULAR MAS NÃO ESTABELECE CONEXÃO COM SISTEMA
+
+PROBLEMA IDENTIFICADO:
+- QR Code é gerado corretamente via Baileys
+- String QR original é autêntica do WhatsApp  
+- Conversão para DataURL preserva dados
+- Celular tenta conectar mas sistema não recebe evento 'connection: open'
+
+LOGS ATUAIS OBSERVADOS:
+✅ QR Code gerado (7938+ caracteres)
+✅ DataURL válido (data:image/png;base64,...)
+❌ Nenhum evento connection.update com 'open' após escaneamento
+❌ Sistema não detecta conexão estabelecida
+
+POSSÍVEIS CAUSAS:
+
+1. TIMEOUT PREMATURO:
+   - timeoutId de 130 segundos pode estar muito baixo
+   - clearTimeout pode estar sendo chamado prematuramente
+   - Promise resolve/reject executando antes da conexão
+
+2. EVENT LISTENER DUPLICADO:
+   - Múltiplos 'connection.update' listeners criados
+   - Conflito entre listeners antigos e novos
+   - Promise resolvendo no primeiro QR em vez de aguardar 'open'
+
+3. BAILEYS SESSION STATE:
+   - useMultiFileAuthState corrompido
+   - Credenciais antigas interferindo
+   - Session path com permissões incorretas
+
+4. SOCKET CONFIGURATION:
+   - keepAliveIntervalMs muito baixo (30s)
+   - Configurações inadequadas para Replit
+   - Browser fingerprint rejeitado pelo WhatsApp
+
+5. MEMORY VS PERSISTENT STATE:
+   - sessions Map perdendo referência
+   - Socket sendo garbage collected
+   - Conexão estabelecida mas referência perdida
+
+LOGS IMPLEMENTADOS:
+✅ CONNECTION UPDATE completo com JSON.stringify
+✅ Timeout aumentado para 5 minutos (300s)
+✅ Debug de promise state e socket status
+✅ Captura de eventos 'connecting' e 'close'
+✅ QR String original completa logada
+
+TESTE AGORA:
+1. Clique em "Gerar" na interface
+2. Escaneie QR Code no celular
+3. Observe logs no console para identificar onde falha
+4. Copie todos os logs para enviar ao ChatGPT
+
+ESPERADO:
+- QR gerado → evento 'qr'
+- Celular escaneia → evento 'connecting'  
+- Conexão estabelecida → evento 'open'
+
+SE FALHAR:
+- Ver qual evento não acontece
+- Verificar erros específicos
+- Analisar timeline dos eventos
