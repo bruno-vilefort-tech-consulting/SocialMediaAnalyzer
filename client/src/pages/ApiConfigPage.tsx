@@ -192,6 +192,9 @@ export default function ApiConfigPage() {
     }
   });
 
+  // Estado local para forçar re-render do QR Code
+  const [qrCodeKey, setQrCodeKey] = useState(0);
+  
   // Usar Evolution como prioridade apenas se tiver QR Code, senão Baileys
   const activeWhatsappStatus = (evolutionStatus?.qrCode) ? evolutionStatus : whatsappStatus;
   
@@ -632,6 +635,9 @@ export default function ApiConfigPage() {
                             setTimeout(() => {
                               queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
                               queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                              
+                              // Forçar re-render do QR Code
+                              setQrCodeKey(prev => prev + 1);
                             }, 500);
                             
                             toast({ 
@@ -723,6 +729,9 @@ export default function ApiConfigPage() {
                                     console.log('🔄 [DEBUG] Forçando refetch das queries...');
                                     queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
                                     queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                                    
+                                    // Forçar re-render do QR Code
+                                    setQrCodeKey(prev => prev + 1);
                                   }, 200);
                                   
                                   toast({
@@ -815,7 +824,7 @@ export default function ApiConfigPage() {
                       </div>
                       
                       <div className="flex justify-center">
-                        <QRCodeRenderer qrCode={activeWhatsappStatus.qrCode} />
+                        <QRCodeRenderer key={`qr-${qrCodeKey}-${activeWhatsappStatus.qrCode?.length || 0}`} qrCode={activeWhatsappStatus.qrCode} />
                       </div>
                       
                       <div className="text-sm text-blue-600 dark:text-blue-400">
