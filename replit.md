@@ -124,6 +124,8 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Firebase integrado**: Status e QR Code salvos corretamente no banco de dados
   - **Sistema isolado**: Cada cliente possui conexão WhatsApp independente e segura
   - **Aplicação estável**: Sem crashes durante inicialização, WhatsApp funciona sob demanda
+  - **Restauração automática**: Sistema detecta sessões perdidas e restaura automaticamente
+  - **Teste de mensagens**: Funcionalidade de teste funcional com sistema de retry automático
 
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
