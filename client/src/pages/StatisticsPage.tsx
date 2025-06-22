@@ -41,12 +41,7 @@ export default function StatisticsPage() {
     enabled: !!user?.clientId
   });
 
-  // Debug logs
-  console.log('📊 [FRONTEND DEBUG] Statistics data:', statistics);
-  console.log('📊 [FRONTEND DEBUG] isLoading:', isLoading);
-  console.log('📊 [FRONTEND DEBUG] error:', error);
-  console.log('📊 [FRONTEND DEBUG] user?.clientId:', user?.clientId);
-  console.log('📊 [FRONTEND DEBUG] dateRange:', dateRange);
+
 
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
@@ -85,11 +80,7 @@ export default function StatisticsPage() {
     completionRate: statistics?.completionRate || 0
   };
 
-  // Debug log do statsData final
-  console.log('📊 [FRONTEND DEBUG] statsData final:', statsData);
-  console.log('📊 [FRONTEND DEBUG] candidatesRegistered value:', statsData.candidatesRegistered);
-  console.log('📊 [FRONTEND DEBUG] statistics object:', statistics);
-  console.log('📊 [FRONTEND DEBUG] statistics keys:', Object.keys(statistics || {}));
+
 
   return (
     <div className="space-y-6">

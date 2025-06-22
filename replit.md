@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS BASEADO EM RELATÓRIOS IMPLEMENTADO - Dados históricos imutáveis e precisos
+  - **Contagem baseada em relatórios**: Entrevistas enviadas agora contam relatórios (dados permanentes) em vez de seleções (podem ser deletadas)
+  - **Métricas históricas**: Sistema conta candidatos cadastrados e entrevistas finalizadas por período selecionado
+  - **Dados imutáveis**: Estatísticas não diminuem quando seleções são deletadas, mantendo histórico correto
+  - **Filtros de período funcionais**: Mês atual, anterior, últimos 3 meses, período personalizado
+  - **Interface responsiva**: Cards com métricas principais e painel do plano contratado
+  - **Endpoint robusto**: /api/statistics com filtros em memória para evitar problemas de índices Firebase
+  - **Autenticação corrigida**: apiRequest com .json() adequado para receber dados do backend
+
 - June 22, 2025: 📊 SISTEMA DE ESTATÍSTICAS IMPLEMENTADO - Painel completo para clientes com métricas em tempo real
   - **Menu "Estatísticas" adicionado**: Novo botão no menu lateral exclusivo para clientes
   - **Interface reorganizada**: Filtros de período movidos para topo direito, aproveitando melhor o espaço

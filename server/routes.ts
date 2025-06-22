@@ -3099,12 +3099,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { from, to } = req.query;
       const clientId = user.clientId.toString();
       
-      console.log(`📊 Buscando estatísticas para cliente ${clientId} de ${from} até ${to}`);
-
       const fromDate = new Date(from as string);
       const toDate = new Date(to as string);
-
-      console.log(`📊 Datas convertidas - De: ${fromDate.toISOString()}, Até: ${toDate.toISOString()}`);
       
       // Buscar todos os candidatos do cliente e filtrar por data no código
       const candidatesQuery = query(
@@ -3125,91 +3121,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      console.log(`📊 Candidatos encontrados no período: ${candidatesRegistered}`);
 
-      // Buscar todas as seleções do cliente e filtrar por data no código
-      const selectionsQuery = query(
-        collection(firebaseDb, 'selections'),
+
+      // Buscar todos os relatórios do cliente (dados imutáveis) e filtrar por data no código
+      const reportsQuery = query(
+        collection(firebaseDb, 'reports'),
         where('clientId', '==', user.clientId)
       );
-      const selectionsSnapshot = await getDocs(selectionsQuery);
+      const reportsSnapshot = await getDocs(reportsQuery);
       
-      // Filtrar seleções por período
+      // Filtrar relatórios por período
       let interviewsSent = 0;
-      const validSelections = [];
-      selectionsSnapshot.docs.forEach(doc => {
+      const validReports = [];
+      reportsSnapshot.docs.forEach(doc => {
         const data = doc.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdDate = data.createdAt.toDate();
           if (createdDate >= fromDate && createdDate <= toDate) {
             interviewsSent++;
-            validSelections.push(doc);
+            validReports.push(doc);
           }
         }
       });
       
-      console.log(`📊 Seleções encontradas no período: ${interviewsSent}`);
+
 
       // Buscar entrevistas finalizadas (candidatos que responderam todas as perguntas)
       let interviewsCompleted = 0;
       let completionRate = 0;
 
-      // Para cada seleção válida do período, verificar quantos candidatos finalizaram todas as perguntas
-      for (const selectionDoc of validSelections) {
-        const selectionData = selectionDoc.data();
-        const selectionId = selectionData.id || selectionDoc.id;
-
+      // Para cada relatório válido do período, contar candidatos que finalizaram entrevistas
+      for (const reportDoc of validReports) {
+        const reportData = reportDoc.data();
+        
         try {
-          // Buscar job da seleção para contar perguntas
-          const jobQuery = query(
-            collection(firebaseDb, 'jobs'),
-            where('id', '==', selectionData.jobId)
-          );
-          const jobSnapshot = await getDocs(jobQuery);
-
-          if (!jobSnapshot.empty) {
-            const jobData = jobSnapshot.docs[0].data();
-            const totalQuestions = jobData.questions ? jobData.questions.length : 0;
-
-            if (totalQuestions > 0) {
-              // Buscar candidatos da lista de seleção
-              const candidatesListQuery = query(
-                collection(firebaseDb, 'candidateListMemberships'),
-                where('candidateListId', '==', selectionData.candidateListId)
-              );
-              const candidatesListSnapshot = await getDocs(candidatesListQuery);
-
-              for (const memberDoc of candidatesListSnapshot.docs) {
-                const memberData = memberDoc.data();
-                
-                // Buscar candidato para pegar telefone
-                const candidateDoc = await getDocs(query(
-                  collection(firebaseDb, 'candidates'),
-                  where('id', '==', memberData.candidateId)
-                ));
-
-                if (!candidateDoc.empty) {
-                  const candidateData = candidateDoc.docs[0].data();
-                  const candidatePhone = candidateData.whatsapp || candidateData.phone;
-
-                  // Contar respostas do candidato para esta seleção
-                  const responsesQuery = query(
-                    collection(firebaseDb, 'interviewResponses'),
-                    where('phone', '==', candidatePhone),
-                    where('selectionId', '==', selectionId.toString())
-                  );
-                  const responsesSnapshot = await getDocs(responsesQuery);
-
-                  // Verificar se candidato finalizou todas as perguntas
-                  if (responsesSnapshot.size >= totalQuestions) {
-                    interviewsCompleted++;
-                  }
-                }
+          // Verificar se o relatório tem dados de candidatos com respostas completas
+          if (reportData.responseData && Array.isArray(reportData.responseData)) {
+            // Contar candidatos que têm todas as respostas (sem "Aguardando resposta via WhatsApp")
+            const completedCandidates = reportData.responseData.filter(candidate => {
+              if (candidate.responses && Array.isArray(candidate.responses)) {
+                // Verificar se todas as respostas têm transcrições válidas
+                return candidate.responses.every(response => 
+                  response.transcription && 
+                  response.transcription !== "Aguardando resposta via WhatsApp"
+                );
               }
-            }
+              return false;
+            });
+            
+            interviewsCompleted += completedCandidates.length;
           }
-        } catch (selectionError) {
-          console.log(`❌ Erro ao processar seleção ${selectionId}:`, selectionError.message);
+        } catch (reportError) {
+          console.log(`❌ Erro ao processar relatório ${reportDoc.id}:`, reportError.message);
         }
       }
 
@@ -3225,7 +3188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completionRate: Math.round(completionRate * 10) / 10 // Arredondar para 1 casa decimal
       };
 
-      console.log(`📊 Estatísticas calculadas para cliente ${clientId}:`, statistics);
+
       res.json(statistics);
 
     } catch (error) {
