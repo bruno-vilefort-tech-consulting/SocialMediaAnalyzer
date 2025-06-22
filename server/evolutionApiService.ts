@@ -120,35 +120,46 @@ class EvolutionApiService {
       const timestamp = Date.now();
       const qrContent = `evolution_${clientId}_${timestamp}`;
       
-      // Gerar QR Code base64 real
-      const QRCode = await import('qrcode');
-      const qrCodeDataUrl = await QRCode.toDataURL(qrContent, {
-        width: 256,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
+      // Usar Baileys para QR Code real do WhatsApp
+      console.log('🔄 [Evolution] Iniciando Baileys para QR Code real...');
       
-      // Salvar conexão
-      const connection: EvolutionConnection = {
-        clientId,
-        instanceId,
-        isConnected: false,
-        qrCode: qrCodeDataUrl,
-        lastConnection: new Date()
-      };
+      try {
+        const { clientWhatsAppService } = await import('./clientWhatsAppService');
+        const baileysResult = await clientWhatsAppService.connectClient(clientId);
+        
+        if (baileysResult.success && baileysResult.qrCode) {
+          console.log('✅ [Evolution] QR Code REAL obtido do Baileys:', baileysResult.qrCode.length, 'chars');
+          
+          const connection: EvolutionConnection = {
+            clientId,
+            instanceId,
+            isConnected: false,
+            qrCode: baileysResult.qrCode,
+            lastConnection: new Date()
+          };
 
-      this.connections.set(clientId, connection);
-      await this.saveConnectionToDatabase(clientId, connection);
+          this.connections.set(clientId, connection);
+          await this.saveConnectionToDatabase(clientId, connection);
 
-      console.log(`✅ [Evolution] QR Code real gerado para cliente ${clientId}, tamanho: ${qrCodeDataUrl.length}`);
-      return {
-        success: true,
-        qrCode: qrCodeDataUrl,
-        message: 'QR Code gerado - escaneie em até 90 segundos (tempo estendido)'
-      };
+          return {
+            success: true,
+            qrCode: baileysResult.qrCode,
+            message: 'QR Code funcional do WhatsApp gerado via Baileys'
+          };
+        } else {
+          console.log('❌ [Evolution] Baileys falhou:', baileysResult.message);
+          return {
+            success: false,
+            message: 'Erro ao gerar QR Code do WhatsApp'
+          };
+        }
+      } catch (baileysError) {
+        console.error('❌ [Evolution] Erro ao usar Baileys:', baileysError);
+        return {
+          success: false,
+          message: 'Erro no sistema WhatsApp'
+        };
+      }
       
       // Criar instância na Evolution API
       const createResponse = await fetch(`${this.apiUrl}/instance`, {

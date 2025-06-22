@@ -1,0 +1,74 @@
+Passo a passo para corrigir QR Code do Baileys não funcional em WhatsApp Web:
+
+1. Confirme a versão e importação do Baileys:
+   - Garanta que você usa a versão compatível (@whiskeysockets/baileys v4+).
+   - Importação recomendada:
+     ```js
+     import makeWASocket from '@whiskeysockets/baileys';
+     ```
+
+2. Inicie o socket sem fallback incorreto:
+   - No seu serviço, use diretamente:
+     ```js
+     const sock = makeWASocket({ auth: state });
+     ```
+
+3. Ajuste o listener de `connection.update`:
+   - Preserve a string QR completa:
+     ```js
+     sock.ev.on('connection.update', async (update) => {
+       const { qr, connection } = update;
+       if (qr) {
+         // Gere o DataURL sem modificar a string qr
+         const { toDataURL } = await import('qrcode');
+         const qrCodeDataUrl = await toDataURL(qr, {
+           errorCorrectionLevel: 'M',
+           width: 400,
+           margin: 1,
+           color: { dark: '#000000', light: '#FFFFFF' }
+         });
+         // Envie o DataURL ao frontend
+         resolve({ success: true, qrCode: qrCodeDataUrl });
+       }
+     });
+     ```
+
+4. Remova opções que podem corromper a imagem:
+   - Não use `type`, `quality`, nem cores com canal alfa no objeto `color`.
+
+5. Teste localmente o DataURL:
+   - No log, copie o valor de `qrCodeDataUrl` e cole na barra de endereços do navegador.
+   - Deve exibir um QR Code preto sobre fundo branco.
+
+6. Sirva como PNG puro (alternativa):
+   ```js
+   import { toBuffer } from 'qrcode';
+   const qrBuffer = await toBuffer(qr);
+   res.set('Content-Type', 'image/png');
+   res.send(qrBuffer);
+   ```
+
+7. No frontend, exiba corretamente:
+   ```html
+   <img src="${qrCode}" alt="WhatsApp QR Code" />
+   ```
+
+8. Desabilite cache HTTP no Express:
+   ```js
+   app.disable('etag');
+   app.use((req, res, next) => {
+     res.set('Cache-Control', 'no-store');
+     next();
+   });
+   ```
+
+9. Verifique CORS e cabeçalhos:
+   - Assegure que o frontend possa buscar `/api/evolution/connect` e `/api/evolution/status` sem bloqueio.
+
+10. Reinicie o backend e frontend:
+    - Pare e inicie o serviço: `npm restart` ou `pm2 restart all`.
+    - No navegador, force reload (Ctrl+F5).
+
+11. Valide no WhatsApp Web:
+    - Abra web.whatsapp.com, clique em "Escanear QR Code" e direcione a câmera ao QR renderizado.
+    - Se conectar, está funcionando corretamente.

@@ -94,21 +94,18 @@ export class ClientWhatsAppService {
         printQRInTerminal: false,
         logger: logger,
         browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 60000, // Aumentado para Replit
+        keepAliveIntervalMs: 30000,
         qrTimeout: 120000,
         retryRequestDelayMs: 2000,
-        maxMsgRetryCount: 5,
+        maxMsgRetryCount: 3,
         syncFullHistory: false,
-        fireInitQueries: true, // Mudado para true
+        fireInitQueries: false,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
-        emitOwnEvents: false,
-        getMessage: async (key: any) => {
-          return { conversation: 'Sistema de entrevistas ativo' };
-        }
+        emitOwnEvents: false
       });
 
       return new Promise((resolve) => {
@@ -134,16 +131,15 @@ export class ClientWhatsAppService {
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
           
-          console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr });
+          console.log(`🔄 [${clientId}] Connection update:`, { connection, hasQR: !!qr, qrLength: qr?.length || 0 });
 
           if (qr && !resolved) {
-            console.log(`📱 [BAILEYS] QR CODE AUTÊNTICO DO WHATSAPP gerado para cliente ${clientId}!`);
-            console.log(`📱 [BAILEYS] QR String original (primeiros 50 chars):`, qr.substring(0, 50));
-            console.log(`📱 [BAILEYS] Este é um QR Code REAL que conecta ao WhatsApp!`);
-            console.log(`⏰ QR Code válido por 2 minutos - escaneie rapidamente!`);
+            console.log(`📱 [BAILEYS] QR CODE AUTÊNTICO recebido para cliente ${clientId}!`);
+            console.log(`📱 [BAILEYS] QR String length: ${qr.length}`);
+            console.log(`📱 [BAILEYS] QR String preview:`, qr.substring(0, 60));
             
             try {
-              // Converter QR Code REAL do WhatsApp para DataURL (configuração corrigida)
+              // Gerar DataURL preservando string QR original
               const { toDataURL } = await import('qrcode');
               const qrCodeDataUrl = await toDataURL(qr, {
                 errorCorrectionLevel: 'M',
@@ -154,9 +150,9 @@ export class ClientWhatsAppService {
                   light: '#FFFFFF'
                 }
               });
-              console.log(`🖼️ [BAILEYS] QR Code convertido corretamente para DataURL, length: ${qrCodeDataUrl.length}`);
-              console.log(`🖼️ [BAILEYS] QR String original length: ${qr.length}`);
-              console.log(`🖼️ [BAILEYS] QR Code DataURL preview:`, qrCodeDataUrl.substring(0, 100));
+              
+              console.log(`✅ [BAILEYS] QR DataURL gerado, length: ${qrCodeDataUrl.length}`);
+              console.log(`🔍 [BAILEYS] DataURL válido:`, qrCodeDataUrl.startsWith('data:image/png;base64,'));
               
               // Atualizar configuração do cliente com DataURL
               await this.updateClientConfig(clientId, {
