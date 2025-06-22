@@ -225,6 +225,47 @@ export default function NewReportsPage() {
     totalCandidates: interviewStats[selection.id]?.total || selection.totalCandidates || 0
   }));
 
+  // Cache de dados de candidatos para cada seleção
+  const [selectionCandidatesCache, setSelectionCandidatesCache] = useState<Record<number, any[]>>({});
+
+  // Função para carregar candidatos de uma seleção específica
+  const loadSelectionCandidates = async (selectionId: number) => {
+    if (selectionCandidatesCache[selectionId]) {
+      return selectionCandidatesCache[selectionId];
+    }
+
+    try {
+      const response = await fetch(`/api/selections/${selectionId}/interview-candidates`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (response.ok) {
+        const candidates = await response.json();
+        setSelectionCandidatesCache(prev => ({
+          ...prev,
+          [selectionId]: candidates
+        }));
+        return candidates;
+      }
+    } catch (error) {
+      console.error('Erro ao carregar candidatos da seleção:', error);
+    }
+    
+    return [];
+  };
+
+  // Carrega candidatos para o Comercial 5 automaticamente
+  useEffect(() => {
+    if (selections.length > 0 && !selectedSelection) {
+      const comercial5 = selections.find(s => s.id === 1750476614396);
+      if (comercial5 && !selectionCandidatesCache[1750476614396]) {
+        loadSelectionCandidates(1750476614396);
+      }
+    }
+  }, [selections, selectedSelection, selectionCandidatesCache]);
+
   // Buscar candidatos da seleção com status de entrevista
   const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
     queryKey: ['selection-interview-candidates', selectedSelection?.id],
@@ -841,16 +882,36 @@ export default function NewReportsPage() {
                                   </div>
                                   <div>
                                     <div className="text-2xl font-bold text-green-600">
-                                      {selection.id === 1750476614396 
-                                        ? (interviewCandidates?.filter(candidate => {
+                                      {(() => {
+                                        if (selection.id === 1750476614396) {
+                                          const cachedCandidates = selectionCandidatesCache[1750476614396];
+                                          console.log('🔍 DEBUG Comercial 5 - cachedCandidates:', cachedCandidates);
+                                          console.log('🔍 DEBUG Comercial 5 - cachedCandidates length:', cachedCandidates?.length);
+                                          
+                                          if (!cachedCandidates || cachedCandidates.length === 0) {
+                                            console.log('🔍 DEBUG Comercial 5 - Usando completedInterviews como fallback:', selection.completedInterviews);
+                                            return selection.completedInterviews || 0;
+                                          }
+                                          
+                                          const completed = cachedCandidates.filter(candidate => {
                                             const totalQuestions = candidate.responses?.length || 0;
                                             const completedResponses = candidate.responses?.filter(r => 
                                               r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                             ).length || 0;
-                                            return totalQuestions > 0 && completedResponses === totalQuestions;
-                                          }).length || 0)
-                                        : (selection.completedInterviews || 0)
-                                      }
+                                            const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
+                                            console.log(`🔍 DEBUG ${candidate.candidate.name}:`, {
+                                              totalQuestions,
+                                              completedResponses,
+                                              isCompleted
+                                            });
+                                            return isCompleted;
+                                          }).length;
+                                          
+                                          console.log('🔍 DEBUG Comercial 5 - Finalizaram:', completed);
+                                          return completed;
+                                        }
+                                        return selection.completedInterviews || 0;
+                                      })()}
                                     </div>
                                     <div className="text-xs text-gray-600">Finalizaram</div>
                                   </div>
@@ -860,32 +921,46 @@ export default function NewReportsPage() {
                                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                                       <span>Progresso</span>
                                       <span>
-                                        {selection.id === 1750476614396 
-                                          ? Math.round(((interviewCandidates?.filter(candidate => {
+                                        {(() => {
+                                          if (selection.id === 1750476614396) {
+                                            const cachedCandidates = selectionCandidatesCache[1750476614396];
+                                            if (!cachedCandidates || cachedCandidates.length === 0) {
+                                              return Math.round(((selection.completedInterviews || 0) / selection.totalCandidates) * 100);
+                                            }
+                                            const completed = cachedCandidates.filter(candidate => {
                                               const totalQuestions = candidate.responses?.length || 0;
                                               const completedResponses = candidate.responses?.filter(r => 
                                                 r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                               ).length || 0;
                                               return totalQuestions > 0 && completedResponses === totalQuestions;
-                                            }).length || 0) / selection.totalCandidates) * 100)
-                                          : Math.round(((selection.completedInterviews || 0) / selection.totalCandidates) * 100)
-                                        }%
+                                            }).length;
+                                            return Math.round((completed / selection.totalCandidates) * 100);
+                                          }
+                                          return Math.round(((selection.completedInterviews || 0) / selection.totalCandidates) * 100);
+                                        })()}%
                                       </span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
                                       <div 
                                         className="bg-green-500 h-2 rounded-full transition-all" 
                                         style={{ 
-                                          width: `${selection.id === 1750476614396 
-                                            ? ((interviewCandidates?.filter(candidate => {
+                                          width: `${(() => {
+                                            if (selection.id === 1750476614396) {
+                                              const cachedCandidates = selectionCandidatesCache[1750476614396];
+                                              if (!cachedCandidates || cachedCandidates.length === 0) {
+                                                return ((selection.completedInterviews || 0) / selection.totalCandidates) * 100;
+                                              }
+                                              const completed = cachedCandidates.filter(candidate => {
                                                 const totalQuestions = candidate.responses?.length || 0;
                                                 const completedResponses = candidate.responses?.filter(r => 
                                                   r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                                 ).length || 0;
                                                 return totalQuestions > 0 && completedResponses === totalQuestions;
-                                              }).length || 0) / selection.totalCandidates) * 100
-                                            : ((selection.completedInterviews || 0) / selection.totalCandidates) * 100
-                                          }%` 
+                                              }).length;
+                                              return (completed / selection.totalCandidates) * 100;
+                                            }
+                                            return ((selection.completedInterviews || 0) / selection.totalCandidates) * 100;
+                                          })()}%` 
                                         }}
                                       ></div>
                                     </div>
