@@ -245,13 +245,21 @@ class EvolutionApiService {
 
         if (response.ok) {
           const statusData = await response.json();
-          const isConnected = statusData.status === 'open' || statusData.connected === true;
+          const isConnected = statusData.instance?.status === 'open';
+          
+          console.log(`📡 [Evolution] Status da API:`, {
+            instanceId: connection.instanceId,
+            status: statusData.instance?.status,
+            isConnected
+          });
           
           // Atualizar status se mudou
           if (connection.isConnected !== isConnected) {
             connection.isConnected = isConnected;
             this.connections.set(clientId, connection);
-            await this.saveConnectionToDatabase(clientId, { isConnected });
+            await this.saveConnectionToDatabase(clientId, { 
+              evolutionConnected: isConnected 
+            });
           }
         }
       } catch (statusError) {
