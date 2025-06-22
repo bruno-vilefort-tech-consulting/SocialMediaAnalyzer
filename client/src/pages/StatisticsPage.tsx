@@ -32,7 +32,7 @@ export default function StatisticsPage() {
 
   // Buscar estatísticas baseadas no período selecionado
   const { data: statistics, isLoading } = useQuery({
-    queryKey: ['/api/statistics', user?.clientId, dateRange],
+    queryKey: ['/api/statistics', user?.clientId, dateRange.from.toISOString(), dateRange.to.toISOString()],
     queryFn: () => 
       fetch(`/api/statistics?clientId=${user?.clientId}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}`, {
         headers: {
@@ -72,11 +72,11 @@ export default function StatisticsPage() {
     }
   };
 
-  const statsData: StatisticsData = statistics || {
-    candidatesRegistered: 0,
-    interviewsSent: 0,
-    interviewsCompleted: 0,
-    completionRate: 0
+  const statsData: StatisticsData = {
+    candidatesRegistered: statistics?.candidatesRegistered || 0,
+    interviewsSent: statistics?.interviewsSent || 0,
+    interviewsCompleted: statistics?.interviewsCompleted || 0,
+    completionRate: statistics?.completionRate || 0
   };
 
   return (
@@ -174,7 +174,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : statsData.candidatesRegistered.toLocaleString()}
+                  {isLoading ? "..." : (statsData.candidatesRegistered || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-slate-500">Candidatos Cadastrados</div>
               </div>
@@ -190,7 +190,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : statsData.interviewsSent.toLocaleString()}
+                  {isLoading ? "..." : (statsData.interviewsSent || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-slate-500">Entrevistas Enviadas</div>
               </div>
@@ -206,7 +206,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : statsData.interviewsCompleted.toLocaleString()}
+                  {isLoading ? "..." : (statsData.interviewsCompleted || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-slate-500">Entrevistas Finalizadas</div>
               </div>
@@ -222,7 +222,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : `${statsData.completionRate.toFixed(1)}%`}
+                  {isLoading ? "..." : `${(statsData.completionRate || 0).toFixed(1)}%`}
                 </div>
                 <div className="text-sm text-slate-500">Taxa de Conclusão</div>
               </div>
@@ -260,20 +260,20 @@ export default function StatisticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-600">Utilizadas</span>
-                  <span className="font-semibold text-slate-900">{statsData.interviewsSent.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900">{(statsData.interviewsSent || 0).toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min((statsData.interviewsSent / 1000) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((statsData.interviewsSent || 0) / 1000) * 100, 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">
-                    Restantes: {(1000 - statsData.interviewsSent).toLocaleString()}
+                    Restantes: {(1000 - (statsData.interviewsSent || 0)).toLocaleString()}
                   </span>
                   <span className="text-slate-500">
-                    {((statsData.interviewsSent / 1000) * 100).toFixed(1)}%
+                    {(((statsData.interviewsSent || 0) / 1000) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -298,20 +298,20 @@ export default function StatisticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-600">Utilizados</span>
-                  <span className="font-semibold text-slate-900">{statsData.interviewsCompleted.toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900">{(statsData.interviewsCompleted || 0).toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-purple-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min((statsData.interviewsCompleted / 500) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((statsData.interviewsCompleted || 0) / 500) * 100, 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">
-                    Restantes: {(500 - statsData.interviewsCompleted).toLocaleString()}
+                    Restantes: {(500 - (statsData.interviewsCompleted || 0)).toLocaleString()}
                   </span>
                   <span className="text-slate-500">
-                    {((statsData.interviewsCompleted / 500) * 100).toFixed(1)}%
+                    {(((statsData.interviewsCompleted || 0) / 500) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
