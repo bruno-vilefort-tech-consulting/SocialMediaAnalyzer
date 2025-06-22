@@ -605,66 +605,50 @@ export default function ApiConfigPage() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => {
-                      // Tentar Evolution API primeiro, fallback para Baileys
-                      const connectUrl = '/api/evolution/connect';
-                      
-                      fetch(connectUrl, {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                          'Content-Type': 'application/json'
-                        }
-                      })
-                      .then(res => res.json())
-                      .then(data => {
+                    onClick={async () => {
+                      try {
+                        console.log('🔗 Tentando conectar via Evolution API...');
+                        
+                        const response = await fetch('/api/evolution/connect', {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        const data = await response.json();
                         console.log('🔗 Evolution Connect Response:', data);
+                        
                         if (data.success) {
+                          // Atualizar queries
                           queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                          queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                          
                           setTimeout(() => {
                             queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
+                            queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
                           }, 1000);
                           
                           toast({ 
-                            title: "Conectando WhatsApp via Evolution API...",
+                            title: "Sucesso!",
                             description: data.message 
                           });
                         } else {
-                          // Fallback para Baileys em caso de erro
-                          console.log('🔄 Tentando fallback para Baileys...');
-                          fetch('/api/whatsapp-client/connect', {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                              'Content-Type': 'application/json'
-                            }
-                          })
-                          .then(res => res.json())
-                          .then(fallbackData => {
-                            if (fallbackData.success) {
-                              queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
-                              toast({ 
-                                title: "Conectando WhatsApp via Baileys...",
-                                description: fallbackData.message 
-                              });
-                            } else {
-                              toast({ 
-                                title: "Erro na conexão", 
-                                description: data.message || fallbackData.message,
-                                variant: "destructive" 
-                              });
-                            }
+                          toast({ 
+                            title: "Erro na conexão", 
+                            description: data.message,
+                            variant: "destructive" 
                           });
                         }
-                      })
-                      .catch((error) => {
+                      } catch (error) {
                         console.error('WhatsApp Connect Error:', error);
                         toast({ 
                           title: "Erro na requisição", 
                           description: "Verifique a conexão",
                           variant: "destructive" 
                         });
-                      });
+                      }
                     }}
                     variant="default"
                     size="sm"
