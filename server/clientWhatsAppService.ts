@@ -35,7 +35,7 @@ export class ClientWhatsAppService {
   }
 
   private getSessionPath(clientId: string): string {
-    return path.join(process.cwd(), 'whatsapp-sessions', `client-${clientId}`);
+    return path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
   }
 
   private async ensureSessionDirectory(clientId: string) {
@@ -223,29 +223,48 @@ export class ClientWhatsAppService {
           }
 
           if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== 401;
             const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
+            const shouldReconnect = reason !== 401 && reason !== 403;
+            
             console.log(`🔌 [${clientId}] Conexão fechada - Código: ${reason}, Reconectar: ${shouldReconnect}`);
             
-            // Atualizar status no banco
-            await this.updateClientConfig(clientId, {
-              isConnected: false,
-              qrCode: null // Limpar QR Code antigo
-            });
+            // Atualizar status no banco apenas se não for reconectável
+            if (!shouldReconnect) {
+              await this.updateClientConfig(clientId, {
+                isConnected: false,
+                qrCode: null,
+                phoneNumber: null
+              });
+              
+              // Só limpar sessão em casos específicos (logout real)
+              if (reason === 401) {
+                console.log(`🧹 [${clientId}] Logout detectado - limpando credenciais`);
+                try {
+                  await this.clearClientSession(clientId);
+                } catch (clearError) {
+                  console.error(`❌ Erro ao limpar sessão: ${clearError}`);
+                }
+              }
+              
+              // Remove sessão da memória apenas se não reconectável
+              this.sessions.delete(clientId);
+            } else {
+              console.log(`🔄 [${clientId}] Desconexão temporária - mantendo credenciais`);
+              // Atualizar apenas status de conexão
+              await this.updateClientConfig(clientId, {
+                isConnected: false
+              });
+            }
             
             if (!resolved) {
               clearTimeout(timeoutId);
               resolved = true;
-              // Se foi erro 401, apenas limpar credenciais sem reconectar automaticamente
-              if (reason === 401) {
-                console.log(`🗑️ Limpando credenciais antigas para cliente ${clientId}`);
-                try {
-                  await this.clearClientSession(clientId);
-                } catch (error) {
-                  console.error(`❌ Erro ao limpar sessão:`, error);
-                }
-              }
-              resolve({ success: false, message: "Conexão encerrada - gerando novo QR Code..." });
+              resolve({ 
+                success: false, 
+                message: shouldReconnect 
+                  ? 'Conexão perdida temporariamente - suas credenciais foram preservadas'
+                  : 'Sessão expirada - será necessário escanear novo QR Code'
+              });
             }
           }
         });
