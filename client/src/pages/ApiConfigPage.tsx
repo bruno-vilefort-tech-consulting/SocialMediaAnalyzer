@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff, PhoneOff } from "lucide-react";
+import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageSquare, QrCode, Smartphone, Send, RefreshCw, Trash2, Phone, Wifi, WifiOff, PhoneOff, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -606,60 +606,121 @@ export default function ApiConfigPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        console.log('🔗 Tentando conectar via Evolution API...');
-                        
-                        const response = await fetch('/api/evolution/connect', {
-                          method: 'POST',
-                          headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-                            'Content-Type': 'application/json'
-                          }
-                        });
-                        
-                        const data = await response.json();
-                        console.log('🔗 Evolution Connect Response:', data);
-                        
-                        if (data.success) {
-                          // Atualizar queries imediatamente
-                          queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
-                          queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={async () => {
+                        try {
+                          console.log('🔗 Tentando conectar via Evolution API...');
                           
-                          // Refetch com delay menor para garantir atualização
-                          setTimeout(() => {
-                            queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
-                            queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
-                          }, 500);
-                          
-                          toast({ 
-                            title: "QR Code gerado com sucesso!",
-                            description: data.message 
+                          const response = await fetch('/api/evolution/connect', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                              'Content-Type': 'application/json'
+                            }
                           });
-                        } else {
+                          
+                          const data = await response.json();
+                          console.log('🔗 Evolution Connect Response:', data);
+                          
+                          if (data.success) {
+                            // Atualizar queries imediatamente
+                            queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                            queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                            
+                            // Refetch com delay menor para garantir atualização
+                            setTimeout(() => {
+                              queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
+                              queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                            }, 500);
+                            
+                            toast({ 
+                              title: "QR Code gerado com sucesso!",
+                              description: data.message 
+                            });
+                          } else {
+                            toast({ 
+                              title: "Erro na conexão", 
+                              description: data.message,
+                              variant: "destructive" 
+                            });
+                          }
+                        } catch (error) {
+                          console.error('WhatsApp Connect Error:', error);
                           toast({ 
-                            title: "Erro na conexão", 
-                            description: data.message,
+                            title: "Erro na requisição", 
+                            description: "Verifique a conexão",
                             variant: "destructive" 
                           });
                         }
-                      } catch (error) {
-                        console.error('WhatsApp Connect Error:', error);
-                        toast({ 
-                          title: "Erro na requisição", 
-                          description: "Verifique a conexão",
-                          variant: "destructive" 
-                        });
-                      }
-                    }}
-                    variant="default"
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Gerar QR Code
-                  </Button>
+                      }}
+                      variant="default"
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Gerar QR Code
+                    </Button>
+
+                    {activeWhatsappStatus?.qrCode && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            // Desconectar primeiro
+                            const disconnectResponse = await fetch('/api/evolution/disconnect', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                'Content-Type': 'application/json'
+                              }
+                            });
+                            
+                            // Aguardar um pouco e reconectar
+                            setTimeout(async () => {
+                              const connectResponse = await fetch('/api/evolution/connect', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                  'Content-Type': 'application/json'
+                                }
+                              });
+                              
+                              const data = await connectResponse.json();
+                              
+                              if (data.success) {
+                                queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                                queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                                
+                                setTimeout(() => {
+                                  queryClient.refetchQueries({ queryKey: [evolutionEndpoint] });
+                                  queryClient.refetchQueries({ queryKey: [whatsappEndpoint] });
+                                }, 500);
+                                
+                                toast({
+                                  title: "QR Code atualizado!",
+                                  description: "Novo QR Code gerado com sucesso"
+                                });
+                              }
+                            }, 1000);
+                            
+                          } catch (error) {
+                            console.error('Erro ao atualizar QR Code:', error);
+                            toast({
+                              title: "Erro ao atualizar",
+                              description: "Tente novamente",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Atualizar QR
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* QR Code Display */}
@@ -667,9 +728,46 @@ export default function ApiConfigPage() {
                 {activeWhatsappStatus?.qrCode && (
                   <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div className="text-center space-y-3">
-                      <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300">
-                        <QrCode className="h-5 w-5" />
-                        <span className="font-medium">Escaneie o QR Code com seu WhatsApp ({activeWhatsappStatus.method})</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-center gap-2 text-blue-700 dark:text-blue-300 flex-1">
+                          <QrCode className="h-5 w-5" />
+                          <span className="font-medium">Escaneie o QR Code com seu WhatsApp ({activeWhatsappStatus.method})</span>
+                        </div>
+                        
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/evolution/disconnect', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                  'Content-Type': 'application/json'
+                                }
+                              });
+                              
+                              const data = await response.json();
+                              
+                              queryClient.invalidateQueries({ queryKey: [evolutionEndpoint] });
+                              queryClient.invalidateQueries({ queryKey: [whatsappEndpoint] });
+                              
+                              toast({
+                                title: "Desconectado",
+                                description: "WhatsApp desconectado com sucesso"
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Erro ao desconectar",
+                                description: "Tente novamente",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                       
                       <div className="flex justify-center">
@@ -681,6 +779,7 @@ export default function ApiConfigPage() {
                         <p>2. Toque em Menu ou Configurações e selecione "Dispositivos conectados"</p>
                         <p>3. Toque em "Conectar um dispositivo"</p>
                         <p>4. Aponte seu telefone para esta tela para capturar o código</p>
+                        <p className="text-xs text-orange-600 mt-2">Se o QR Code não funcionar, clique em "Atualizar QR" para gerar um novo</p>
                       </div>
                     </div>
                   </div>
