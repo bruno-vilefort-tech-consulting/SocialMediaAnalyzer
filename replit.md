@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 🎯 UX MELHORADA - QR Code só aparece quando usuário clica "Conectar"
+  - **Problema corrigido**: QR Code aparecia automaticamente ao acessar Configurações
+  - **Controle de exibição**: useState shouldShowQR controla quando mostrar QR Code
+  - **Fluxo correto**: Usuário clica "Conectar" → QR Code aparece → Escaneie → Conectado
+  - **Estado persistente**: Se já conectado, continua mostrando status conectado
+  - **Botões funcionais**: "Cancelar" oculta QR Code, "Desconectar" limpa estado
+  - **UX intuitiva**: Sistema agora funciona conforme expectativa do usuário
+  
 - June 22, 2025: 🔧 CORREÇÃO TIMEOUT UPLOADPREKEYS IMPLEMENTADA - Solução para limitações de rede Replit
   - **Problema identificado**: Timeout 408 no uploadPreKeys + error 428 por limitações WebSocket Replit
   - **mobile: true aplicado**: Usa mmg.whatsapp.net em vez de web.whatsapp.com (menos bloqueado)

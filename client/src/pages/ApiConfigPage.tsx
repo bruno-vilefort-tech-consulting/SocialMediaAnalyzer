@@ -249,6 +249,9 @@ export default function ApiConfigPage() {
   // SEMPRE usar Evolution API 
   const activeWhatsappStatus = evolutionStatus;
   
+  // Só mostrar QR Code se usuário clicou para conectar OU já está conectado
+  const shouldDisplayQR = shouldShowQR && (activeWhatsappStatus?.qrCode || activeWhatsappStatus?.isConnected);
+  
 
 
   // Estados para configurações master

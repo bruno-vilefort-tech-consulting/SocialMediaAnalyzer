@@ -115,7 +115,6 @@ export class ClientWhatsAppService {
         printQRInTerminal: false,
         logger: logger,
         browser: ['Replit-Bot', 'Chrome', '1.0.0'], // Garantido 3 strings
-        mobile: true,                 // 👈 Usa mmg.whatsapp.net (menos bloqueado)
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         defaultQueryTimeoutMs: 180000, // 👈 3 minutos para uploadPreKeys
@@ -126,7 +125,7 @@ export class ClientWhatsAppService {
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: true,        // 👈 Enviar init queries após abrir
+        fireInitQueries: false,       // 👈 Não disparar queries automáticas
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
