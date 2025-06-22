@@ -3193,6 +3193,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      console.log(`📊 Entrevistas iniciadas no período: ${interviewsStarted}`);
+      console.log(`📊 Entrevistas finalizadas no período: ${interviewsCompleted}`);
+
       // Calcular taxa de conclusão baseada em entrevistas iniciadas
       if (interviewsStarted > 0) {
         completionRate = (interviewsCompleted / interviewsStarted) * 100;
