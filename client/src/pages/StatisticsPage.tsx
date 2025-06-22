@@ -15,6 +15,7 @@ import { CalendarIcon, Users, Send, CheckCircle, FileText, Target, Award } from 
 interface StatisticsData {
   candidatesRegistered: number;
   interviewsSent: number;
+  interviewsStarted: number;
   interviewsCompleted: number;
   completionRate: number;
 }
@@ -76,6 +77,7 @@ export default function StatisticsPage() {
   const statsData: StatisticsData = {
     candidatesRegistered: statistics?.candidatesRegistered || 0,
     interviewsSent: statistics?.interviewsSent || 0,
+    interviewsStarted: statistics?.interviewsStarted || 0,
     interviewsCompleted: statistics?.interviewsCompleted || 0,
     completionRate: statistics?.completionRate || 0
   };
@@ -156,7 +158,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* Estatísticas de Entrevistas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -184,6 +186,22 @@ export default function StatisticsPage() {
                   {isLoading ? "..." : (statsData.interviewsSent || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-slate-500">Entrevistas Enviadas</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <div className="text-yellow-600 text-lg font-bold">1</div>
+              </div>
+              <div className="ml-4">
+                <div className="text-2xl font-bold text-slate-900">
+                  {isLoading ? "..." : (statsData.interviewsStarted || 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-slate-500">Entrevistas Iniciadas</div>
               </div>
             </div>
           </CardContent>
@@ -251,20 +269,20 @@ export default function StatisticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-600">Utilizadas</span>
-                  <span className="font-semibold text-slate-900">{(statsData.interviewsSent || 0).toLocaleString()}</span>
+                  <span className="font-semibold text-slate-900">{(statsData.interviewsStarted || 0).toLocaleString()}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(((statsData.interviewsSent || 0) / 1000) * 100, 100)}%` }}
+                    style={{ width: `${Math.min(((statsData.interviewsStarted || 0) / 1000) * 100, 100)}%` }}
                   />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">
-                    Restantes: {(1000 - (statsData.interviewsSent || 0)).toLocaleString()}
+                    Restantes: {(1000 - (statsData.interviewsStarted || 0)).toLocaleString()}
                   </span>
                   <span className="text-slate-500">
-                    {(((statsData.interviewsSent || 0) / 1000) * 100).toFixed(1)}%
+                    {(((statsData.interviewsStarted || 0) / 1000) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
