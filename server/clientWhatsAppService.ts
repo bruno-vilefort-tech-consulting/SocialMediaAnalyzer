@@ -1,8 +1,6 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
+import { storage } from './storage';
 import fs from 'fs';
 import path from 'path';
-import { storage } from './storage';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -29,8 +27,8 @@ export class ClientWhatsAppService {
 
   private async initializeBaileys() {
     try {
+      this.baileys = await import('@whiskeysockets/baileys');
       console.log('📱 Baileys inicializado para ClientWhatsAppService');
-      this.baileys = { makeWASocket, useMultiFileAuthState };
     } catch (error) {
       console.error('❌ Erro ao inicializar Baileys:', error);
     }
@@ -78,12 +76,12 @@ export class ClientWhatsAppService {
         browser: ['Ubuntu', 'Chrome', '20.0.04'],
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 30000, // Reduzido de 60s para 30s
-        connectTimeoutMs: 20000, // Reduzido de 60s para 20s
-        keepAliveIntervalMs: 25000, // Reduzido de 30s para 25s
-        qrTimeout: 60000, // Reduzido de 120s para 60s
-        retryRequestDelayMs: 2000, // Aumentado de 1s para 2s
-        maxMsgRetryCount: 2, // Reduzido de 3 para 2
+        defaultQueryTimeoutMs: 60000,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 30000,
+        qrTimeout: 120000, // 2 minutos
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 3,
         syncFullHistory: false,
         fireInitQueries: false,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
@@ -96,17 +94,22 @@ export class ClientWhatsAppService {
       return new Promise((resolve) => {
         let resolved = false;
         
-        // Timeout de segurança para evitar travamento
+        // Timeout de segurança conforme documentação
         const timeoutId = setTimeout(() => {
           if (!resolved) {
-            console.log(`⏰ Timeout na conexão WhatsApp para cliente ${clientId}`);
+            console.log(`⏰ [${clientId}] Timeout na conexão WhatsApp (130s)`);
             resolved = true;
+            try {
+              socket?.end();
+            } catch (e) {
+              console.log('Socket já fechado');
+            }
             resolve({
               success: false,
-              message: 'Timeout na conexão WhatsApp - tente novamente'
+              message: 'Timeout - QR Code não foi escaneado a tempo. Tente novamente.'
             });
           }
-        }, 25000); // 25 segundos de timeout
+        }, 130000); // 2 minutos + 10 segundos de buffer
 
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
@@ -188,40 +191,50 @@ export class ClientWhatsAppService {
             };
 
             this.sessions.set(clientId, session);
+
+            if (!resolved) {
+              clearTimeout(timeoutId);
+              resolved = true;
+              resolve({ 
+                success: true, 
+                message: `WhatsApp conectado com sucesso! Número: ${phoneNumber}` 
+              });
+            }
           }
 
           if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== 401;
             const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-            console.log(`❌ [${clientId}] Conexão fechada - Código: ${reason}, Reconectar: ${shouldReconnect}`);
+            console.log(`🔌 [${clientId}] Conexão fechada - Código: ${reason}, Reconectar: ${shouldReconnect}`);
             
-            if (reason === 408 || reason === 440) {
-              console.log(`⏰ [${clientId}] Timeout detectado - QR Code expirou`);
-              await this.updateClientConfig(clientId, {
-                isConnected: false,
-                qrCode: null,
-                phoneNumber: null,
-                lastConnection: new Date(),
-                clientId
-              });
-            } else if (!shouldReconnect) {
-              await this.updateClientConfig(clientId, {
-                isConnected: false,
-                phoneNumber: null,
-                qrCode: null,
-                lastConnection: new Date(),
-                clientId
-              });
+            // Atualizar status no banco
+            await this.updateClientConfig(clientId, {
+              isConnected: false,
+              qrCode: null // Limpar QR Code antigo
+            });
+            
+            if (!resolved) {
+              clearTimeout(timeoutId);
+              resolved = true;
+              // Se foi erro 401, limpar credenciais e tentar novamente
+              if (reason === 401) {
+                console.log(`🗑️ Limpando credenciais antigas para cliente ${clientId}`);
+                try {
+                  await this.clearClientSession(clientId);
+                  // Tentar gerar novo QR Code após limpar credenciais
+                  setTimeout(() => {
+                    this.connectClient(clientId);
+                  }, 1000);
+                } catch (error) {
+                  console.error(`❌ Erro ao limpar sessão:`, error);
+                }
+              }
+              resolve({ success: false, message: "Conexão encerrada - gerando novo QR Code..." });
             }
           }
         });
 
         socket.ev.on('creds.update', saveCreds);
-
-        // Limpar timeout quando conexão é resolvida
-        socket.ev.on('connection.update', () => {
-          if (resolved) clearTimeout(timeoutId);
-        });
       });
     } catch (error) {
       console.error(`❌ Erro ao conectar WhatsApp para cliente ${clientId}:`, error);
