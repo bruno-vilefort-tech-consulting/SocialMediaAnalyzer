@@ -186,7 +186,14 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
   // Get unorganized reports (not in any folder)
   const getUnorganizedReports = (): Report[] => {
     const assignedReportIds = new Set(assignments.map(a => a.reportId));
-    return reports.filter(r => !assignedReportIds.has(r.id));
+    const unorganized = reports.filter(r => !assignedReportIds.has(r.id));
+    console.log('📊 Relatórios não organizados:', {
+      totalReports: reports.length,
+      assignedCount: assignedReportIds.size,
+      unorganizedCount: unorganized.length,
+      unorganizedIds: unorganized.map(r => r.id)
+    });
+    return unorganized;
   };
 
   // Drag and drop handlers
@@ -271,10 +278,15 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
     setActiveFilter(filter);
     
     if (filter === 'general') {
-      // Show reports not in any folder
+      // Show only reports that are NOT in any folder (truly unorganized)
       const assignedReportIds = assignments.map(a => a.reportId);
       const unassignedReports = reports.filter(r => !assignedReportIds.includes(r.id));
-      console.log('📋 Filtro General:', { assignedReportIds, unassignedReports: unassignedReports.length });
+      console.log('📋 Filtro General (apenas não organizados):', { 
+        totalReports: reports.length,
+        assignedReportIds, 
+        unassignedReports: unassignedReports.length,
+        unassignedIds: unassignedReports.map(r => r.id)
+      });
       onFilterChange(unassignedReports);
     } else {
       // Show reports in specific folder
@@ -288,10 +300,18 @@ export default function ReportFoldersManager({ selectedClientId, reports, onRepo
 
   // Apply filter when data changes
   useEffect(() => {
-    if (!reports || !assignments) return;
+    console.log('🔄 useEffect trigger por mudança de dados:', { 
+      reportsLength: reports?.length, 
+      assignmentsLength: assignments?.length, 
+      activeFilter 
+    });
+    if (!reports || !assignments) {
+      console.log('⏳ Aguardando dados...');
+      return;
+    }
     
     applyFilter(activeFilter);
-  }, [reports?.length, assignments?.length]);
+  }, [reports?.length, assignments?.length, activeFilter]);
 
   if (!selectedClientId) {
     return (
