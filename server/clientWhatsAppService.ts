@@ -285,30 +285,97 @@ export class ClientWhatsAppService {
 
   async sendTestMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; message: string }> {
     try {
+      console.log(`📱 [WHATSAPP TEST] Iniciando envio para cliente ${clientId}`);
+      console.log(`📱 [WHATSAPP TEST] Telefone: ${phoneNumber}`);
+      console.log(`📱 [WHATSAPP TEST] Mensagem: ${message.substring(0, 50)}...`);
+
+      // Verificar status do banco
+      const apiConfig = await storage.getApiConfig('client', clientId);
       const session = this.sessions.get(clientId);
       
-      if (!session?.socket || !session.config.isConnected) {
+      console.log(`📱 [WHATSAPP TEST] Status do WhatsApp para cliente ${clientId}:`, {
+        isConnected: apiConfig?.whatsappQrConnected || false,
+        qrCode: apiConfig?.whatsappQrCode ? 'exists' : null,
+        phoneNumber: apiConfig?.whatsappQrPhoneNumber || null
+      });
+      
+      console.log(`📱 [WHATSAPP TEST] Sessão em memória:`, {
+        hasSession: !!session,
+        hasSocket: !!session?.socket,
+        configConnected: session?.config?.isConnected || false
+      });
+
+      // Se o banco indica conectado mas não há sessão, tentar restaurar
+      if (apiConfig?.whatsappQrConnected && !session?.socket) {
+        console.log(`🔄 [WHATSAPP TEST] Banco indica conectado mas sem sessão ativa. Tentando restaurar...`);
+        try {
+          await this.connectClient(clientId);
+          // Aguardar um pouco para a sessão ser criada
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const newSession = this.sessions.get(clientId);
+          
+          if (newSession?.socket) {
+            console.log(`✅ [WHATSAPP TEST] Sessão restaurada com sucesso`);
+          } else {
+            console.log(`❌ [WHATSAPP TEST] Falha ao restaurar sessão`);
+            return {
+              success: false,
+              message: 'WhatsApp conectado no banco mas sessão indisponível. Tente reconectar.'
+            };
+          }
+        } catch (restoreError) {
+          console.error(`❌ [WHATSAPP TEST] Erro ao restaurar sessão:`, restoreError);
+          return {
+            success: false,
+            message: 'Erro ao restaurar conexão WhatsApp. Tente reconectar.'
+          };
+        }
+      }
+
+      const finalSession = this.sessions.get(clientId);
+      if (!finalSession?.socket) {
+        console.log(`❌ [WHATSAPP TEST] Erro: Sem sessão ativa após tentativa de restauração`);
         return {
           success: false,
-          message: 'WhatsApp não está conectado para este cliente'
+          message: 'WhatsApp não está conectado. Gere um novo QR Code para conectar.'
         };
       }
 
-      const formattedNumber = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
+      if (!apiConfig?.whatsappQrConnected) {
+        console.log(`❌ [WHATSAPP TEST] Erro: Status desconectado no banco`);
+        return {
+          success: false,
+          message: 'WhatsApp não está conectado no sistema. Gere um novo QR Code.'
+        };
+      }
+
+      // Formatar número para WhatsApp
+      let formattedNumber = phoneNumber.replace(/\D/g, ''); // Remove caracteres não numéricos
       
-      await session.socket.sendMessage(formattedNumber, { text: message });
+      // Adicionar código do país se necessário
+      if (!formattedNumber.startsWith('55')) {
+        formattedNumber = '55' + formattedNumber;
+      }
       
-      console.log(`✅ Mensagem teste enviada para ${phoneNumber} via cliente ${clientId}`);
+      // Adicionar sufixo WhatsApp
+      if (!formattedNumber.includes('@')) {
+        formattedNumber = formattedNumber + '@s.whatsapp.net';
+      }
+      
+      console.log(`📤 [WHATSAPP TEST] Enviando para: ${formattedNumber}`);
+      await finalSession.socket.sendMessage(formattedNumber, { text: message });
+      
+      console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso para ${phoneNumber}`);
       
       return {
         success: true,
         message: 'Mensagem enviada com sucesso'
       };
     } catch (error) {
-      console.error(`❌ Erro ao enviar mensagem teste para cliente ${clientId}:`, error);
+      console.error(`❌ [WHATSAPP TEST] Erro ao enviar mensagem:`, error);
       return {
         success: false,
-        message: 'Erro ao enviar mensagem'
+        message: `Erro ao enviar mensagem: ${error.message || 'Erro desconhecido'}`
       };
     }
   }
