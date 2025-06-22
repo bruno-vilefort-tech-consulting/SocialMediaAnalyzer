@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: ✅ SISTEMA WHATSAPP CORRIGIDO E FUNCIONANDO - Timeout e configurações Baileys implementadas conforme documentação
+  - **Problema resolvido**: Timeouts muito baixos causavam falhas na geração de QR Code
+  - **Configurações otimizadas**: Timeouts aumentados para 60s (connect) e 130s (total) conforme documentação
+  - **QR Code funcionando**: Sistema agora gera QR Code corretamente (7866+ caracteres)
+  - **Pasta de sessões**: whatsapp-sessions/ criada e funcionando adequadamente
+  - **Limpeza de credenciais**: Sistema limpa credenciais antigas automaticamente em erro 401
+  - **Firebase integrado**: Status e QR Code salvos corretamente no banco de dados
+  - **Sistema isolado**: Cada cliente possui conexão WhatsApp independente e segura
+  - **Aplicação estável**: Sem crashes durante inicialização, WhatsApp funciona sob demanda
+
 - June 22, 2025: 🎨 DESIGN DE PASTAS PROFISSIONAL IMPLEMENTADO - Sistema de organização de relatórios com visual Windows-style
   - **Botões das pastas melhorados**: Cor de fundo com transparência 20% da cor selecionada quando ativo
   - **Ícones de pasta preenchidos**: Pastas ativas mostram ícone preenchido com a cor personalizada

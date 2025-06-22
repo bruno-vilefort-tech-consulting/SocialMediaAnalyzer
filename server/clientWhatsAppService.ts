@@ -216,15 +216,11 @@ export class ClientWhatsAppService {
             if (!resolved) {
               clearTimeout(timeoutId);
               resolved = true;
-              // Se foi erro 401, limpar credenciais e tentar novamente
+              // Se foi erro 401, apenas limpar credenciais sem reconectar automaticamente
               if (reason === 401) {
                 console.log(`🗑️ Limpando credenciais antigas para cliente ${clientId}`);
                 try {
                   await this.clearClientSession(clientId);
-                  // Tentar gerar novo QR Code após limpar credenciais
-                  setTimeout(() => {
-                    this.connectClient(clientId);
-                  }, 1000);
                 } catch (error) {
                   console.error(`❌ Erro ao limpar sessão:`, error);
                 }
@@ -412,6 +408,23 @@ export class ClientWhatsAppService {
     }
   }
 
+  async clearClientSession(clientId: string): Promise<void> {
+    try {
+      // Remover sessão da memória
+      this.sessions.delete(clientId);
+      
+      // Limpar diretório de sessão específico
+      const sessionPath = this.getSessionPath(clientId);
+      
+      if (fs.existsSync(sessionPath)) {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`🗑️ Sessão do cliente ${clientId} limpa`);
+      }
+    } catch (error) {
+      console.error(`❌ Erro ao limpar sessão do cliente ${clientId}:`, error);
+    }
+  }
+
   // Limpar todas as sessões (para manutenção)
   async clearAllSessions(): Promise<void> {
     console.log('🧹 Limpando todas as sessões WhatsApp...');
@@ -427,6 +440,30 @@ export class ClientWhatsAppService {
     }
     
     this.sessions.clear();
+    
+    // Limpar diretórios de sessão no sistema de arquivos
+    try {
+      const sessionsDir = path.join(process.cwd(), 'whatsapp-sessions');
+      
+      if (fs.existsSync(sessionsDir)) {
+        const files = fs.readdirSync(sessionsDir);
+        
+        for (const file of files) {
+          const filePath = path.join(sessionsDir, file);
+          const stat = fs.statSync(filePath);
+          
+          if (stat.isDirectory()) {
+            fs.rmSync(filePath, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(filePath);
+          }
+        }
+        
+        console.log('🧹 Todas as sessões WhatsApp foram limpas');
+      }
+    } catch (error) {
+      console.error('❌ Erro ao limpar sessões:', error);
+    }
   }
 }
 
