@@ -32,13 +32,34 @@ class EvolutionApiService {
   private readonly apiKey: string;
 
   constructor() {
-    // Usar URL demo válida que não causa ENOTFOUND
-    this.apiUrl = process.env.EVOLUTION_API_URL || 'https://httpbin.org';
-    this.apiKey = process.env.EVOLUTION_API_KEY || 'evolution_demo_key';
+    this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:3001';
+    this.apiKey = process.env.EVOLUTION_API_KEY || 'evolution_maximus_secure_key_2025';
     
-    console.log(`🔧 [Evolution] Configuração inicializada:`);
+    console.log(`🔧 [Evolution] Configuração Evolution API REAL:`);
     console.log(`🔧 [Evolution] API URL: ${this.apiUrl}`);
     console.log(`🔧 [Evolution] API Key configurada: ${this.apiKey ? 'SIM' : 'NÃO'}`);
+    
+    this.initializeEvolutionApi();
+  }
+  
+  private async initializeEvolutionApi() {
+    try {
+      console.log('🚀 [Evolution] Iniciando Evolution API interna...');
+      const { spawn } = require('child_process');
+      
+      const evolutionProcess = spawn('node', ['start-evolution.js'], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        detached: true
+      });
+      
+      evolutionProcess.unref();
+      
+      await new Promise(resolve => setTimeout(resolve, 8000));
+      console.log('✅ [Evolution] Evolution API inicializada');
+    } catch (error) {
+      console.warn('⚠️ [Evolution] Erro ao inicializar Evolution API:', error);
+    }
   }
 
   /**
