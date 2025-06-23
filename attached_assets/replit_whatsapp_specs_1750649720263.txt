@@ -1,0 +1,82 @@
+# Especificações solicitadas para corrigir a conexão WhatsApp
+# (preencha valores entre <> conforme o seu ambiente)
+
+============================================================
+1. ARQUITETURA E API EXTERNA
+------------------------------------------------------------
+• Serviço principal: **Baileys** (rodando dentro do Replit).
+• Serviço secundário (produção): **Evolution API** em VPS dedicado.
+  - URL pública: https://wa-evolution.<dominio>.com
+  - API_KEY: <$EVOLUTION_API_KEY>
+  - Não rodaremos Evolution dentro do Replit (limitações de rede).
+
+============================================================
+2. PERSISTÊNCIA DE DADOS
+------------------------------------------------------------
+• Banco primário: **Firebase Firestore** (já configurado).
+• Arquivos de sessão Baileys:
+  - Diretório local `/whatsapp-sessions/<clientId>/`
+  - Contém `creds.json` e pasta `keys/`.
+• Estrutura por cliente:
+  ```jsonc
+  {
+    "clientId": "1749849987543",
+    "instanceId": "client_1749849987543_1750628455966",
+    "qrCode": "data:image/png;base64,...",
+    "phoneNumber": null,
+    "isConnected": false,
+    "lastConnection": "2025-06-22T21:40:58.762Z",
+    "sessionPath": "/whatsapp-sessions/1749849987543"
+  }
+  ```
+
+============================================================
+3. GESTÃO DE SESSÕES
+------------------------------------------------------------
+• Reconectar no boot: **sim**
+  - Tentativas: 5
+  - Intervalo: 10 s.
+• “Desconectar” → fecha socket, mantém arquivos e Firestore.
+• “Excluir instância” → remove pasta + doc Firestore.
+
+============================================================
+4. FLUXO DA INTERFACE
+------------------------------------------------------------
+Botões:
+1. **Conectar WhatsApp** – cria/nova reconecta sessão.
+2. **Atualizar QR** – força novo QR (invalidando credenciais antigas).
+3. **Desconectar** – fecha conexão, mantém arquivos.
+
+UX:
+- Loader enquanto `connection === "connecting"`.
+- QR expira em 90 s; auto-refresh a cada 5 s enquanto não conectado.
+- Oculta QR após conexão.
+
+============================================================
+5. CONFIGURAÇÕES TÉCNICAS
+------------------------------------------------------------
+• Timeouts:
+  - QR: 120 s
+  - Conexão: 120 s
+• Retry:
+  - 5 tentativas, atraso 5 s.
+• Logs:
+  - DEV: DEBUG no console.
+  - PROD: INFO + arquivo `/logs/whatsapp.log`.
+
+============================================================
+6. VARIÁVEIS DE AMBIENTE (.env)
+------------------------------------------------------------
+PORT=3000
+NODE_ENV=development
+# Evolution
+EVOLUTION_API_URL=https://wa-evolution.<dominio>.com
+EVOLUTION_API_KEY=<...>
+# Firebase
+FIREBASE_PROJECT_ID=<...>
+FIREBASE_CLIENT_EMAIL=<...>
+FIREBASE_PRIVATE_KEY=<...>
+# Baileys
+WHATSAPP_SESSION_PATH=/whatsapp-sessions
+BAILEYS_MOBILE=true
+BAILEYS_LOG_LEVEL=info
