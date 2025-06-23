@@ -1277,7 +1277,13 @@ export default function NewReportsPage() {
                             {/* Detalhes expandidos inline */}
                             {expandedCandidate === candidate.candidate.id && (
                               <div className="border-t bg-gray-50 p-6">
-                                <CandidateDetailsInline candidate={candidate} audioStates={audioStates} setAudioStates={setAudioStates} />
+                                <CandidateDetailsInline 
+                                  candidate={candidate} 
+                                  audioStates={audioStates} 
+                                  setAudioStates={setAudioStates}
+                                  reportData={specificReport}
+                                  isSpecificReport={!!reportId}
+                                />
                               </div>
                             )}
                           </CardContent>
@@ -1554,9 +1560,11 @@ interface CandidateDetailsInlineProps {
     duration: number;
     progress: number;
   } }>>;
+  reportData?: any; // Dados do relatório para acessar respostas perfeitas
+  isSpecificReport?: boolean; // Se está visualizando um relatório específico
 }
 
-function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: CandidateDetailsInlineProps) {
+function CandidateDetailsInline({ candidate, audioStates, setAudioStates, reportData, isSpecificReport }: CandidateDetailsInlineProps) {
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
 
   // Atualizar estado do áudio
@@ -1697,8 +1705,8 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
   // Função para buscar resposta perfeita baseada no questionId
   const getPerfectAnswer = (questionId: number) => {
     // Se estamos visualizando um relatório específico (independente)
-    if (specificReport && specificReport.jobData?.perguntas) {
-      const question = specificReport.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
+    if (isSpecificReport && reportData?.jobData?.perguntas) {
+      const question = reportData.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
       return question?.respostaPerfeita || null;
     }
     
