@@ -231,7 +231,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-3 lg:ml-4">
                 <div className="text-xl lg:text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : (statsData.interviewsStarted || 0).toLocaleString()}
+                  {isLoading ? "..." : `${(statsData.interviewsStarted || 0).toLocaleString()} / ${(statsData.interviewsSent || 0).toLocaleString()}`}
                 </div>
                 <div className="text-xs lg:text-sm text-slate-500">Entrevistas Iniciadas</div>
               </div>
@@ -282,11 +282,6 @@ export default function StatisticsPage() {
                   {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 MB"}
                 </div>
                 <div className="text-xs lg:text-sm text-slate-500">Memória Utilizada</div>
-                {audioStorage?.fileCount && (
-                  <div className="text-xs text-slate-400 mt-1">
-                    {audioStorage.fileCount} arquivo{audioStorage.fileCount !== 1 ? 's' : ''} de áudio
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
