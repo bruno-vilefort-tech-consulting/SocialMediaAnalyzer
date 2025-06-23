@@ -111,7 +111,7 @@ export default function ApiConfigPage() {
       return response.json();
     },
     enabled: shouldShowQR,
-    refetchInterval: shouldShowQR && !whatsappStatus?.isConnected ? 5000 : false,
+    refetchInterval: shouldShowQR ? 5000 : false,
     staleTime: 0,
     retry: 1
   });
