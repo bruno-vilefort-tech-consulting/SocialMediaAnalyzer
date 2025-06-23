@@ -28,17 +28,18 @@ export class ClientWhatsAppService {
 
   private async initializeBaileys() {
     try {
-      this.baileys = await import('@whiskeysockets/baileys');
+      const baileys = await import('@whiskeysockets/baileys');
+      this.baileys = baileys.default || baileys;
       console.log('📱 Baileys inicializado para ClientWhatsAppService');
       
       // Buscar versão WhatsApp Web com fallback robusto
       try {
-        const fetched = await this.baileys.fetchLatestBaileysVersion({ cache: true });
+        const fetched = await baileys.fetchLatestBaileysVersion();
         this.waVersion = fetched.version; // array [major, minor, patch]
         console.log('🌐 WA Web version obtida:', this.waVersion);
       } catch (versionError) {
         console.error('⚠️ Não foi possível buscar versão WA, usando fallback:', versionError);
-        this.waVersion = [2, 2419, 6]; // Fallback estável confirmada (Jun/2025)
+        this.waVersion = [2, 3000, 1014398374]; // Versão mais recente compatível
         console.log('🔄 Usando versão fallback estável:', this.waVersion);
       }
     } catch (error) {
@@ -104,16 +105,16 @@ export class ClientWhatsAppService {
       // Garantir que temos uma versão válida antes de criar o socket
       if (!this.waVersion || !Array.isArray(this.waVersion)) {
         console.log('⚠️ Versão inválida detectada, forçando fallback...');
-        this.waVersion = [2, 2419, 6]; // Fallback garantido
+        this.waVersion = [2, 3000, 1014398374]; // Versão recente compatível
       }
 
       console.log('🔧 Criando socket com versão:', this.waVersion);
 
       console.log('🔧 [DEBUG] Configurações do socket:', {
         version: this.waVersion,
-        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
-        mobile: false, // CORRIGIDO: mobile: false para usar web.whatsapp.com
-        connectTimeoutMs: 90000,
+        browser: ['Samsung', 'SM-G991B', '13'],
+        mobile: true, // CORRIGIDO: mobile: true para usar mmg.whatsapp.net
+        connectTimeoutMs: 60000,
         qrTimeout: 90000
       });
 
@@ -142,7 +143,12 @@ export class ClientWhatsAppService {
         syncFullHistory: false,              // CRÍTICO: evita frames grandes
         fireInitQueries: true,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
-        emitOwnEvents: false
+        emitOwnEvents: false,
+        
+        // Configurações adicionais para estabilidade Replit
+        msgRetryCountMap: {},
+        shouldSyncHistoryMessage: () => false,
+        getMessage: async () => undefined
       });
       
       console.log('✅ [DEBUG] Socket criado com sucesso');
