@@ -86,6 +86,10 @@ export default function CandidatesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
   
+  // Estados de paginação para listas
+  const [currentListPage, setCurrentListPage] = useState(1);
+  const listsPerPage = 10;
+  
   // Estado para seleção de cliente no upload (apenas para masters)
   const [uploadClientId, setUploadClientId] = useState<string>('');
 
@@ -324,6 +328,13 @@ export default function CandidatesPage() {
       return list.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
              (list.description && list.description.toLowerCase().includes(searchTerm.toLowerCase()));
     });
+
+  // Paginação para listas
+  const totalLists = filteredCandidateLists.length;
+  const totalListPages = Math.ceil(totalLists / listsPerPage);
+  const listStartIndex = (currentListPage - 1) * listsPerPage;
+  const listEndIndex = listStartIndex + listsPerPage;
+  const paginatedLists = filteredCandidateLists.slice(listStartIndex, listEndIndex);
 
   // Candidatos exibidos baseado no modo de visualização
   const candidatesData = viewMode === 'single' && selectedListId 
@@ -1221,7 +1232,7 @@ export default function CandidatesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCandidateLists.map((list) => {
+                    {paginatedLists.map((list) => {
                       // Contar apenas candidatos que realmente existem no banco
                       const candidatesCount = getCandidateCountForList(list.id);
                       console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Candidatos reais:`, candidatesCount);
@@ -1312,6 +1323,60 @@ export default function CandidatesPage() {
                     })}
                   </TableBody>
                 </Table>
+              )}
+
+              {/* Controles de Paginação para Listas */}
+              {totalListPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <div className="text-sm text-gray-600">
+                    Mostrando {listStartIndex + 1} a {Math.min(listEndIndex, totalLists)} de {totalLists} listas
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentListPage(currentListPage - 1)}
+                      disabled={currentListPage === 1}
+                    >
+                      Anterior
+                    </Button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalListPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          // Mostrar páginas próximas à atual
+                          return page === 1 || page === totalListPages || Math.abs(page - currentListPage) <= 2;
+                        })
+                        .map((page, index, array) => {
+                          // Adicionar "..." se há gap
+                          const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                          return (
+                            <div key={page} className="flex items-center">
+                              {showEllipsis && <span className="px-2 text-gray-400">...</span>}
+                              <Button
+                                variant={currentListPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentListPage(page)}
+                                className="w-8 h-8"
+                              >
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentListPage(currentListPage + 1)}
+                      disabled={currentListPage === totalListPages}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
