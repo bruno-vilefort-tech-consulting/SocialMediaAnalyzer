@@ -940,6 +940,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/candidate-lists/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      console.log('Editando lista ID:', req.params.id, 'pelo usuário:', req.user?.email);
+      console.log('Dados recebidos:', req.body);
+      
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid list ID' });
+      }
+
+      // Buscar a lista para verificar permissões
+      const existingList = await storage.getCandidateListById(id);
+      if (!existingList) {
+        return res.status(404).json({ message: 'Lista não encontrada' });
+      }
+
+      // Cliente só pode editar suas próprias listas
+      if (req.user!.role === 'client' && existingList.clientId !== req.user!.clientId) {
+        console.log(`❌ Cliente ${req.user!.email} tentou editar lista ${id} do clientId ${existingList.clientId}, mas pertence ao clientId ${req.user!.clientId}`);
+        return res.status(403).json({ message: 'Access denied: You can only edit your own candidate lists' });
+      }
+
+      // Validar e atualizar apenas nome e descrição
+      const updateData = {
+        name: req.body.name?.trim(),
+        description: req.body.description?.trim() || ""
+      };
+
+      if (!updateData.name) {
+        return res.status(400).json({ message: 'Nome da lista é obrigatório' });
+      }
+
+      console.log('Atualizando lista com dados:', updateData);
+      const updatedList = await storage.updateCandidateList(id, updateData);
+      
+      console.log('Lista atualizada com sucesso:', updatedList);
+      res.json(updatedList);
+    } catch (error) {
+      console.error('Erro ao editar lista de candidatos:', error);
+      res.status(400).json({ message: 'Failed to update candidate list', error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   app.delete("/api/candidate-lists/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       console.log('Tentando deletar lista ID:', req.params.id, 'pelo usuário:', req.user?.email);
