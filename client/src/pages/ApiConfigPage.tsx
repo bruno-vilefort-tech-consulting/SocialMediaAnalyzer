@@ -260,6 +260,42 @@ export default function ApiConfigPage() {
     }
   });
 
+  const clearSessionMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/client/whatsapp/clear-session', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Sessão limpa",
+          description: data.message,
+        });
+        setShouldShowQR(false);
+        refetchWhatsAppStatus();
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao limpar",
+        description: "Falha ao limpar sessão WhatsApp",
+        variant: "destructive"
+      });
+    }
+  });
+
   const sendTestMessageMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem('auth_token');

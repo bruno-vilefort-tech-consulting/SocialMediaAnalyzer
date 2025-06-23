@@ -115,15 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 23, 2025: ✅ SESSÃO AUTOMÁTICA IDENTIFICADA E BOTÃO LIMPEZA IMPLEMENTADO - Sistema conecta com credenciais salvas
+- June 23, 2025: ✅ BOTÃO "LIMPAR SESSÃO" IMPLEMENTADO - Sistema completo para testar QR Code do zero
   - **Problema identificado**: Sistema conectava automaticamente usando credenciais de sessão anterior
   - **Credenciais encontradas**: creds.json + 30 pre-keys + múltiplas sessões na pasta whatsapp-sessions/
   - **Número conectado**: 551151940284 (visível nos arquivos de sessão)
-  - **Botão "Limpar Sessão"**: Remove todas as credenciais locais e dados Firebase
-  - **Endpoint /clear-session**: Limpa pasta completa + sessões em memória + status Firebase
-  - **Fluxo correto**: Limpar Sessão → Conectar → QR Code aparece → Escanear → Conectado
-  - **Debug melhorado**: Logs detalhados da limpeza mostrando arquivos removidos
-  - **Sistema funcionando**: Mensagem teste enviada com sucesso antes da limpeza
+  - **Botão "Limpar Sessão"**: Implementado na interface WhatsApp para testar QR Code do zero
+  - **Endpoint /api/client/whatsapp/clear-session**: Remove credenciais + sessões + status Firebase
+  - **Método clearSession()**: Adicionado ao whatsappBaileyService com limpeza completa
+  - **Interface atualizada**: Botão secundário ao lado de "Desconectar" em ambos os estados
+  - **Fluxo funcional**: Limpar Sessão → Conectar → QR Code aparece → Escanear → Conectado
+  - **Logs detalhados**: Sistema mostra quantos arquivos foram removidos da pasta de sessão
+  - **Integração completa**: Limpa disco + memória + Firebase em uma única operação
 
 - June 23, 2025: 🔧 CORREÇÃO ERRO 515 WHATSAPP IMPLEMENTADA - Todas as otimizações ChatGPT aplicadas para ambiente Replit
   - **Versão WhatsApp real**: fetchLatestBaileysVersion() com fallback [2, 2419, 6] para firewall

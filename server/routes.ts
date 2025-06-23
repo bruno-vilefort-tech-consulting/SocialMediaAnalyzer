@@ -2728,6 +2728,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/client/whatsapp/clear-session", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🧹 Limpando sessão WhatsApp para cliente ${user.clientId}...`);
+      
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      await whatsappBaileyService.clearSession(user.clientId.toString());
+      
+      res.json({ 
+        success: true, 
+        message: 'Sessão WhatsApp limpa com sucesso. Use "Conectar" para gerar novo QR Code.' 
+      });
+    } catch (error) {
+      console.error('❌ Erro ao limpar sessão WhatsApp:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao limpar sessão WhatsApp' 
+      });
+    }
+  });
+
   app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req, res) => {
     try {
       const user = req.user;
