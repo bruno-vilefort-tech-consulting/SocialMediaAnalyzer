@@ -18,7 +18,7 @@ import { firebaseDb } from "./db";
 import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
-import { pdfExportService } from "./pdfExportService";
+import { simplePdfService } from "./simplePdfService";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);
@@ -527,11 +527,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`📄 Gerando PDF para candidato: ${candidateData.name}`);
       
-      // Gerar PDF com áudios embeddados
-      const pdfBuffer = await pdfExportService.generateCandidatePDF(candidateData);
+      // Gerar PDF simplificado
+      const pdfBuffer = await simplePdfService.generateCandidatePDF(candidateData);
       
       // Nome do arquivo
-      const fileName = pdfExportService.generateFileName(
+      const fileName = simplePdfService.generateFileName(
         candidateData.name, 
         candidateData.jobName, 
         candidateData.completedAt
