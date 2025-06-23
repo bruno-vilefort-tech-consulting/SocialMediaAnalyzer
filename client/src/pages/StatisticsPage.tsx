@@ -285,7 +285,7 @@ export default function StatisticsPage() {
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Contratadas</span>
+                  <span className="text-sm text-slate-600">Entrevistas Contratadas</span>
                   <span className="font-semibold text-slate-900">1.000</span>
                 </div>
                 <div className="flex justify-between items-center">
