@@ -1137,30 +1137,47 @@ export default function CandidatesPage() {
         // Visualização de todas as listas (horizontal)
         <>
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Gerenciar Lista dos Candidatos</h1>
-              <p className="text-muted-foreground">
-                Organize seus candidatos em listas e gerencie suas informações
-              </p>
+            <div className="flex items-center space-x-2">
+              <Users className="h-6 w-6" />
+              <div>
+                <h1 className="text-3xl font-bold">Gerenciar Lista dos Candidatos</h1>
+                <p className="text-muted-foreground">
+                  Organize seus candidatos em listas e gerencie suas informações
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* Seletor de cliente para masters antes do import */}
               {user?.role === 'master' && (
-                <div className="flex items-center gap-2">
-                  <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Filtrar por cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os Clientes</SelectItem>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.companyName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={uploadClientId} onValueChange={setUploadClientId}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Selecionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={client.id.toString()}>
+                        {client.companyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
+              
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleTopUpload}
+                className="hidden"
+                id="global-file-upload"
+              />
+              <Button
+                variant="outline"
+                onClick={handleTopUploadWithClientSelection}
+                disabled={uploadProgress > 0}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploadProgress > 0 ? "Importando..." : "Importar Excel"}
+              </Button>
               
               <Button onClick={() => setShowCreateForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -1174,14 +1191,33 @@ export default function CandidatesPage() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Listas de Candidatos</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Search className="w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar listas..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-64"
-                  />
+                <div className="flex items-center gap-4">
+                  {/* Filtro por cliente (apenas para master) */}
+                  {user?.role === 'master' && (
+                    <Select value={selectedClientFilter} onValueChange={setSelectedClientFilter}>
+                      <SelectTrigger className="w-64">
+                        <SelectValue placeholder="Filtrar por cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os clientes</SelectItem>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id.toString()}>
+                            {client.companyName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar listas..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-64"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
