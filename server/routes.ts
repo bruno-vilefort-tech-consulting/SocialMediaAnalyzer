@@ -1794,6 +1794,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
+      // Verificar se o cliente tem WhatsApp conectado ANTES de buscar candidatos
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const clientIdStr = selection.clientId.toString();
+      const clientStatus = await clientWhatsAppService.getClientStatus(clientIdStr);
+      
+      console.log(`📊 Verificando status WhatsApp cliente ${clientIdStr}:`, clientStatus);
+      
+      if (!clientStatus.isConnected) {
+        console.log(`❌ Cliente ${clientIdStr} não tem WhatsApp conectado`);
+        return res.status(400).json({
+          success: false,
+          message: 'WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.',
+          sentCount: 0,
+          errorCount: 0
+        });
+      }
+
       // Buscar candidatos da lista usando método que existe
       const allMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
       const candidateListMembers = allMemberships.filter(member => member.listId === selection.candidateListId);
@@ -1861,18 +1878,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
             personalizedMessage = personalizedMessage + confirmationText;
 
-            // Enviar via WhatsApp Baileys
-            const { whatsappBaileyService } = await import('./whatsappBaileyService');
+            // Enviar via WhatsApp usando serviço específico do cliente
+            const { clientWhatsAppService } = await import('./clientWhatsAppService');
             const clientIdStr = selection.clientId.toString();
             
-            console.log(`📲 Enviando via WhatsApp Baileys para cliente ${clientIdStr}`);
-            const sendResult = await whatsappBaileyService.sendMessage(
+            // Verificar se o cliente tem WhatsApp conectado
+            const clientStatus = await clientWhatsAppService.getClientStatus(clientIdStr);
+            console.log(`📊 Status WhatsApp cliente ${clientIdStr}:`, clientStatus);
+            
+            if (!clientStatus.isConnected) {
+              console.log(`❌ Cliente ${clientIdStr} não tem WhatsApp conectado`);
+              messagesError++;
+              
+              await storage.createMessageLog({
+                interviewId: interview.id,
+                type: 'invitation',
+                channel: 'whatsapp',
+                status: 'failed'
+              });
+              continue;
+            }
+            
+            console.log(`📲 Enviando via clientWhatsAppService para cliente ${clientIdStr}`);
+            const sendResult = await clientWhatsAppService.sendTestMessage(
               clientIdStr,
               candidate.whatsapp,
               personalizedMessage
             );
+            
+            console.log(`📱 Resultado do envio para ${candidate.name}:`, sendResult);
 
-            if (sendResult) {
+            if (sendResult && sendResult.success) {
               messagesSent++;
               console.log(`✅ WhatsApp enviado com sucesso para ${candidate.name}`);
               
@@ -1885,7 +1921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             } else {
               messagesError++;
-              console.log(`❌ Falha no envio WhatsApp para ${candidate.name}`);
+              console.log(`❌ Falha no envio WhatsApp para ${candidate.name}: ${sendResult?.message || 'Erro desconhecido'}`);
               
               await storage.createMessageLog({
                 interviewId: interview.id,
