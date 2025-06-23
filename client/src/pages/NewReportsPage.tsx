@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,7 +176,8 @@ export default function NewReportsPage() {
     queryKey: ['/api/selections', selectedClientId],
     enabled: !!selectedClientId || user?.role === 'client',
     staleTime: 1 * 60 * 1000, // Cache por 1 minuto
-    cacheTime: 5 * 60 * 1000 // Manter em cache por 5 minutos
+    cacheTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnWindowFocus: false
   });
 
   // Efeito para navegar diretamente para uma seleção específica via parâmetro selectedSelection
@@ -215,7 +216,8 @@ export default function NewReportsPage() {
     },
     enabled: !!selectedClientId || user?.role === 'client',
     staleTime: 3 * 60 * 1000, // Cache por 3 minutos
-    cacheTime: 8 * 60 * 1000 // Manter em cache por 8 minutos
+    cacheTime: 8 * 60 * 1000, // Manter em cache por 8 minutos
+    refetchOnWindowFocus: false
   });
 
   // Cache de dados de candidatos para cada seleção
@@ -284,7 +286,9 @@ export default function NewReportsPage() {
     },
     enabled: !!selectedSelection,
     staleTime: 2 * 60 * 1000, // Cache por 2 minutos
-    cacheTime: 5 * 60 * 1000 // Manter em cache por 5 minutos
+    cacheTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
   // Buscar TODOS os candidatos da lista da seleção (incluindo os que não responderam)
@@ -372,8 +376,10 @@ export default function NewReportsPage() {
       return data || [];
     },
     enabled: !!selectedSelection,
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
-    cacheTime: 10 * 60 * 1000 // Manter em cache por 10 minutos
+    staleTime: 3 * 60 * 1000, // Cache por 3 minutos
+    cacheTime: 8 * 60 * 1000, // Manter em cache por 8 minutos
+    refetchOnWindowFocus: false, // Não refazer query ao focar janela
+    refetchOnMount: false // Não refazer query ao montar componente se dados estão em cache
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
