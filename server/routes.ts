@@ -5100,45 +5100,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WhatsApp Client Routes - New architecture per clientId
   app.get("/api/whatsapp-client/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    console.log('🔍 [DEBUG] STATUS ENDPOINT CHAMADO');
+    
     try {
       const user = req.user;
       if (!user?.clientId) {
+        console.log('❌ [DEBUG] Client ID não fornecido no status');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
+      console.log(`🔍 [DEBUG] Buscando status para cliente ${user.clientId}`);
+      
       const { clientWhatsAppService } = await import('./clientWhatsAppService');
       const status = await clientWhatsAppService.getClientStatus(user.clientId.toString());
       
+      console.log(`📊 [DEBUG] Status retornado:`, {
+        isConnected: status.isConnected,
+        hasQrCode: !!status.qrCode,
+        qrCodeLength: status.qrCode?.length || 0,
+        phoneNumber: status.phoneNumber
+      });
+      
       res.json(status);
     } catch (error) {
-      console.error('Error getting WhatsApp client status:', error);
+      console.error('❌ [DEBUG] Erro no endpoint status:', error);
       res.status(500).json({ 
         isConnected: false, 
         qrCode: null, 
         phoneNumber: null,
-        message: 'Failed to get WhatsApp status' 
+        message: 'Erro ao buscar status WhatsApp' 
       });
     }
   });
 
   app.post("/api/whatsapp-client/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    console.log('🔄 [DEBUG] CONNECT ENDPOINT CHAMADO');
+    
     try {
       const user = req.user;
       if (!user?.clientId) {
+        console.log('❌ [DEBUG] Client ID não fornecido');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📱 Conectando WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🔄 [DEBUG] Conectando WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🔄 [DEBUG] Timestamp: ${new Date().toISOString()}`);
       
       const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      console.log('✅ [DEBUG] Service importado com sucesso');
+      
       const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      console.log(`📱 [DEBUG] Resultado da conexão:`, result);
       
       res.json(result);
     } catch (error) {
-      console.error('Error connecting WhatsApp client:', error);
+      console.error('❌ [DEBUG] Erro no endpoint connect:', error);
+      console.error('❌ [DEBUG] Stack trace:', error.stack);
       res.status(500).json({
         success: false,
-        message: 'Failed to connect WhatsApp'
+        message: 'Erro interno ao conectar WhatsApp'
       });
     }
   });

@@ -109,97 +109,92 @@ export class ClientWhatsAppService {
 
       console.log('🔧 Criando socket com versão:', this.waVersion);
 
+      console.log('🔧 [DEBUG] Configurações do socket:', {
+        version: this.waVersion,
+        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        mobile: false, // CORRIGIDO: mobile: false para usar web.whatsapp.com
+        connectTimeoutMs: 90000,
+        qrTimeout: 90000
+      });
+
       const socket = this.baileys.makeWASocket({
         version: this.waVersion,
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        // Browser simula Android para evitar 515 - conforme ChatGPT
-        browser: ['Samsung', 'SM-G991B', '13'], // nome, modelo, versão SO
-        mobile: true,                           // conecta em mmg.whatsapp.net
+        // CORRIGIDO: Voltar para web WhatsApp (mobile: false)
+        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        mobile: false,                          // FALSE - usar web.whatsapp.com
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         
-        // Timeouts menores reduzem risco de drop pelo proxy - conforme ChatGPT
-        connectTimeoutMs: 90000,               // 90s em vez de 180s
-        defaultQueryTimeoutMs: 90000,          // 90s em vez de 180s
-        qrTimeout: 90000,                      // 90s QR timeout
+        // Timeouts otimizados
+        connectTimeoutMs: 90000,
+        defaultQueryTimeoutMs: 90000,
+        qrTimeout: 90000,
         
-        // Pings frequentes mantêm o túnel vivo - conforme ChatGPT
-        keepAliveIntervalMs: 10000,            // 10s em vez de 15s
-        networkIdleTimeoutMs: 45000,           // 45s em vez de 60s
+        // Keep-alive otimizado
+        keepAliveIntervalMs: 10000,
+        networkIdleTimeoutMs: 45000,
         
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: true,                 // manda init queries logo - conforme ChatGPT
+        fireInitQueries: true,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
+      
+      console.log('✅ [DEBUG] Socket criado com sucesso');
 
       return new Promise((resolve) => {
         let resolved = false;
         
-        // Timeout de segurança conforme documentação
-        // Timeout de 3 minutos (alinhado com qrTimeout)
         const timeoutId = setTimeout(() => {
           if (!resolved) {
             resolved = true;
-            console.log(`⏰ [BAILEYS] Timeout de QR Code atingido para cliente ${clientId}`);
-            console.log(`⏰ [BAILEYS] Socket ainda ativo:`, socket.ws?.readyState === 1);
+            console.log(`⏰ [DEBUG] Timeout de QR Code (90s) para cliente ${clientId}`);
             
             try {
               socket?.end();
             } catch (e) {
-              console.log('Socket já fechado durante timeout');
+              console.log('🔌 [DEBUG] Socket já fechado durante timeout');
             }
             
             resolve({
               success: false,
-              message: 'Timeout: QR Code não foi escaneado em 3 minutos'
+              message: 'Timeout: QR Code não foi escaneado em 90 segundos'
             });
           }
-        }, 180000); // 3 minutos (match com qrTimeout)
+        }, 90000); // 90 segundos (match com qrTimeout)
 
         socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
           
-          console.log(`🔄 [BAILEYS] CONNECTION UPDATE RECEBIDO:`, JSON.stringify(update, null, 2));
-          console.log(`🔄 [BAILEYS] Estado da conexão:`, connection);
-          console.log(`🔄 [BAILEYS] Tem QR Code:`, !!qr);
-          console.log(`🔄 [BAILEYS] Promise resolvida:`, resolved);
-          console.log(`🔄 [BAILEYS] Timestamp:`, new Date().toISOString());
+          console.log(`🔄 [DEBUG] CONNECTION UPDATE:`, {
+            connection,
+            hasQR: !!qr,
+            hasDisconnect: !!lastDisconnect,
+            resolved,
+            timestamp: new Date().toISOString()
+          });
 
           if (qr && !resolved) {
-            console.log(`📱 [BAILEYS] QR CODE AUTÊNTICO recebido para cliente ${clientId}!`);
-            console.log(`📱 [BAILEYS] QR String length: ${qr.length}`);
-            console.log(`📱 [BAILEYS] QR String preview:`, qr.substring(0, 60));
+            console.log(`📱 [DEBUG] QR CODE recebido para cliente ${clientId}`);
+            console.log(`📱 [DEBUG] QR String length: ${qr.length}`);
+            console.log(`📱 [DEBUG] QR válido: ${qr.includes('@')}`);
             
             try {
-              // Gerar DataURL preservando string QR original
-              const { toDataURL } = await import('qrcode');
-              const qrCodeDataUrl = await toDataURL(qr, {
+              const QRCode = await import('qrcode');
+              const qrDataURL = await QRCode.toDataURL(qr, {
                 errorCorrectionLevel: 'M',
-                width: 400,
                 margin: 1,
-                color: {
-                  dark: '#000000',
-                  light: '#FFFFFF'
-                }
+                width: 300
               });
               
-              console.log(`✅ [BAILEYS] QR DataURL gerado, length: ${qrCodeDataUrl.length}`);
-              console.log(`🔍 [BAILEYS] DataURL válido:`, qrCodeDataUrl.startsWith('data:image/png;base64,'));
+              console.log(`✅ [DEBUG] QR DataURL gerado: ${qrDataURL.length} chars`);
               
-              // SALVAR QR STRING ORIGINAL PARA DEBUG COMPLETO
-              console.log(`🐛 [DEBUG] ========= QR STRING ORIGINAL COMPLETA =========`);
-              console.log(`🐛 [DEBUG] QR String length:`, qr.length);
-              console.log(`🐛 [DEBUG] QR String válida:`, qr.length > 100);
-              console.log(`🐛 [DEBUG] QR contém @ (WhatsApp):`, qr.includes('@'));
-              console.log(`🐛 [DEBUG] QR String completa:`, qr);
-              console.log(`🐛 [DEBUG] ============================================`);
-              
-              // Atualizar configuração do cliente com DataURL
+              // Salvar no Firebase
               await this.updateClientConfig(clientId, {
                 qrCode: qrCodeDataUrl,
                 isConnected: false,
