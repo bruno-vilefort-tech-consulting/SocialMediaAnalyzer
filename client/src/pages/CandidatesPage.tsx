@@ -1399,6 +1399,11 @@ export default function CandidatesPage() {
                   return `${count} ${count === 1 ? 'candidato' : 'candidatos'} nesta lista`;
                 })()}
               </p>
+              {selectedList?.description && (
+                <p className="text-muted-foreground text-sm mt-1">
+                  <span className="font-medium">Descrição da Lista:</span> {selectedList.description}
+                </p>
+              )}
             </div>
           </div>
 
