@@ -56,8 +56,8 @@ export default function StatisticsPage() {
       const response = await apiRequest('/api/audio-storage-usage');
       return response.json();
     },
-    enabled: !!user?.clientId,
-    refetchInterval: 30000 // Atualiza a cada 30 segundos
+    enabled: !!user?.clientId
+    // Removido refetchInterval - só atualiza quando entrar na página, dar refresh ou navegar
   });
 
 
@@ -248,7 +248,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.00 GB"}
+                  {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 GB"}
                 </div>
                 <div className="text-sm text-slate-500">Memória Utilizada</div>
                 {audioStorage?.fileCount && (

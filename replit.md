@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 22, 2025: 💾 BLOCO MEMÓRIA UTILIZADA IMPLEMENTADO - Sistema de monitoramento de armazenamento de áudio por cliente
+  - **Card "Memória Utilizada" adicionado**: Novo bloco no painel de estatísticas com ícone HardDrive indigo
+  - **Cálculo específico por cliente**: Busca apenas arquivos .ogg relacionados às seleções do cliente logado
+  - **Precisão aumentada**: Exibição em GB com 3 casas decimais (0.000 GB)
+  - **Atualização sob demanda**: Remove refresh automático, atualiza apenas ao entrar na página ou navegar
+  - **Contagem de arquivos**: Mostra quantidade de arquivos de áudio além do tamanho total
+  - **Endpoint /api/audio-storage-usage**: Backend calcula tamanho real dos arquivos na pasta uploads
+  - **Layout responsivo**: Grid ajustado de 4 para 5 colunas mantendo design consistente
+
 - June 22, 2025: ✅ ENTREVISTAS INICIADAS IMPLEMENTADAS - Contagem precisa para cobrança baseada em dados imutáveis
   - **Sistema de cobrança funcional**: "Entrevistas Iniciadas" conta candidatos que completaram entrevistas nos relatórios
   - **Dados imutáveis**: Usa campo completedInterviews dos relatórios para contagem histórica precisa
