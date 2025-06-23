@@ -59,6 +59,10 @@ export default function CandidatesManagementPage() {
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
   const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Estados para paginação do diálogo de listas
+  const [currentListsPage, setCurrentListsPage] = useState(1);
+  const listsPerPage = 5;
   const [editForm, setEditForm] = useState({ name: "", email: "", whatsapp: "" });
   const [newCandidateForm, setNewCandidateForm] = useState({ 
     name: "", 
@@ -341,6 +345,7 @@ export default function CandidatesManagementPage() {
 
   const handleManageLists = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
+    setCurrentListsPage(1); // Reset para primeira página
     // Se for master, salvar filtro atual e definir filtro para o clientId do candidato
     if (isMaster) {
       setPreviousSelectedClient(selectedClient);
@@ -393,6 +398,30 @@ export default function CandidatesManagementPage() {
       !candidateListIds.includes(list.id) && 
       list.clientId === selectedCandidate.clientId
     );
+  };
+
+  // Obter listas paginadas para o diálogo
+  const getPaginatedCandidateLists = (candidateId: number) => {
+    const allLists = getCandidateLists(candidateId);
+    const startIndex = (currentListsPage - 1) * listsPerPage;
+    const endIndex = startIndex + listsPerPage;
+    return allLists.slice(startIndex, endIndex);
+  };
+
+  const getPaginatedAvailableLists = () => {
+    const allLists = getAvailableLists();
+    const startIndex = (currentListsPage - 1) * listsPerPage;
+    const endIndex = startIndex + listsPerPage;
+    return allLists.slice(startIndex, endIndex);
+  };
+
+  // Calcular total de páginas
+  const getTotalListsPages = () => {
+    if (!selectedCandidate) return 1;
+    const currentLists = getCandidateLists(selectedCandidate.id);
+    const availableLists = getAvailableLists();
+    const totalLists = Math.max(currentLists.length, availableLists.length);
+    return Math.max(1, Math.ceil(totalLists / listsPerPage));
   };
 
   // Função para obter o nome do cliente pelo ID
@@ -830,7 +859,7 @@ export default function CandidatesManagementPage() {
               <h3 className="font-semibold mb-3">Listas atuais</h3>
               <div className="space-y-2">
                 {selectedCandidate && getCandidateLists(selectedCandidate.id).length > 0 ? (
-                  getCandidateLists(selectedCandidate.id).map((list) => (
+                  getPaginatedCandidateLists(selectedCandidate.id).map((list) => (
                     <div key={list.id} className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <span className="font-medium">{list.name}</span>
@@ -857,7 +886,7 @@ export default function CandidatesManagementPage() {
               <h3 className="font-semibold mb-3">Adicionar a listas</h3>
               <div className="space-y-2">
                 {getAvailableLists().length > 0 ? (
-                  getAvailableLists().map((list) => (
+                  getPaginatedAvailableLists().map((list) => (
                     <div key={list.id} className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <span className="font-medium">{list.name}</span>
@@ -878,6 +907,31 @@ export default function CandidatesManagementPage() {
                 )}
               </div>
             </div>
+
+            {/* Controles de paginação */}
+            {getTotalListsPages() > 1 && (
+              <div className="flex justify-center items-center space-x-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentListsPage(currentListsPage - 1)}
+                  disabled={currentListsPage === 1}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Página {currentListsPage} de {getTotalListsPages()}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentListsPage(currentListsPage + 1)}
+                  disabled={currentListsPage === getTotalListsPages()}
+                >
+                  Próxima
+                </Button>
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end mt-6">
