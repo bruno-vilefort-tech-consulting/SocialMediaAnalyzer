@@ -563,19 +563,34 @@ export default function ApiConfigPage() {
               
               <div className="flex items-center gap-2">
                 {whatsappStatus?.isConnected ? (
-                  <Button
-                    onClick={() => disconnectWhatsAppMutation.mutate()}
-                    disabled={disconnectWhatsAppMutation.isPending}
-                    variant="outline"
-                    size="sm"
-                  >
-                    {disconnectWhatsAppMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Power className="h-4 w-4 mr-2" />
-                    )}
-                    Desconectar
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => clearSessionMutation.mutate()}
+                      disabled={clearSessionMutation.isPending}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      {clearSessionMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Limpar Sessão
+                    </Button>
+                    <Button
+                      onClick={() => disconnectWhatsAppMutation.mutate()}
+                      disabled={disconnectWhatsAppMutation.isPending}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {disconnectWhatsAppMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Power className="h-4 w-4 mr-2" />
+                      )}
+                      Desconectar
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button
@@ -606,6 +621,20 @@ export default function ApiConfigPage() {
                         Atualizar QR
                       </Button>
                     )}
+                    
+                    <Button
+                      onClick={() => clearSessionMutation.mutate()}
+                      disabled={clearSessionMutation.isPending}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      {clearSessionMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Limpar Sessão
+                    </Button>
                   </>
                 )}
               </div>
