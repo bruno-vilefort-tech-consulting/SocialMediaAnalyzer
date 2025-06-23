@@ -115,6 +115,18 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 23, 2025: 📱 SISTEMA WHATSAPP COMPLETO IMPLEMENTADO - Interface nova na página Configurações conforme especificações
+  - **Interface WhatsApp dedicada**: Nova seção na página Configurações exclusiva para clientes
+  - **Arquitetura por clientId**: Cada cliente possui conexão WhatsApp independente e isolada
+  - **Controles completos**: Botões Conectar, Desconectar, Atualizar QR com estados visuais
+  - **QR Code funcional**: Exibição apenas quando solicitado, com auto-refresh a cada 5s
+  - **Status em tempo real**: Indicadores visuais conectado/desconectado com badge do número
+  - **Teste de mensagens**: Funcionalidade completa para envio de mensagens de teste
+  - **Endpoints backend**: 4 novas rotas usando clientWhatsAppService existente
+  - **Persistência Firebase**: Status e configurações salvos por cliente no banco
+  - **Informações técnicas**: Instance ID, última conexão e path da sessão exibidos
+  - **UX aprimorada**: Loader states, timeouts configuráveis e instruções claras
+
 - June 23, 2025: 📦 SISTEMA ZIP PROFISSIONAL IMPLEMENTADO - Pacote completo com HTML e áudios funcionais
   - **Pacote ZIP completo**: HTML + todos os arquivos MP3 de áudio em um único download
   - **Players de áudio funcionais**: Conversão automática .ogg para .mp3 com players HTML5 nativos

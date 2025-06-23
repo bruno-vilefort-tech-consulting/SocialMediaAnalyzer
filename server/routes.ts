@@ -5098,6 +5098,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Client Routes - New architecture per clientId
+  app.get("/api/whatsapp-client/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const status = await clientWhatsAppService.getClientStatus(user.clientId.toString());
+      
+      res.json(status);
+    } catch (error) {
+      console.error('Error getting WhatsApp client status:', error);
+      res.status(500).json({ 
+        isConnected: false, 
+        qrCode: null, 
+        phoneNumber: null,
+        message: 'Failed to get WhatsApp status' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`📱 Conectando WhatsApp para cliente ${user.clientId}...`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error connecting WhatsApp client:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to connect WhatsApp'
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/disconnect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`📱 Desconectando WhatsApp para cliente ${user.clientId}...`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error disconnecting WhatsApp client:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to disconnect WhatsApp'
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/test-message", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      if (!user?.clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      const { phoneNumber, message } = req.body;
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Phone number and message are required' 
+        });
+      }
+
+      console.log(`📱 Enviando mensagem teste para ${phoneNumber} via cliente ${user.clientId}...`);
+      
+      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const result = await clientWhatsAppService.sendTestMessage(user.clientId.toString(), phoneNumber, message);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error sending test message:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send test message'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

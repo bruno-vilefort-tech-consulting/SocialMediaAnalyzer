@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2 } from "lucide-react";
+import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, MessageCircle, Wifi, WifiOff, RefreshCw, Power, Trash2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +36,21 @@ interface ClientVoiceSetting {
   updatedAt?: Date | null;
 }
 
+interface WhatsAppStatus {
+  isConnected: boolean;
+  qrCode?: string | null;
+  phoneNumber?: string | null;
+  instanceId?: string;
+  lastConnection?: string | null;
+  sessionPath?: string;
+}
+
+interface WhatsAppConnectionResponse {
+  success: boolean;
+  message: string;
+  qrCode?: string;
+}
+
 export default function ApiConfigPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -48,6 +63,12 @@ export default function ApiConfigPage() {
   const [gptModel, setGptModel] = useState("gpt-4o-mini");
   const [selectedVoice, setSelectedVoice] = useState("nova");
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
+  
+  // Estados WhatsApp
+  const [shouldShowQR, setShouldShowQR] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappMessage, setWhatsappMessage] = useState('Teste de conexão WhatsApp - Sistema de Entrevistas');
 
   // Master Settings para configurações OpenAI globais
   const { data: masterSettings, isLoading: configLoading } = useQuery<MasterSettings>({
@@ -68,6 +89,31 @@ export default function ApiConfigPage() {
   const { data: voiceSetting, isLoading: voiceLoading } = useQuery<ClientVoiceSetting>({
     queryKey: [`/api/client-voice-settings/${user?.clientId}`],
     enabled: !isMaster && !!user?.clientId,
+  });
+
+  // WhatsApp Status Query
+  const { data: whatsappStatus, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
+    queryKey: [`/api/whatsapp-client/status`],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/whatsapp-client/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    enabled: shouldShowQR,
+    refetchInterval: shouldShowQR && !whatsappStatus?.isConnected ? 5000 : false,
+    staleTime: 0,
+    retry: 1
   });
 
   // Carregar dados existentes
@@ -128,6 +174,134 @@ export default function ApiConfigPage() {
         variant: "destructive",
       });
     },
+  });
+
+  // WhatsApp Mutations
+  const connectWhatsAppMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/whatsapp-client/connect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response.json() as Promise<WhatsAppConnectionResponse>;
+    },
+    onMutate: () => {
+      setIsConnecting(true);
+      setShouldShowQR(true);
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "WhatsApp conectando...",
+          description: "Escaneie o QR Code para conectar",
+        });
+        refetchWhatsAppStatus();
+      } else {
+        toast({
+          title: "Erro na conexão",
+          description: data.message,
+          variant: "destructive"
+        });
+      }
+      setIsConnecting(false);
+    },
+    onError: () => {
+      toast({
+        title: "Erro na conexão",
+        description: "Falha ao conectar WhatsApp",
+        variant: "destructive"
+      });
+      setIsConnecting(false);
+    }
+  });
+
+  const disconnectWhatsAppMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/whatsapp-client/disconnect', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        setShouldShowQR(false);
+        toast({
+          title: "WhatsApp desconectado",
+          description: "Conexão WhatsApp encerrada com sucesso",
+        });
+        refetchWhatsAppStatus();
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao desconectar",
+        description: "Falha ao desconectar WhatsApp",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const sendTestMessageMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/whatsapp-client/test-message', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phoneNumber: whatsappPhone,
+          message: whatsappMessage
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast({
+          title: "Mensagem enviada",
+          description: "Mensagem de teste enviada com sucesso!",
+        });
+      } else {
+        toast({
+          title: "Erro no envio",
+          description: data.message,
+          variant: "destructive"
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Erro no teste",
+        description: "Falha ao enviar mensagem de teste",
+        variant: "destructive"
+      });
+    }
   });
 
   const playVoicePreview = async () => {
@@ -316,6 +490,169 @@ export default function ApiConfigPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Configurações WhatsApp (Clientes apenas) */}
+      {!isMaster && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Conexão WhatsApp
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure a conexão WhatsApp para envio de entrevistas automáticas
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status da Conexão */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                {whatsappStatus?.isConnected ? (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Wifi className="h-5 w-5" />
+                    <span className="font-medium">Conectado</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-red-600">
+                    <WifiOff className="h-5 w-5" />
+                    <span className="font-medium">Desconectado</span>
+                  </div>
+                )}
+                {whatsappStatus?.phoneNumber && (
+                  <Badge variant="outline" className="text-green-600 border-green-600">
+                    {whatsappStatus.phoneNumber}
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {whatsappStatus?.isConnected ? (
+                  <Button
+                    onClick={() => disconnectWhatsAppMutation.mutate()}
+                    disabled={disconnectWhatsAppMutation.isPending}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {disconnectWhatsAppMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Power className="h-4 w-4 mr-2" />
+                    )}
+                    Desconectar
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={() => connectWhatsAppMutation.mutate()}
+                      disabled={isConnecting || connectWhatsAppMutation.isPending}
+                      size="sm"
+                    >
+                      {isConnecting || connectWhatsAppMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Conectar WhatsApp
+                    </Button>
+                    
+                    {shouldShowQR && whatsappStatus?.qrCode && (
+                      <Button
+                        onClick={() => {
+                          setShouldShowQR(false);
+                          setTimeout(() => {
+                            connectWhatsAppMutation.mutate();
+                          }, 500);
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Atualizar QR
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* QR Code */}
+            {shouldShowQR && whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
+                  </p>
+                  
+                  <div className="flex justify-center">
+                    <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-gray-200">
+                      <img 
+                        src={whatsappStatus.qrCode} 
+                        alt="QR Code WhatsApp" 
+                        className="w-64 h-64"
+                      />
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-2">
+                    QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Teste de Mensagem */}
+            {whatsappStatus?.isConnected && (
+              <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                <h4 className="font-medium">Teste de Conexão</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="testPhone">Número de Teste</Label>
+                    <Input
+                      id="testPhone"
+                      placeholder="5511999999999"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="testMessage">Mensagem</Label>
+                    <Input
+                      id="testMessage"
+                      value={whatsappMessage}
+                      onChange={(e) => setWhatsappMessage(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={() => sendTestMessageMutation.mutate()}
+                  disabled={sendTestMessageMutation.isPending || !whatsappPhone}
+                  className="w-full"
+                >
+                  {sendTestMessageMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Enviar Mensagem de Teste
+                </Button>
+              </div>
+            )}
+
+            {/* Informações Técnicas */}
+            {whatsappStatus && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p><strong>Instance ID:</strong> {whatsappStatus.instanceId || 'N/A'}</p>
+                <p><strong>Última Conexão:</strong> {whatsappStatus.lastConnection || 'Nunca'}</p>
+                <p><strong>Sessão:</strong> {whatsappStatus.sessionPath || 'N/A'}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
