@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 23, 2025: 📊 BLOCO SELEÇÕES ENVIADAS IMPLEMENTADO - Novo card no painel de estatísticas baseado na contagem de relatórios
+  - **Card "Seleções Enviadas" adicionado**: Novo bloco ao lado direito de "Candidatos Cadastrados" com ícone FileText cyan
+  - **Contagem baseada em relatórios**: Sistema conta quantos relatórios existem na coleção Firebase (equivale às seleções enviadas)
+  - **Endpoint /api/selections-sent-count**: Backend conta documentos na coleção 'reports' filtrados por clientId
+  - **Layout adaptado**: Grid expandido de 5 para 6 colunas mantendo design responsivo
+  - **Dados em tempo real**: Atualização automática junto com demais métricas da página
+  - **Isolamento por cliente**: Cada cliente vê apenas suas próprias seleções enviadas
+
 - June 22, 2025: 💾 BLOCO MEMÓRIA UTILIZADA IMPLEMENTADO - Sistema de monitoramento de armazenamento de áudio por cliente
   - **Card "Memória Utilizada" adicionado**: Novo bloco no painel de estatísticas com ícone HardDrive indigo
   - **Cálculo específico por cliente**: Busca apenas arquivos .ogg relacionados às seleções do cliente logado

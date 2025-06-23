@@ -519,6 +519,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Selections sent count endpoint
+  app.get("/api/selections-sent-count", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.clientId!;
+      
+      console.log(`🔍 Contando seleções enviadas para cliente ${clientId}`);
+
+      // Buscar todos os relatórios do cliente
+      const reportsCollection = collection(firebaseDb, 'reports');
+      const reportsQuery = query(
+        reportsCollection,
+        where('clientId', '==', clientId)
+      );
+      
+      const reportsSnapshot = await getDocs(reportsQuery);
+      const reportsCount = reportsSnapshot.docs.length;
+
+      console.log(`📊 Total de relatórios encontrados: ${reportsCount}`);
+
+      res.json({ 
+        selectionsSent: reportsCount,
+        clientId: clientId
+      });
+    } catch (error) {
+      console.error('❌ Erro ao contar seleções enviadas:', error);
+      res.status(500).json({ message: 'Failed to count selections sent' });
+    }
+  });
+
   // Audio storage usage endpoint
   app.get("/api/audio-storage-usage", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
