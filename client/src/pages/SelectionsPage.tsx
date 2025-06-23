@@ -266,16 +266,25 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           const sendResponse = await Promise.race([
             apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST'),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout: WhatsApp não está conectado')), 30000)
+              setTimeout(() => reject(new Error('Timeout: Envio demorou mais que 30 segundos')), 30000)
             )
           ]) as Response;
           
           console.log(`📡 Resposta do envio WhatsApp:`, sendResponse.status);
           
           if (!sendResponse.ok) {
-            const errorText = await sendResponse.text();
-            console.error(`❌ Erro na resposta:`, errorText);
-            throw new Error(errorText || 'Erro no envio WhatsApp');
+            let errorMessage = 'Erro no envio WhatsApp';
+            try {
+              const errorData = await sendResponse.json();
+              errorMessage = errorData.message || errorMessage;
+              console.error(`❌ Erro JSON (${sendResponse.status}):`, errorData);
+            } catch {
+              const errorText = await sendResponse.text();
+              errorMessage = errorText || errorMessage;
+              console.error(`❌ Erro TEXT (${sendResponse.status}):`, errorText);
+            }
+            console.error(`❌ Lançando erro:`, errorMessage);
+            throw new Error(errorMessage);
           }
           
           const sendResult = await sendResponse.json();
