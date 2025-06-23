@@ -1805,10 +1805,28 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   return (
     <div className="space-y-6">
       {/* Informações do Candidato */}
-      <div className="bg-white rounded-lg border shadow-sm relative">
-        {/* Header com Nome e Botão de Exportar */}
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50/50">
-          <h2 className="text-xl font-semibold text-gray-900">{candidate.candidate.name}</h2>
+      <div className="grid grid-cols-4 gap-4 p-4 bg-white rounded-lg border relative">
+        <div>
+          <h4 className="font-semibold text-sm text-muted-foreground">Nome</h4>
+          <p className="font-medium">{candidate.candidate.name}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-sm text-muted-foreground">Email</h4>
+          <p className="text-sm">{candidate.candidate.email}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-sm text-muted-foreground">Telefone</h4>
+          <p className="text-sm">{candidate.candidate.phone}</p>
+        </div>
+        <div>
+          <h4 className="font-semibold text-sm text-muted-foreground">Status</h4>
+          <Badge variant={candidate.interview.status === 'completed' ? 'default' : 'secondary'}>
+            {candidate.interview.status}
+          </Badge>
+        </div>
+        
+        {/* Botão Exportar */}
+        <div className="absolute top-4 right-4">
           <Button
             onClick={handleExportHTML}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
@@ -1818,27 +1836,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
             <Download className="h-4 w-4" />
             Exportar
           </Button>
-        </div>
-        
-        {/* Grid de Informações */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
-          <div className="space-y-1">
-            <h4 className="font-medium text-sm text-gray-500 uppercase tracking-wide">Email</h4>
-            <p className="text-sm text-gray-900 break-words">{candidate.candidate.email}</p>
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-medium text-sm text-gray-500 uppercase tracking-wide">Telefone</h4>
-            <p className="text-sm text-gray-900">{candidate.candidate.phone}</p>
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-medium text-sm text-gray-500 uppercase tracking-wide">Status</h4>
-            <Badge 
-              variant={candidate.interview.status === 'completed' ? 'default' : 'secondary'}
-              className="w-fit"
-            >
-              {candidate.interview.status}
-            </Badge>
-          </div>
         </div>
       </div>
 
