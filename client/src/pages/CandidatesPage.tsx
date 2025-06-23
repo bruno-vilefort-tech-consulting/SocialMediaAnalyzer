@@ -1474,7 +1474,7 @@ export default function CandidatesPage() {
           </div>
 
           {/* Botões de ação acima do bloco Candidatos */}
-          <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
