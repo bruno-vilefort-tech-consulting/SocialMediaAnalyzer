@@ -1721,14 +1721,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
   // Função para buscar resposta perfeita baseada no questionId
   const getPerfectAnswer = (questionId: number) => {
-    console.log('🔍 [DEBUG PERFECT ANSWER] Dados recebidos:', {
-      questionId,
-      isSpecificReport,
-      reportData: reportData?.jobData?.perguntas,
-      jobData: jobData,
-      jobDataPerguntas: jobData?.perguntas
-    });
-    
     // Se estamos visualizando um relatório específico (independente)
     if (isSpecificReport && reportData?.jobData?.perguntas) {
       const question = reportData.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
@@ -1744,7 +1736,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
         q.id === questionId ||
         q.questionId === questionId
       );
-      console.log('🔍 [DEBUG PERFECT ANSWER] Pergunta encontrada:', question);
       return question?.respostaPerfeita || null;
     }
     

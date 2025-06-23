@@ -645,6 +645,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific job by ID
+  app.get("/api/jobs/:id", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const id = req.params.id;
+      console.log(`🔍 Buscando vaga ID: ${id} pelo usuário: ${req.user?.email}`);
+      
+      const job = await storage.getJobById(id);
+      if (!job) {
+        console.log(`❌ Vaga ${id} não encontrada`);
+        return res.status(404).json({ message: 'Job not found' });
+      }
+      
+      // Check if user has access to this job
+      if (req.user!.role !== 'master' && job.clientId !== req.user!.clientId) {
+        console.log(`🚫 Acesso negado: usuário clientId ${req.user!.clientId} tentando acessar vaga do clientId ${job.clientId}`);
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      console.log(`✅ Vaga encontrada: ${job.nomeVaga} com ${job.perguntas?.length || 0} perguntas`);
+      res.json(job);
+    } catch (error) {
+      console.error('❌ Erro ao buscar vaga:', error);
+      res.status(500).json({ message: 'Failed to fetch job' });
+    }
+  });
+
   app.post("/api/jobs", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       console.log('Dados recebidos para criação de vaga:', req.body);
