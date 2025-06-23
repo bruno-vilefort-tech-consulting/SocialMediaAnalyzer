@@ -1709,7 +1709,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   };
 
   // Buscar dados da vaga para obter respostas perfeitas
-  const { data: jobData } = useQuery({
+  const { data: jobData, isLoading: jobDataLoading } = useQuery({
     queryKey: ['/api/jobs', selectedSelection?.jobId],
     queryFn: async () => {
       if (!selectedSelection?.jobId) return null;
@@ -1721,6 +1721,14 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
   // Função para buscar resposta perfeita baseada no questionId
   const getPerfectAnswer = (questionId: number) => {
+    console.log('🔍 [DEBUG PERFECT ANSWER] Dados recebidos:', {
+      questionId,
+      isSpecificReport,
+      reportData: reportData?.jobData?.perguntas,
+      jobData: jobData,
+      jobDataPerguntas: jobData?.perguntas
+    });
+    
     // Se estamos visualizando um relatório específico (independente)
     if (isSpecificReport && reportData?.jobData?.perguntas) {
       const question = reportData.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
@@ -1729,7 +1737,14 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
     
     // Para seleções regulares, buscar da vaga real
     if (jobData?.perguntas) {
-      const question = jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
+      // Testar diferentes estruturas de campo possíveis
+      const question = jobData.perguntas.find((q: any) => 
+        q.numero === questionId || 
+        q.numeroPergunta === questionId || 
+        q.id === questionId ||
+        q.questionId === questionId
+      );
+      console.log('🔍 [DEBUG PERFECT ANSWER] Pergunta encontrada:', question);
       return question?.respostaPerfeita || null;
     }
     
@@ -1821,7 +1836,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                   </div>
 
                   {/* Dropdown da Resposta Perfeita */}
-                  {getPerfectAnswer(response.questionId) && (
+                  {!jobDataLoading && getPerfectAnswer(response.questionId) && (
                     <Collapsible 
                       open={expandedPerfectAnswers[responseId]} 
                       onOpenChange={() => togglePerfectAnswer(responseId)}
