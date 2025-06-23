@@ -1,0 +1,88 @@
+# Guia de ajustes Baileys para rodar no Replit (WebSocket restrito)
+
+============================================================
+1. VERSÃO DO PROTOCOLO
+------------------------------------------------------------
+Sempre alinhe a versão do Web WhatsApp antes de abrir o socket:
+
+```ts
+import { fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
+const { version } = await fetchLatestBaileysVersion({ cache: true })
+```
+
+Se a consulta falhar (firewall), use fallback estável:
+```ts
+const version = [2, 2419, 6]  // última release confirmada (jun/25)
+```
+
+============================================================
+2. CONFIGURAÇÃO IDEAL DO SOCKET PARA REPLIT
+------------------------------------------------------------
+```ts
+import makeWASocket from '@whiskeysockets/baileys'
+import { useMultiFileAuthState } from '@whiskeysockets/baileys'
+import { HttpsProxyAgent } from 'https-proxy-agent'
+
+// Replit às vezes fecha WebSockets longos; usar proxy HTTPS ajuda.
+const proxy = new HttpsProxyAgent('https://proxy.replit.com:443') // ou seu próprio
+
+const sock = makeWASocket({
+  version,
+  auth: state,
+  // Browser simula Android para evitar 515
+  browser: ['Samsung', 'SM‑G991B', '13'],  // nome, modelo, versão SO
+  mobile: true,                            // conecta em mmg.whatsapp.net
+  printQRInTerminal: false,
+  logger: { level: 'error' },
+  fetchOptions: { agent: proxy },
+  connectOptions: { agent: proxy },
+
+  // Timeouts menores reduzem risco de drop pelo proxy
+  connectTimeoutMs: 90000,
+  defaultQueryTimeoutMs: 90000,
+
+  // Pings frequentes mantêm o túnel vivo
+  keepAliveIntervalMs: 10000,
+  networkIdleTimeoutMs: 45000,
+
+  qrTimeout: 90000,
+  fireInitQueries: true                  // manda init queries logo
+})
+```
+
+### Por que essas opções?
+- **mobile: true** → usa protocolo móvel (porta 443, host mmg.whatsapp.net)   que costuma passar pelos filtros do Replit.
+- **browser array** com 3 strings válidas evita exception em getUserAgent   e imita dispositivo real.
+- **Proxy HTTPS** contorna resets de TCP/WSS feitos pelo Replit.   Use um proxy confiável (Squid pessoal ou BrightData).   Se não quiser proxy, remova `fetchOptions`/`connectOptions`.
+- **keepAliveIntervalMs = 10 s** + **networkIdleTimeoutMs = 45 s**   mandam ping antes que o túnel seja marcado ocioso.
+
+============================================================
+3. RETRY E TRATAMENTO DO ERRO 515
+------------------------------------------------------------
+```ts
+sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  const code = (lastDisconnect?.error as any)?.output?.statusCode
+  if (connection === 'close' && [515, 408, 428].includes(code)) {
+    console.warn('⬇️  Desconectado (' + code + ') – tentando de novo em 5 s')
+    setTimeout(initSocket, 5000)
+  }
+})
+```
+
+============================================================
+4. OBSERVAÇÕES DE REDE / REPLIT
+------------------------------------------------------------
+• Replit permite WSS → *web.whatsapp.com* mas derruba conexões   inativas > ~60 s. Pings a cada 10 s mitigam.
+
+• Se mesmo com **mobile:true** ainda ocorrer 515,   teste local ou VPS para confirmar que a causa é a rede.
+
+• Para alta confiabilidade, mantenha Baileys em VPS   e use apenas o frontend no Replit.
+
+============================================================
+5. CHECKLIST FINAL
+------------------------------------------------------------
+[ ] Versão WA obtida ou fallback definido  
+[ ] `mobile:true` + browser Android  
+[ ] Proxy HTTPS opcional configurado  
+[ ] `keepAliveIntervalMs` ≤ 10 s  
+[ ] Retry automático para 515/428/408  

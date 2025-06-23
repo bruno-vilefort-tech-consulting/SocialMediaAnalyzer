@@ -33,13 +33,13 @@ export class ClientWhatsAppService {
       
       // Buscar versão WhatsApp Web com fallback robusto
       try {
-        const fetched = await this.baileys.fetchLatestBaileysVersion();
+        const fetched = await this.baileys.fetchLatestBaileysVersion({ cache: true });
         this.waVersion = fetched.version; // array [major, minor, patch]
         console.log('🌐 WA Web version obtida:', this.waVersion);
       } catch (versionError) {
         console.error('⚠️ Não foi possível buscar versão WA, usando fallback:', versionError);
-        this.waVersion = [2, 2419, 6]; // Fallback estável (Jun/2025)
-        console.log('🔄 Usando versão fallback:', this.waVersion);
+        this.waVersion = [2, 2419, 6]; // Fallback estável confirmada (Jun/2025)
+        console.log('🔄 Usando versão fallback estável:', this.waVersion);
       }
     } catch (error) {
       console.error('❌ Erro ao inicializar Baileys:', error);
@@ -110,22 +110,29 @@ export class ClientWhatsAppService {
       console.log('🔧 Criando socket com versão:', this.waVersion);
 
       const socket = this.baileys.makeWASocket({
-        version: this.waVersion,      // ✅ Sempre array válido [major, minor, patch]
+        version: this.waVersion,
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        browser: ['Replit-Bot', 'Chrome', '1.0.0'], // Garantido 3 strings
+        // Browser simula Android para evitar 515 - conforme ChatGPT
+        browser: ['Samsung', 'SM-G991B', '13'], // nome, modelo, versão SO
+        mobile: true,                           // conecta em mmg.whatsapp.net
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
-        defaultQueryTimeoutMs: 180000, // 👈 3 minutos para uploadPreKeys
-        connectTimeoutMs: 180000,     // 👈 3 minutos para conexão
-        keepAliveIntervalMs: 15000,
-        networkIdleTimeoutMs: 60000,
-        qrTimeout: 180000,
+        
+        // Timeouts menores reduzem risco de drop pelo proxy - conforme ChatGPT
+        connectTimeoutMs: 90000,               // 90s em vez de 180s
+        defaultQueryTimeoutMs: 90000,          // 90s em vez de 180s
+        qrTimeout: 90000,                      // 90s QR timeout
+        
+        // Pings frequentes mantêm o túnel vivo - conforme ChatGPT
+        keepAliveIntervalMs: 10000,            // 10s em vez de 15s
+        networkIdleTimeoutMs: 45000,           // 45s em vez de 60s
+        
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 5,
         syncFullHistory: false,
-        fireInitQueries: false,       // 👈 Não disparar queries automáticas
+        fireInitQueries: true,                 // manda init queries logo - conforme ChatGPT
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
       });
