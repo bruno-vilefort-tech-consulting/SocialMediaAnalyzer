@@ -821,9 +821,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                     )}
                     <TableCell>
                       <div className="space-y-2">
-                        <div className="flex gap-1 mb-1">
-                          <Badge variant="outline">WhatsApp</Badge>
-                        </div>
                         <div className="w-full">
                           <div className="flex justify-between text-xs text-gray-600 mb-1">
                             <span>Progresso</span>

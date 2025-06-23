@@ -1158,92 +1158,91 @@ export default function NewReportsPage() {
                               </div>
                               
                               {/* Coluna 4: Avaliação (4 Botões de Categorização) */}
-                              <div className="col-span-1">
+                              <div className="col-span-1 flex justify-center">
                                 {getCandidateCategory(candidate.candidate.id) === null ? (
-                                  <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex gap-1 items-center justify-center w-full" onClick={(e) => e.stopPropagation()}>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="outline"
-                                      className="h-7 px-1.5 hover:bg-green-50"
+                                      className="h-9 px-3 hover:bg-green-50 flex-1 max-w-[45px]"
                                       onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Melhor"
                                     >
-                                      <ThumbsUp className="h-3 w-3" />
+                                      <ThumbsUp className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="outline"
-                                      className="h-7 px-1.5 hover:bg-yellow-50"
+                                      className="h-9 px-3 hover:bg-yellow-50 flex-1 max-w-[45px]"
                                       onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Mediano"
                                     >
-                                      <Meh className="h-3 w-3" />
+                                      <Meh className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="outline"
-                                      className="h-7 px-1.5 hover:bg-orange-50"
+                                      className="h-9 px-3 hover:bg-orange-50 flex-1 max-w-[45px]"
                                       onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Em dúvida"
                                     >
-                                      <AlertTriangle className="h-3 w-3" />
+                                      <AlertTriangle className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant="outline"
-                                      className="h-7 px-1.5 hover:bg-red-50"
+                                      className="h-9 px-3 hover:bg-red-50 flex-1 max-w-[45px]"
                                       onClick={() => setCategory(candidate.candidate.id, 'Não')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Reprovar"
                                     >
-                                      <ThumbsDown className="h-3 w-3" />
+                                      <ThumbsDown className="h-4 w-4" />
                                     </Button>
-                                    <span className="text-xs text-muted-foreground ml-1">Não avaliado</span>
                                   </div>
                                 ) : (
-                                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex gap-1 justify-center w-full" onClick={(e) => e.stopPropagation()}>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant={getCandidateCategory(candidate.candidate.id) === 'Melhor' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
+                                      className={`h-9 px-3 flex-1 max-w-[45px] ${getCandidateCategory(candidate.candidate.id) === 'Melhor' ? 'bg-green-600 hover:bg-green-700 text-white' : 'hover:bg-green-50'}`}
                                       onClick={() => setCategory(candidate.candidate.id, 'Melhor')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Melhor"
                                     >
-                                      <ThumbsUp className="h-3 w-3" />
+                                      <ThumbsUp className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant={getCandidateCategory(candidate.candidate.id) === 'Mediano' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
+                                      className={`h-9 px-3 flex-1 max-w-[45px] ${getCandidateCategory(candidate.candidate.id) === 'Mediano' ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : 'hover:bg-yellow-50'}`}
                                       onClick={() => setCategory(candidate.candidate.id, 'Mediano')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Mediano"
                                     >
-                                      <Meh className="h-3 w-3" />
+                                      <Meh className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant={getCandidateCategory(candidate.candidate.id) === 'Em dúvida' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
+                                      className={`h-9 px-3 flex-1 max-w-[45px] ${getCandidateCategory(candidate.candidate.id) === 'Em dúvida' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'hover:bg-orange-50'}`}
                                       onClick={() => setCategory(candidate.candidate.id, 'Em dúvida')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Em dúvida"
                                     >
-                                      <AlertTriangle className="h-3 w-3" />
+                                      <AlertTriangle className="h-4 w-4" />
                                     </Button>
                                     <Button
-                                      size="sm"
+                                      size="default"
                                       variant={getCandidateCategory(candidate.candidate.id) === 'Não' ? 'default' : 'outline'}
-                                      className={`h-7 px-1.5 ${getCandidateCategory(candidate.candidate.id) === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
+                                      className={`h-9 px-3 flex-1 max-w-[45px] ${getCandidateCategory(candidate.candidate.id) === 'Não' ? 'bg-red-600 hover:bg-red-700 text-white' : 'hover:bg-red-50'}`}
                                       onClick={() => setCategory(candidate.candidate.id, 'Não')}
                                       disabled={setCategoryMutation.isPending}
                                       title="Reprovar"
                                     >
-                                      <ThumbsDown className="h-3 w-3" />
+                                      <ThumbsDown className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 )}
