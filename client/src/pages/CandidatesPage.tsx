@@ -425,6 +425,15 @@ export default function CandidatesPage() {
     }
   });
 
+  // Form para editar lista
+  const editListForm = useForm<{ name: string; description?: string }>({
+    resolver: zodResolver(candidateListSchema.omit({ clientId: true })),
+    defaultValues: {
+      name: "",
+      description: ""
+    }
+  });
+
   // Mutations
   const createListMutation = useMutation({
     mutationFn: async (data: CandidateListFormData): Promise<CandidateList> => {
@@ -686,6 +695,16 @@ export default function CandidatesPage() {
       }
     });
   };
+
+  // Effect para carregar dados da lista no formulário de edição
+  React.useEffect(() => {
+    if (editingList && showEditListForm) {
+      editListForm.reset({
+        name: editingList.name,
+        description: editingList.description || ""
+      });
+    }
+  }, [editingList, showEditListForm, editListForm]);
 
   const handleSubmitCandidate = (data: CandidateFormData) => {
     console.log('🚀 handleSubmitCandidate chamado com:', data);
@@ -2039,6 +2058,66 @@ export default function CandidatesPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para editar lista */}
+      <Dialog open={showEditListForm} onOpenChange={(open) => {
+        setShowEditListForm(open);
+        if (!open) {
+          setEditingList(null);
+          editListForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Lista</DialogTitle>
+          </DialogHeader>
+
+          <Form {...editListForm}>
+            <form onSubmit={editListForm.handleSubmit(handleSubmitEditList)} className="space-y-4">
+              <FormField
+                control={editListForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da Lista *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Comercial 2024" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editListForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Descrição opcional da lista..."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setShowEditListForm(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={editListMutation.isPending}>
+                  {editListMutation.isPending ? "Salvando..." : "Salvar Alterações"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
