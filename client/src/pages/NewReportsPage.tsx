@@ -1742,9 +1742,9 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
     return null;
   };
 
-  const handleExportPDF = async () => {
+  const handleExportHTML = async () => {
     try {
-      console.log('📄 Iniciando exportação de PDF...');
+      console.log('📄 Iniciando exportação de HTML...');
       
       // Preparar dados do candidato para o PDF
       const candidateData = {
@@ -1767,8 +1767,8 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       // Obter token de autenticação
       const token = localStorage.getItem('auth_token') || '';
       
-      // Fazer requisição para gerar PDF com fetch direto para receber blob
-      const response = await fetch('/api/export-candidate-pdf', {
+      // Fazer requisição para gerar HTML com fetch direto para receber arquivo
+      const response = await fetch('/api/export-candidate-html', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1786,19 +1786,19 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${candidateData.name}_${candidateData.jobName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = `${candidateData.name}_${candidateData.jobName}_${new Date().toISOString().split('T')[0]}.html`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      // PDF exportado com sucesso - mostrar feedback visual
-      console.log('✅ PDF exportado com sucesso!');
+      // HTML exportado com sucesso - mostrar feedback visual
+      console.log('✅ HTML exportado com sucesso!');
       
     } catch (error) {
-      console.error('❌ Erro ao exportar PDF:', error);
+      console.error('❌ Erro ao exportar HTML:', error);
       // Erro na exportação - mostrar no console por enquanto
-      console.error('❌ Falha ao gerar PDF. Tente novamente.');
+      console.error('❌ Falha ao gerar HTML. Tente novamente.');
     }
   };
 
@@ -1825,16 +1825,16 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
           </Badge>
         </div>
         
-        {/* Botão Exportar PDF */}
+        {/* Botão Exportar */}
         <div className="absolute top-4 right-4">
           <Button
-            onClick={handleExportPDF}
+            onClick={handleExportHTML}
             className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
             size="sm"
           >
             <FileText className="h-4 w-4" />
             <Download className="h-4 w-4" />
-            Exportar PDF
+            Exportar
           </Button>
         </div>
       </div>

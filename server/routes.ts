@@ -18,7 +18,7 @@ import { firebaseDb } from "./db";
 import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
-import { simplePdfService } from "./simplePdfService";
+import { htmlExportService } from "./htmlExportService";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);
@@ -520,34 +520,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PDF Export endpoint
-  app.post("/api/export-candidate-pdf", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+  // HTML Export endpoint
+  app.post("/api/export-candidate-html", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const candidateData = req.body;
       
-      console.log(`📄 Gerando PDF para candidato: ${candidateData.name}`);
+      console.log(`📄 Gerando HTML para candidato: ${candidateData.name}`);
       
-      // Gerar PDF simplificado
-      const pdfBuffer = await simplePdfService.generateCandidatePDF(candidateData);
+      // Gerar HTML com players de áudio
+      const htmlContent = await htmlExportService.generateCandidateHTML(candidateData);
       
       // Nome do arquivo
-      const fileName = simplePdfService.generateFileName(
+      const fileName = htmlExportService.generateFileName(
         candidateData.name, 
         candidateData.jobName, 
         candidateData.completedAt
       );
       
       // Configurar headers para download
-      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Content-Length', Buffer.byteLength(htmlContent, 'utf8'));
       
-      console.log(`✅ PDF gerado com sucesso: ${fileName}`);
-      res.send(pdfBuffer);
+      console.log(`✅ HTML gerado com sucesso: ${fileName}`);
+      res.send(htmlContent);
       
     } catch (error) {
-      console.error('❌ Erro ao gerar PDF:', error);
-      res.status(500).json({ message: 'Failed to generate PDF', error: error.message });
+      console.error('❌ Erro ao gerar HTML:', error);
+      res.status(500).json({ message: 'Failed to generate HTML', error: error.message });
     }
   });
 

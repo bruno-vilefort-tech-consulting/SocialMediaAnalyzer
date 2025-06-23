@@ -115,15 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 23, 2025: 📄 SISTEMA PDF PROFISSIONAL IMPLEMENTADO - Exportação completa com áudio embeddado e layout otimizado
-  - **Layout profissional**: Informações organizadas em duas colunas - contato à esquerda, vaga/data à direita
-  - **Pontuação destacada**: Score final no topo direito e scores individuais por pergunta
-  - **Quebra de página inteligente**: Sistema calcula espaço necessário e quebra adequadamente sem cortar respostas
-  - **Conversão de áudio**: Arquivos .ogg convertidos para .mp3 automaticamente durante geração do PDF
-  - **Limpeza automática**: Arquivos .mp3 temporários deletados após geração para economizar espaço
+- June 23, 2025: 📄 SISTEMA HTML PROFISSIONAL IMPLEMENTADO - Exportação com players de áudio funcionais e design responsivo
+  - **Players de áudio nativos**: HTML5 audio controls totalmente funcionais para reprodução dos áudios
+  - **Layout profissional**: Design responsivo com grid de informações e cores dinâmicas baseadas na pontuação
+  - **Pontuação destacada**: Score final no header e scores individuais por pergunta com cores indicativas
+  - **Design responsivo**: Funciona perfeitamente em desktop, tablet e mobile com CSS grid
   - **Três seções por pergunta**: Pergunta, resposta do candidato e resposta perfeita cadastrada
-  - **Design responsivo**: Cores diferenciadas para cada seção e scores com indicadores visuais
-  - **Botão exportação**: Facilmente acessível no canto superior direito dos detalhes do candidato
+  - **Suporte para impressão**: CSS otimizado para impressão com quebras de página inteligentes
+  - **Compatibilidade total**: Funciona em qualquer navegador moderno, pode ser salvo como PDF pelo usuário
+  - **Botão "Exportar"**: Nome simplificado conforme solicitado, gera arquivo .html para download
 
 - June 23, 2025: 📊 BLOCO SELEÇÕES ENVIADAS IMPLEMENTADO - Novo card no painel de estatísticas baseado na contagem de relatórios
   - **Card "Seleções Enviadas" adicionado**: Novo bloco ao lado direito de "Candidatos Cadastrados" com ícone FileText cyan
