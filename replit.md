@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 23, 2025: 📄 SISTEMA PDF PROFISSIONAL IMPLEMENTADO - Exportação completa com áudio embeddado e layout otimizado
+  - **Layout profissional**: Informações organizadas em duas colunas - contato à esquerda, vaga/data à direita
+  - **Pontuação destacada**: Score final no topo direito e scores individuais por pergunta
+  - **Quebra de página inteligente**: Sistema calcula espaço necessário e quebra adequadamente sem cortar respostas
+  - **Conversão de áudio**: Arquivos .ogg convertidos para .mp3 automaticamente durante geração do PDF
+  - **Limpeza automática**: Arquivos .mp3 temporários deletados após geração para economizar espaço
+  - **Três seções por pergunta**: Pergunta, resposta do candidato e resposta perfeita cadastrada
+  - **Design responsivo**: Cores diferenciadas para cada seção e scores com indicadores visuais
+  - **Botão exportação**: Facilmente acessível no canto superior direito dos detalhes do candidato
+
 - June 23, 2025: 📊 BLOCO SELEÇÕES ENVIADAS IMPLEMENTADO - Novo card no painel de estatísticas baseado na contagem de relatórios
   - **Card "Seleções Enviadas" adicionado**: Novo bloco ao lado direito de "Candidatos Cadastrados" com ícone FileText cyan
   - **Contagem baseada em relatórios**: Sistema conta quantos relatórios existem na coleção Firebase (equivale às seleções enviadas)
