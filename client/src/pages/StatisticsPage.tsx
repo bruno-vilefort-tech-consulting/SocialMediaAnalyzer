@@ -301,35 +301,35 @@ export default function StatisticsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 xl:gap-12">
             {/* Entrevistas */}
-            <div className="space-y-4">
+            <div className="space-y-4 lg:space-y-6">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Send className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 lg:h-12 lg:w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Send className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Entrevistas</div>
-                  <div className="text-sm text-slate-500">Limite mensal de entrevistas</div>
+                  <div className="font-semibold text-slate-900 lg:text-lg">Entrevistas</div>
+                  <div className="text-sm lg:text-base text-slate-500">Limite mensal de entrevistas</div>
                 </div>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4 lg:space-y-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Entrevistas Contratadas</span>
-                  <span className="font-semibold text-slate-900">1.000</span>
+                  <span className="text-sm lg:text-base text-slate-600">Entrevistas Contratadas</span>
+                  <span className="font-semibold text-slate-900 lg:text-lg">1.000</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Entrevistas Iniciadas</span>
-                  <span className="font-semibold text-slate-900">{(statsData.interviewsStarted || 0).toLocaleString()}</span>
+                  <span className="text-sm lg:text-base text-slate-600">Entrevistas Iniciadas</span>
+                  <span className="font-semibold text-slate-900 lg:text-lg">{(statsData.interviewsStarted || 0).toLocaleString()}</span>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
+                <div className="w-full bg-slate-200 rounded-full h-3">
                   <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-blue-500 h-3 rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(((statsData.interviewsStarted || 0) / 1000) * 100, 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm lg:text-base">
                   <span className="text-slate-500">
                     Restantes: {(1000 - (statsData.interviewsStarted || 0)).toLocaleString()}
                   </span>
@@ -341,33 +341,33 @@ export default function StatisticsPage() {
             </div>
 
             {/* Assessments */}
-            <div className="space-y-4">
+            <div className="space-y-4 lg:space-y-6">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Award className="h-5 w-5 text-purple-600" />
+                <div className="h-10 w-10 lg:h-12 lg:w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Award className="h-5 w-5 lg:h-6 lg:w-6 text-purple-600" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900">Assessments</div>
-                  <div className="text-sm text-slate-500">Limite mensal de assessments</div>
+                  <div className="font-semibold text-slate-900 lg:text-lg">Assessments</div>
+                  <div className="text-sm lg:text-base text-slate-500">Limite mensal de assessments</div>
                 </div>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4 lg:space-y-5">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Contratados</span>
-                  <span className="font-semibold text-slate-900">500</span>
+                  <span className="text-sm lg:text-base text-slate-600">Contratados</span>
+                  <span className="font-semibold text-slate-900 lg:text-lg">500</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Utilizados</span>
-                  <span className="font-semibold text-slate-900">{(statsData.interviewsCompleted || 0).toLocaleString()}</span>
+                  <span className="text-sm lg:text-base text-slate-600">Utilizados</span>
+                  <span className="font-semibold text-slate-900 lg:text-lg">{(statsData.interviewsCompleted || 0).toLocaleString()}</span>
                 </div>
-                <div className="w-full bg-slate-200 rounded-full h-2">
+                <div className="w-full bg-slate-200 rounded-full h-3">
                   <div 
-                    className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-purple-500 h-3 rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(((statsData.interviewsCompleted || 0) / 500) * 100, 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-sm lg:text-base">
                   <span className="text-slate-500">
                     Restantes: {(500 - (statsData.interviewsCompleted || 0)).toLocaleString()}
                   </span>
