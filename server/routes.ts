@@ -523,7 +523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PDF Export endpoint
   app.post("/api/export-candidate-pdf", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
-      const { candidateData } = req.body;
+      const candidateData = req.body;
       
       console.log(`📄 Gerando PDF para candidato: ${candidateData.name}`);
       

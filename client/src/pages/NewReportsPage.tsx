@@ -1764,18 +1764,21 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       
       console.log('📋 Dados preparados:', candidateData);
       
-      // Fazer requisição para gerar PDF
+      // Obter token de autenticação
+      const token = localStorage.getItem('auth_token') || '';
+      
+      // Fazer requisição para gerar PDF com fetch direto para receber blob
       const response = await fetch('/api/export-candidate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ candidateData })
+        body: JSON.stringify(candidateData)
       });
       
       if (!response.ok) {
-        throw new Error('Falha ao gerar PDF');
+        throw new Error(`Erro HTTP: ${response.status}`);
       }
       
       // Download do arquivo
@@ -1789,18 +1792,13 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast({
-        title: "PDF Exportado",
-        description: "O relatório foi gerado e baixado com sucesso!",
-      });
+      // PDF exportado com sucesso - mostrar feedback visual
+      console.log('✅ PDF exportado com sucesso!');
       
     } catch (error) {
       console.error('❌ Erro ao exportar PDF:', error);
-      toast({
-        title: "Erro na Exportação",
-        description: "Falha ao gerar o PDF. Tente novamente.",
-        variant: "destructive",
-      });
+      // Erro na exportação - mostrar no console por enquanto
+      console.error('❌ Falha ao gerar PDF. Tente novamente.');
     }
   };
 
