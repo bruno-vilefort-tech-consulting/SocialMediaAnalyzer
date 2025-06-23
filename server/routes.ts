@@ -564,13 +564,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`💾 Total calculado: ${fileCount} arquivos, ${totalSize} bytes`);
       
-      // Convert bytes to GB with 3 decimal places
-      const totalSizeGB = (totalSize / (1024 * 1024 * 1024)).toFixed(3);
+      // Convert bytes to MB with 3 decimal places
+      const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(3);
       
       res.json({ 
         totalSizeBytes: totalSize,
-        totalSizeGB: parseFloat(totalSizeGB),
-        formattedSize: `${totalSizeGB} GB`,
+        totalSizeMB: parseFloat(totalSizeMB),
+        formattedSize: `${totalSizeMB} MB`,
         fileCount: fileCount
       });
     } catch (error) {

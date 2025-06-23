@@ -22,7 +22,7 @@ interface StatisticsData {
 
 interface AudioStorageData {
   totalSizeBytes: number;
-  totalSizeGB: number;
+  totalSizeMB: number;
   formattedSize: string;
   fileCount: number;
 }
@@ -248,7 +248,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
-                  {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 GB"}
+                  {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 MB"}
                 </div>
                 <div className="text-sm text-slate-500">Memória Utilizada</div>
                 {audioStorage?.fileCount && (
