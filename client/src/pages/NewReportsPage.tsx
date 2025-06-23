@@ -1865,7 +1865,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                       <p className="font-medium">{response.questionText}</p>
                     </div>
                     {/* Pontuação 0-100 no topo direito */}
-                    {response.score !== null && response.score !== undefined && response.score > 0 ? (
+                    {response.score !== null && response.score !== undefined && response.score >= 0 ? (
                       <div className="ml-4 flex-shrink-0">
                         <div className={`px-3 py-1 rounded-full text-sm font-bold ${
                           response.score >= 80 ? 'bg-green-100 text-green-800' :
