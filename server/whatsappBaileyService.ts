@@ -422,6 +422,42 @@ class WhatsAppBaileyService {
       console.log(`❌ Erro na restauração:`, error.message);
     }
   }
+
+  async clearSession(clientId: string): Promise<void> {
+    try {
+      console.log(`🧹 [BAILEY] Iniciando limpeza completa de sessão para cliente ${clientId}...`);
+      
+      // 1. Desconectar sessão ativa se existir
+      await this.disconnect(clientId);
+      
+      // 2. Limpar arquivos de sessão do disco
+      const fs = await import('fs');
+      const path = await import('path');
+      const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
+      
+      if (fs.existsSync(sessionPath)) {
+        const files = fs.readdirSync(sessionPath);
+        console.log(`🧹 [BAILEY] Removendo ${files.length} arquivos de sessão: ${files.slice(0,3).join(', ')}${files.length > 3 ? '...' : ''}`);
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`✅ [BAILEY] Pasta de sessão removida: ${sessionPath}`);
+      } else {
+        console.log(`ℹ️ [BAILEY] Nenhuma pasta de sessão encontrada: ${sessionPath}`);
+      }
+      
+      // 3. Limpar status no Firebase via storage
+      await storage.updateApiConfig('client', clientId, {
+        whatsappConnected: false,
+        whatsappQrCode: null,
+        whatsappPhoneNumber: null
+      });
+      console.log(`✅ [BAILEY] Status limpo no Firebase para cliente ${clientId}`);
+      
+      console.log(`✅ [BAILEY] Limpeza completa finalizada para cliente ${clientId}`);
+    } catch (error) {
+      console.error(`❌ [BAILEY] Erro ao limpar sessão para cliente ${clientId}:`, error);
+      throw error;
+    }
+  }
 }
 
 export const whatsappBaileyService = new WhatsAppBaileyService();
