@@ -1326,7 +1326,7 @@ export default function NewReportsPage() {
                     <div className="bg-green-100 border border-green-200 rounded-lg p-3 text-center">
                       <div className="flex items-center justify-center gap-2 mb-2">
                         <ThumbsUp className="h-5 w-5 text-green-700" />
-                        <h3 className="font-semibold text-green-700">Selecionados</h3>
+                        <h3 className="font-semibold text-green-700">Selecionado</h3>
                       </div>
                       <div className="text-sm text-green-600">
                         {allCandidatesWithStatus.filter(c => getCandidateCategory(c.candidate.id) === 'Melhor').length} candidatos
