@@ -445,12 +445,20 @@ class WhatsAppBaileyService {
       }
       
       // 3. Limpar status no Firebase via storage
-      await storage.updateApiConfig('client', clientId, {
-        whatsappConnected: false,
-        whatsappQrCode: null,
-        whatsappPhoneNumber: null
-      });
-      console.log(`✅ [BAILEY] Status limpo no Firebase para cliente ${clientId}`);
+      try {
+        const currentConfig = await storage.getApiConfig('client', clientId);
+        await storage.upsertApiConfig({
+          ...currentConfig,
+          entityType: 'client',
+          entityId: clientId,
+          whatsappQrConnected: false,
+          whatsappQrCode: null,
+          whatsappQrPhoneNumber: null
+        });
+        console.log(`✅ [BAILEY] Status limpo no Firebase para cliente ${clientId}`);
+      } catch (firebaseError) {
+        console.log(`⚠️ [BAILEY] Erro ao limpar Firebase (não crítico): ${firebaseError.message}`);
+      }
       
       console.log(`✅ [BAILEY] Limpeza completa finalizada para cliente ${clientId}`);
     } catch (error) {
