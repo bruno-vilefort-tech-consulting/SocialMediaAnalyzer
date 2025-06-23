@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye, Search, UserPlus } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, Users, FileSpreadsheet, ArrowLeft, Eye, Search, UserPlus, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,6 +73,10 @@ export default function CandidatesPage() {
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCandidateForm, setShowCandidateForm] = useState(false);
+  
+  // Estado para edição de lista
+  const [editingList, setEditingList] = useState<CandidateList | null>(null);
+  const [showEditListForm, setShowEditListForm] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -640,6 +644,22 @@ export default function CandidatesPage() {
     }
   });
 
+  // Mutation para editar lista
+  const editListMutation = useMutation({
+    mutationFn: async ({ listId, data }: { listId: number; data: { name: string; description?: string } }) => {
+      return await apiRequest(`/api/candidate-lists/${listId}`, 'PUT', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/candidate-lists'] });
+      setShowEditListForm(false);
+      setEditingList(null);
+      toast({ title: "Lista atualizada com sucesso!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar lista", variant: "destructive" });
+    }
+  });
+
   // Handlers
   const handleCreateList = (data: CandidateListFormData) => {
     // Para usuários client, usar automaticamente o clientId do usuário
@@ -647,6 +667,24 @@ export default function CandidatesPage() {
       data.clientId = user.clientId;
     }
     createListMutation.mutate(data);
+  };
+
+  // Handler para editar lista
+  const handleEditList = (list: CandidateList) => {
+    setEditingList(list);
+    setShowEditListForm(true);
+  };
+
+  // Handler para submeter edição de lista
+  const handleSubmitEditList = (data: { name: string; description?: string }) => {
+    if (!editingList) return;
+    editListMutation.mutate({ 
+      listId: editingList.id, 
+      data: {
+        name: data.name.trim(),
+        description: data.description?.trim() || ""
+      }
+    });
   };
 
   const handleSubmitCandidate = (data: CandidateFormData) => {
@@ -1284,6 +1322,15 @@ export default function CandidatesPage() {
                                 title="Visualizar lista"
                               >
                                 <Eye className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditList(list)}
+                                title="Editar lista"
+                              >
+                                <Edit className="h-4 w-4" />
                               </Button>
 
                               <AlertDialog>
