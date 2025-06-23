@@ -62,6 +62,7 @@ export default function CandidatesManagementPage() {
   
   // Estados para paginação do diálogo de listas
   const [currentListsPage, setCurrentListsPage] = useState(1);
+  const [listSearchTerm, setListSearchTerm] = useState('');
   const listsPerPage = 5;
   const [editForm, setEditForm] = useState({ name: "", email: "", whatsapp: "" });
   const [newCandidateForm, setNewCandidateForm] = useState({ 
@@ -346,6 +347,7 @@ export default function CandidatesManagementPage() {
   const handleManageLists = (candidate: Candidate) => {
     setSelectedCandidate(candidate);
     setCurrentListsPage(1); // Reset para primeira página
+    setListSearchTerm(''); // Reset busca de listas
     // Se for master, salvar filtro atual e definir filtro para o clientId do candidato
     if (isMaster) {
       setPreviousSelectedClient(selectedClient);
@@ -394,10 +396,20 @@ export default function CandidatesManagementPage() {
     if (!selectedCandidate) return [];
     const candidateListIds = getCandidateLists(selectedCandidate.id).map((list: CandidateList) => list.id);
     // Usar o clientId do candidato selecionado, não o filtro atual
-    return (candidateLists as CandidateList[]).filter((list: CandidateList) => 
+    let availableLists = (candidateLists as CandidateList[]).filter((list: CandidateList) => 
       !candidateListIds.includes(list.id) && 
       list.clientId === selectedCandidate.clientId
     );
+    
+    // Aplicar filtro de busca se existir
+    if (listSearchTerm.trim()) {
+      availableLists = availableLists.filter(list => 
+        list.name.toLowerCase().includes(listSearchTerm.toLowerCase()) ||
+        list.description.toLowerCase().includes(listSearchTerm.toLowerCase())
+      );
+    }
+    
+    return availableLists;
   };
 
   // Obter listas paginadas para o diálogo
@@ -883,7 +895,17 @@ export default function CandidatesManagementPage() {
 
             {/* Listas disponíveis */}
             <div>
-              <h3 className="font-semibold mb-3">Adicionar a listas</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Adicionar a listas</h3>
+                <div className="w-64">
+                  <Input
+                    placeholder="Buscar lista..."
+                    value={listSearchTerm}
+                    onChange={(e) => setListSearchTerm(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 {getAvailableLists().length > 0 ? (
                   getPaginatedAvailableLists().map((list) => (
