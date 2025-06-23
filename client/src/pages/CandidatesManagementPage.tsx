@@ -848,12 +848,12 @@ export default function CandidatesManagementPage() {
           setSelectedClient(previousSelectedClient);
         }
       }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Gerenciar Listas - {selectedCandidate?.name}</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto flex-1 pr-2">
             {/* Listas atuais */}
             <div>
               <h3 className="font-semibold mb-3">Listas atuais</h3>
