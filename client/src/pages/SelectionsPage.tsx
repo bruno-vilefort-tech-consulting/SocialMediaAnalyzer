@@ -300,22 +300,14 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           
         } catch (sendError: any) {
           console.error(`❌ Erro no envio WhatsApp:`, sendError);
+          console.error(`❌ Mensagem do erro:`, sendError.message);
           
-          // Detectar tipos específicos de erro
-          let errorMessage = "Erro desconhecido no envio";
+          // Usar a mensagem do erro diretamente se existir
+          let errorMessage = sendError.message || "Erro desconhecido no envio";
           
-          if (sendError.message?.includes("Timeout") || 
-              sendError.message?.includes("WhatsApp não está conectado")) {
+          // Garantir que mensagens específicas sejam mais claras
+          if (errorMessage.includes("WhatsApp não está conectado")) {
             errorMessage = "WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.";
-          } else if (sendError.message?.includes("WhatsApp Service não disponível") || 
-                     sendError.message?.includes("WhatsApp não conectado")) {
-            errorMessage = "WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar seu WhatsApp.";
-          } else if (sendError.message?.includes("Nenhum candidato encontrado")) {
-            errorMessage = "A lista selecionada não possui candidatos. Adicione candidatos à lista primeiro.";
-          } else if (sendError.message?.includes("OpenAI")) {
-            errorMessage = "Configuração OpenAI não encontrada. Verifique as configurações de API.";
-          } else if (sendError.message) {
-            errorMessage = sendError.message;
           }
           
           setSendingProgress(prev => ({
