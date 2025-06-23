@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 23, 2025: 🔧 CORREÇÃO ERRO 515 WHATSAPP IMPLEMENTADA - Todas as otimizações ChatGPT aplicadas para ambiente Replit
+  - **Versão WhatsApp real**: fetchLatestBaileysVersion() com fallback [2, 2419, 6] para firewall
+  - **Browser Android**: ['Samsung', 'SM-G991B', '13'] em vez de Chrome genérico
+  - **mobile: true**: Usa mmg.whatsapp.net (porta 443) menos bloqueado que web.whatsapp.com
+  - **fireInitQueries: true**: Envia queries imediatamente após conexão 'open'
+  - **Timeouts otimizados**: keepAlive 10s, networkIdle 45s, connect/query 60s para Replit
+  - **Heartbeat crítico**: Ping customizado a cada 10s para manter WebSocket vivo
+  - **Reconexão inteligente**: Apenas códigos transitórios (515, 428, 408, connectionClosed)
+  - **Presença imediata**: sendPresenceUpdate('available') logo após 'open' para confirmar
+  - **Sistema anti-515**: Configurações específicas para limitações de rede corporativa Replit
+
 - June 23, 2025: 📱 SISTEMA WHATSAPP COMPLETO IMPLEMENTADO - Interface nova na página Configurações conforme especificações
   - **Interface WhatsApp dedicada**: Nova seção na página Configurações exclusiva para clientes
   - **Arquitetura por clientId**: Cada cliente possui conexão WhatsApp independente e isolada
