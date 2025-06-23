@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 23, 2025: ✅ SESSÃO AUTOMÁTICA IDENTIFICADA E BOTÃO LIMPEZA IMPLEMENTADO - Sistema conecta com credenciais salvas
+  - **Problema identificado**: Sistema conectava automaticamente usando credenciais de sessão anterior
+  - **Credenciais encontradas**: creds.json + 30 pre-keys + múltiplas sessões na pasta whatsapp-sessions/
+  - **Número conectado**: 551151940284 (visível nos arquivos de sessão)
+  - **Botão "Limpar Sessão"**: Remove todas as credenciais locais e dados Firebase
+  - **Endpoint /clear-session**: Limpa pasta completa + sessões em memória + status Firebase
+  - **Fluxo correto**: Limpar Sessão → Conectar → QR Code aparece → Escanear → Conectado
+  - **Debug melhorado**: Logs detalhados da limpeza mostrando arquivos removidos
+  - **Sistema funcionando**: Mensagem teste enviada com sucesso antes da limpeza
+
 - June 23, 2025: 🔧 CORREÇÃO ERRO 515 WHATSAPP IMPLEMENTADA - Todas as otimizações ChatGPT aplicadas para ambiente Replit
   - **Versão WhatsApp real**: fetchLatestBaileysVersion() com fallback [2, 2419, 6] para firewall
   - **Browser Android**: ['Samsung', 'SM-G991B', '13'] em vez de Chrome genérico
