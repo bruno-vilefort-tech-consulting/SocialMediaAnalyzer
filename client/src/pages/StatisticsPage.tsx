@@ -27,6 +27,11 @@ interface AudioStorageData {
   fileCount: number;
 }
 
+interface SelectionsSentData {
+  selectionsSent: number;
+  clientId: number;
+}
+
 export default function StatisticsPage() {
   const { user } = useAuth();
   const [dateRange, setDateRange] = useState<{
@@ -58,6 +63,16 @@ export default function StatisticsPage() {
     },
     enabled: !!user?.clientId
     // Removido refetchInterval - só atualiza quando entrar na página, dar refresh ou navegar
+  });
+
+  // Buscar contagem de seleções enviadas
+  const { data: selectionsSent, isLoading: isLoadingSelections } = useQuery({
+    queryKey: ['/api/selections-sent-count', user?.clientId],
+    queryFn: async () => {
+      const response = await apiRequest('/api/selections-sent-count');
+      return response.json();
+    },
+    enabled: !!user?.clientId
   });
 
 
@@ -175,7 +190,7 @@ export default function StatisticsPage() {
         </div>
       </div>
       {/* Estatísticas de Entrevistas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -187,6 +202,22 @@ export default function StatisticsPage() {
                   {isLoading ? "..." : (statsData.candidatesRegistered || 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-slate-500">Candidatos Cadastrados</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="h-12 w-12 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <FileText className="text-cyan-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-2xl font-bold text-slate-900">
+                  {isLoadingSelections ? "..." : (selectionsSent?.selectionsSent || 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-slate-500">Seleções Enviadas</div>
               </div>
             </div>
           </CardContent>
@@ -228,7 +259,7 @@ export default function StatisticsPage() {
           <CardContent className="p-6">
             <div className="flex items-center">
               <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <FileText className="text-purple-600" />
+                <Award className="text-purple-600" />
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-slate-900">
