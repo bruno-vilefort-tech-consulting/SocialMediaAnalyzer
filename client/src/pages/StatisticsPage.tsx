@@ -278,7 +278,7 @@ export default function StatisticsPage() {
                 <HardDrive className="h-5 w-5 lg:h-6 lg:w-6 text-indigo-600" />
               </div>
               <div className="ml-3 lg:ml-4">
-                <div className="text-xl lg:text-2xl font-bold text-slate-900">
+                <div className="lg:text-2xl font-bold text-slate-900 text-[18px]">
                   {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 MB"}
                 </div>
                 <div className="text-xs lg:text-sm text-slate-500">Memória Utilizada</div>
