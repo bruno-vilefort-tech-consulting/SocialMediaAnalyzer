@@ -260,9 +260,26 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
             }));
           }
           
-          // Enviar realmente via API
-          const sendResponse = await apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST');
+          // Enviar realmente via API com timeout
+          console.log(`🚀 Iniciando envio WhatsApp para seleção ${newSelection.id}`);
+          
+          const sendResponse = await Promise.race([
+            apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST'),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout: WhatsApp não está conectado')), 30000)
+            )
+          ]) as Response;
+          
+          console.log(`📡 Resposta do envio WhatsApp:`, sendResponse.status);
+          
+          if (!sendResponse.ok) {
+            const errorText = await sendResponse.text();
+            console.error(`❌ Erro na resposta:`, errorText);
+            throw new Error(errorText || 'Erro no envio WhatsApp');
+          }
+          
           const sendResult = await sendResponse.json();
+          console.log(`✅ Resultado do envio:`, sendResult);
           
           // Finalizar progresso
           setSendingProgress(prev => ({
@@ -273,16 +290,23 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           return { selection: newSelection, sendResult };
           
         } catch (sendError: any) {
+          console.error(`❌ Erro no envio WhatsApp:`, sendError);
+          
           // Detectar tipos específicos de erro
           let errorMessage = "Erro desconhecido no envio";
           
-          if (sendError.message?.includes("WhatsApp Service não disponível") || 
-              sendError.message?.includes("WhatsApp não conectado")) {
-            errorMessage = "WhatsApp não está conectado. Acesse Configurações → API para conectar seu WhatsApp.";
+          if (sendError.message?.includes("Timeout") || 
+              sendError.message?.includes("WhatsApp não está conectado")) {
+            errorMessage = "WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.";
+          } else if (sendError.message?.includes("WhatsApp Service não disponível") || 
+                     sendError.message?.includes("WhatsApp não conectado")) {
+            errorMessage = "WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar seu WhatsApp.";
           } else if (sendError.message?.includes("Nenhum candidato encontrado")) {
             errorMessage = "A lista selecionada não possui candidatos. Adicione candidatos à lista primeiro.";
           } else if (sendError.message?.includes("OpenAI")) {
             errorMessage = "Configuração OpenAI não encontrada. Verifique as configurações de API.";
+          } else if (sendError.message) {
+            errorMessage = sendError.message;
           }
           
           setSendingProgress(prev => ({
@@ -424,6 +448,8 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
   // Salvar seleção
   const salvarSelecao = () => {
+    console.log('🎯 salvarSelecao iniciada');
+    
     if (!nomeSelecao.trim()) {
       toast({ title: "Nome da seleção é obrigatório", variant: "destructive" });
       return;
@@ -472,13 +498,20 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       clientId: finalClientId,
     };
 
+    console.log('📋 Dados da seleção:', selectionData);
+    console.log('🔄 Tipo de envio:', tipoEnvio);
+    console.log('📱 Enviar WhatsApp:', enviarWhatsApp);
+    
     if (editingSelection) {
+      console.log('✏️ Editando seleção existente');
       updateSelectionMutation.mutate(selectionData);
     } else {
       // Para novas seleções, use createAndSendMutation que cria E envia automaticamente
       if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
+        console.log('🚀 Criando e enviando nova seleção via WhatsApp');
         createAndSendMutation.mutate(selectionData);
       } else {
+        console.log('📝 Criando seleção sem envio automático');
         createSelectionMutation.mutate(selectionData);
       }
     }
