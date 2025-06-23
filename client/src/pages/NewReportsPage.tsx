@@ -1283,6 +1283,9 @@ export default function NewReportsPage() {
                                   setAudioStates={setAudioStates}
                                   reportData={specificReport}
                                   isSpecificReport={!!reportId}
+                                  expandedPerfectAnswers={expandedPerfectAnswers}
+                                  setExpandedPerfectAnswers={setExpandedPerfectAnswers}
+                                  selectedSelection={selectedSelection}
                                 />
                               </div>
                             )}
@@ -1560,11 +1563,14 @@ interface CandidateDetailsInlineProps {
     duration: number;
     progress: number;
   } }>>;
-  reportData?: any; // Dados do relatório para acessar respostas perfeitas
-  isSpecificReport?: boolean; // Se está visualizando um relatório específico
+  reportData?: any;
+  isSpecificReport?: boolean;
+  expandedPerfectAnswers: { [key: string]: boolean };
+  setExpandedPerfectAnswers: React.Dispatch<React.SetStateAction<{ [key: string]: boolean }>>;
+  selectedSelection?: any; // Dados da seleção para buscar informações da vaga
 }
 
-function CandidateDetailsInline({ candidate, audioStates, setAudioStates, reportData, isSpecificReport }: CandidateDetailsInlineProps) {
+function CandidateDetailsInline({ candidate, audioStates, setAudioStates, reportData, isSpecificReport, expandedPerfectAnswers, setExpandedPerfectAnswers, selectedSelection }: CandidateDetailsInlineProps) {
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
 
   // Atualizar estado do áudio
@@ -1702,6 +1708,17 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
     }));
   };
 
+  // Buscar dados da vaga para obter respostas perfeitas
+  const { data: jobData } = useQuery({
+    queryKey: ['/api/jobs', selectedSelection?.jobId],
+    queryFn: async () => {
+      if (!selectedSelection?.jobId) return null;
+      const response = await apiRequest(`/api/jobs/${selectedSelection.jobId}`, 'GET');
+      return response.json();
+    },
+    enabled: !!selectedSelection?.jobId && !isSpecificReport
+  });
+
   // Função para buscar resposta perfeita baseada no questionId
   const getPerfectAnswer = (questionId: number) => {
     // Se estamos visualizando um relatório específico (independente)
@@ -1710,9 +1727,13 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       return question?.respostaPerfeita || null;
     }
     
-    // Se estamos visualizando uma seleção regular, buscar dados do job via API
-    // Como os dados podem estar em diferentes estruturas, vamos buscar diretamente da API
-    return null; // Por enquanto retornamos null para seleções regulares, focaremos nos relatórios independentes
+    // Para seleções regulares, buscar da vaga real
+    if (jobData?.perguntas) {
+      const question = jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
+      return question?.respostaPerfeita || null;
+    }
+    
+    return null;
   };
 
   return (
