@@ -519,6 +519,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Audio storage usage endpoint
+  app.get("/api/audio-storage-usage", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const clientId = req.user!.clientId!;
+      const uploadsDir = './uploads';
+      
+      let totalSize = 0;
+      let fileCount = 0;
+      
+      console.log(`🔍 Calculando uso de memória para cliente ${clientId}`);
+      
+      if (fs.existsSync(uploadsDir)) {
+        const files = fs.readdirSync(uploadsDir);
+        console.log(`📂 Total de arquivos na pasta uploads: ${files.length}`);
+        
+        // Get all selections for this client to match file patterns
+        const selections = await storage.getSelectionsByClientId(clientId);
+        const selectionIds = selections.map(s => s.id.toString());
+        console.log(`📋 Seleções do cliente ${clientId}:`, selectionIds);
+        
+        for (const file of files) {
+          if (file.endsWith('.ogg')) {
+            const filePath = path.join(uploadsDir, file);
+            const stats = fs.statSync(filePath);
+            
+            // Check if file belongs to this client's selections
+            // Audio files are typically named: audio_[phone]_[selectionId]_R[number].ogg
+            const belongsToClient = selectionIds.some(selectionId => 
+              file.includes(`_${selectionId}_`) || file.includes(`${selectionId}`)
+            );
+            
+            if (belongsToClient) {
+              totalSize += stats.size;
+              fileCount++;
+              console.log(`📄 Arquivo encontrado: ${file} (${stats.size} bytes)`);
+            }
+          }
+        }
+      }
+      
+      console.log(`💾 Total calculado: ${fileCount} arquivos, ${totalSize} bytes`);
+      
+      // Convert bytes to GB with 2 decimal places
+      const totalSizeGB = (totalSize / (1024 * 1024 * 1024)).toFixed(2);
+      
+      res.json({ 
+        totalSizeBytes: totalSize,
+        totalSizeGB: parseFloat(totalSizeGB),
+        formattedSize: `${totalSizeGB} GB`,
+        fileCount: fileCount
+      });
+    } catch (error) {
+      console.error('❌ Erro ao calcular uso de memória:', error);
+      res.status(500).json({ message: 'Failed to calculate storage usage' });
+    }
+  });
+
   // Client routes
   app.get("/api/client/stats", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {

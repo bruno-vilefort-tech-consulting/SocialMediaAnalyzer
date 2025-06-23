@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Users, Send, CheckCircle, FileText, Target, Award } from "lucide-react";
+import { CalendarIcon, Users, Send, CheckCircle, FileText, Target, Award, HardDrive } from "lucide-react";
 
 interface StatisticsData {
   candidatesRegistered: number;
@@ -18,6 +18,13 @@ interface StatisticsData {
   interviewsStarted: number;
   interviewsCompleted: number;
   completionRate: number;
+}
+
+interface AudioStorageData {
+  totalSizeBytes: number;
+  totalSizeGB: number;
+  formattedSize: string;
+  fileCount: number;
 }
 
 export default function StatisticsPage() {
@@ -40,6 +47,17 @@ export default function StatisticsPage() {
       return response.json();
     },
     enabled: !!user?.clientId
+  });
+
+  // Buscar dados de uso de memória de áudio
+  const { data: audioStorage, isLoading: isLoadingAudio } = useQuery({
+    queryKey: ['/api/audio-storage-usage', user?.clientId],
+    queryFn: async () => {
+      const response = await apiRequest('/api/audio-storage-usage');
+      return response.json();
+    },
+    enabled: !!user?.clientId,
+    refetchInterval: 30000 // Atualiza a cada 30 segundos
   });
 
 
@@ -157,7 +175,7 @@ export default function StatisticsPage() {
         </div>
       </div>
       {/* Estatísticas de Entrevistas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -217,6 +235,27 @@ export default function StatisticsPage() {
                   {isLoading ? "..." : `${(statsData.completionRate || 0).toFixed(1)}%`}
                 </div>
                 <div className="text-sm text-slate-500">Taxa de Conclusão</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <HardDrive className="text-indigo-600" />
+              </div>
+              <div className="ml-4">
+                <div className="text-2xl font-bold text-slate-900">
+                  {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.00 GB"}
+                </div>
+                <div className="text-sm text-slate-500">Memória Utilizada</div>
+                {audioStorage?.fileCount && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    {audioStorage.fileCount} arquivo{audioStorage.fileCount !== 1 ? 's' : ''} de áudio
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
