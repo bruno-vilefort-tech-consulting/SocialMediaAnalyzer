@@ -302,37 +302,6 @@ export class ClientWhatsAppService {
                 message: `Conexão fechada: ${lastDisconnect?.error?.message || 'Erro desconhecido'}`
               });
             }
-                  await this.connectClient(clientId);
-                } catch (reconnectError) {
-                  console.error(`❌ [BAILEYS] Falha na reconexão:`, reconnectError);
-                }
-              }, 5000); // 5s para timeouts de rede
-              return;
-            }
-            
-            if (!resolved) {
-              console.log(`❌ [BAILEYS] Conexão fechada antes de completar - resolvendo promise`);
-              clearTimeout(timeoutId);
-              resolved = true;
-              resolve({
-                success: false,
-                message: `Conexão WhatsApp fechada (código: ${statusCode})`
-              });
-            }
-            
-            if (shouldReconnect && statusCode !== 515 && statusCode !== 428) {
-              console.log(`🔄 [BAILEYS] Tentando reconectar automaticamente...`);
-            } else if (statusCode === 401) {
-              console.log(`🧹 [BAILEYS] Limpando credenciais devido ao erro 401...`);
-              await this.clearClientSession(clientId);
-              await this.updateClientConfig(clientId, {
-                isConnected: false,
-                phoneNumber: null,
-                qrCode: null,
-                lastConnection: new Date(),
-                clientId
-              });
-            }
           }
         });
 
