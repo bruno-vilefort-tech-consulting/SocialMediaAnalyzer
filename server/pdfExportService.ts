@@ -40,11 +40,12 @@ export class PDFExportService {
       fs.mkdirSync(this.tempDir, { recursive: true });
     }
     
-    // Configurar ffmpeg path se necessário
+    // Configurar ffmpeg path - usar caminho do Nix
     try {
-      ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
+      ffmpeg.setFfmpegPath('/nix/store/3zc5jbvqzrn8zmva4fx5p0nh4yy03wk4-ffmpeg-6.1.1-bin/bin/ffmpeg');
+      console.log('FFmpeg configurado com sucesso');
     } catch (error) {
-      console.log('FFmpeg path configurado automaticamente');
+      console.log('Erro ao configurar FFmpeg:', error);
     }
   }
 
@@ -58,11 +59,11 @@ export class PDFExportService {
         .audioBitrate(128)
         .output(mp3Path)
         .on('end', () => {
-          console.log(`🎵 Conversão concluída: ${path.basename(mp3Path)}`);
+          console.log(`Conversao concluida: ${path.basename(mp3Path)}`);
           resolve();
         })
         .on('error', (err) => {
-          console.error(`❌ Erro na conversão: ${err.message}`);
+          console.error(`Erro na conversao: ${err.message}`);
           reject(err);
         })
         .run();
@@ -256,7 +257,7 @@ export class PDFExportService {
           audioFiles.push(mp3Path);
           
           // Adicionar informação sobre áudio no PDF
-          page.drawText(`🎵 Áudio disponível: ${mp3FileName}`, {
+          page.drawText(`Audio disponivel: ${mp3FileName}`, {
             x: 50,
             y: yPosition,
             size: 10,
@@ -266,7 +267,7 @@ export class PDFExportService {
           yPosition -= 15;
           
           // Nota sobre reprodução
-          page.drawText('(Abra este PDF com um leitor que suporte áudio embeddado)', {
+          page.drawText('(Abra este PDF com um leitor que suporte audio embeddado)', {
             x: 50,
             y: yPosition,
             size: 8,
@@ -276,8 +277,8 @@ export class PDFExportService {
           yPosition -= 20;
           
         } catch (error) {
-          console.error(`❌ Erro ao processar áudio: ${error.message}`);
-          page.drawText('⚠️ Áudio não disponível', {
+          console.error(`Erro ao processar audio: ${error.message}`);
+          page.drawText('Audio nao disponivel', {
             x: 50,
             y: yPosition,
             size: 10,
@@ -292,7 +293,7 @@ export class PDFExportService {
     }
     
     // Rodapé
-    page.drawText('Relatório gerado pelo Sistema de Entrevistas IA - Grupo Maximus', {
+    page.drawText('Relatorio gerado pelo Sistema de Entrevistas IA - Grupo Maximus', {
       x: 50,
       y: 30,
       size: 8,
@@ -336,9 +337,9 @@ export class PDFExportService {
     for (const filePath of filePaths) {
       try {
         await unlink(filePath);
-        console.log(`🗑️ Arquivo temporário removido: ${path.basename(filePath)}`);
+        console.log(`Arquivo temporario removido: ${path.basename(filePath)}`);
       } catch (error) {
-        console.error(`❌ Erro ao remover arquivo temporário: ${error.message}`);
+        console.error(`Erro ao remover arquivo temporario: ${error.message}`);
       }
     }
   }
