@@ -195,20 +195,20 @@ export class ClientWhatsAppService {
               console.log(`✅ [DEBUG] QR DataURL gerado: ${qrDataURL.length} chars`);
               
               // Salvar no Firebase
+              console.log(`💾 [DEBUG] Salvando QR no Firebase...`);
               await this.updateClientConfig(clientId, {
-                qrCode: qrCodeDataUrl,
+                qrCode: qrDataURL,
                 isConnected: false,
-                phoneNumber: null,
-                lastConnection: new Date(),
-                clientId
+                lastConnection: null
               });
+              console.log(`✅ [DEBUG] QR salvo no Firebase com sucesso`);
 
-              clearTimeout(timeoutId);
               resolved = true;
+              clearTimeout(timeoutId);
               resolve({
                 success: true,
-                qrCode: qrCodeDataUrl,
-                message: 'QR Code REAL do WhatsApp gerado - funcional para conexão'
+                qrCode: qrDataURL,
+                message: 'QR Code gerado com sucesso'
               });
             } catch (qrError) {
               console.error(`❌ [DEBUG] Erro ao gerar QR:`, qrError);
