@@ -173,12 +173,25 @@ class WhatsAppBaileyService {
 
       sock.ev.on('creds.update', saveCreds);
 
-      // Keep-alive a cada 25 segundos
-      setInterval(() => {
+      // Keep-alive agressivo a cada 10 segundos para Replit
+      const keepAliveInterval = setInterval(() => {
         if (sock?.sendPresenceUpdate && connectionState.isConnected) {
-          sock.sendPresenceUpdate('available');
+          try {
+            sock.sendPresenceUpdate('available');
+            console.log(`💓 [${clientId}] Keep-alive ping enviado`);
+          } catch (error) {
+            console.log(`⚠️ [${clientId}] Erro no keep-alive:`, error.message);
+          }
         }
-      }, 25000);
+      }, 10000);
+
+      // Limpar interval quando conexão fechar
+      sock.ev.on('connection.update', ({ connection }) => {
+        if (connection === 'close') {
+          clearInterval(keepAliveInterval);
+          console.log(`🔄 [${clientId}] Keep-alive interval limpo`);
+        }
+      });
 
       return connectionState;
     } catch (error) {

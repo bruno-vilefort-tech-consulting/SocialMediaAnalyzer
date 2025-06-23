@@ -115,17 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 23, 2025: ✅ BOTÃO "LIMPAR SESSÃO" IMPLEMENTADO - Sistema completo para testar QR Code do zero
-  - **Problema identificado**: Sistema conectava automaticamente usando credenciais de sessão anterior
-  - **Credenciais encontradas**: creds.json + 30 pre-keys + múltiplas sessões na pasta whatsapp-sessions/
-  - **Número conectado**: 551151940284 (visível nos arquivos de sessão)
-  - **Botão "Limpar Sessão"**: Implementado na interface WhatsApp para testar QR Code do zero
-  - **Endpoint /api/client/whatsapp/clear-session**: Remove credenciais + sessões + status Firebase
-  - **Método clearSession()**: Adicionado ao whatsappBaileyService com limpeza completa
-  - **Interface atualizada**: Botão secundário ao lado de "Desconectar" em ambos os estados
-  - **Fluxo funcional**: Limpar Sessão → Conectar → QR Code aparece → Escanear → Conectado
-  - **Logs detalhados**: Sistema mostra quantos arquivos foram removidos da pasta de sessão
-  - **Integração completa**: Limpa disco + memória + Firebase em uma única operação
+- June 23, 2025: 🔧 CORREÇÃO ERRO 515 PÓS-LOGIN IMPLEMENTADA - Solução específica para limitações WebSocket Replit
+  - **Problema identificado**: Erro 515 "Stream Errored" ocorre após isNewLogin quando Replit mata WebSocket durante upload de pre-keys (~40KB)
+  - **syncFullHistory: false**: Reduz tamanho dos frames WebSocket para evitar timeout
+  - **Reconexão inteligente**: Códigos 408, 428, 515 são transitórios e reconectam automaticamente em 5s
+  - **Keep-alive agressivo**: Ping a cada 10s com limpeza de interval para prevenir desconexões
+  - **Browser otimizado**: Samsung Android em vez de Chrome genérico para melhor compatibilidade
+  - **Timeouts ajustados**: 60s para connect/query, mantendo mobile:true e fireInitQueries:true
+  - **Tratamento específico 515**: Sistema detecta erro 515 como transitório e reinicia conexão automaticamente
+  - **Logs detalhados**: Monitoramento completo do ciclo de vida da conexão WebSocket
 
 - June 23, 2025: 🔧 CORREÇÃO ERRO 515 WHATSAPP IMPLEMENTADA - Todas as otimizações ChatGPT aplicadas para ambiente Replit
   - **Versão WhatsApp real**: fetchLatestBaileysVersion() com fallback [2, 2419, 6] para firewall

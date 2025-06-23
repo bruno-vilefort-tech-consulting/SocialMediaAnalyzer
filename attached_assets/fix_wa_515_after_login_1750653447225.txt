@@ -1,0 +1,88 @@
+# Resolving Baileys 515 “Stream Errored” immediately after isNewLogin (Replit)
+
+The 515 appears **after** credentials are written but **before** the first
+secure message exchange (uploadPreKeys).  
+On Replit, the WebSocket to **mmg.whatsapp.net** is silently reset when the
+binary frame with pre‑keys (~40 KB) is sent. WhatsApp then closes the stream
+and returns code 515.
+
+---------------------------------------------------------------------
+1  — Confirm the root cause
+---------------------------------------------------------------------
+1. Run the same code on a local machine or VPS.  
+   • If 515 disappears ⇒ *Replit network* drops large WebSocket frames.  
+   • If it persists ⇒ move to step 3 (protocol mismatch).
+
+2. In Replit, open the DevTools > Network > WS tab  
+   • You will see FIN/RST right after a 40–50 KB frame.
+
+---------------------------------------------------------------------
+2  — Two viable work‑arounds
+---------------------------------------------------------------------
+### A. Tunnel the WebSocket through Cloudflare
+```
+npx cloudflared tunnel --url localhost:443 --no-autoupdate
+```
+Then, in Baileys:
+```ts
+import { HttpsProxyAgent } from 'https-proxy-agent'
+const agent = new HttpsProxyAgent('https://connect.cloudflare.com:443')
+fetchOptions: { agent },
+connectOptions: { agent },
+```
+This routes traffic outside the Replit proxy and the frame is not cut.
+
+### B. Run Baileys outside Replit
+Move only the socket service to a small VPS (1 GB RAM) and expose a REST
+bridge or use Evolution API. Keep your React/Express app in Replit.
+
+---------------------------------------------------------------------
+3  — If you must stay on Replit (no VPS/proxy)
+---------------------------------------------------------------------
+1. **Reduce frame size** — split pre‑key upload  
+   (community patch, not yet in main):  
+   ```ts
+   import { uploadPreKeysInChunks } from './lib/chunk-upload' // custom
+   await uploadPreKeysInChunks(sock, 10240) // 10 KB chunks
+   ```
+2. **Disable full history & high‑quality link preview**  
+   ```ts
+   syncFullHistory: false,
+   generateHighQualityLinkPreview: false,
+   ```
+3. Keep aggressive keep‑alive (ping 10 s).
+
+---------------------------------------------------------------------
+4  — Protocol sanity checklist
+---------------------------------------------------------------------
+- **version** ⇢ fetched or fallback `[2,2419,6]`
+- **browser** ⇢ `['Samsung','SM‑G991B','13']`
+- **mobile:true** and `fireInitQueries:true`
+- `sock.ev.on('creds.update', saveState)`
+- Only **one socket instance** per number
+
+---------------------------------------------------------------------
+5  — Reference reconnection logic
+---------------------------------------------------------------------
+```ts
+const transient = [408, 428, 515, DisconnectReason.connectionClosed]
+sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  if (connection === 'close') {
+    const code = (lastDisconnect?.error as Boom)?.output?.statusCode
+    if (transient.includes(code ?? 0)) {
+      console.warn('Retry in 5 s', code)
+      return setTimeout(initSocket, 5000)
+    }
+    console.log('Logged out', code)
+  }
+})
+```
+
+---------------------------------------------------------------------
+TL;DR
+---------------------------------------------------------------------
+*Replit* kills the WebSocket when Baileys uploads the large pre‑key frame.
+Tunnel the connection (Cloudflare / proxy) **or** move the Baileys socket to
+a VPS. Minor tweaks (chunk upload, disabling HQ preview) may help but are
+less reliable.
+
