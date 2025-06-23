@@ -210,14 +210,16 @@ export class ClientWhatsAppService {
                 qrCode: qrCodeDataUrl,
                 message: 'QR Code REAL do WhatsApp gerado - funcional para conexão'
               });
-            } catch (error) {
-              console.error(`❌ Erro ao converter QR Code para cliente ${clientId}:`, error);
-              clearTimeout(timeoutId);
-              resolved = true;
-              resolve({
-                success: false,
-                message: 'Erro ao gerar QR Code'
-              });
+            } catch (qrError) {
+              console.error(`❌ [DEBUG] Erro ao gerar QR:`, qrError);
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeoutId);
+                resolve({
+                  success: false,
+                  message: 'Erro ao gerar QR Code'
+                });
+              }
             }
           }
 
