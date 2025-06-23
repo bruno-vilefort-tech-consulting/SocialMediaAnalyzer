@@ -190,98 +190,98 @@ export default function StatisticsPage() {
         </div>
       </div>
       {/* Estatísticas de Entrevistas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 lg:gap-6">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="text-blue-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Users className="h-5 w-5 lg:h-6 lg:w-6 text-blue-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoading ? "..." : (statsData.candidatesRegistered || 0).toLocaleString()}
                 </div>
-                <div className="text-sm text-slate-500">Candidatos Cadastrados</div>
+                <div className="text-xs lg:text-sm text-slate-500">Candidatos Cadastrados</div>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-cyan-100 rounded-lg flex items-center justify-center">
-                <FileText className="text-cyan-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 lg:h-6 lg:w-6 text-cyan-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoadingSelections ? "..." : (selectionsSent?.selectionsSent || 0).toLocaleString()}
                 </div>
-                <div className="text-sm text-slate-500">Seleções Enviadas</div>
+                <div className="text-xs lg:text-sm text-slate-500">Seleções Enviadas</div>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Send className="text-orange-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Send className="h-5 w-5 lg:h-6 lg:w-6 text-orange-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoading ? "..." : (statsData.interviewsStarted || 0).toLocaleString()}
                 </div>
-                <div className="text-sm text-slate-500">Entrevistas Iniciadas</div>
+                <div className="text-xs lg:text-sm text-slate-500">Entrevistas Iniciadas</div>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="text-green-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 lg:h-6 lg:w-6 text-green-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoading ? "..." : (statsData.interviewsCompleted || 0).toLocaleString()}
                 </div>
-                <div className="text-sm text-slate-500">Entrevistas Finalizadas</div>
+                <div className="text-xs lg:text-sm text-slate-500">Entrevistas Finalizadas</div>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Award className="text-purple-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Award className="h-5 w-5 lg:h-6 lg:w-6 text-purple-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoading ? "..." : `${(statsData.completionRate || 0).toFixed(1)}%`}
                 </div>
-                <div className="text-sm text-slate-500">Taxa de Conclusão</div>
+                <div className="text-xs lg:text-sm text-slate-500">Taxa de Conclusão</div>
               </div>
             </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 lg:p-6">
             <div className="flex items-center">
-              <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <HardDrive className="text-indigo-600" />
+              <div className="h-10 w-10 lg:h-12 lg:w-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <HardDrive className="h-5 w-5 lg:h-6 lg:w-6 text-indigo-600" />
               </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-slate-900">
+              <div className="ml-3 lg:ml-4">
+                <div className="text-xl lg:text-2xl font-bold text-slate-900">
                   {isLoadingAudio ? "..." : audioStorage?.formattedSize || "0.000 MB"}
                 </div>
-                <div className="text-sm text-slate-500">Memória Utilizada</div>
+                <div className="text-xs lg:text-sm text-slate-500">Memória Utilizada</div>
                 {audioStorage?.fileCount && (
                   <div className="text-xs text-slate-400 mt-1">
                     {audioStorage.fileCount} arquivo{audioStorage.fileCount !== 1 ? 's' : ''} de áudio
@@ -301,7 +301,7 @@ export default function StatisticsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
             {/* Entrevistas */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
