@@ -18,6 +18,7 @@ import { firebaseDb } from "./db";
 import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
+import { pdfExportService } from "./pdfExportService";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);
@@ -516,6 +517,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('❌ Erro ao corrigir clientId:', error);
       res.status(500).json({ message: 'Falha ao corrigir clientId' });
+    }
+  });
+
+  // PDF Export endpoint
+  app.post("/api/export-candidate-pdf", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { candidateData } = req.body;
+      
+      console.log(`📄 Gerando PDF para candidato: ${candidateData.name}`);
+      
+      // Gerar PDF com áudios embeddados
+      const pdfBuffer = await pdfExportService.generateCandidatePDF(candidateData);
+      
+      // Nome do arquivo
+      const fileName = pdfExportService.generateFileName(
+        candidateData.name, 
+        candidateData.jobName, 
+        candidateData.completedAt
+      );
+      
+      // Configurar headers para download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      
+      console.log(`✅ PDF gerado com sucesso: ${fileName}`);
+      res.send(pdfBuffer);
+      
+    } catch (error) {
+      console.error('❌ Erro ao gerar PDF:', error);
+      res.status(500).json({ message: 'Failed to generate PDF', error: error.message });
     }
   });
 

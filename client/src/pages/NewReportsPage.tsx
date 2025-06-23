@@ -1742,10 +1742,72 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
     return null;
   };
 
+  const handleExportPDF = async () => {
+    try {
+      console.log('📄 Iniciando exportação de PDF...');
+      
+      // Preparar dados do candidato para o PDF
+      const candidateData = {
+        name: candidate.candidate.name,
+        email: candidate.candidate.email,
+        phone: candidate.candidate.phone,
+        jobName: selectedSelection?.jobName || reportData?.jobData?.nomeVaga || 'Entrevista',
+        completedAt: candidate.interview.completedAt,
+        responses: candidate.responses.map(response => ({
+          questionText: response.questionText,
+          transcription: response.transcription || 'Aguardando resposta',
+          audioUrl: response.audioUrl,
+          score: response.score,
+          perfectAnswer: getPerfectAnswer(response.questionId)
+        }))
+      };
+      
+      console.log('📋 Dados preparados:', candidateData);
+      
+      // Fazer requisição para gerar PDF
+      const response = await fetch('/api/export-candidate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ candidateData })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao gerar PDF');
+      }
+      
+      // Download do arquivo
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${candidateData.name}_${candidateData.jobName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "PDF Exportado",
+        description: "O relatório foi gerado e baixado com sucesso!",
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro ao exportar PDF:', error);
+      toast({
+        title: "Erro na Exportação",
+        description: "Falha ao gerar o PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Informações do Candidato */}
-      <div className="grid grid-cols-4 gap-4 p-4 bg-white rounded-lg border">
+      <div className="grid grid-cols-4 gap-4 p-4 bg-white rounded-lg border relative">
         <div>
           <h4 className="font-semibold text-sm text-muted-foreground">Nome</h4>
           <p className="font-medium">{candidate.candidate.name}</p>
@@ -1763,6 +1825,19 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
           <Badge variant={candidate.interview.status === 'completed' ? 'default' : 'secondary'}>
             {candidate.interview.status}
           </Badge>
+        </div>
+        
+        {/* Botão Exportar PDF */}
+        <div className="absolute top-4 right-4">
+          <Button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+            size="sm"
+          >
+            <FileText className="h-4 w-4" />
+            <Download className="h-4 w-4" />
+            Exportar PDF
+          </Button>
         </div>
       </div>
 
@@ -1904,24 +1979,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                             <span>{formatTime(audioState.currentTime)} / {formatTime(audioState.duration)}</span>
                           </div>
                           
-                          {response.score && response.score > 0 ? (
-                            <div className="ml-auto">
-                              <Badge variant="outline" className={
-                                response.score >= 80 ? 'border-green-500 text-green-700' :
-                                response.score >= 60 ? 'border-yellow-500 text-yellow-700' :
-                                response.score >= 40 ? 'border-orange-500 text-orange-700' :
-                                'border-red-500 text-red-700'
-                              }>
-                                Score IA: {response.score}/100
-                              </Badge>
-                            </div>
-                          ) : (
-                            <div className="ml-auto">
-                              <Badge variant="outline" className="border-gray-400 text-gray-600">
-                                IA Processando...
-                              </Badge>
-                            </div>
-                          )}
+                          
                         </div>
                         
                         {/* Timeline */}
