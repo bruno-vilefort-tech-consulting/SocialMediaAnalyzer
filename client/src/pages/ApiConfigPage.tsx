@@ -646,7 +646,13 @@ export default function ApiConfigPage() {
             {whatsappStatus && (
               <div className="text-xs text-muted-foreground space-y-1">
                 <p><strong>Instance ID:</strong> {whatsappStatus.instanceId || 'N/A'}</p>
-                <p><strong>Última Conexão:</strong> {whatsappStatus.lastConnection || 'Nunca'}</p>
+                <p><strong>Última Conexão:</strong> {
+                  whatsappStatus.lastConnection 
+                    ? typeof whatsappStatus.lastConnection === 'string' 
+                      ? new Date(whatsappStatus.lastConnection).toLocaleString('pt-BR')
+                      : 'Data inválida'
+                    : 'Nunca'
+                }</p>
                 <p><strong>Sessão:</strong> {whatsappStatus.sessionPath || 'N/A'}</p>
               </div>
             )}
