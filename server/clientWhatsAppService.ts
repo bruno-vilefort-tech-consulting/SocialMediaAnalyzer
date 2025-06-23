@@ -122,24 +122,24 @@ export class ClientWhatsAppService {
         auth: state,
         printQRInTerminal: false,
         logger: logger,
-        // CORRIGIDO: Voltar para web WhatsApp (mobile: false)
-        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
-        mobile: false,                          // FALSE - usar web.whatsapp.com
+        // Configuração Samsung Android otimizada para Replit
+        browser: ['Samsung', 'SM-G991B', '13'],
+        mobile: true,                           // TRUE - usar mmg.whatsapp.net (mais estável)
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         
-        // Timeouts otimizados
-        connectTimeoutMs: 90000,
-        defaultQueryTimeoutMs: 90000,
+        // Timeouts ajustados para ambiente Replit
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
         qrTimeout: 90000,
         
-        // Keep-alive otimizado
+        // Keep-alive agressivo para manter conexão
         keepAliveIntervalMs: 10000,
-        networkIdleTimeoutMs: 45000,
+        networkIdleTimeoutMs: 60000,
         
-        retryRequestDelayMs: 5000,
-        maxMsgRetryCount: 5,
-        syncFullHistory: false,
+        retryRequestDelayMs: 3000,
+        maxMsgRetryCount: 3,
+        syncFullHistory: false,              // CRÍTICO: evita frames grandes
         fireInitQueries: true,
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false
@@ -276,7 +276,27 @@ export class ClientWhatsAppService {
           if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             console.log(`❌ [DEBUG] Conexão fechada - código: ${statusCode}`);
-            console.log(`❌ [DEBUG] Erro:`, lastDisconnect?.error?.message);
+            console.log(`❌ [DEBUG] Erro: ${lastDisconnect?.error?.message}`);
+            
+            // Tratamento específico para erro 515 pós-login
+            if (statusCode === 515) {
+              console.log(`🔄 [515 FIX] Erro 515 detectado - aplicando correção específica Replit`);
+              
+              // Para erro 515, limpar sessão e tentar reconectar imediatamente
+              if (!resolved) {
+                console.log(`🔄 [515 FIX] Limpando sessão e reconectando...`);
+                await this.clearClientSession(clientId);
+                
+                // Reconectar após 5 segundos
+                setTimeout(() => {
+                  if (!resolved) {
+                    console.log(`🔄 [515 FIX] Iniciando reconexão pós erro 515`);
+                    this.connectClient(clientId);
+                  }
+                }, 5000);
+                return;
+              }
+            }
             
             // Atualizar status no Firebase
             console.log(`💾 [DEBUG] Atualizando status desconectado no Firebase...`);
@@ -287,8 +307,8 @@ export class ClientWhatsAppService {
             });
             console.log(`✅ [DEBUG] Status desconectado salvo no Firebase`);
             
-            // Auto-reconexão para erros de rede
-            if ([515, 428, 408].includes(statusCode) && !resolved) {
+            // Auto-reconexão para erros de rede (exceto 515)
+            if ([428, 408].includes(statusCode) && !resolved) {
               console.log(`🔄 [DEBUG] Erro ${statusCode} - reconectando em 5s...`);
               setTimeout(async () => {
                 await this.clearClientSession(clientId);
