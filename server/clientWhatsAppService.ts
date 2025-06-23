@@ -261,46 +261,47 @@ export class ClientWhatsAppService {
             };
 
             this.sessions.set(clientId, session);
+            console.log(`📝 [DEBUG] Sessão ativa criada para cliente ${clientId}`);
 
-            if (!resolved) {
-              clearTimeout(timeoutId);
-              resolved = true;
-              resolve({ 
-                success: true, 
-                message: `WhatsApp conectado com sucesso! Número: ${phoneNumber}` 
-              });
-            }
+            resolved = true;
+            clearTimeout(timeoutId);
+            resolve({ 
+              success: true, 
+              message: `WhatsApp conectado! Número: ${phoneNumber}` 
+            });
           }
 
           if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== 401;
+            console.log(`❌ [DEBUG] Conexão fechada - código: ${statusCode}`);
+            console.log(`❌ [DEBUG] Erro:`, lastDisconnect?.error?.message);
             
-            console.log(`❌ [BAILEYS] Conexão fechada para cliente ${clientId}:`, statusCode);
-            console.log(`🔍 [BAILEYS] lastDisconnect completo:`, lastDisconnect);
-            console.log(`🔍 [BAILEYS] Promise já resolvida:`, resolved);
+            // Atualizar status no Firebase
+            console.log(`💾 [DEBUG] Atualizando status desconectado no Firebase...`);
+            await this.updateClientConfig(clientId, {
+              isConnected: false,
+              qrCode: null,
+              lastConnection: new Date()
+            });
+            console.log(`✅ [DEBUG] Status desconectado salvo no Firebase`);
             
-            // Tratamento específico para erros 408/428/515 "Timeout/Connection Errored"
-            if (statusCode === 408 || statusCode === 428 || statusCode === 515) {
-              console.log(`🔧 [BAILEYS] Error ${statusCode} detectado (timeout/connection), tentando reconexão automática...`);
-              console.log(`🔧 [BAILEYS] Mensagem de erro:`, lastDisconnect?.error?.output?.payload?.message);
-              
-              if (!resolved) {
-                clearTimeout(timeoutId);
-                resolved = true;
-                resolve({
-                  success: false,
-                  message: `Error ${statusCode} - problema de rede/timeout, reconexão necessária`
-                });
-              }
-              
-              // Limpar sessão atual e reconectar com delay
-              this.sessions.delete(clientId);
-              
+            // Auto-reconexão para erros de rede
+            if ([515, 428, 408].includes(statusCode) && !resolved) {
+              console.log(`🔄 [DEBUG] Erro ${statusCode} - reconectando em 5s...`);
               setTimeout(async () => {
-                console.log(`🔄 [BAILEYS] Reconectando após erro ${statusCode} (timeout/rede)...`);
-                try {
-                  await this.clearClientSession(clientId);
+                await this.clearClientSession(clientId);
+                this.connectClient(clientId);
+              }, 5000);
+            }
+            
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeoutId);
+              resolve({
+                success: false,
+                message: `Conexão fechada: ${lastDisconnect?.error?.message || 'Erro desconhecido'}`
+              });
+            }
                   await this.connectClient(clientId);
                 } catch (reconnectError) {
                   console.error(`❌ [BAILEYS] Falha na reconexão:`, reconnectError);
