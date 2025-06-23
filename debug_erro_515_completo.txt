@@ -1,0 +1,93 @@
+DEBUG COMPLETO - ERRO 515 WHATSAPP BAILEYS NO REPLIT
+=====================================================
+
+PROBLEMA IDENTIFICADO:
+- QR Code é gerado corretamente (6842 caracteres)
+- Usuário consegue escanear no celular
+- Credenciais são salvas (account, me, signalIdentities, platform)
+- isNewLogin: true confirmado
+- MAS conexão falha com erro 515 "Stream Errored (restart required)"
+
+SEQUÊNCIA COMPLETA DOS LOGS:
+1. Status inicial: isConnected=false, hasQrCode=true, qrCodeLength=6842
+2. Credenciais atualizadas: ['account', 'me', 'signalIdentities', 'platform']
+3. isNewLogin: true (QR Code escaneado com sucesso)
+4. Credenciais salvas imediatamente
+5. ERRO: connection: 'close', código: 515, "Stream Errored (restart required)"
+
+LOGS DETALHADOS:
+```
+📊 Status DB para cliente 1749849987543: {
+  hasConfig: true,
+  isConnected: false,
+  hasQrCode: true,
+  qrCodeLength: 6842,
+  phoneNumber: null
+}
+
+🔐 [BAILEYS] CREDENCIAIS ATUALIZADAS para cliente 1749849987543!
+🔐 [BAILEYS] Tipo de credenciais: [ 'account', 'me', 'signalIdentities', 'platform' ]
+🔐 [BAILEYS] Promise resolvida: true
+
+🐛 [BAILEYS] EVENT LISTENER ADICIONAL: {
+  "isNewLogin": true
+}
+
+✅ [BAILEYS] Credenciais salvas imediatamente
+
+🔄 [DEBUG] CONNECTION UPDATE: {
+  connection: 'close',
+  hasQR: false,
+  hasDisconnect: true,
+  resolved: true,
+  timestamp: '2025-06-23T04:29:03.849Z'
+}
+
+❌ [DEBUG] Conexão fechada - código: 515
+❌ [DEBUG] Erro: Stream Errored (restart required)
+
+🐛 [BAILEYS] EVENT LISTENER ADICIONAL: {
+  "connection": "close",
+  "lastDisconnect": {
+    "error": {
+      "data": {
+        "tag": "stream:error",
+        "attrs": {
+          "code": "515"
+        }
+      },
+      "isBoom": true,
+      "isServer": true,
+      "output": {
+        "statusCode": 515,
+        "payload": {
+          "statusCode": 515,
+          "error": "Unknown",
+          "message": "Stream Errored (restart required)"
+        },
+        "headers": {}
+      }
+    },
+    "date": "2025-06-23T04:29:03.849Z"
+  }
+}
+```
+
+CONFIGURAÇÕES APLICADAS ANTERIORMENTE:
+- Version: fetchLatestBaileysVersion() com fallback [2, 2419, 6]
+- Browser: ['Samsung', 'SM-G991B', '13'] (Android)
+- mobile: true (usa mmg.whatsapp.net porta 443)
+- fireInitQueries: true
+- Timeouts: keepAlive 10s, networkIdle 45s, connect/query 60s
+- Heartbeat: Ping customizado a cada 10s
+- Reconexão apenas para códigos transitórios (515, 428, 408)
+
+AMBIENTE:
+- Plataforma: Replit NixOS
+- Baileys: @whiskeysockets/baileys
+- Problema: Erro 515 após isNewLogin bem-sucedido
+
+PERGUNTA PARA CHATGPT:
+Como resolver o erro 515 "Stream Errored (restart required)" que ocorre logo após isNewLogin=true no Baileys? 
+O QR Code funciona, credenciais são salvas, mas a conexão falha imediatamente com código 515.
+Ambiente: Replit com limitações de rede corporativa.
