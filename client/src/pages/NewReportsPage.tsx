@@ -174,7 +174,9 @@ export default function NewReportsPage() {
   // Buscar seleções
   const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
     queryKey: ['/api/selections', selectedClientId],
-    enabled: !!selectedClientId || user?.role === 'client'
+    enabled: !!selectedClientId || user?.role === 'client',
+    staleTime: 1 * 60 * 1000, // Cache por 1 minuto
+    cacheTime: 5 * 60 * 1000 // Manter em cache por 5 minutos
   });
 
   // Efeito para navegar diretamente para uma seleção específica via parâmetro selectedSelection
@@ -211,7 +213,9 @@ export default function NewReportsPage() {
         return {};
       }
     },
-    enabled: !!selectedClientId || user?.role === 'client'
+    enabled: !!selectedClientId || user?.role === 'client',
+    staleTime: 3 * 60 * 1000, // Cache por 3 minutos
+    cacheTime: 8 * 60 * 1000 // Manter em cache por 8 minutos
   });
 
   // Cache de dados de candidatos para cada seleção
@@ -235,20 +239,14 @@ export default function NewReportsPage() {
     }
 
     try {
-      const response = await fetch(`/api/selections/${selectionId}/interview-candidates`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await apiRequest(`/api/selections/${selectionId}/interview-candidates`, 'GET');
       
-      if (response.ok) {
-        const candidates = await response.json();
-        setSelectionCandidatesCache(prev => ({
-          ...prev,
-          [selectionId]: candidates
-        }));
-        return candidates;
-      }
+      const candidates = await response.json();
+      setSelectionCandidatesCache(prev => ({
+        ...prev,
+        [selectionId]: candidates
+      }));
+      return candidates;
     } catch (error) {
       console.error('Erro ao carregar candidatos da seleção:', error);
     }
@@ -256,15 +254,12 @@ export default function NewReportsPage() {
     return [];
   };
 
-  // Carrega candidatos para o Comercial 5 automaticamente
+  // Carrega candidatos para seleção específica apenas quando necessário
   useEffect(() => {
-    if (selections.length > 0 && !selectedSelection) {
-      const comercial5 = selections.find(s => s.id === 1750476614396);
-      if (comercial5 && !selectionCandidatesCache[1750476614396]) {
-        loadSelectionCandidates(1750476614396);
-      }
+    if (selectedSelection && !selectionCandidatesCache[selectedSelection.id]) {
+      loadSelectionCandidates(selectedSelection.id);
     }
-  }, [selections, selectedSelection, selectionCandidatesCache]);
+  }, [selectedSelection, selectionCandidatesCache]);
 
   // Buscar candidatos da seleção com status de entrevista
   const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
@@ -287,7 +282,9 @@ export default function NewReportsPage() {
         return [];
       }
     },
-    enabled: !!selectedSelection
+    enabled: !!selectedSelection,
+    staleTime: 2 * 60 * 1000, // Cache por 2 minutos
+    cacheTime: 5 * 60 * 1000 // Manter em cache por 5 minutos
   });
 
   // Buscar TODOS os candidatos da lista da seleção (incluindo os que não responderam)
@@ -316,7 +313,7 @@ export default function NewReportsPage() {
     enabled: !!selectedSelection
   });
 
-  // Combinar todos os candidatos da lista com os dados de entrevista
+  // Combinar todos os candidatos da lista com os dados de entrevista (otimizado)
   const allCandidatesWithStatus = React.useMemo(() => {
     if (!allCandidatesInList.length) return interviewCandidates;
 
@@ -375,8 +372,8 @@ export default function NewReportsPage() {
       return data || [];
     },
     enabled: !!selectedSelection,
-    staleTime: 0, // Sempre buscar dados frescos
-    cacheTime: 0   // Não manter cache
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
+    cacheTime: 10 * 60 * 1000 // Manter em cache por 10 minutos
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
