@@ -525,25 +525,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const candidateData = req.body;
       
-      console.log(`📄 Gerando HTML para candidato: ${candidateData.name}`);
+      console.log(`📄 Gerando pacote ZIP para candidato: ${candidateData.name}`);
       
-      // Gerar HTML com players de áudio
-      const htmlContent = await htmlExportService.generateCandidateHTML(candidateData);
+      // Gerar pacote ZIP com HTML e áudios
+      const zipBuffer = await htmlExportService.generateCandidatePackage(candidateData);
       
-      // Nome do arquivo
-      const fileName = htmlExportService.generateFileName(
+      // Nome do arquivo ZIP
+      const fileName = htmlExportService.generateZipFileName(
         candidateData.name, 
         candidateData.jobName, 
         candidateData.completedAt
       );
       
       // Configurar headers para download
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', Buffer.byteLength(htmlContent, 'utf8'));
+      res.setHeader('Content-Length', zipBuffer.length);
       
-      console.log(`✅ HTML gerado com sucesso: ${fileName}`);
-      res.send(htmlContent);
+      console.log(`✅ ZIP gerado com sucesso: ${fileName}`);
+      res.send(zipBuffer);
       
     } catch (error) {
       console.error('❌ Erro ao gerar HTML:', error);

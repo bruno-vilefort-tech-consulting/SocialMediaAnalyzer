@@ -1744,7 +1744,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
   const handleExportHTML = async () => {
     try {
-      console.log('📄 Iniciando exportação de HTML...');
+      console.log('📄 Iniciando exportação de pacote ZIP...');
       
       // Preparar dados do candidato para o PDF
       const candidateData = {
@@ -1786,19 +1786,19 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${candidateData.name}_${candidateData.jobName}_${new Date().toISOString().split('T')[0]}.html`;
+      a.download = `${candidateData.name}_${candidateData.jobName}_${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      // HTML exportado com sucesso - mostrar feedback visual
-      console.log('✅ HTML exportado com sucesso!');
+      // ZIP exportado com sucesso - mostrar feedback visual
+      console.log('✅ Pacote ZIP exportado com sucesso!');
       
     } catch (error) {
-      console.error('❌ Erro ao exportar HTML:', error);
+      console.error('❌ Erro ao exportar ZIP:', error);
       // Erro na exportação - mostrar no console por enquanto
-      console.error('❌ Falha ao gerar HTML. Tente novamente.');
+      console.error('❌ Falha ao gerar pacote ZIP. Tente novamente.');
     }
   };
 

@@ -115,15 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 23, 2025: 📄 SISTEMA HTML PROFISSIONAL IMPLEMENTADO - Exportação com players de áudio funcionais e design responsivo
-  - **Players de áudio nativos**: HTML5 audio controls totalmente funcionais para reprodução dos áudios
+- June 23, 2025: 📦 SISTEMA ZIP PROFISSIONAL IMPLEMENTADO - Pacote completo com HTML e áudios funcionais
+  - **Pacote ZIP completo**: HTML + todos os arquivos MP3 de áudio em um único download
+  - **Players de áudio funcionais**: Conversão automática .ogg para .mp3 com players HTML5 nativos
   - **Layout profissional**: Design responsivo com grid de informações e cores dinâmicas baseadas na pontuação
   - **Pontuação destacada**: Score final no header e scores individuais por pergunta com cores indicativas
-  - **Design responsivo**: Funciona perfeitamente em desktop, tablet e mobile com CSS grid
   - **Três seções por pergunta**: Pergunta, resposta do candidato e resposta perfeita cadastrada
+  - **Áudios embeddados**: Arquivos MP3 locais funcionam offline após download do ZIP
   - **Suporte para impressão**: CSS otimizado para impressão com quebras de página inteligentes
-  - **Compatibilidade total**: Funciona em qualquer navegador moderno, pode ser salvo como PDF pelo usuário
-  - **Botão "Exportar"**: Nome simplificado conforme solicitado, gera arquivo .html para download
+  - **Limpeza automática**: Arquivos temporários removidos automaticamente após geração do ZIP
 
 - June 23, 2025: 📊 BLOCO SELEÇÕES ENVIADAS IMPLEMENTADO - Novo card no painel de estatísticas baseado na contagem de relatórios
   - **Card "Seleções Enviadas" adicionado**: Novo bloco ao lado direito de "Candidatos Cadastrados" com ícone FileText cyan

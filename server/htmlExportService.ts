@@ -1,13 +1,18 @@
 /**
  * Serviço de exportação HTML com players de áudio funcionais
  * Gera HTML profissional com design responsivo e players nativos
+ * Inclui conversão de áudio e criação de ZIP com todos os arquivos
  */
 
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
+import ffmpeg from 'fluent-ffmpeg';
+import archiver from 'archiver';
 
 const writeFile = promisify(fs.writeFile);
+const unlink = promisify(fs.unlink);
+const access = promisify(fs.access);
 
 interface CandidateData {
   name: string;
@@ -25,7 +30,141 @@ interface CandidateData {
 }
 
 export class HTMLExportService {
-  
+  private uploadsDir = path.join(process.cwd(), 'uploads');
+  private tempDir = path.join(process.cwd(), 'temp');
+
+  constructor() {
+    // Criar diretório temp se não existir
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
+    }
+    
+    // Configurar ffmpeg path
+    try {
+      ffmpeg.setFfmpegPath('/nix/store/3zc5jbvqzrn8zmva4fx5p0nh4yy03wk4-ffmpeg-6.1.1-bin/bin/ffmpeg');
+      console.log('FFmpeg configurado para HTML export');
+    } catch (error) {
+      console.log('Erro ao configurar FFmpeg:', error);
+    }
+  }
+
+  /**
+   * Converte arquivo .ogg para .mp3
+   */
+  private async convertOggToMp3(oggPath: string, mp3Path: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      ffmpeg(oggPath)
+        .audioCodec('libmp3lame')
+        .audioBitrate(128)
+        .output(mp3Path)
+        .on('end', () => {
+          console.log(`Audio convertido: ${path.basename(mp3Path)}`);
+          resolve();
+        })
+        .on('error', (err) => {
+          console.error(`Erro na conversao: ${err.message}`);
+          reject(err);
+        })
+        .run();
+    });
+  }
+
+  /**
+   * Gera pacote ZIP completo com HTML e áudios
+   */
+  async generateCandidatePackage(candidateData: CandidateData): Promise<Buffer> {
+    const tempFiles: string[] = [];
+    const audioFiles: string[] = [];
+    
+    try {
+      // Converter todos os áudios para MP3
+      for (let i = 0; i < candidateData.responses.length; i++) {
+        const response = candidateData.responses[i];
+        if (response.audioUrl) {
+          try {
+            const audioFileName = path.basename(response.audioUrl);
+            const oggPath = path.join(this.uploadsDir, audioFileName);
+            const mp3FileName = `audio_pergunta_${i + 1}.mp3`;
+            const mp3Path = path.join(this.tempDir, mp3FileName);
+            
+            // Verificar se arquivo .ogg existe
+            await access(oggPath);
+            
+            // Converter para mp3
+            await this.convertOggToMp3(oggPath, mp3Path);
+            audioFiles.push(mp3Path);
+            tempFiles.push(mp3Path);
+            
+            // Atualizar URL no candidateData para apontar para arquivo local
+            response.audioUrl = mp3FileName;
+            
+          } catch (error) {
+            console.error(`Erro ao processar audio: ${error.message}`);
+            response.audioUrl = undefined;
+          }
+        }
+      }
+      
+      // Gerar HTML
+      const htmlContent = await this.generateCandidateHTML(candidateData);
+      const htmlFileName = this.generateFileName(
+        candidateData.name, 
+        candidateData.jobName, 
+        candidateData.completedAt
+      );
+      const htmlPath = path.join(this.tempDir, htmlFileName);
+      
+      // Salvar HTML temporariamente
+      await writeFile(htmlPath, htmlContent, 'utf8');
+      tempFiles.push(htmlPath);
+      
+      // Criar ZIP
+      const zipBuffer = await this.createZipPackage(htmlPath, audioFiles);
+      
+      return zipBuffer;
+      
+    } finally {
+      // Limpar arquivos temporários
+      await this.cleanupTempFiles(tempFiles);
+    }
+  }
+
+  /**
+   * Cria arquivo ZIP com HTML e áudios
+   */
+  private async createZipPackage(htmlPath: string, audioFiles: string[]): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const archive = archiver('zip', {
+        zlib: { level: 9 }
+      });
+      
+      const chunks: Buffer[] = [];
+      
+      archive.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      
+      archive.on('end', () => {
+        const zipBuffer = Buffer.concat(chunks);
+        resolve(zipBuffer);
+      });
+      
+      archive.on('error', (err) => {
+        reject(err);
+      });
+      
+      // Adicionar HTML
+      archive.file(htmlPath, { name: path.basename(htmlPath) });
+      
+      // Adicionar áudios
+      audioFiles.forEach(audioPath => {
+        archive.file(audioPath, { name: path.basename(audioPath) });
+      });
+      
+      archive.finalize();
+    });
+  }
+
   async generateCandidateHTML(candidateData: CandidateData): Promise<string> {
     // Calcular pontuação final
     const validScores = candidateData.responses.filter(r => r.score && r.score > 0).map(r => r.score!);
@@ -329,8 +468,7 @@ export class HTMLExportService {
                                     🎵 Player de áudio interativo
                                 </div>
                                 <audio controls preload="metadata">
-                                    <source src="${response.audioUrl}" type="audio/ogg">
-                                    <source src="${response.audioUrl.replace('.ogg', '.mp3')}" type="audio/mpeg">
+                                    <source src="${response.audioUrl}" type="audio/mpeg">
                                     Seu navegador não suporta o elemento de áudio.
                                 </audio>
                             </div>
@@ -351,6 +489,20 @@ export class HTMLExportService {
 
     return html;
   }
+
+  /**
+   * Remove arquivos temporários
+   */
+  private async cleanupTempFiles(filePaths: string[]): Promise<void> {
+    for (const filePath of filePaths) {
+      try {
+        await unlink(filePath);
+        console.log(`Arquivo temporario removido: ${path.basename(filePath)}`);
+      } catch (error) {
+        console.error(`Erro ao remover arquivo temporario: ${error.message}`);
+      }
+    }
+  }
   
   generateFileName(candidateName: string, jobName: string, date?: string): string {
     const cleanName = candidateName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
@@ -358,6 +510,14 @@ export class HTMLExportService {
     const dateStr = date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
     
     return `${cleanName}_${cleanJob}_${dateStr}.html`;
+  }
+
+  generateZipFileName(candidateName: string, jobName: string, date?: string): string {
+    const cleanName = candidateName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    const cleanJob = jobName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    const dateStr = date ? new Date(date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    
+    return `${cleanName}_${cleanJob}_${dateStr}.zip`;
   }
 }
 
