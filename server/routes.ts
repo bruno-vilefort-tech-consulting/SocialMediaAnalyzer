@@ -3219,7 +3219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       const reportsSnapshot = await getDocs(reportsQuery);
       
-      // Filtrar relatórios por período
+      // Filtrar relatórios por período e calcular total de candidatos que receberam entrevistas
       let interviewsSent = 0;
       const validReports = [];
       reportsSnapshot.docs.forEach(doc => {
@@ -3227,11 +3227,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (data.createdAt && data.createdAt.toDate) {
           const createdDate = data.createdAt.toDate();
           if (createdDate >= fromDate && createdDate <= toDate) {
-            interviewsSent++;
+            // Contar candidatos que receberam entrevistas neste relatório
+            if (data.candidatesCount) {
+              interviewsSent += data.candidatesCount;
+            } else if (data.candidatesData && Array.isArray(data.candidatesData)) {
+              interviewsSent += data.candidatesData.length;
+            } else {
+              // Fallback: assumir que houve pelo menos 1 candidato que recebeu entrevista
+              interviewsSent += 1;
+            }
             validReports.push(doc);
           }
         }
       });
+      
+      console.log(`📊 Total de candidatos que receberam entrevistas no período: ${interviewsSent}`);
       
 
 

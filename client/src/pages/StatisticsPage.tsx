@@ -247,7 +247,7 @@ export default function StatisticsPage() {
               </div>
               <div className="ml-3 lg:ml-4">
                 <div className="text-xl lg:text-2xl font-bold text-slate-900">
-                  {isLoading ? "..." : (statsData.interviewsCompleted || 0).toLocaleString()}
+                  {isLoading ? "..." : `${(statsData.interviewsCompleted || 0).toLocaleString()} / ${(statsData.interviewsSent || 0).toLocaleString()}`}
                 </div>
                 <div className="text-xs lg:text-sm text-slate-500">Entrevistas Finalizadas</div>
               </div>
