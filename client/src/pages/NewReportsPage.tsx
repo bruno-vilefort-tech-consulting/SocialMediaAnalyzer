@@ -7,9 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar, GripVertical, FolderPlus } from 'lucide-react';
+import { FileText, ArrowLeft, Users, BarChart3, Star, CheckCircle, XCircle, Clock, Play, Pause, Volume2, ChevronDown, ChevronUp, ThumbsUp, Meh, AlertTriangle, ThumbsDown, Download, Calendar, GripVertical, FolderPlus, Target, BookOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import ReportFoldersManager from '@/components/ReportFoldersManager';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -72,6 +73,7 @@ export default function NewReportsPage() {
     duration: number;
     progress: number;
   } }>({});
+  const [expandedPerfectAnswers, setExpandedPerfectAnswers] = useState<{ [key: string]: boolean }>({});
 
   // Estados para o botão Nova Pasta
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -1684,6 +1686,27 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Função para toggle do dropdown da resposta perfeita
+  const togglePerfectAnswer = (responseId: string) => {
+    setExpandedPerfectAnswers(prev => ({
+      ...prev,
+      [responseId]: !prev[responseId]
+    }));
+  };
+
+  // Função para buscar resposta perfeita baseada no questionId
+  const getPerfectAnswer = (questionId: number) => {
+    // Se estamos visualizando um relatório específico (independente)
+    if (specificReport && specificReport.jobData?.perguntas) {
+      const question = specificReport.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
+      return question?.respostaPerfeita || null;
+    }
+    
+    // Se estamos visualizando uma seleção regular, buscar dados do job via API
+    // Como os dados podem estar em diferentes estruturas, vamos buscar diretamente da API
+    return null; // Por enquanto retornamos null para seleções regulares, focaremos nos relatórios independentes
+  };
+
   return (
     <div className="space-y-6">
       {/* Informações do Candidato */}
@@ -1767,6 +1790,55 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates }: Cand
                       </p>
                     </div>
                   </div>
+
+                  {/* Dropdown da Resposta Perfeita */}
+                  {getPerfectAnswer(response.questionId) && (
+                    <Collapsible 
+                      open={expandedPerfectAnswers[responseId]} 
+                      onOpenChange={() => togglePerfectAnswer(responseId)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between p-3 h-auto border border-dashed border-emerald-300 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Target className="h-4 w-4" />
+                            <span className="font-medium text-sm">Ver Resposta Perfeita</span>
+                          </div>
+                          {expandedPerfectAnswers[responseId] ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-2">
+                        <div className="mt-3 p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                              <BookOpen className="h-4 w-4 text-emerald-600" />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <h5 className="font-semibold text-sm text-emerald-800">
+                                Resposta Perfeita Cadastrada
+                              </h5>
+                              <p className="text-sm leading-relaxed text-emerald-700">
+                                {getPerfectAnswer(response.questionId)}
+                              </p>
+                              <div className="flex items-center gap-2 pt-2">
+                                <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-50">
+                                  <Target className="h-3 w-3 mr-1" />
+                                  Referência para Avaliação
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
 
                   {/* Player de Áudio com Timeline */}
                   {response.audioUrl && response.audioUrl !== "" ? (
