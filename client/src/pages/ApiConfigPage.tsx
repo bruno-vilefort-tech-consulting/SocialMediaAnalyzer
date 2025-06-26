@@ -299,7 +299,7 @@ export default function ApiConfigPage() {
   const sendTestMessageMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/whatsapp-client/test-message', {
+      const response = await fetch('/api/whatsapp-client/test', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -307,7 +307,8 @@ export default function ApiConfigPage() {
         },
         body: JSON.stringify({
           phoneNumber: whatsappPhone,
-          message: whatsappMessage
+          message: whatsappMessage,
+          clientId: user?.clientId
         })
       });
       
