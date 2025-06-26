@@ -1,6 +1,6 @@
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, proto } from '@whiskeysockets/baileys';
 import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
-import { firebaseDb } from './db';
+import { firebaseDb } from '../../server/db';
 import { WhatsAppConnection } from '@shared/schema';
 import * as path from 'path';
 import * as fs from 'fs';

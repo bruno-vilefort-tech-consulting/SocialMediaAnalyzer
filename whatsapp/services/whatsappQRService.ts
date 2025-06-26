@@ -1,6 +1,6 @@
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
-import { storage } from './storage';
+import { storage } from '../../server/storage';
 import { simpleInterviewService } from './simpleInterviewService';
 
 interface WhatsAppQRConfig {

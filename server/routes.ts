@@ -11,8 +11,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
-import { whatsappQRService } from "./whatsappQRService";
-import { whatsappManager } from "./whatsappManager";
+import { whatsappQRService } from "../whatsapp/services/whatsappQRService";
+import { whatsappManager } from "../whatsapp/services/whatsappManager";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";
@@ -1795,7 +1795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
       // Verificar se o cliente tem WhatsApp conectado ANTES de buscar candidatos
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const clientIdStr = selection.clientId.toString();
       const clientStatus = await clientWhatsAppService.getClientStatus(clientIdStr);
       
@@ -1879,7 +1879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             personalizedMessage = personalizedMessage + confirmationText;
 
             // Enviar via WhatsApp usando serviço específico do cliente
-            const { clientWhatsAppService } = await import('./clientWhatsAppService');
+            const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
             const clientIdStr = selection.clientId.toString();
             
             // Verificar se o cliente tem WhatsApp conectado
@@ -3730,7 +3730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 WhatsApp Client: Conectando cliente ${user.clientId}...`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.connectClient(user.clientId.toString());
       
       console.log(`📱 Resultado WhatsApp connect:`, result);
@@ -3753,7 +3753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 WhatsApp Client: Desconectando cliente ${user.clientId}...`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
       
       res.json(result);
@@ -3840,7 +3840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.getClientStatus(user.clientId.toString());
       
       res.json({
@@ -3884,7 +3884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📱 [WHATSAPP TEST] Mensagem: ${message.substring(0, 50)}...`);
       
       // Usar o clientWhatsAppService corrigido
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const clientIdStr = user.clientId.toString();
       
       // Enviar mensagem teste usando o serviço correto
@@ -5172,7 +5172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 [DEBUG] Buscando status para cliente ${user.clientId}`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const status = await clientWhatsAppService.getClientStatus(user.clientId.toString());
       
       console.log(`📊 [DEBUG] Status retornado:`, {
@@ -5207,7 +5207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔄 [DEBUG] Conectando WhatsApp para cliente ${user.clientId}...`);
       console.log(`🔄 [DEBUG] Timestamp: ${new Date().toISOString()}`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       console.log('✅ [DEBUG] Service importado com sucesso');
       
       const result = await clientWhatsAppService.connectClient(user.clientId.toString());
@@ -5233,7 +5233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📱 Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.disconnectClient(user.clientId.toString());
       
       res.json(result);
@@ -5263,7 +5263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📱 Enviando mensagem teste para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { clientWhatsAppService } = await import('./clientWhatsAppService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.sendTestMessage(user.clientId.toString(), phoneNumber, message);
       
       res.json(result);
