@@ -1,9 +1,11 @@
 import { storage } from '../../server/storage';
 import fs from 'fs';
 import path from 'path';
-// Importação temporária via require para resolver problema de ES modules
-const baileys = require('@whiskeysockets/baileys');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
+import makeWASocket, {
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  DisconnectReason
+} from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
 
 interface WhatsAppClientConfig {
