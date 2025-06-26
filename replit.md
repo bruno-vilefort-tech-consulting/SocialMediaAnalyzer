@@ -122,6 +122,9 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **QR Code funcionando**: Sistema gera QR Code base64 válido (6000+ caracteres) com sucesso
   - **Conexão validada**: Teste confirma endpoint /api/whatsapp-client/connect retorna QR Code funcional
   - **Sistema operacional**: WhatsApp por cliente agora conecta sem erros mobile API
+  - **Conexão real confirmada**: Sistema detectou número 551151940284 e estabeleceu conexão WhatsApp autêntica
+  - **Erro 515 tratado**: Implementado tratamento específico para erros de stream no ambiente Replit
+  - **Conflitos resolvidos**: Unificação de serviços WhatsApp usando apenas clientWhatsAppService com Baileys
 
 - June 26, 2025: 📁 REORGANIZAÇÃO WHATSAPP COMPLETA - Estrutura de pastas otimizada para melhor organização do código
   - **Pasta whatsapp/ criada**: Nova estrutura organizacional com subpastas services/, sessions/, logs/, auth/

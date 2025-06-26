@@ -2654,32 +2654,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      await whatsappBaileyService.connect(user.clientId.toString());
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
       
-      const status = whatsappBaileyService.getStatus(user.clientId.toString());
-      const result = { success: true, qrCode: status.qrCode };
-      
-      console.log(`🔗 [DEBUG] Resultado da conexão:`, {
-        success: result.success,
-        hasQrCode: !!result.qrCode,
-        qrCodeLength: result.qrCode?.length || 0,
-        message: result.message
-      });
-      
-      if (result.success) {
-        res.json({
-          success: true,
-          message: result.qrCode ? 'QR Code gerado - escaneie com seu WhatsApp' : 'Conectado com sucesso',
-          qrCode: result.qrCode
-        });
-      } else {
-        console.log(`❌ [DEBUG] Falha na conexão WhatsApp:`, result.message);
-        res.status(500).json({
-          success: false,
-          message: result.message || 'Erro ao conectar WhatsApp'
-        });
-      }
+      console.log(`📱 Resultado WhatsApp connect:`, result);
+      res.json(result);
     } catch (error) {
       console.error('❌ Erro ao conectar WhatsApp:', error);
       res.status(500).json({
