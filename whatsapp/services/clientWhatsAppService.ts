@@ -128,7 +128,7 @@ export class ClientWhatsAppService {
       console.log('🔧 [DEBUG] Configurações do socket:', {
         version: this.waVersion,
         browser: ['Samsung', 'SM-G991B', '13'],
-        mobile: true, // CORRIGIDO: mobile: true para usar mmg.whatsapp.net
+        // mobile: true, // REMOVIDO: API móvel não é mais suportada no Baileys
         connectTimeoutMs: 60000,
         qrTimeout: 90000
       });
@@ -170,9 +170,9 @@ export class ClientWhatsAppService {
         auth: state,
         printQRInTerminal: true,               // HABILITADO para console debug
         logger: logger,
-        // Configuração Samsung Android otimizada para Replit
-        browser: ['Samsung', 'SM-G991B', '13'],
-        mobile: true,                           // TRUE - usar mmg.whatsapp.net (mais estável)
+        // Configuração desktop browser para WhatsApp Web
+        browser: ['Replit WhatsApp Bot', 'Chrome', '120.0.0.0'],
+        // mobile: true,                        // REMOVIDO - API móvel não é mais suportada no Baileys
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         
