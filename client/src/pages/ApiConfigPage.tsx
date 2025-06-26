@@ -641,7 +641,43 @@ export default function ApiConfigPage() {
               </div>
             </div>
 
-            {/* QR Code */}
+            {/* DEBUG INFO */}
+            <div className="p-4 bg-red-100 border border-red-300 rounded">
+              <h4 className="font-bold text-red-800">DEBUG QR CODE:</h4>
+              <p>shouldShowQR: {String(shouldShowQR)}</p>
+              <p>hasQrCode: {String(!!whatsappStatus?.qrCode)}</p>
+              <p>isConnected: {String(whatsappStatus?.isConnected)}</p>
+              <p>qrCodeLength: {whatsappStatus?.qrCode?.length || 0}</p>
+            </div>
+
+            {/* QR Code FORÇADO */}
+            {whatsappStatus?.qrCode && (
+              <div className="space-y-4 border-4 border-blue-500 p-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-medium mb-2 text-blue-600">QR Code Forçado (DEBUG)</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
+                  </p>
+                  
+                  <div className="flex justify-center">
+                    <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-gray-200">
+                      <img 
+                        src={whatsappStatus.qrCode} 
+                        alt="QR Code WhatsApp" 
+                        className="w-64 h-64 border-2 border-red-500"
+                        style={{display: 'block', visibility: 'visible'}}
+                      />
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-2">
+                    QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* QR Code ORIGINAL */}
             {shouldShowQR && whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
               <div className="space-y-4">
                 <div className="text-center">
