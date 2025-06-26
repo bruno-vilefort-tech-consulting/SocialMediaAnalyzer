@@ -2157,7 +2157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!serviceToUse) {
               console.log(`⚠️ Service parece null, tentando reimportar...`);
               try {
-                const { whatsappQRService: freshService } = await import('./whatsappQRService.js');
+                const { whatsappQRService: freshService } = await import('../whatsapp/services/whatsappQRService');
                 serviceToUse = freshService;
                 console.log(`✅ Service reimportado:`, !!serviceToUse);
               } catch (reimportError) {
@@ -2556,7 +2556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🐛 [DEBUG] Testando WPPConnect para cliente ${clientId}...`);
       
       // WppConnect removido - usando Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
+      const { whatsappQRService } = await import('../whatsapp/services/whatsappQRService');
       const result = await whatsappQRService.connect();
       
       console.log(`🐛 [DEBUG] Resultado:`, result);
@@ -2590,7 +2590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dbConfig = await storage.getApiConfig('client', user.clientId.toString());
       
       // Depois buscar no serviço em memória
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       const memoryStatus = whatsappBaileyService.getStatus(user.clientId.toString());
       
       // Combinar dados: QR Code do banco (mais confiável) + status de conexão da memória
@@ -2654,7 +2654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       await whatsappBaileyService.connect(user.clientId.toString());
       
       const status = whatsappBaileyService.getStatus(user.clientId.toString());
@@ -2698,7 +2698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       await whatsappBaileyService.disconnect(user.clientId.toString());
       const result = { success: true };
       
@@ -2740,7 +2740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       const success = await whatsappBaileyService.sendMessage(user.clientId.toString(), phoneNumber, message);
       const result = { success };
       
@@ -2773,7 +2773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🧹 Limpando sessão WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       await whatsappBaileyService.clearSession(user.clientId.toString());
       
       res.json({ 
@@ -2803,7 +2803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // WppConnect removido - usando Baileys
-      const { whatsappQRService } = await import('./whatsappQRService');
+      const { whatsappQRService } = await import('../whatsapp/services/whatsappQRService');
       const success = await whatsappQRService.sendTextMessage(phoneNumber, message);
       const result = { success, message: success ? 'Mensagem enviada' : 'Falha ao enviar' };
       
@@ -2934,7 +2934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Manager Routes - Client-specific connections
   app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const connections = await whatsappManager.getClientConnections();
       res.json(connections);
     } catch (error) {
@@ -2951,7 +2951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'clientId e clientName são obrigatórios' });
       }
 
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const connectionId = await whatsappManager.createConnection(clientId, clientName);
       res.json({ success: true, connectionId });
     } catch (error) {
@@ -2963,7 +2963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       await whatsappManager.disconnectClient(connectionId);
       res.json({ success: true });
     } catch (error) {
@@ -2975,7 +2975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/whatsapp/connections/:connectionId", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       await whatsappManager.deleteConnection(connectionId);
       res.json({ success: true });
     } catch (error) {
@@ -3030,7 +3030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
-      const { clientWhatsAppService } = await import('./clientWhatsAppService.js');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.sendTestMessage(clientId.toString(), phoneNumber, message);
       
       if (result.success) {
@@ -3059,7 +3059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'phoneNumber e message são obrigatórios' });
       }
 
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const success = await whatsappManager.sendMessage(connectionId, phoneNumber, message);
       
       if (success) {
@@ -3076,7 +3076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master']), async (req, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const status = whatsappManager.getConnectionStatus(connectionId);
       res.json(status);
     } catch (error) {
@@ -4321,7 +4321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!whatsappQRService) {
       try {
         // Only initialize WhatsApp when explicitly requested
-        const { WhatsAppQRService } = await import('./whatsappQRService');
+        const { WhatsAppQRService } = await import('../whatsapp/services/whatsappQRService');
         whatsappQRService = new WhatsAppQRService();
         console.log('✅ WhatsApp QR Service inicializado sob demanda');
         
@@ -4523,7 +4523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WhatsApp Manager endpoints - New system with client selection
   app.get("/api/whatsapp/connections", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const connections = await whatsappManager.getClientConnections();
       
       // Filter connections based on user role
@@ -4545,7 +4545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/whatsapp/status/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       const status = whatsappManager.getConnectionStatus(connectionId);
       res.json(status);
     } catch (error) {
@@ -4557,7 +4557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/whatsapp/disconnect/:connectionId", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       await whatsappManager.disconnectClient(connectionId);
       res.json({ success: true });
     } catch (error) {
@@ -4569,7 +4569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/whatsapp/connection/:connectionId", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
       const { connectionId } = req.params;
-      const { whatsappManager } = await import('./whatsappManager');
+      const { whatsappManager } = await import('../whatsapp/services/whatsappManager');
       await whatsappManager.deleteConnection(connectionId);
       res.json({ success: true });
     } catch (error) {

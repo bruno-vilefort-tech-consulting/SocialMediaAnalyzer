@@ -5,7 +5,7 @@
  * usando Evolution API conforme especificações técnicas fornecidas.
  */
 
-import { storage } from './storage.js';
+import { storage } from '../../server/storage';
 
 interface EvolutionConnection {
   clientId: string;

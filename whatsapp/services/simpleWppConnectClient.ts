@@ -1,5 +1,5 @@
 import { create, Whatsapp } from '@wppconnect-team/wppconnect';
-import { storage } from './storage.js';
+import { storage } from '../../server/storage';
 
 interface ClientSession {
   client: Whatsapp;

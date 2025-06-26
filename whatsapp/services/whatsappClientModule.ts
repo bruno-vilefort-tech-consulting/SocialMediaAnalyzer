@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage } from "../../server/storage";
 import path from "path";
 import fs from "fs";
 import qrcode from "qrcode";

@@ -48,7 +48,7 @@ export class ClientWhatsAppService {
   }
 
   private getSessionPath(clientId: string): string {
-    return path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}`);
+    return path.join(process.cwd(), 'whatsapp/sessions/whatsapp-sessions', `client_${clientId}`);
   }
 
   private async ensureSessionDirectory(clientId: string) {

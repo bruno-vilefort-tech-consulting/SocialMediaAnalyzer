@@ -1,7 +1,7 @@
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import { storage } from '../../server/storage';
-import { simpleInterviewService } from './simpleInterviewService';
+import { simpleInterviewService } from '../../server/simpleInterviewService';
 
 interface WhatsAppQRConfig {
   isConnected: boolean;
