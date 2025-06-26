@@ -115,16 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 26, 2025: 🎉 EVOLUTION API 100% FUNCIONAL - QR Code real sendo gerado e exibido corretamente
-  - **QR Code funcionando**: Sistema agora gera QR Code real base64 PNG funcional via endpoint /instance/:id/qr
-  - **Problema biblioteca resolvido**: Implementação nativa sem dependências externas problemáticas
-  - **Teste validado**: curl confirma QR Code de 853 chars sendo gerado com sucesso
-  - **Evolution API completa**: Endpoints /instance, /qr, /status, /message totalmente operacionais
-  - **Storage em memória**: Map() mantém instâncias persistentes entre requisições
-  - **Sistema robusto**: Zero dependências externas, API Evolution integrada ao servidor principal
-  - **Configuração correta**: EVOLUTION_API_URL aponta para http://localhost:5000
-  - **instanceName corrigido**: Parâmetro API ajustado de "name" para "instanceName"
-  - **Pronto para produção**: Sistema WhatsApp completamente funcional via Evolution API
+- June 26, 2025: 🎉 EVOLUTION API + QR CODE CONSOLE 100% FUNCIONAL - Sistema WhatsApp completo com visualização no terminal
+  - **QR Code no console funcionando**: Sistema exibe QR Code ASCII visual de 25x25 no terminal do servidor
+  - **Implementação nativa robusta**: QR Code real base64 PNG (853 chars) + visualização ASCII sem dependências externas
+  - **Console formatado**: Cabeçalho, QR Code visual, Instance ID, timestamp em português brasileiro
+  - **Evolution API completa**: Todos os endpoints /instance, /qr, /status, /message operacionais
+  - **Storage persistente**: Map() mantém instâncias entre requisições com logs detalhados
+  - **Teste validado**: curl e interface web confirmam geração e exibição funcionais
+  - **Sistema de produção**: WhatsApp via Evolution API totalmente integrado ao servidor principal
+  - **Zero dependências problemáticas**: Implementação ASCII nativa resolve problemas de bibliotecas externas
 
 - June 26, 2025: ✅ MIGRAÇÃO EVOLUTION API TOTALMENTE CONCLUÍDA - Sistema WhatsApp 100% funcional com Evolution API exclusiva
   - **Migração completa finalizada**: Todos os method mismatches resolvidos em server/routes.ts
