@@ -1797,7 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verificar se o cliente tem WhatsApp conectado ANTES de buscar candidatos
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const clientIdStr = selection.clientId.toString();
-      const clientStatus = await clientWhatsAppService.getClientStatus(clientIdStr);
+      const clientStatus = await clientWhatsAppService.getConnectionStatus(clientIdStr);
       
       console.log(`📊 Verificando status WhatsApp cliente ${clientIdStr}:`, clientStatus);
       
@@ -1883,7 +1883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const clientIdStr = selection.clientId.toString();
             
             // Verificar se o cliente tem WhatsApp conectado
-            const clientStatus = await clientWhatsAppService.getClientStatus(clientIdStr);
+            const clientStatus = await clientWhatsAppService.getConnectionStatus(clientIdStr);
             console.log(`📊 Status WhatsApp cliente ${clientIdStr}:`, clientStatus);
             
             if (!clientStatus.isConnected) {
@@ -1900,7 +1900,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             console.log(`📲 Enviando via clientWhatsAppService para cliente ${clientIdStr}`);
-            const sendResult = await clientWhatsAppService.sendTestMessage(
+            const sendResult = await clientWhatsAppService.sendMessage(
               clientIdStr,
               candidate.whatsapp,
               personalizedMessage
@@ -2983,7 +2983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`💬 Enviando teste WhatsApp para cliente ${clientId}: ${phoneNumber}`);
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const result = await clientWhatsAppService.sendTestMessage(clientId.toString(), phoneNumber, message);
+      const result = await clientWhatsAppService.sendMessage(clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
@@ -3793,7 +3793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const result = await clientWhatsAppService.getClientStatus(user.clientId.toString());
+      const result = await clientWhatsAppService.getConnectionStatus(user.clientId.toString());
       
       res.json({
         isConnected: result.isConnected,
@@ -3840,7 +3840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientIdStr = user.clientId.toString();
       
       // Enviar mensagem teste usando o serviço correto
-      const result = await clientWhatsAppService.sendTestMessage(clientIdStr, phoneNumber, message);
+      const result = await clientWhatsAppService.sendMessage(clientIdStr, phoneNumber, message);
       
       if (result.success) {
         console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso`);
