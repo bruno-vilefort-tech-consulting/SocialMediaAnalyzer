@@ -2584,83 +2584,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📊 [BAILEYS] Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`📊 [EVOLUTION] Buscando status WhatsApp para cliente ${user.clientId}...`);
       
-      // Primeiro buscar no banco de dados (fonte autoritativa)
-      const dbConfig = await storage.getApiConfig('client', user.clientId.toString());
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
       
-      // Depois buscar no serviço em memória
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      const memoryStatus = whatsappBaileyService.getStatus(user.clientId.toString());
-      
-      // Combinar dados: QR Code do banco (mais confiável) + status de conexão da memória
-      // Se memória mostra desconectado mas banco mostra conectado, tentar restaurar
-      const shouldRestore = !memoryStatus.isConnected && dbConfig?.whatsappQrConnected && dbConfig?.whatsappQrPhoneNumber;
-      
-      if (shouldRestore) {
-        console.log(`🔄 Tentando restaurar conexão para cliente ${user.clientId}...`);
-        try {
-          await whatsappBaileyService.connect(user.clientId.toString());
-          // Atualizar status após tentativa de restauração
-          const restoredStatus = whatsappBaileyService.getStatus(user.clientId.toString());
-          memoryStatus.isConnected = restoredStatus.isConnected;
-          memoryStatus.phoneNumber = restoredStatus.phoneNumber;
-        } catch (error) {
-          console.log(`❌ Erro ao restaurar conexão:`, error.message);
-        }
-      }
+      // Verificar status via Evolution API
+      const status = await evolutionApiService.getConnectionStatus(user.clientId.toString());
+      const instance = evolutionApiService.getInstance(user.clientId.toString());
       
       const finalStatus = {
-        isConnected: memoryStatus.isConnected || dbConfig?.whatsappQrConnected || false,
-        qrCode: dbConfig?.whatsappQrCode || memoryStatus.qrCode || null,
-        phoneNumber: dbConfig?.whatsappQrPhoneNumber || memoryStatus.phoneNumber || null,
-        lastConnection: dbConfig?.whatsappQrLastConnection || null
+        isConnected: status.isConnected,
+        qrCode: instance?.qrCode || null,
+        phoneNumber: status.phoneNumber || null,
+        lastConnection: instance?.createdAt || null
       };
       
-      console.log(`📱 [BAILEYS] Status final:`, {
-        isConnected: finalStatus.isConnected,
-        hasQrCode: !!finalStatus.qrCode,
-        qrCodeLength: finalStatus.qrCode?.length || 0,
-        phoneNumber: finalStatus.phoneNumber,
-        source: 'DB + Memory'
-      });
-      
-      res.json({
-        isConnected: finalStatus.isConnected,
-        phone: finalStatus.phoneNumber,
-        qrCode: finalStatus.qrCode,
-        lastConnection: finalStatus.lastConnection
-      });
+      console.log(`📱 [EVOLUTION] Status final:`, finalStatus);
+      res.json(finalStatus);
     } catch (error) {
-      console.error('❌ Erro ao buscar status WhatsApp:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      console.error('❌ [EVOLUTION] Erro ao buscar status WhatsApp:', error);
+      res.status(500).json({
+        isConnected: false,
+        qrCode: null,
+        phoneNumber: null,
+        error: 'Erro interno'
+      });
     }
   });
 
   app.post("/api/client/whatsapp/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
-      console.log(`🔗 [DEBUG] Usuário autenticado:`, {
-        hasUser: !!user,
-        clientId: user?.clientId,
-        role: user?.role,
-        email: user?.email
-      });
-      
       if (!user?.clientId) {
-        console.log('❌ [DEBUG] Client ID não encontrado');
+        console.log('❌ [EVOLUTION] Client ID não encontrado');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 Conectando WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🔗 [EVOLUTION] Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const result = await clientWhatsAppService.connectClient(user.clientId.toString());
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.createInstance(user.clientId.toString());
       
-      console.log(`📱 Resultado WhatsApp connect:`, result);
+      console.log(`📱 [EVOLUTION] Resultado connect:`, result);
       res.json(result);
     } catch (error) {
-      console.error('❌ Erro ao conectar WhatsApp:', error);
+      console.error('❌ [EVOLUTION] Erro ao conectar WhatsApp:', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno ao conectar WhatsApp'
@@ -2675,11 +2643,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔌 Desconectando WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🔌 [EVOLUTION] Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      await whatsappBaileyService.disconnect(user.clientId.toString());
-      const result = { success: true };
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.deleteInstance(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -2689,7 +2656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ 
           success: false, 
-          message: 'Erro ao desconectar WhatsApp' 
+          message: result.error || 'Erro ao desconectar WhatsApp' 
         });
       }
     } catch (error) {

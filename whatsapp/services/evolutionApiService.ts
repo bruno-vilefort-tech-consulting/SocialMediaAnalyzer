@@ -1,490 +1,347 @@
 /**
- * Serviço Evolution API para conexão WhatsApp por cliente
+ * Evolution API Service - Implementação completa baseada no GitHub oficial
  * 
- * Este serviço implementa conexões WhatsApp independentes por clientId
- * usando Evolution API conforme especificações técnicas fornecidas.
+ * Este serviço gerencia conexões WhatsApp via Evolution API com isolamento por cliente.
+ * Cada cliente possui sua própria instância isolada.
  */
 
-import { storage } from '../../server/storage';
-
-interface EvolutionConnection {
+interface EvolutionInstance {
   clientId: string;
   instanceId: string;
+  token: string;
   isConnected: boolean;
-  qrCode?: string;
   phoneNumber?: string;
-  lastConnection?: Date;
+  qrCode?: string;
+  createdAt: Date;
 }
 
 interface EvolutionApiResponse {
-  status: boolean;
-  pairingCode?: string;
-  qrcode?: string;
-  instance?: {
-    instanceName: string;
-    status: string;
-  };
+  success: boolean;
+  data?: any;
+  error?: string;
 }
 
-class EvolutionApiService {
-  private connections: Map<string, EvolutionConnection> = new Map();
-  private readonly apiUrl: string;
-  private readonly apiKey: string;
+interface CreateInstanceRequest {
+  name: string;
+  webhook?: string;
+  webhookEvents?: string[];
+}
+
+interface SendMessageRequest {
+  number: string;
+  message: string;
+}
+
+export class EvolutionApiService {
+  private instances: Map<string, EvolutionInstance> = new Map();
+  private apiUrl: string;
+  private apiKey: string;
 
   constructor() {
-    this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:3001';
-    this.apiKey = process.env.EVOLUTION_API_KEY || 'evolution_maximus_secure_key_2025';
-    
-    console.log(`🔧 [Evolution] Configuração Evolution API REAL:`);
-    console.log(`🔧 [Evolution] API URL: ${this.apiUrl}`);
-    console.log(`🔧 [Evolution] API Key configurada: ${this.apiKey ? 'SIM' : 'NÃO'}`);
-    
-    this.initializeEvolutionApi();
-  }
-  
-  private async initializeEvolutionApi() {
-    try {
-      // Verificar se Evolution API já está rodando
-      const healthCheck = await fetch(`${this.apiUrl}/health`).catch(() => null);
-      
-      if (healthCheck && healthCheck.ok) {
-        console.log('✅ [Evolution] Evolution API já está rodando');
-        return;
-      }
-      
-      console.log('🚀 [Evolution] Iniciando Evolution API interna...');
-      const { spawn } = require('child_process');
-      const path = require('path');
-      
-      const evolutionProcess = spawn('node', ['src/main.js'], {
-        cwd: path.join(process.cwd(), 'evolution-api'),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        detached: true,
-        env: {
-          ...process.env,
-          EVOLUTION_PORT: '3001',
-          EVOLUTION_API_KEY: this.apiKey
-        }
-      });
-      
-      evolutionProcess.stdout?.on('data', (data) => {
-        console.log(`[Evolution] ${data.toString().trim()}`);
-      });
-      
-      evolutionProcess.stderr?.on('data', (data) => {
-        console.error(`[Evolution] ${data.toString().trim()}`);
-      });
-      
-      evolutionProcess.unref();
-      
-      // Aguardar inicialização e verificar health
-      for (let i = 0; i < 10; i++) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        try {
-          const check = await fetch(`${this.apiUrl}/health`);
-          if (check.ok) {
-            console.log('✅ [Evolution] Evolution API inicializada com sucesso');
-            return;
-          }
-        } catch (error) {
-          // Continuar tentando
-        }
-      }
-      
-      console.warn('⚠️ [Evolution] Evolution API pode não ter inicializado corretamente');
-    } catch (error) {
-      console.warn('⚠️ [Evolution] Erro ao inicializar Evolution API:', error);
-    }
+    this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:3000';
+    this.apiKey = process.env.EVOLUTION_API_KEY || 'default_api_key';
   }
 
   /**
-   * Conectar cliente ao WhatsApp via Evolution API
+   * Cria uma nova instância WhatsApp para o cliente
    */
-  async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
+  async createInstance(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
     try {
-      console.log(`🔗 [Evolution] Verificando configuração para cliente ${clientId}...`);
-      console.log(`🔗 [Evolution] API URL: ${this.apiUrl}`);
-      console.log(`🔗 [Evolution] API Key presente: ${this.apiKey ? 'SIM' : 'NÃO'}`);
+      const instanceName = `client_${clientId}_${Date.now()}`;
       
-      // Aceitar configuração padrão para teste
-      console.log(`🔧 [Evolution] Usando configuração: ${this.apiUrl} com key presente: ${!!this.apiKey}`);
-      
-      // Gerar QR Code real usando Evolution API
-      console.log(`🎯 [Evolution] Gerando QR Code real via Evolution API...`);
-      
-      // Obter ou criar instanceId
-      const instanceId = await this.getOrCreateInstanceId(clientId);
-      console.log(`📱 [Evolution] Usando instanceId: ${instanceId}`);
-      
-      // Criar QR Code único e funcional
-      const timestamp = Date.now();
-      const qrContent = `evolution_${clientId}_${timestamp}`;
-      
-      // Usar Baileys para QR Code real do WhatsApp
-      console.log('🔄 [Evolution] Iniciando Baileys para QR Code real...');
-      
-      try {
-        const { clientWhatsAppService } = await import('./clientWhatsAppService');
-        const baileysResult = await clientWhatsAppService.connectClient(clientId);
-        
-        if (baileysResult.success && baileysResult.qrCode) {
-          console.log('✅ [Evolution] QR Code REAL obtido do Baileys:', baileysResult.qrCode.length, 'chars');
-          
-          const connection: EvolutionConnection = {
-            clientId,
-            instanceId,
-            isConnected: false,
-            qrCode: baileysResult.qrCode,
-            lastConnection: new Date()
-          };
-
-          this.connections.set(clientId, connection);
-          await this.saveConnectionToDatabase(clientId, connection);
-
-          return {
-            success: true,
-            qrCode: baileysResult.qrCode,
-            message: 'QR Code funcional do WhatsApp gerado via Baileys'
-          };
-        } else {
-          console.log('❌ [Evolution] Baileys falhou:', baileysResult.message);
-          return {
-            success: false,
-            message: 'Erro ao gerar QR Code do WhatsApp'
-          };
-        }
-      } catch (baileysError) {
-        console.error('❌ [Evolution] Erro ao usar Baileys:', baileysError);
-        return {
-          success: false,
-          message: 'Erro no sistema WhatsApp'
-        };
-      }
-      
-      // Criar instância na Evolution API
-      const createResponse = await fetch(`${this.apiUrl}/instance`, {
+      const response = await fetch(`${this.apiUrl}/instance`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: instanceId,
-          token: `${clientId}_token`,
-          qrcode: true,
-          webhook: process.env.WA_WEBHOOK || ''
-        }),
-        signal: AbortSignal.timeout(10000) // Timeout de 10s
+          name: instanceName,
+          webhook: `${process.env.BASE_URL || 'http://localhost:5000'}/webhook/evolution/${clientId}`,
+          webhookEvents: ['messages.upsert', 'connection.update', 'qr.updated']
+        } as CreateInstanceRequest)
       });
 
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        console.log(`❌ [Evolution] Erro ao criar instância: ${createResponse.status} - ${errorText}`);
-        throw new Error(`Evolution API erro ${createResponse.status}: ${errorText}`);
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
 
-      const createData: EvolutionApiResponse = await createResponse.json();
-      console.log(`📱 [Evolution] Instância criada:`, createData);
-
-      // Buscar QR Code
-      const qrResponse = await fetch(`${this.apiUrl}/instance/${instanceId}/qr`, {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-
-      if (qrResponse.ok) {
-        const qrData = await qrResponse.json();
-        const qrCode = qrData.qrcode || qrData.pairingCode;
-        
-        if (qrCode) {
-          // Salvar conexão
-          const connection: EvolutionConnection = {
-            clientId,
-            instanceId,
-            isConnected: false,
-            qrCode,
-            lastConnection: new Date()
-          };
-
-          this.connections.set(clientId, connection);
-          await this.saveConnectionToDatabase(clientId, connection);
-
-          console.log(`✅ [Evolution] QR Code gerado para cliente ${clientId}, tamanho: ${qrCode.length}`);
-          return {
-            success: true,
-            qrCode,
-            message: 'QR Code gerado via Evolution API - escaneie com seu WhatsApp'
-          };
-        }
-      }
-
-      const qrError = await qrResponse.text();
-      console.log(`❌ [Evolution] Erro ao buscar QR Code: ${qrResponse.status} - ${qrError}`);
-      throw new Error(`Falha ao obter QR Code: ${qrResponse.status}`);
-
-    } catch (error) {
-      console.error(`❌ [Evolution] Erro completo para cliente ${clientId}:`, error);
+      const data = await response.json();
       
-      // Se Evolution API falhar, usar Baileys como fallback  
-      console.log(`🔄 [Evolution] Redirecionando para Baileys como fallback...`);
-      throw error; // Relançar erro para forçar fallback
-    }
-  }
-
-  /**
-   * Desconectar cliente do WhatsApp
-   */
-  async disconnectClient(clientId: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const connection = await this.getConnectionStatus(clientId);
-      if (!connection) {
-        return { success: true, message: 'Cliente já desconectado' };
-      }
-
-      // Remover instância da Evolution API
-      const response = await fetch(`${this.apiUrl}/instance/${connection.instanceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-
-      // Limpar conexão local
-      this.connections.delete(clientId);
-      await this.saveConnectionToDatabase(clientId, {
-        clientId,
-        instanceId: connection.instanceId,
-        isConnected: false,
-        qrCode: null,
-        phoneNumber: null
-      });
-
-      console.log(`🔌 [Evolution] Cliente ${clientId} desconectado`);
-      return {
-        success: true,
-        message: 'WhatsApp desconectado com sucesso'
-      };
-
-    } catch (error) {
-      console.error(`❌ [Evolution] Erro ao desconectar cliente ${clientId}:`, error);
-      return {
-        success: false,
-        message: `Erro ao desconectar: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
-      };
-    }
-  }
-
-  /**
-   * Verificar status da conexão
-   */
-  async getConnectionStatus(clientId: string): Promise<EvolutionConnection | null> {
-    try {
-      console.log(`🔍 [Evolution] Verificando status para cliente ${clientId}...`);
-      
-      // Verificar cache local primeiro
-      let connection = this.connections.get(clientId);
-      console.log(`📱 [Evolution] Conexão na memória:`, !!connection);
-      
-      // Se não existe local, buscar do banco
-      if (!connection) {
-        console.log(`📱 [Evolution] Buscando no banco...`);
-        connection = await this.getConnectionFromDatabase(clientId);
-        if (connection) {
-          console.log(`📱 [Evolution] Conexão encontrada no banco, salvando na memória`);
-          this.connections.set(clientId, connection);
-        }
-      }
-
-      if (!connection) {
-        console.log(`❌ [Evolution] Nenhuma conexão encontrada para cliente ${clientId}`);
-        return null;
-      }
-
-      // Verificar status real na Evolution API
-      try {
-        const response = await fetch(`${this.apiUrl}/instance/${connection.instanceId}/status`, {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`
-          }
-        });
-
-        if (response.ok) {
-          const statusData = await response.json();
-          const isConnected = statusData.instance?.status === 'open';
-          
-          console.log(`📡 [Evolution] Status da API:`, {
-            instanceId: connection.instanceId,
-            status: statusData.instance?.status,
-            isConnected
-          });
-          
-          // Atualizar status se mudou
-          if (connection.isConnected !== isConnected) {
-            connection.isConnected = isConnected;
-            this.connections.set(clientId, connection);
-            await this.saveConnectionToDatabase(clientId, { 
-              evolutionConnected: isConnected 
-            });
-          }
-        }
-      } catch (statusError) {
-        console.warn(`⚠️ [Evolution] Falha ao verificar status para ${clientId}:`, statusError);
-      }
-
-      console.log(`📱 [Evolution] Status final:`, {
-        hasConnection: !!connection,
-        isConnected: connection.isConnected,
-        hasQrCode: !!connection.qrCode,
-        qrCodeLength: connection.qrCode?.length,
-        instanceId: connection.instanceId
-      });
-      
-      return connection;
-
-    } catch (error) {
-      console.error(`❌ [Evolution] Erro ao obter status do cliente ${clientId}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Enviar mensagem teste
-   */
-  async sendTestMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const connection = await this.getConnectionStatus(clientId);
-      if (!connection?.isConnected) {
-        return {
-          success: false,
-          message: 'WhatsApp não está conectado para este cliente'
+      if (data.success !== false && data.instance) {
+        const instance: EvolutionInstance = {
+          clientId,
+          instanceId: data.instance.instanceId || data.instance.name,
+          token: data.instance.token || 'default_token',
+          isConnected: false,
+          createdAt: new Date()
         };
-      }
 
-      const response = await fetch(`${this.apiUrl}/message`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          instance_id: connection.instanceId,
-          number: phoneNumber.replace(/\D/g, ''),
-          message: message
-        })
-      });
-
-      if (response.ok) {
-        console.log(`✅ [Evolution] Mensagem teste enviada para ${phoneNumber}`);
+        this.instances.set(clientId, instance);
+        
+        // Gerar QR Code
+        const qrCode = await this.getQRCode(clientId);
+        
+        console.log(`✅ [EVOLUTION] Instância criada para cliente ${clientId}: ${instance.instanceId}`);
+        
         return {
           success: true,
-          message: 'Mensagem de teste enviada com sucesso!'
-        };
-      } else {
-        const errorData = await response.json();
-        return {
-          success: false,
-          message: `Falha no envio: ${errorData.message || 'Erro desconhecido'}`
+          qrCode: qrCode || undefined
         };
       }
 
-    } catch (error) {
-      console.error(`❌ [Evolution] Erro ao enviar mensagem teste:`, error);
       return {
         success: false,
-        message: `Erro no envio: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+        error: data.error || 'Falha ao criar instância'
       };
-    }
-  }
 
-  /**
-   * Obter ou criar instanceId para cliente
-   */
-  private async getOrCreateInstanceId(clientId: string): Promise<string> {
-    return `client_${clientId}_${Date.now()}`;
-  }
-
-  /**
-   * Obter conexão (memória ou banco)
-   */
-  private async getConnection(clientId: string): Promise<EvolutionConnection | null> {
-    // Tentar cache primeiro
-    let connection = this.connections.get(clientId);
-    
-    if (!connection) {
-      // Buscar do banco de dados
-      connection = await this.getConnectionFromDatabase(clientId);
-      if (connection) {
-        this.connections.set(clientId, connection);
-      }
-    }
-    
-    return connection;
-  }
-
-  /**
-   * Salvar conexão no banco de dados
-   */
-  private async saveConnectionToDatabase(clientId: string, connectionData: Partial<EvolutionConnection>): Promise<void> {
-    try {
-      console.log(`💾 [Evolution] Salvando conexão para cliente ${clientId}:`, {
-        instanceId: connectionData.instanceId,
-        isConnected: connectionData.isConnected,
-        hasQrCode: !!connectionData.qrCode,
-        qrCodeLength: connectionData.qrCode?.length
-      });
-      
-      // Usar upsertApiConfig que é o método correto disponível
-      const configData = {
-        entityType: 'client' as const,
-        entityId: clientId,
-        qrCode: connectionData.qrCode || null,
-        whatsappQrConnected: connectionData.isConnected || false,
-        whatsappQrPhoneNumber: connectionData.phoneNumber || null,
-        whatsappQrLastConnection: connectionData.lastConnection || null,
-        evolutionInstanceId: connectionData.instanceId,
-        updatedAt: new Date()
-      };
-      
-      await storage.upsertApiConfig(configData);
-      
-      console.log(`✅ [Evolution] Conexão salva com sucesso para cliente ${clientId}`);
     } catch (error) {
-      console.error(`❌ [Evolution] Erro ao salvar conexão no banco:`, error);
+      console.error(`❌ [EVOLUTION] Erro ao criar instância para cliente ${clientId}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
     }
   }
 
   /**
-   * Buscar conexão do banco de dados
+   * Obtém QR Code para uma instância
    */
-  private async getConnectionFromDatabase(clientId: string): Promise<EvolutionConnection | null> {
+  async getQRCode(clientId: string): Promise<string | null> {
     try {
-      const config = await storage.getApiConfig('client', clientId);
-      if (!config?.evolutionInstanceId) {
+      const instance = this.instances.get(clientId);
+      if (!instance) {
+        console.log(`❌ [EVOLUTION] Instância não encontrada para cliente ${clientId}`);
         return null;
       }
 
-      const connection = {
-        clientId,
-        instanceId: config.evolutionInstanceId,
-        isConnected: config.evolutionConnected || false,
-        qrCode: config.qrCode || config.evolutionQrCode || null,
-        phoneNumber: config.evolutionPhoneNumber || null,
-        lastConnection: config.evolutionLastConnection || null
-      };
-      
-      console.log(`📋 [Evolution] Conexão do banco para ${clientId}:`, {
-        hasQrCode: !!connection.qrCode,
-        qrCodeLength: connection.qrCode?.length,
-        hasInstanceId: !!connection.instanceId,
-        isConnected: connection.isConnected
+      const response = await fetch(`${this.apiUrl}/instance/${instance.instanceId}/qr`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'token': instance.token
+        }
       });
+
+      if (!response.ok) {
+        console.log(`❌ [EVOLUTION] Erro ao obter QR Code: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
       
-      return connection;
-    } catch (error) {
-      console.error(`❌ [Evolution] Erro ao buscar conexão do banco:`, error);
+      if (data.qrcode || data.qr) {
+        const qrCode = data.qrcode || data.qr;
+        instance.qrCode = qrCode;
+        
+        console.log(`📱 [EVOLUTION] QR Code obtido para cliente ${clientId} (${qrCode.length} chars)`);
+        return qrCode;
+      }
+
       return null;
+
+    } catch (error) {
+      console.error(`❌ [EVOLUTION] Erro ao obter QR Code para cliente ${clientId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Verifica status da conexão de uma instância
+   */
+  async getConnectionStatus(clientId: string): Promise<{ isConnected: boolean; phoneNumber?: string }> {
+    try {
+      const instance = this.instances.get(clientId);
+      if (!instance) {
+        return { isConnected: false };
+      }
+
+      const response = await fetch(`${this.apiUrl}/instance/${instance.instanceId}/status`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'token': instance.token
+        }
+      });
+
+      if (!response.ok) {
+        return { isConnected: false };
+      }
+
+      const data = await response.json();
+      
+      const isConnected = data.connection === 'open' || data.status === 'connected';
+      const phoneNumber = data.me?.id?.split(':')[0] || data.phoneNumber;
+      
+      // Atualizar estado local
+      instance.isConnected = isConnected;
+      if (phoneNumber) {
+        instance.phoneNumber = phoneNumber;
+      }
+
+      return {
+        isConnected,
+        phoneNumber
+      };
+
+    } catch (error) {
+      console.error(`❌ [EVOLUTION] Erro ao verificar status para cliente ${clientId}:`, error);
+      return { isConnected: false };
+    }
+  }
+
+  /**
+   * Envia mensagem via Evolution API
+   */
+  async sendMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      const instance = this.instances.get(clientId);
+      if (!instance) {
+        return {
+          success: false,
+          error: 'Instância não encontrada para este cliente'
+        };
+      }
+
+      // Verificar se está conectado
+      const status = await this.getConnectionStatus(clientId);
+      if (!status.isConnected) {
+        return {
+          success: false,
+          error: 'WhatsApp não conectado para este cliente'
+        };
+      }
+
+      const response = await fetch(`${this.apiUrl}/message/text`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+          'token': instance.token
+        },
+        body: JSON.stringify({
+          number: phoneNumber,
+          message: message
+        } as SendMessageRequest)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success !== false && data.messageId) {
+        console.log(`✅ [EVOLUTION] Mensagem enviada para ${phoneNumber} via cliente ${clientId}:`, data.messageId);
+        return {
+          success: true,
+          messageId: data.messageId
+        };
+      }
+
+      return {
+        success: false,
+        error: data.error || 'Falha ao enviar mensagem'
+      };
+
+    } catch (error) {
+      console.error(`❌ [EVOLUTION] Erro ao enviar mensagem via cliente ${clientId}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  }
+
+  /**
+   * Remove instância do cliente
+   */
+  async deleteInstance(clientId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const instance = this.instances.get(clientId);
+      if (!instance) {
+        return { success: true }; // Já removida
+      }
+
+      const response = await fetch(`${this.apiUrl}/instance/${instance.instanceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'token': instance.token
+        }
+      });
+
+      // Remover do mapa local independentemente da resposta da API
+      this.instances.delete(clientId);
+      
+      console.log(`🗑️ [EVOLUTION] Instância removida para cliente ${clientId}`);
+      
+      return { success: true };
+
+    } catch (error) {
+      console.error(`❌ [EVOLUTION] Erro ao remover instância para cliente ${clientId}:`, error);
+      // Ainda assim remove localmente
+      this.instances.delete(clientId);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  }
+
+  /**
+   * Lista todas as instâncias ativas
+   */
+  getInstances(): EvolutionInstance[] {
+    return Array.from(this.instances.values());
+  }
+
+  /**
+   * Obtém instância específica por cliente
+   */
+  getInstance(clientId: string): EvolutionInstance | undefined {
+    return this.instances.get(clientId);
+  }
+
+  /**
+   * Webhook handler para eventos da Evolution API
+   */
+  async handleWebhook(clientId: string, event: any): Promise<void> {
+    try {
+      const instance = this.instances.get(clientId);
+      if (!instance) {
+        console.log(`⚠️ [EVOLUTION] Webhook recebido para cliente inexistente: ${clientId}`);
+        return;
+      }
+
+      switch (event.event) {
+        case 'connection.update':
+          if (event.data.connection === 'open') {
+            instance.isConnected = true;
+            instance.phoneNumber = event.data.me?.id?.split(':')[0];
+            console.log(`✅ [EVOLUTION] Cliente ${clientId} conectado: ${instance.phoneNumber}`);
+          } else if (event.data.connection === 'close') {
+            instance.isConnected = false;
+            console.log(`❌ [EVOLUTION] Cliente ${clientId} desconectado`);
+          }
+          break;
+
+        case 'qr.updated':
+          instance.qrCode = event.data.qr;
+          console.log(`📱 [EVOLUTION] QR Code atualizado para cliente ${clientId}`);
+          break;
+
+        case 'messages.upsert':
+          // Handler para mensagens recebidas
+          console.log(`📨 [EVOLUTION] Nova mensagem para cliente ${clientId}:`, event.data);
+          break;
+
+        default:
+          console.log(`📝 [EVOLUTION] Evento não tratado para cliente ${clientId}:`, event.event);
+      }
+
+    } catch (error) {
+      console.error(`❌ [EVOLUTION] Erro ao processar webhook para cliente ${clientId}:`, error);
     }
   }
 }
