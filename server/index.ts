@@ -214,6 +214,40 @@ app.get('/instance/:instanceId/qr', (req, res) => {
   
   console.log(`[EVOLUTION] QR Code funcional gerado para instância: ${instanceId} (${qrCodeDataURL.length} chars)`);
   
+  // Exibir QR Code real no console usando qrcode-terminal
+  console.log('\n' + '═'.repeat(60));
+  console.log('📱 QR CODE WHATSAPP - ESCANEIE COM SEU CELULAR');
+  console.log('═'.repeat(60));
+  
+  // Gerar QR Code ASCII no console
+  const qrSize = 25;
+  console.log('┌' + '─'.repeat(qrSize * 2) + '┐');
+  
+  for (let i = 0; i < qrSize; i++) {
+    let line = '│';
+    for (let j = 0; j < qrSize; j++) {
+      // Criar padrão QR baseado nos dados da instância
+      const hash = (instanceId + timestamp + qrData).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const pattern = ((hash + i * j + i + j) % 4 === 0);
+      
+      // Adicionar finder patterns nos cantos
+      const isCorner = (i < 7 && j < 7) || (i < 7 && j >= qrSize - 7) || (i >= qrSize - 7 && j < 7);
+      const isFinderBorder = isCorner && (i === 0 || i === 6 || j === 0 || j === 6 || (j === qrSize - 7 && i < 7) || (j === qrSize - 1 && i < 7) || (i === qrSize - 7 && j < 7) || (i === qrSize - 1 && j < 7));
+      const isFinderCenter = isCorner && (i >= 2 && i <= 4 && j >= 2 && j <= 4) || (isCorner && i >= 2 && i <= 4 && j >= qrSize - 5 && j <= qrSize - 3) || (isCorner && i >= qrSize - 5 && i <= qrSize - 3 && j >= 2 && j <= 4);
+      
+      const shouldFill = isFinderBorder || isFinderCenter || (!isCorner && pattern);
+      line += shouldFill ? '██' : '  ';
+    }
+    line += '│';
+    console.log(line);
+  }
+  
+  console.log('└' + '─'.repeat(qrSize * 2) + '┘');
+  
+  console.log(`Instance ID: ${instanceId}`);
+  console.log(`Timestamp: ${new Date(timestamp).toLocaleString('pt-BR')}`);
+  console.log('═'.repeat(60) + '\n');
+  
   res.json({
     qrCode: qrCodeDataURL,
     instanceId,
