@@ -1,6 +1,12 @@
 import { storage } from '../../server/storage';
 import fs from 'fs';
 import path from 'path';
+import makeWASocket, { 
+  useMultiFileAuthState, 
+  DisconnectReason, 
+  fetchLatestBaileysVersion 
+} from '@whiskeysockets/baileys';
+import QRCode from 'qrcode';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -19,32 +25,9 @@ interface WhatsAppSession {
 
 export class ClientWhatsAppService {
   private sessions: Map<string, WhatsAppSession> = new Map();
-  private baileys: any = null;
-  private waVersion: any = null;
 
   constructor() {
-    this.initializeBaileys();
-  }
-
-  private async initializeBaileys() {
-    try {
-      const baileys = await import('@whiskeysockets/baileys');
-      this.baileys = baileys.default || baileys;
-      console.log('📱 Baileys inicializado para ClientWhatsAppService');
-      
-      // Buscar versão WhatsApp Web com fallback robusto
-      try {
-        const fetched = await baileys.fetchLatestBaileysVersion();
-        this.waVersion = fetched.version; // array [major, minor, patch]
-        console.log('🌐 WA Web version obtida:', this.waVersion);
-      } catch (versionError) {
-        console.error('⚠️ Não foi possível buscar versão WA, usando fallback:', versionError);
-        this.waVersion = [2, 3000, 1014398374]; // Versão mais recente compatível
-        console.log('🔄 Usando versão fallback estável:', this.waVersion);
-      }
-    } catch (error) {
-      console.error('❌ Erro ao inicializar Baileys:', error);
-    }
+    // Não mais necessário - usando importações estáticas diretas
   }
 
   private getSessionPath(clientId: string): string {
@@ -62,10 +45,6 @@ export class ClientWhatsAppService {
     try {
       console.log(`🔗 [BAILEYS] Iniciando conexão REAL WhatsApp para cliente ${clientId}...`);
       
-      if (!this.baileys) {
-        await this.initializeBaileys();
-      }
-
       await this.ensureSessionDirectory(clientId);
       
       // Verificar se já existe sessão válida
@@ -87,7 +66,7 @@ export class ClientWhatsAppService {
         }
       }
 
-      const { state, saveCreds } = await this.baileys.useMultiFileAuthState(this.getSessionPath(clientId));
+      const { state, saveCreds } = await useMultiFileAuthState(this.getSessionPath(clientId));
       
       // Criar logger completamente silenciado
       const logger = {
@@ -118,8 +97,19 @@ export class ClientWhatsAppService {
         qrTimeout: 90000
       });
 
-      const socket = this.baileys.makeWASocket({
-        version: this.waVersion,
+      // Obter versão do WhatsApp Web com fallback
+      let version: number[];
+      try {
+        const { version: v } = await fetchLatestBaileysVersion();
+        version = v;
+        console.log('🌐 WA Web version obtida:', version);
+      } catch (versionError) {
+        version = [2, 2419, 6];
+        console.log('🔄 Usando versão fallback:', version);
+      }
+
+      const socket = makeWASocket({
+        version,
         auth: state,
         printQRInTerminal: false,
         logger: logger,
@@ -264,8 +254,8 @@ export class ClientWhatsAppService {
                 lastConnection: new Date(),
                 clientId
               },
-              makeWASocket: this.baileys.makeWASocket,
-              useMultiFileAuthState: this.baileys.useMultiFileAuthState
+              makeWASocket,
+              useMultiFileAuthState
             };
 
             this.sessions.set(clientId, session);
