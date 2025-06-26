@@ -25,6 +25,8 @@ interface Selection {
   createdAt: any;
   jobName?: string;
   clientId: number;
+  completedInterviews?: number;
+  totalCandidates?: number;
 }
 
 interface InterviewCandidate {
@@ -125,7 +127,7 @@ export default function NewReportsPage() {
   const selectedSelectionId = urlParams.get('selectedSelection');
 
   // Buscar clientes (apenas para masters)
-  const { data: clients = [] } = useQuery({
+  const { data: clients = [] } = useQuery<any[]>({
     queryKey: ['/api/clients'],
     enabled: user?.role === 'master'
   });
@@ -173,13 +175,14 @@ export default function NewReportsPage() {
     }
   }, [specificReport, reportId, user]);
 
-  // Buscar seleções
-  const { data: selectionsData = [], isLoading: loadingSelections } = useQuery({
+  // Buscar seleções com cache otimizado
+  const { data: selectionsData = [], isLoading: loadingSelections } = useQuery<Selection[]>({
     queryKey: ['/api/selections', selectedClientId],
     enabled: !!selectedClientId || user?.role === 'client',
-    staleTime: 1 * 60 * 1000, // Cache por 1 minuto
-    cacheTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
-    refetchOnWindowFocus: false
+    staleTime: 10 * 60 * 1000, // Cache por 10 minutos
+    gcTime: 30 * 60 * 1000, // Manter em cache por 30 minutos (v5)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
   // Efeito para navegar diretamente para uma seleção específica via parâmetro selectedSelection
@@ -201,8 +204,8 @@ export default function NewReportsPage() {
     }
   }, [selectedSelectionId, selectionsData, user]);
 
-  // Query para buscar estatísticas de entrevistas completadas por seleção
-  const { data: interviewStats = {}, isLoading: loadingStats } = useQuery({
+  // Query para buscar estatísticas - DESABILITADA (dados serão carregados sob demanda)
+  const { data: interviewStats = {}, isLoading: loadingStats } = useQuery<Record<number, any>>({
     queryKey: ['/api/interview-stats', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return {};
@@ -216,25 +219,28 @@ export default function NewReportsPage() {
         return {};
       }
     },
-    enabled: !!selectedClientId || user?.role === 'client',
-    staleTime: 3 * 60 * 1000, // Cache por 3 minutos
-    cacheTime: 8 * 60 * 1000, // Manter em cache por 8 minutos
+    enabled: false, // DESABILITADA - carregar apenas quando necessário
+    staleTime: 15 * 60 * 1000, // Cache por 15 minutos
+    gcTime: 60 * 60 * 1000, // Manter em cache por 1 hora
     refetchOnWindowFocus: false
   });
 
   // Cache de dados de candidatos para cada seleção
   const [selectionCandidatesCache, setSelectionCandidatesCache] = useState<Record<number, any[]>>({});
 
-  // Ordenar seleções da mais nova para a mais velha e adicionar estatísticas
-  const selections = [...selectionsData].sort((a, b) => {
-    const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(a.createdAt);
-    const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(b.createdAt);
-    return dateB.getTime() - dateA.getTime(); // Mais nova primeiro
-  }).map(selection => ({
-    ...selection,
-    completedInterviews: interviewStats[selection.id]?.completed || 0,
-    totalCandidates: interviewStats[selection.id]?.total || selection.totalCandidates || 0
-  }));
+  // Ordenar seleções da mais nova para a mais velha - SEM estatísticas pesadas
+  const selections = React.useMemo(() => {
+    return [...selectionsData].sort((a, b) => {
+      const dateA = a.createdAt?.seconds ? new Date(a.createdAt.seconds * 1000) : new Date(a.createdAt);
+      const dateB = b.createdAt?.seconds ? new Date(b.createdAt.seconds * 1000) : new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime(); // Mais nova primeiro
+    }).map(selection => ({
+      ...selection,
+      // Estatísticas carregadas sob demanda
+      completedInterviews: interviewStats[selection.id]?.completed || 0,
+      totalCandidates: interviewStats[selection.id]?.total || selection.totalCandidates || 0
+    }));
+  }, [selectionsData, interviewStats]);
 
   // Função para carregar candidatos de uma seleção específica
   const loadSelectionCandidates = async (selectionId: number) => {
@@ -265,8 +271,8 @@ export default function NewReportsPage() {
     }
   }, [selectedSelection, selectionCandidatesCache]);
 
-  // Buscar candidatos da seleção com status de entrevista
-  const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
+  // Buscar candidatos da seleção - APENAS quando aba candidatos for ativa
+  const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery<InterviewCandidate[]>({
     queryKey: ['selection-interview-candidates', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) return [];
@@ -286,15 +292,15 @@ export default function NewReportsPage() {
         return [];
       }
     },
-    enabled: !!selectedSelection,
-    staleTime: 2 * 60 * 1000, // Cache por 2 minutos
-    cacheTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    enabled: !!selectedSelection && activeTab === 'candidatos', // APENAS quando necessário
+    staleTime: 10 * 60 * 1000, // Cache por 10 minutos
+    gcTime: 30 * 60 * 1000, // Manter em cache por 30 minutos
     refetchOnWindowFocus: false,
     refetchOnMount: false
   });
 
-  // Buscar TODOS os candidatos da lista da seleção (incluindo os que não responderam)
-  const { data: allCandidatesInList = [], isLoading: loadingAllCandidates } = useQuery({
+  // Buscar TODOS os candidatos da lista - APENAS quando aba analise for ativa
+  const { data: allCandidatesInList = [], isLoading: loadingAllCandidates } = useQuery<any[]>({
     queryKey: ['selection-all-candidates', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) return [];
@@ -316,14 +322,21 @@ export default function NewReportsPage() {
         return [];
       }
     },
-    enabled: !!selectedSelection
+    enabled: !!selectedSelection && activeTab === 'analise', // APENAS quando necessário
+    staleTime: 15 * 60 * 1000, // Cache por 15 minutos
+    gcTime: 60 * 60 * 1000, // Manter em cache por 1 hora
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
-  // Combinar todos os candidatos da lista com os dados de entrevista (otimizado)
+  // Combinar candidatos APENAS quando necessário (lazy loading)
   const allCandidatesWithStatus = React.useMemo(() => {
+    // Se não está na aba analise, retornar apenas entrevistas existentes
+    if (activeTab !== 'analise') return interviewCandidates;
+    
     if (!allCandidatesInList.length) return interviewCandidates;
 
-    // Criar um map dos candidatos que já fizeram entrevista
+    // Criar um map dos candidatos que já fizeram entrevista (otimizado)
     const interviewMap = new Map();
     interviewCandidates.forEach(candidate => {
       interviewMap.set(candidate.candidate.id, candidate);
@@ -334,10 +347,9 @@ export default function NewReportsPage() {
       const existingInterview = interviewMap.get(candidate.id);
       
       if (existingInterview) {
-        // Candidato já tem entrevista registrada
         return existingInterview;
       } else {
-        // Candidato ainda não fez entrevista - criar estrutura padrão
+        // Estrutura mínima para candidatos pendentes
         return {
           candidate: {
             id: candidate.id,
@@ -357,7 +369,7 @@ export default function NewReportsPage() {
         };
       }
     });
-  }, [allCandidatesInList, interviewCandidates]);
+  }, [allCandidatesInList, interviewCandidates, activeTab]);
 
   // Definir cliente padrão para usuários cliente
   React.useEffect(() => {
@@ -366,8 +378,8 @@ export default function NewReportsPage() {
     }
   }, [user]);
 
-  // Query para buscar categorias dos candidatos quando uma seleção é escolhida
-  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery({
+  // Query para buscar categorias - APENAS quando aba analise for ativa
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery<any[]>({
     queryKey: ['/api/candidate-categories', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) {
@@ -377,11 +389,11 @@ export default function NewReportsPage() {
       const data = await response.json();
       return data || [];
     },
-    enabled: !!selectedSelection,
-    staleTime: 3 * 60 * 1000, // Cache por 3 minutos
-    cacheTime: 8 * 60 * 1000, // Manter em cache por 8 minutos
-    refetchOnWindowFocus: false, // Não refazer query ao focar janela
-    refetchOnMount: false // Não refazer query ao montar componente se dados estão em cache
+    enabled: !!selectedSelection && activeTab === 'analise', // APENAS quando necessário
+    staleTime: 15 * 60 * 1000, // Cache por 15 minutos
+    gcTime: 60 * 60 * 1000, // Manter em cache por 1 hora
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
   // Função para obter categoria do candidato diretamente dos dados carregados
