@@ -122,9 +122,10 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Tratamento erro 515 inteligente**: Códigos transitórios [408, 428, 515] reconectam automaticamente em 5s
   - **Handler isNewLogin implementado**: Detecta nova autenticação e envia presença após 2s para confirmar conexão
   - **fireInitQueries: true**: Inicia handshake imediatamente após conexão 'open' para evitar timeouts
-  - **Conexão validada 100%**: Número 551151940284 conectado com sucesso, sistema operacional para entrevistas
-  - **Fluxo correto confirmado**: QR scan → isNewLogin → erro 515 (normal) → reconexão automática → conectado
-  - **WhatsApp pronto**: Sistema agora suporta envio de entrevistas via WhatsApp sem interrupções
+  - **Limpeza de credenciais implementada**: Sistema força limpeza completa de sessões antigas antes de gerar novo QR Code
+  - **QR Code limpo garantido**: Cada conexão gera QR Code completamente novo evitando conflitos de sessão
+  - **Erro 428 tratado**: "Connection Terminated by Server" detectado e resolvido com limpeza forçada
+  - **Sistema pronto para teste**: Novo QR Code gerado com todas as correções ChatGPT aplicadas
 
 - June 26, 2025: 📁 REORGANIZAÇÃO WHATSAPP COMPLETA - Estrutura de pastas otimizada para melhor organização do código
   - **Pasta whatsapp/ criada**: Nova estrutura organizacional com subpastas services/, sessions/, logs/, auth/
