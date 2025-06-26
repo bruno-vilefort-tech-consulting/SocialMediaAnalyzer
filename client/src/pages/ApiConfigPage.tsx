@@ -108,12 +108,7 @@ export default function ApiConfigPage() {
         throw new Error(`HTTP ${response.status}`);
       }
       
-      const data = await response.json();
-      console.log('🔍 [DEBUG] WhatsApp Status recebido:', data);
-      console.log('🔍 [DEBUG] QR Code presente:', !!data?.qrCode);
-      console.log('🔍 [DEBUG] QR Code length:', data?.qrCode?.length || 0);
-      console.log('🔍 [DEBUG] isConnected:', data?.isConnected);
-      return data;
+      return response.json();
     },
     enabled: !isMaster, // Sempre ativo para clientes
     refetchInterval: 5000,
@@ -646,26 +641,11 @@ export default function ApiConfigPage() {
               </div>
             </div>
 
-            {/* DEBUG COMPLETO */}
-            <div className="p-4 bg-yellow-100 border border-yellow-400 rounded">
-              <h4 className="font-bold text-yellow-800 mb-2">DEBUG WHATSAPP STATUS:</h4>
-              <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                {JSON.stringify(whatsappStatus, null, 2)}
-              </pre>
-              <div className="mt-2 text-sm">
-                <p><strong>shouldShowQR:</strong> {String(shouldShowQR)}</p>
-                <p><strong>isMaster:</strong> {String(isMaster)}</p>
-                <p><strong>hasQrCode:</strong> {String(!!whatsappStatus?.qrCode)}</p>
-                <p><strong>qrCodeLength:</strong> {whatsappStatus?.qrCode?.length || 0}</p>
-                <p><strong>isConnected:</strong> {String(whatsappStatus?.isConnected)}</p>
-              </div>
-            </div>
-
             {/* QR Code */}
             {whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
-              <div className="space-y-4 border-4 border-green-500 p-4">
+              <div className="space-y-4">
                 <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2 text-green-600">QR Code Detectado!</h3>
+                  <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
                   </p>
@@ -676,8 +656,6 @@ export default function ApiConfigPage() {
                         src={whatsappStatus.qrCode} 
                         alt="QR Code WhatsApp" 
                         className="w-64 h-64"
-                        onLoad={() => console.log('🖼️ Imagem QR Code carregada com sucesso')}
-                        onError={() => console.log('❌ Erro ao carregar imagem QR Code')}
                       />
                     </div>
                   </div>
@@ -686,13 +664,6 @@ export default function ApiConfigPage() {
                     QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
                   </p>
                 </div>
-              </div>
-            )}
-
-            {/* Fallback se não houver QR Code */}
-            {!whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
-              <div className="p-4 bg-blue-100 border border-blue-400 rounded text-center">
-                <p className="text-blue-800">Clique em "Conectar" para gerar um QR Code</p>
               </div>
             )}
 

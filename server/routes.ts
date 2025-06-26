@@ -3785,32 +3785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/whatsapp-client/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const user = req.user;
-      if (!user?.clientId) {
-        return res.status(400).json({ message: 'Client ID required' });
-      }
 
-      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const result = await clientWhatsAppService.getConnectionStatus(user.clientId.toString());
-      
-      res.json({
-        isConnected: result.isConnected,
-        qrCode: result.qrCode,
-        phoneNumber: result.phoneNumber,
-        lastConnection: result.lastConnection
-      });
-    } catch (error) {
-      console.error('❌ Erro WhatsApp Client status:', error);
-      res.status(500).json({ 
-        isConnected: false,
-        qrCode: null,
-        phoneNumber: null,
-        lastConnection: null
-      });
-    }
-  });
 
   app.post("/api/whatsapp-client/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
