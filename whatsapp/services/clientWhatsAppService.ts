@@ -333,20 +333,28 @@ export class ClientWhatsAppService {
             if (statusCode === 515) {
               console.log(`🔄 [515 FIX] Erro 515 detectado - aplicando correção específica Replit`);
               
-              // Para erro 515, limpar sessão e tentar reconectar imediatamente
+              // Atualizar status como desconectado no Firebase
+              console.log(`💾 [DEBUG] Atualizando status desconectado no Firebase...`);
+              await this.updateClientConfig(clientId, {
+                isConnected: false,
+                qrCode: null,
+                phoneNumber: null
+              });
+              console.log(`✅ [DEBUG] Status desconectado salvo no Firebase`);
+              
+              // Limpar sessão ativa mas NÃO reconectar automaticamente
+              this.sessions.delete(clientId);
+              console.log(`🧹 [515 FIX] Sessão limpa para cliente ${clientId}`);
+              
               if (!resolved) {
-                console.log(`🔄 [515 FIX] Limpando sessão e reconectando...`);
-                await this.clearClientSession(clientId);
-                
-                // Reconectar após 5 segundos
-                setTimeout(() => {
-                  if (!resolved) {
-                    console.log(`🔄 [515 FIX] Iniciando reconexão pós erro 515`);
-                    this.connectClient(clientId);
-                  }
-                }, 5000);
-                return;
+                resolved = true;
+                clearTimeout(timeoutId);
+                resolve({
+                  success: false,
+                  message: 'Erro 515: Conexão instável. Tente gerar um novo QR Code.'
+                });
               }
+              return;
             }
             
             // Atualizar status no Firebase
