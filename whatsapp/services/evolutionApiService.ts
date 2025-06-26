@@ -130,8 +130,8 @@ export class EvolutionApiService {
 
       const data = await response.json();
       
-      if (data.qrcode || data.qr) {
-        const qrCode = data.qrcode || data.qr;
+      if (data.qrCode || data.qrcode || data.qr) {
+        const qrCode = data.qrCode || data.qrcode || data.qr;
         instance.qrCode = qrCode;
         
         console.log(`📱 [EVOLUTION] QR Code obtido para cliente ${clientId} (${qrCode.length} chars)`);
