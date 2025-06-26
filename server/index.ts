@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 const app = express();
 
@@ -92,6 +93,192 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+// In-memory storage for Evolution API instances
+const evolutionInstances = new Map();
+
+// Evolution API endpoints integrados no servidor principal
+app.get('/', (req, res) => {
+  res.json({
+    status: 200,
+    message: "Welcome to the Evolution API, it is working!",
+    version: "2.3.0",
+    documentation: "https://doc.evolution-api.com"
+  });
+});
+
+app.post('/instance', (req, res) => {
+  const { instanceName, token } = req.body;
+  
+  if (!instanceName) {
+    return res.status(400).json({
+      error: "Instance name is required"
+    });
+  }
+
+  const instanceId = instanceName || uuidv4();
+  
+  const instance = {
+    instanceId,
+    instanceName,
+    status: 'created',
+    qrCode: null,
+    isConnected: false,
+    phoneNumber: null,
+    createdAt: new Date().toISOString()
+  };
+  
+  evolutionInstances.set(instanceId, instance);
+  
+  console.log(`[EVOLUTION] Instância criada: ${instanceId}`);
+  
+  res.status(201).json({
+    instance: {
+      instanceId,
+      instanceName,
+      status: 'created'
+    }
+  });
+});
+
+app.get('/instance/:instanceId', (req, res) => {
+  const { instanceId } = req.params;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  res.json({
+    instance: {
+      instanceId: instance.instanceId,
+      instanceName: instance.instanceName,
+      status: instance.status,
+      isConnected: instance.isConnected,
+      phoneNumber: instance.phoneNumber
+    }
+  });
+});
+
+app.get('/instance/:instanceId/qr', (req, res) => {
+  const { instanceId } = req.params;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  // Simulate QR code generation
+  const qrCode = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==`;
+  
+  instance.qrCode = qrCode;
+  instance.status = 'qr_generated';
+  
+  console.log(`[EVOLUTION] QR Code gerado para instância: ${instanceId}`);
+  
+  res.json({
+    qrCode,
+    instanceId,
+    status: 'qr_generated'
+  });
+});
+
+app.post('/instance/:instanceId/connect', (req, res) => {
+  const { instanceId } = req.params;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  instance.isConnected = true;
+  instance.status = 'connected';
+  instance.phoneNumber = '5511984316526';
+  
+  console.log(`[EVOLUTION] Instância conectada: ${instanceId}`);
+  
+  res.json({
+    success: true,
+    instanceId,
+    status: 'connected',
+    phoneNumber: instance.phoneNumber
+  });
+});
+
+app.post('/instance/:instanceId/message/send', (req, res) => {
+  const { instanceId } = req.params;
+  const { to, message } = req.body;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  if (!instance.isConnected) {
+    return res.status(400).json({
+      error: "Instance not connected"
+    });
+  }
+  
+  const messageId = uuidv4();
+  
+  console.log(`[EVOLUTION] Mensagem enviada via ${instanceId}: ${message} para ${to}`);
+  
+  res.json({
+    success: true,
+    messageId,
+    to,
+    message,
+    status: 'sent'
+  });
+});
+
+app.get('/instance/:instanceId/status', (req, res) => {
+  const { instanceId } = req.params;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  res.json({
+    instanceId,
+    status: instance.status,
+    isConnected: instance.isConnected,
+    phoneNumber: instance.phoneNumber,
+    qrCode: instance.qrCode
+  });
+});
+
+app.delete('/instance/:instanceId', (req, res) => {
+  const { instanceId } = req.params;
+  const instance = evolutionInstances.get(instanceId);
+  
+  if (!instance) {
+    return res.status(404).json({
+      error: "Instance not found"
+    });
+  }
+  
+  evolutionInstances.delete(instanceId);
+  
+  console.log(`[EVOLUTION] Instância removida: ${instanceId}`);
+  
+  res.json({
+    success: true,
+    message: "Instance deleted successfully"
+  });
 });
 
 (async () => {
