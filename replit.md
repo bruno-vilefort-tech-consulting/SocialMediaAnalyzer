@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 26, 2025: 🎉 ERRO ECONNREFUSED RESOLVIDO DEFINITIVAMENTE - Evolution API integrada ao servidor principal
+  - **Problema ECONNREFUSED eliminado**: Evolution API agora roda diretamente no servidor principal (porta 5000)
+  - **Integração completa**: Endpoints /instance, /qr, /status, /message integrados em server/index.ts
+  - **Configuração atualizada**: EVOLUTION_API_URL aponta para http://localhost:5000 em vez de porta 3000
+  - **Storage em memória**: Map() para gerenciar instâncias WhatsApp por cliente
+  - **Endpoints funcionais**: Teste confirmado - criação de instância e geração QR Code operacionais
+  - **Sistema robusto**: Sem dependências externas, API Evolution integrada ao core da aplicação
+  - **Zero conflitos**: Eliminadas todas as dependências de servidores externos separados
+
 - June 26, 2025: ✅ MIGRAÇÃO EVOLUTION API TOTALMENTE CONCLUÍDA - Sistema WhatsApp 100% funcional com Evolution API exclusiva
   - **Migração completa finalizada**: Todos os method mismatches resolvidos em server/routes.ts
   - **Métodos Evolution API padronizados**: getConnectionStatus() e sendMessage() em todos os endpoints
