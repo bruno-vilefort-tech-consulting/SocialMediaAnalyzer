@@ -2684,11 +2684,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`📤 Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
+      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      const success = await whatsappBaileyService.sendMessage(user.clientId.toString(), phoneNumber, message);
-      const result = { success };
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
@@ -2717,25 +2716,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🧹 Limpando sessão WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🧹 [EVOLUTION] Limpando sessão WhatsApp para cliente ${user.clientId}...`);
       
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      await whatsappBaileyService.clearSession(user.clientId.toString());
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.deleteInstance(user.clientId.toString());
       
-      res.json({ 
-        success: true, 
-        message: 'Sessão WhatsApp limpa com sucesso. Use "Conectar" para gerar novo QR Code.' 
-      });
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Sessão WhatsApp limpa com sucesso'
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || 'Erro ao limpar sessão WhatsApp' 
+        });
+      }
     } catch (error) {
-      console.error('❌ Erro ao limpar sessão WhatsApp:', error);
+      console.error('❌ [EVOLUTION] Erro ao limpar sessão WhatsApp:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Erro interno ao limpar sessão WhatsApp' 
+        message: 'Erro interno ao limpar sessão' 
       });
     }
   });
 
-  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req, res) => {
+  app.post("/api/client/whatsapp/test", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
       const { phoneNumber, message } = req.body;
@@ -2748,10 +2754,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      // WppConnect removido - usando Baileys
-      const { whatsappQRService } = await import('../whatsapp/services/whatsappQRService');
-      const success = await whatsappQRService.sendTextMessage(phoneNumber, message);
-      const result = { success, message: success ? 'Mensagem enviada' : 'Falha ao enviar' };
+      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
+      
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
