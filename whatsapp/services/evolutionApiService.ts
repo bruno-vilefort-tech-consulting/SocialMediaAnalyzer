@@ -57,10 +57,9 @@ export class EvolutionApiService {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: instanceName,
-          webhook: `${process.env.BASE_URL || 'http://localhost:5000'}/webhook/evolution/${clientId}`,
-          webhookEvents: ['messages.upsert', 'connection.update', 'qr.updated']
-        } as CreateInstanceRequest)
+          instanceName: instanceName,
+          token: this.apiKey
+        })
       });
 
       if (!response.ok) {

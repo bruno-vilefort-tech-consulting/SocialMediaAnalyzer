@@ -123,6 +123,8 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Endpoints funcionais**: Teste confirmado - criação de instância e geração QR Code operacionais
   - **Sistema robusto**: Sem dependências externas, API Evolution integrada ao core da aplicação
   - **Zero conflitos**: Eliminadas todas as dependências de servidores externos separados
+  - **Correção API**: evolutionApiService.ts ajustado para usar instanceName em vez de name
+  - **Sistema validado**: Botão "Conectar WhatsApp" funcionando corretamente após correções
 
 - June 26, 2025: ✅ MIGRAÇÃO EVOLUTION API TOTALMENTE CONCLUÍDA - Sistema WhatsApp 100% funcional com Evolution API exclusiva
   - **Migração completa finalizada**: Todos os method mismatches resolvidos em server/routes.ts
