@@ -168,11 +168,9 @@ export class ClientWhatsAppService {
       const socket = finalMakeWASocket({
         version,
         auth: state,
-        printQRInTerminal: true,               // HABILITADO para console debug
         logger: logger,
         // Configuração desktop browser para WhatsApp Web
         browser: ['Replit WhatsApp Bot', 'Chrome', '120.0.0.0'],
-        // mobile: true,                        // REMOVIDO - API móvel não é mais suportada no Baileys
         markOnlineOnConnect: false,
         generateHighQualityLinkPreview: false,
         

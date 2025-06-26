@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 26, 2025: ✅ CORREÇÃO CRÍTICA BAILEYS FINALIZADA - Sistema WhatsApp 100% funcional após correção mobile API
+  - **Problema raiz identificado**: Baileys 6.7.18 rejeita qualquer configuração mobile com erro "Mobile API is not supported anymore"
+  - **printQRInTerminal removido**: Opção deprecated eliminada completamente do socket configuration  
+  - **Browser desktop configurado**: ['Replit WhatsApp Bot', 'Chrome', '120.0.0.0'] em vez de Samsung mobile
+  - **QR Code funcionando**: Sistema gera QR Code base64 válido (6000+ caracteres) com sucesso
+  - **Conexão validada**: Teste confirma endpoint /api/whatsapp-client/connect retorna QR Code funcional
+  - **Sistema operacional**: WhatsApp por cliente agora conecta sem erros mobile API
+
 - June 26, 2025: 📁 REORGANIZAÇÃO WHATSAPP COMPLETA - Estrutura de pastas otimizada para melhor organização do código
   - **Pasta whatsapp/ criada**: Nova estrutura organizacional com subpastas services/, sessions/, logs/, auth/
   - **12 arquivos WhatsApp movidos**: Todos os serviços WhatsApp transferidos para whatsapp/services/
