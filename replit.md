@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 26, 2025: 📁 REORGANIZAÇÃO WHATSAPP COMPLETA - Estrutura de pastas otimizada para melhor organização do código
+  - **Pasta whatsapp/ criada**: Nova estrutura organizacional com subpastas services/, sessions/, logs/, auth/
+  - **12 arquivos WhatsApp movidos**: Todos os serviços WhatsApp transferidos para whatsapp/services/
+  - **Imports corrigidos**: Todos os caminhos de importação atualizados em routes.ts e arquivos relacionados
+  - **Estrutura modular**: whatsapp/services/ contém clientWhatsAppService, evolutionApiService, whatsappBaileyService, etc.
+  - **Organização mantida**: Funcionalidade preservada com melhor separação de responsabilidades
+  - **Sistema operacional**: Aplicação funcionando normalmente após reorganização completa
+
 - June 23, 2025: 🔧 CORREÇÃO ERRO 515 PÓS-LOGIN IMPLEMENTADA - Solução específica para limitações WebSocket Replit
   - **Problema identificado**: Erro 515 "Stream Errored" ocorre após isNewLogin quando Replit mata WebSocket durante upload de pre-keys (~40KB)
   - **syncFullHistory: false**: Reduz tamanho dos frames WebSocket para evitar timeout
