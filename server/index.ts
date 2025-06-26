@@ -99,7 +99,7 @@ app.use((req, res, next) => {
 const evolutionInstances = new Map();
 
 // Evolution API endpoints integrados no servidor principal
-app.get('/', (req, res) => {
+app.get('/evolution-api', (req, res) => {
   res.json({
     status: 200,
     message: "Welcome to the Evolution API, it is working!",
