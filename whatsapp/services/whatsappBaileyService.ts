@@ -46,9 +46,15 @@ class WhatsAppBaileyService {
       const authDir = `whatsapp-sessions/client_${clientId}`;
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
+      // Corrigindo configurações para ambiente Replit - versão otimizada
+      const latestVersion = await fetchLatestBaileysVersion().catch(() => [2, 2419, 6]);
+      
       const sock = makeWASocket({ 
         auth: state,
+        version: latestVersion,
         printQRInTerminal: false,
+        mobile: true, // Força uso de mmg.whatsapp.net (menos bloqueado)
+        browser: ['Samsung', 'SM-G991B', '13'], // Android real para compatibilidade
         logger: {
           level: 'silent',
           child: () => ({ level: 'silent' }),
@@ -59,15 +65,15 @@ class WhatsAppBaileyService {
           error: () => {},
           fatal: () => {}
         },
-        defaultQueryTimeoutMs: 20000,
-        connectTimeoutMs: 15000,
-        keepAliveIntervalMs: 20000,
-        retryRequestDelayMs: 1000,
-        maxMsgRetryCount: 2, 
-        printQRInTerminal: false,
-        browser: ["WhatsApp Business", "Chrome", "118.0.0.0"],
+        defaultQueryTimeoutMs: 60000, // Timeout maior para Replit
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 25000
+        keepAliveIntervalMs: 10000, // Ping mais agressivo
+        retryRequestDelayMs: 5000,
+        maxMsgRetryCount: 3,
+        syncFullHistory: false, // Reduz frames WebSocket para evitar timeout
+        fireInitQueries: true, // Envia queries imediatamente após 'open'
+        emitOwnEvents: false,
+        getMessage: async () => undefined
       });
 
       const connectionState: WhatsAppState = {

@@ -5159,7 +5159,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // WhatsApp Client Routes - Unified implementation with proper clientId handling
+  app.get("/api/whatsapp-client/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.query.clientId : null);
+      
+      if (!clientId) {
+        return res.status(400).json({ 
+          isConnected: false, 
+          qrCode: null, 
+          phoneNumber: null,
+          message: 'Client ID required' 
+        });
+      }
 
+      console.log(`📊 WhatsApp Client: Status para cliente ${clientId}...`);
+      
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const status = await clientWhatsAppService.getClientStatus(clientId.toString());
+      
+      console.log(`📱 Status WhatsApp:`, {
+        isConnected: status.isConnected,
+        hasQrCode: !!status.qrCode,
+        phoneNumber: status.phoneNumber
+      });
+      
+      res.json(status);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client status:', error);
+      res.status(500).json({ 
+        isConnected: false, 
+        qrCode: null, 
+        phoneNumber: null,
+        message: 'Erro interno ao buscar status' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/connect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔗 WhatsApp Client: Conectando cliente ${clientId}...`);
+      
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const result = await clientWhatsAppService.connectClient(clientId.toString());
+      
+      console.log(`📱 Resultado WhatsApp connect:`, result);
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client connect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao conectar WhatsApp' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/disconnect", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🔗 WhatsApp Client: Desconectando cliente ${clientId}...`);
+      
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const result = await clientWhatsAppService.disconnectClient(clientId.toString());
+      
+      console.log(`📱 Resultado WhatsApp disconnect:`, result);
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client disconnect:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao desconectar WhatsApp' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const { phoneNumber, message, clientId: bodyClientId } = req.body;
+      const clientId = user?.clientId || (user?.role === 'master' ? bodyClientId : null);
+
+      if (!clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ message: 'Phone number and message required' });
+      }
+
+      console.log(`📱 WhatsApp Client: Teste para cliente ${clientId}...`);
+      
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const result = await clientWhatsAppService.sendTestMessage(
+        clientId.toString(),
+        phoneNumber,
+        message
+      );
+      
+      console.log(`📱 Resultado teste WhatsApp:`, result);
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client test:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao enviar mensagem teste' 
+      });
+    }
+  });
+
+  app.post("/api/whatsapp-client/clear-session", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      
+      if (!clientId) {
+        return res.status(400).json({ message: 'Client ID required' });
+      }
+
+      console.log(`🧹 WhatsApp Client: Limpando sessão para cliente ${clientId}...`);
+      
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      const result = await clientWhatsAppService.clearClientSession(clientId.toString());
+      
+      console.log(`📱 Resultado clear session:`, result);
+      res.json(result);
+    } catch (error) {
+      console.error('❌ Erro WhatsApp Client clear session:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao limpar sessão' 
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
