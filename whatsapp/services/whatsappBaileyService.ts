@@ -143,9 +143,11 @@ class WhatsAppBaileyService {
           
           if (transientCodes.includes(errorCode)) {
             console.log(`🔄 [515 FIX] Erro transitório ${errorCode} detectado - reconectando em 5s...`);
-            setTimeout(() => {
+            setTimeout(async () => {
               console.log(`🔄 [515 FIX] Reiniciando conexão para cliente ${clientId}`);
-              this.initWhatsApp(clientId);
+              // Limpar conexão anterior antes de reiniciar
+              this.connections.delete(clientId);
+              await this.initWhatsApp(clientId);
             }, 5000);
             return; // Não marca como desconectado para erros transitórios
           }
@@ -277,7 +279,13 @@ class WhatsAppBaileyService {
   async sendMessage(clientId: string, phone: string, text: string): Promise<boolean> {
     const connection = this.connections.get(clientId);
     
-    if (!connection || !connection.isConnected) {
+    if (!connection || !connection.socket || connection.socket.readyState !== 'OPEN') {
+      console.log(`🔍 [DEBUG] Status da conexão para ${clientId}:`, {
+        hasConnection: !!connection,
+        hasSocket: !!connection?.socket,
+        socketState: connection?.socket?.readyState,
+        isConnected: connection?.isConnected
+      });
       throw new Error('WhatsApp não conectado para este cliente');
     }
 

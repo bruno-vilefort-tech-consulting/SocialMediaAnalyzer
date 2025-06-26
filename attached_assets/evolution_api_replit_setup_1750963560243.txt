@@ -1,0 +1,169 @@
+
+# Instalação da Evolution API no Replit
+# Arquivo: evolution_api_replit_setup.txt
+# Atualizado em 22/06/2025
+
+================================================================
+OBJETIVO
+----------------------------------------------------------------
+Este passo a passo instala e executa a Evolution API (WhatsApp)
+dentro de um Repl Node.js, sem Docker, usando Prisma + PostgreSQL
+(Supabase). Siga cada etapa exatamente como descrita.
+
+================================================================
+1. CRIAR O REPL
+----------------------------------------------------------------
+1.1 Acesse https://replit.com ➜ New Repl ➜ Template Node.js  
+1.2 Nomeie o projeto (ex.: evo-api) e crie o Repl.
+
+================================================================
+2. IMPORTAR O CÓDIGO-FONTE
+----------------------------------------------------------------
+No console do Repl (aba Shell) execute:
+
+```
+git clone https://github.com/EvolutionAPI/evolution-api.git evolution-api
+mv evolution-api/* . && mv evolution-api/.* . || true
+rm -rf evolution-api
+```
+
+================================================================
+3. INSTALAR DEPENDÊNCIAS
+----------------------------------------------------------------
+Ainda na Shell:
+
+```
+npm install
+npm install -D prisma ts-node-dev typescript rimraf
+```
+
+================================================================
+4. AJUSTAR PACKAGE.JSON
+----------------------------------------------------------------
+Abra package.json e garanta que exista:
+
+```
+"scripts": {{
+  "dev": "ts-node-dev --respawn --exit-child --transpile-only src/main.ts",
+  "build": "rimraf dist && tsc",
+  "start": "node dist/main.js",
+  "prisma:generate": "prisma generate",
+  "prisma:migrate": "prisma migrate deploy"
+}}
+```
+
+================================================================
+5. CONFIGURAR BANCO DE DADOS
+----------------------------------------------------------------
+5.1 Crie uma instância PostgreSQL no Supabase (free).  
+5.2 Copie a Connection string (SSL off).  
+5.3 No Replit ➜ aba Secrets adicione:
+
+```
+DATABASE_URL  = postgres://USUARIO:SENHA@HOST:PORT/db?schema=public
+API_KEY       = digite_uma_chave_longasegura
+PORT          = 3000
+WA_WEBHOOK    = https://<seu-repl>.repl.co/webhook   # opcional
+INSTANCE_STORAGE = ./sessions                       # padrão local
+NODE_ENV      = development
+```
+
+Nunca commit suas credenciais.
+
+================================================================
+6. GERAR E APLICAR MIGRATIONS
+----------------------------------------------------------------
+```
+npx prisma generate
+npx prisma migrate deploy
+```
+
+================================================================
+7. AJUSTAR ARQUIVOS DO REPLIT
+----------------------------------------------------------------
+Crie ou edite .replit
+
+```
+run = "npm run dev"
+```
+
+e replit.nix contendo ao menos:
+
+```
+{ pkgs }: {{
+  deps = [
+    pkgs.nodejs_20
+    pkgs.ffmpeg  # Baileys converte áudio
+  ];
+}}
+```
+
+Clique *Restart Repl* após salvar.
+
+================================================================
+8. EXECUTAR EM MODO DESENVOLVIMENTO
+----------------------------------------------------------------
+```
+npm run dev
+```
+
+Após alguns segundos aparecerá:
+
+```
+HTTP server listening on 0.0.0.0:3000
+```
+
+O Replit exibirá a URL pública (ex.:  
+https://evo-api.<seu-usuario>.repl.co).
+
+================================================================
+9. REGISTRAR E ESCANEAR UMA INSTÂNCIA
+----------------------------------------------------------------
+1. No terminal, crie a instância:
+
+```
+curl -X POST https://<URL_REPL>/instance   -H "Authorization: Bearer $API_KEY"   -H "Content-Type: application/json"   -d '{{ "name": "meuZap" }}'
+```
+
+A resposta devolve instance_id e token.  
+2. Abra no navegador:  
+   https://<URL_REPL>/instance/<instance_id>/qr?token=<token>  
+   Escaneie o QR com o celular WhatsApp.
+
+================================================================
+10. ENVIO DE TESTE
+----------------------------------------------------------------
+```
+curl -X POST https://<URL_REPL>/message  -H "Authorization: Bearer $API_KEY"  -H "Content-Type: application/json"  -d '{{ "instance_id": "<id>", "number": "5511984316526",
+       "message": "Olá do Replit via Evolution API!" }}'
+```
+
+================================================================
+11. MODO PRODUÇÃO (OPCIONAL)
+----------------------------------------------------------------
+```
+npm run build
+node dist/main.js
+```
+Altere .replit ➜ run = "node dist/main.js".
+
+================================================================
+12. MANTER O REPL ONLINE
+----------------------------------------------------------------
+Replit dorme após inatividade. Use UptimeRobot (ping 5 min) ou 
+habilite o plano Hacker.
+
+================================================================
+13. DICAS DE TROUBLESHOOTING
+----------------------------------------------------------------
+- Node < 18? Atualize replit.nix para pkgs.nodejs_20.
+- Porta já usada? Mude PORT no Secrets + .replit.
+- QR não aparece ➜ verifique logs de npm run dev.
+- Erro “Unable to download media” ➜ garanta ffmpeg instalado.
+- Audio transcrição falha ➜ configure MEDIA_PATH no .env.
+
+================================================================
+PRONTO!
+----------------------------------------------------------------
+A Evolution API está rodando no seu Repl e pronta para integrar
+seu sistema de entrevistas automáticas.
