@@ -46,15 +46,16 @@ class WhatsAppBaileyService {
       const authDir = `whatsapp-sessions/client_${clientId}`;
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
-      // Corrigindo configurações para ambiente Replit - versão otimizada
+      // Corrigindo configurações para ambiente Replit - CORREÇÃO ERRO 515
       const latestVersion = await fetchLatestBaileysVersion().catch(() => [2, 2419, 6]);
       
       const sock = makeWASocket({ 
         auth: state,
         version: latestVersion,
         printQRInTerminal: false,
-        mobile: true, // Força uso de mmg.whatsapp.net (menos bloqueado)
-        browser: ['Samsung', 'SM-G991B', '13'], // Android real para compatibilidade
+        mobile: true, // Força uso de mmg.whatsapp.net (porta 443, menos bloqueado)
+        browser: ['Samsung', 'SM-G991B', '13'], // Simula browser Android real
+        fireInitQueries: true, // Inicia handshake imediatamente após 'open'
         logger: {
           level: 'silent',
           child: () => ({ level: 'silent' }),
@@ -65,13 +66,15 @@ class WhatsAppBaileyService {
           error: () => {},
           fatal: () => {}
         },
-        defaultQueryTimeoutMs: 60000, // Timeout maior para Replit
+        // Timeouts ajustados para ambiente Replit
+        keepAliveIntervalMs: 10000,     // ping a cada 10s
+        networkIdleTimeoutMs: 45000,    // ocioso após 45s
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 10000, // Ping mais agressivo
+        defaultQueryTimeoutMs: 60000,
+        qrTimeout: 90000,
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 3,
-        syncFullHistory: false, // Reduz frames WebSocket para evitar timeout
-        fireInitQueries: true, // Envia queries imediatamente após 'open'
+        syncFullHistory: false, // Reduz frames WebSocket grandes
         emitOwnEvents: false,
         getMessage: async () => undefined
       });
@@ -85,12 +88,26 @@ class WhatsAppBaileyService {
 
       this.connections.set(clientId, connectionState);
 
-      sock.ev.on('connection.update', async ({ connection, qr }: any) => {
+      sock.ev.on('connection.update', async ({ connection, qr, lastDisconnect, isNewLogin }: any) => {
         if (qr) {
           connectionState.qrCode = await QRCode.toDataURL(qr);
           console.log(`📱 QR Code gerado para cliente ${clientId} - Length: ${connectionState.qrCode.length}`);
           console.log(`📱 QR Code Preview: ${connectionState.qrCode.substring(0, 50)}...`);
           await this.saveConnectionToDB(clientId, connectionState);
+        }
+        
+        // Tratamento especial para isNewLogin - crítico para resolver erro 515
+        if (isNewLogin) {
+          console.log(`🔐 [515 FIX] isNewLogin detectado para cliente ${clientId} - aguardando estabelecimento da conexão`);
+          // Enviar presença imediatamente após nova autenticação
+          setTimeout(async () => {
+            try {
+              await sock.sendPresenceUpdate('available');
+              console.log(`👀 [515 FIX] Presença enviada após isNewLogin`);
+            } catch (error) {
+              console.log(`⚠️ [515 FIX] Erro ao enviar presença:`, error.message);
+            }
+          }, 2000);
         }
         
         if (connection === 'open') {
@@ -118,11 +135,25 @@ class WhatsAppBaileyService {
         }
         
         if (connection === 'close') {
-          console.log(`🔌 WhatsApp desconectado para cliente ${clientId}`);
+          const errorCode = (lastDisconnect?.error as any)?.output?.statusCode;
+          console.log(`🔌 WhatsApp desconectado para cliente ${clientId} - Código: ${errorCode}`);
+          
+          // Códigos transitórios conforme instruções ChatGPT
+          const transientCodes = [408, 428, 515];
+          
+          if (transientCodes.includes(errorCode)) {
+            console.log(`🔄 [515 FIX] Erro transitório ${errorCode} detectado - reconectando em 5s...`);
+            setTimeout(() => {
+              console.log(`🔄 [515 FIX] Reiniciando conexão para cliente ${clientId}`);
+              this.initWhatsApp(clientId);
+            }, 5000);
+            return; // Não marca como desconectado para erros transitórios
+          }
+          
           connectionState.isConnected = false;
           connectionState.phoneNumber = null;
           
-          // Salvar status DESCONECTADO no banco
+          // Salvar status DESCONECTADO no banco apenas para desconexões reais
           try {
             const config = await storage.getApiConfig('client', clientId) || {};
             await storage.upsertApiConfig({
@@ -137,9 +168,6 @@ class WhatsAppBaileyService {
           } catch (error) {
             console.log(`❌ Erro ao salvar status desconectado:`, error.message);
           }
-          
-          // Reconecta automaticamente após 2 segundos
-          setTimeout(() => this.initWhatsApp(clientId), 2000);
         }
       });
 

@@ -1,0 +1,93 @@
+# Instruções para corrigir erro 515 “Stream Errored” após scan do QR Code (Replit)
+
+## Contexto
+- **Erro**: 515 “Stream Errored (restart required)” logo após `isNewLogin=true`.
+- **Ambiente**: Replit Node.js, @whiskeysockets/baileys.
+- **Fluxo**: QR gerado, escaneado, credenciais salvas, mas conexão fecha imediatamente.
+
+## Possíveis causas
+1. **WebSocket cortado** pelo proxy do Replit ao enviar grande frame de pre‑keys.
+2. **Uso de `mobile: false`** conecta em web.whatsapp.com, mas protocolo não dribla filtros.
+3. **UploadPreKeys** único dispara erro por tamanho de frame.
+
+## Passo a passo de correção
+
+### 1. Ativar modo mobile e init queries
+```ts
+const sock = makeWASocket({
+  // ...
+  mobile: true,          // usa mmg.whatsapp.net (porta 443)
+  fireInitQueries: true, // inicia handshake imediatamente
+  // restante das opções...
+});
+```
+
+### 2. Simular browser Android
+```ts
+browser: ['Samsung', 'SM-G991B', '13'],
+```
+
+### 3. Adicionar proxy HTTPS (se necessário)
+```ts
+import { HttpsProxyAgent } from 'https-proxy-agent';
+const agent = new HttpsProxyAgent('https://proxy.replit.com:443');
+
+const sock = makeWASocket({
+  // ...
+  fetchOptions: { agent },
+  connectOptions: { agent },
+});
+```
+
+### 4. Ajustar timeouts e keep‑alive
+```ts
+keepAliveIntervalMs: 10000,     // ping a cada 10 s
+networkIdleTimeoutMs: 45000,    // ocioso após 45 s
+connectTimeoutMs: 60000,
+defaultQueryTimeoutMs: 60000,
+qrTimeout: 90000,
+```
+
+### 5. Enviar pre‑keys em chunks (opcional)
+```ts
+async function uploadPreKeysChunked(sock, chunkSize = 10240) {
+  const allKeys = /* seu array de preKeys */;
+  for (let i = 0; i < allKeys.length; i += chunkSize) {
+    const chunk = allKeys.slice(i, i + chunkSize);
+    await sock.uploadPreKeys(chunk);
+    await new Promise(r => setTimeout(r, 500));
+  }
+}
+// Use uploadPreKeysChunked no lugar de uploadPreKeys padrão.
+```
+
+### 6. Persistência de credenciais e reconexão
+```ts
+import { useSingleFileAuthState } from '@whiskeysockets/baileys';
+
+sock.ev.on('creds.update', saveCreds);
+
+const transient = [408, 428, 515];
+sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  if (connection === 'close') {
+    const code = (lastDisconnect?.error as any)?.output?.statusCode;
+    if (transient.includes(code)) {
+      console.warn('Erro 515 detectado, reconectando em 5 s...');
+      setTimeout(initSocket, 5000);
+    }
+  }
+});
+```
+
+### 7. Teste fora do Replit
+- Rode o mesmo código localmente ou em VPS.
+- Se o erro desaparecer, confirme que o proxy do Replit é a causa.
+
+### 8. Alternativa robusta
+- Desertar Baileys para um micro‑VPS ou Docker externo.
+- Use Evolution API (REST) no Replit para controlar o socket fora do ambiente limitado.
+
+---
+
+**Aplique essas alterações**, reinicie seu Repl e escaneie o QR Code novamente.  
+Isso deve evitar o erro 515 e manter a sessão ativa.
