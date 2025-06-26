@@ -38,8 +38,9 @@ export class EvolutionApiService {
   private apiKey: string;
 
   constructor() {
-    this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:3000';
+    this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:5000';
     this.apiKey = process.env.EVOLUTION_API_KEY || 'default_api_key';
+    console.log(`🔧 [EVOLUTION] Configurado para usar: ${this.apiUrl}`);
   }
 
   /**
