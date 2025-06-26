@@ -642,30 +642,42 @@ export default function ApiConfigPage() {
             </div>
 
             {/* QR Code */}
-            {shouldShowQR && whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
-                  </p>
-                  
-                  <div className="flex justify-center">
-                    <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-gray-200">
-                      <img 
-                        src={whatsappStatus.qrCode} 
-                        alt="QR Code WhatsApp" 
-                        className="w-64 h-64"
-                      />
+            {(() => {
+              console.log("🔍 [QR DEBUG] Verificação de exibição:", {
+                shouldShowQR,
+                hasQrCode: !!whatsappStatus?.qrCode,
+                isConnected: whatsappStatus?.isConnected,
+                qrCodeLength: whatsappStatus?.qrCode?.length,
+                qrCodePrefix: whatsappStatus?.qrCode?.substring(0, 50)
+              });
+              
+              return shouldShowQR && whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
+                    </p>
+                    
+                    <div className="flex justify-center">
+                      <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-gray-200">
+                        <img 
+                          src={whatsappStatus.qrCode} 
+                          alt="QR Code WhatsApp" 
+                          className="w-64 h-64"
+                          onLoad={() => console.log("✅ [QR DEBUG] Imagem carregada com sucesso")}
+                          onError={(e) => console.error("❌ [QR DEBUG] Erro ao carregar imagem:", e)}
+                        />
+                      </div>
                     </div>
+                    
+                    <p className="text-xs text-muted-foreground mt-2">
+                      QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
+                    </p>
                   </div>
-                  
-                  <p className="text-xs text-muted-foreground mt-2">
-                    QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
-                  </p>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Teste de Mensagem */}
             {whatsappStatus?.isConnected && (
