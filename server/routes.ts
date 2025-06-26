@@ -3596,7 +3596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔗 [Evolution] Tentando conectar cliente ${clientId} via Evolution API...`);
       
       // Forçar uso da Evolution API
-      const { evolutionApiService } = await import('./evolutionApiService');
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
       const result = await evolutionApiService.connectClient(clientId);
       
       console.log(`🔗 [Evolution] Resultado da conexão Evolution API:`, {
@@ -3627,7 +3627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔌 [Evolution] Desconectando cliente ${clientId} via Evolution API...`);
       
       // Usar Evolution API
-      const { evolutionApiService } = await import('./evolutionApiService');
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
       const result = await evolutionApiService.disconnectClient(clientId);
       
       res.json(result);
@@ -3651,7 +3651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔗 [Evolution] Verificando status para cliente ${clientId}...`);
       
       // Usar Evolution API diretamente
-      const { evolutionApiService } = await import('./evolutionApiService');
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
       const connection = await evolutionApiService.getConnectionStatus(clientId);
       
       console.log(`📱 [Evolution] Status Evolution API:`, {
@@ -3703,7 +3703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const { evolutionApiService } = await import('./evolutionApiService');
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
       const result = await evolutionApiService.sendTestMessage(
         user.clientId.toString(), 
         phoneNumber, 

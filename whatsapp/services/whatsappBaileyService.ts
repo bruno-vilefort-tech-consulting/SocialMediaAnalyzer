@@ -1,5 +1,5 @@
 import { storage } from '../../server/storage';
-import { interactiveInterviewService } from './interactiveInterviewService';
+import { interactiveInterviewService } from '../../server/interactiveInterviewService';
 
 // Usar import dinâmico para baileys e qrcode
 let makeWASocket: any;

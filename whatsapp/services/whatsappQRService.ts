@@ -585,7 +585,7 @@ export class WhatsAppQRService {
       console.log(`🆔 [DEBUG] Seleção ID: ${selectionId}`);
       
       // Buscar dados da seleção e job
-      const { storage } = await import('./storage');
+      const { storage } = await import('../../server/storage');
       console.log(`🔍 [DEBUG] Buscando seleção no storage...`);
       const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
@@ -690,7 +690,7 @@ export class WhatsAppQRService {
       console.log(`📝 [DEBUG] Objeto pergunta completo:`, question);
       
       // Buscar configuração de voz
-      const { storage } = await import('./storage');
+      const { storage } = await import('../../server/storage');
       console.log(`🔍 [DEBUG] Buscando configuração OpenAI...`);
       const config = await storage.getApiConfig('master', '1749848502212');
       
@@ -801,7 +801,7 @@ export class WhatsAppQRService {
       console.log(`📞 [DEBUG] De: ${from}`);
       console.log(`📱 [DEBUG] Objeto mensagem:`, JSON.stringify(message?.message?.audioMessage || {}, null, 2));
       
-      const { storage } = await import('./storage');
+      const { storage } = await import('../../server/storage');
       const fs = await import('fs');
       const path = await import('path');
       
@@ -1210,7 +1210,7 @@ export class WhatsAppQRService {
         
         try {
           console.log(`🔍 [DEBUG] Importando storage...`);
-          const { storage } = await import('./storage');
+          const { storage } = await import('../../server/storage');
           
           console.log(`🔍 [DEBUG] Buscando candidatos para cliente 1749849987543...`);
           // Buscar todos os candidatos diretamente via storage
@@ -1342,7 +1342,7 @@ Ou use os botões se disponíveis.`);
 
   private async saveInterviewState(interviewId: number, questionIndex: number, questionText: string) {
     try {
-      const { storage } = await import('./storage');
+      const { storage } = await import('../../server/storage');
       
       // Salvar log da pergunta enviada
       await storage.createMessageLog({
