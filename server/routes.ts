@@ -5129,7 +5129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 WhatsApp Client: Status para cliente ${clientId}...`);
       
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const status = await clientWhatsAppService.getClientStatus(clientId.toString());
+      const status = await clientWhatsAppService.getConnectionStatus(clientId.toString());
       
       console.log(`📱 Status WhatsApp:`, {
         isConnected: status.isConnected,
@@ -5216,7 +5216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📱 WhatsApp Client: Teste para cliente ${clientId}...`);
       
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const result = await clientWhatsAppService.sendTestMessage(
+      const result = await clientWhatsAppService.sendMessage(
         clientId.toString(),
         phoneNumber,
         message
