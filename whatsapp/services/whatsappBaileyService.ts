@@ -29,10 +29,8 @@ class WhatsAppBaileyService {
   private connections: Map<string, WhatsAppState> = new Map();
 
   async initWhatsApp(clientId: string) {
-    console.log(`🔑 Inicializando WhatsApp para cliente ${clientId}`);
-    
-    // Inicializar dependências primeiro
-    await initializeDependencies();
+    console.log(`⚠️ [BAILEYS] Serviço desabilitado - usando Evolution API`);
+    throw new Error('Baileys service disabled - use Evolution API');
     
     if (this.connections.has(clientId)) {
       const existing = this.connections.get(clientId)!;
