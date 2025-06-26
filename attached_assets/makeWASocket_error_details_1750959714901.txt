@@ -1,0 +1,65 @@
+ERRO MAKEWASOKET - DETALHES COMPLETOS PARA CHATGPT
+
+## Erro Principal:
+TypeError: makeWASocket is not a function
+at ClientWhatsAppService.connectClient (/home/runner/workspace/whatsapp/services/clientWhatsAppService.ts:111:22)
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+at async <anonymous> (/home/runner/workspace/server/routes.ts:3734:22)
+
+## Ambiente:
+- Node.js/TypeScript no Replit
+- Biblioteca: @whiskeysockets/baileys
+- Versão do Node: 20
+- Sistema: ES Modules
+
+## Tentativas de Importação Realizadas:
+
+### 1. Tentativa com ES6 import default:
+```typescript
+import makeWASocket, { 
+  useMultiFileAuthState, 
+  DisconnectReason, 
+  fetchLatestBaileysVersion 
+} from '@whiskeysockets/baileys';
+```
+RESULTADO: makeWASocket is not a function
+
+### 2. Tentativa com named import:
+```typescript
+import { 
+  default as makeWASocket,
+  useMultiFileAuthState, 
+  DisconnectReason, 
+  fetchLatestBaileysVersion 
+} from '@whiskeysockets/baileys';
+```
+RESULTADO: makeWASocket is not a function
+
+### 3. Tentativa atual com require():
+```typescript
+const baileys = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
+```
+RESULTADO: makeWASocket is not a function
+
+## Contexto do Problema:
+- Função é chamada na linha 111 do arquivo clientWhatsAppService.ts
+- useMultiFileAuthState e fetchLatestBaileysVersion funcionam normalmente
+- Apenas makeWASocket não é reconhecido como função
+- Problema ocorre especificamente no ambiente Replit com TypeScript
+
+## Código Onde Erro Ocorre:
+```typescript
+const socket = makeWASocket({
+  version: waVersion,
+  browser: ['Samsung', 'SM-G991B', '13'],
+  auth: {
+    creds: state.creds,
+    keys: state.keys
+  },
+  // ... outras configurações
+});
+```
+
+## Pergunta para ChatGPT:
+Como corrigir a importação do makeWASocket do @whiskeysockets/baileys em um ambiente Node.js/TypeScript no Replit? A função existe na biblioteca mas não é reconhecida como função quando importada.

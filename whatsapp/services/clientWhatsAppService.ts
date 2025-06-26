@@ -1,11 +1,9 @@
 import { storage } from '../../server/storage';
 import fs from 'fs';
 import path from 'path';
-import makeWASocket, { 
-  useMultiFileAuthState, 
-  DisconnectReason, 
-  fetchLatestBaileysVersion 
-} from '@whiskeysockets/baileys';
+// Importação temporária via require para resolver problema de ES modules
+const baileys = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 import QRCode from 'qrcode';
 
 interface WhatsAppClientConfig {
