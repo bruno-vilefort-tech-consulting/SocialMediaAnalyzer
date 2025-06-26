@@ -1,11 +1,42 @@
 import { storage } from '../../server/storage';
 import fs from 'fs';
 import path from 'path';
+// Tentativa de múltiplas estratégias de importação para debug
 import makeWASocket, {
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
   DisconnectReason
 } from '@whiskeysockets/baileys';
+
+// Debug adicional - tentar importar de formas diferentes
+let debugMakeWASocket: any;
+let debugBaileys: any;
+
+// Estratégia 1: Dynamic import para debug
+const testDynamicImport = async () => {
+  try {
+    const baileysDynamic = await import('@whiskeysockets/baileys');
+    console.log('🔍 [DEBUG] Dynamic import baileys:', Object.keys(baileysDynamic));
+    console.log('🔍 [DEBUG] Dynamic default:', typeof baileysDynamic.default);
+    debugBaileys = baileysDynamic;
+    debugMakeWASocket = baileysDynamic.default;
+  } catch (err) {
+    console.error('❌ [DEBUG] Erro dynamic import:', err);
+  }
+};
+
+// Estratégia 2: Require como fallback
+try {
+  const baileysCjs = require('@whiskeysockets/baileys');
+  console.log('🔍 [DEBUG] Require baileys keys:', Object.keys(baileysCjs));
+  console.log('🔍 [DEBUG] Require default type:', typeof baileysCjs.default);
+  if (!debugMakeWASocket && baileysCjs.default) {
+    debugMakeWASocket = baileysCjs.default;
+    console.log('🔧 [DEBUG] Usando makeWASocket do require');
+  }
+} catch (err) {
+  console.error('❌ [DEBUG] Erro require:', err);
+}
 import QRCode from 'qrcode';
 
 interface WhatsAppClientConfig {
@@ -44,6 +75,11 @@ export class ClientWhatsAppService {
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
       console.log(`🔗 [BAILEYS] Iniciando conexão REAL WhatsApp para cliente ${clientId}...`);
+      
+      // Testar imports dinâmicos primeiro para debug
+      console.log('🔍 [DEBUG] Executando testDynamicImport...');
+      await testDynamicImport();
+      console.log('🔍 [DEBUG] testDynamicImport concluído');
       
       await this.ensureSessionDirectory(clientId);
       
@@ -108,10 +144,31 @@ export class ClientWhatsAppService {
         console.log('🔄 Usando versão fallback:', version);
       }
 
-      const socket = makeWASocket({
+      // Debug detalhado da função makeWASocket
+      console.log('🔍 [DEBUG] Verificando makeWASocket...');
+      console.log('🔍 [DEBUG] Tipo de makeWASocket:', typeof makeWASocket);
+      console.log('🔍 [DEBUG] makeWASocket é função?', typeof makeWASocket === 'function');
+      console.log('🔍 [DEBUG] makeWASocket content:', makeWASocket);
+      
+      // Tentar usar debugMakeWASocket se makeWASocket não funcionar
+      let finalMakeWASocket = makeWASocket;
+      if (typeof makeWASocket !== 'function') {
+        console.log('🔧 [DEBUG] Tentando usar debugMakeWASocket...');
+        console.log('🔍 [DEBUG] Tipo de debugMakeWASocket:', typeof debugMakeWASocket);
+        if (typeof debugMakeWASocket === 'function') {
+          finalMakeWASocket = debugMakeWASocket;
+          console.log('✅ [DEBUG] Usando debugMakeWASocket como fallback');
+        } else {
+          console.error('❌ [DEBUG] Nenhuma função makeWASocket disponível!');
+          console.log('🔍 [DEBUG] debugBaileys:', debugBaileys ? Object.keys(debugBaileys) : 'undefined');
+          throw new Error('makeWASocket não é uma função - problema de importação Baileys');
+        }
+      }
+
+      const socket = finalMakeWASocket({
         version,
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: true,               // HABILITADO para console debug
         logger: logger,
         // Configuração Samsung Android otimizada para Replit
         browser: ['Samsung', 'SM-G991B', '13'],
