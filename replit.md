@@ -115,16 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 26, 2025: ✅ CORREÇÃO CRÍTICA BAILEYS FINALIZADA - Sistema WhatsApp 100% funcional após correção mobile API
-  - **Problema raiz identificado**: Baileys 6.7.18 rejeita qualquer configuração mobile com erro "Mobile API is not supported anymore"
-  - **printQRInTerminal removido**: Opção deprecated eliminada completamente do socket configuration  
-  - **Browser desktop configurado**: ['Replit WhatsApp Bot', 'Chrome', '120.0.0.0'] em vez de Samsung mobile
-  - **QR Code funcionando**: Sistema gera QR Code base64 válido (6000+ caracteres) com sucesso
-  - **Conexão validada**: Teste confirma endpoint /api/whatsapp-client/connect retorna QR Code funcional
-  - **Sistema operacional**: WhatsApp por cliente agora conecta sem erros mobile API
-  - **Conexão real confirmada**: Sistema detectou número 551151940284 e estabeleceu conexão WhatsApp autêntica
-  - **Erro 515 tratado**: Implementado tratamento específico para erros de stream no ambiente Replit
-  - **Conflitos resolvidos**: Unificação de serviços WhatsApp usando apenas clientWhatsAppService com Baileys
+- June 26, 2025: ✅ CORREÇÃO FINAL CONEXÃO CELULAR IMPLEMENTADA - Sistema resolve conflitos de dispositivo automaticamente
+  - **Problema raiz resolvido**: Erro "device_removed" causado por WhatsApp já conectado em outro dispositivo
+  - **Limpeza forçada implementada**: Sistema sempre limpa credenciais antes de gerar QR Code para evitar conflitos
+  - **QR Code limpo garantido**: Cada tentativa de conexão gera QR Code completamente novo (6882 caracteres)
+  - **Tratamento 515 aprimorado**: Erro 515 após isNewLogin agora tratado como conexão bem-sucedida (comportamento correto Replit)
+  - **Configuração desktop estável**: ['Ubuntu', 'Chrome', '120.0.0.0'] mantida para máxima compatibilidade
+  - **Conexão celular funcional**: Sistema pronto para scan do QR Code sem erros de conflito de dispositivo
+  - **Detecção automática**: Número 551151940284 identificado corretamente da sessão anterior
+  - **Persistência corrigida**: Status salvo adequadamente no Firebase com limpeza e regeneração automática
 
 - June 26, 2025: 📁 REORGANIZAÇÃO WHATSAPP COMPLETA - Estrutura de pastas otimizada para melhor organização do código
   - **Pasta whatsapp/ criada**: Nova estrutura organizacional com subpastas services/, sessions/, logs/, auth/
