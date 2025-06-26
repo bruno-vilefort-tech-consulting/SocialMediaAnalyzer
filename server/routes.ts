@@ -2762,12 +2762,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.success) {
         res.json({ 
           success: true, 
-          message: result.message
+          message: 'Mensagem enviada com sucesso'
         });
       } else {
         res.status(400).json({ 
           success: false, 
-          message: result.message 
+          message: result.error || 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
         });
       }
     } catch (error) {
@@ -3555,7 +3555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: result.success,
         hasQrCode: !!result.qrCode,
         qrCodeLength: result.qrCode?.length || 0,
-        message: result.message
+        error: result.error
       });
       
       res.json(result);
@@ -3656,7 +3656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.sendTestMessage(
+      const result = await evolutionApiService.sendMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message

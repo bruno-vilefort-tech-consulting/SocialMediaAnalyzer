@@ -149,7 +149,13 @@ export class EvolutionApiService {
   /**
    * Verifica status da conexão de uma instância
    */
-  async getConnectionStatus(clientId: string): Promise<{ isConnected: boolean; phoneNumber?: string }> {
+  async getConnectionStatus(clientId: string): Promise<{ 
+    isConnected: boolean; 
+    phoneNumber?: string; 
+    qrCode?: string; 
+    instanceId?: string; 
+    lastConnection?: Date; 
+  }> {
     try {
       const instance = this.instances.get(clientId);
       if (!instance) {
@@ -165,7 +171,11 @@ export class EvolutionApiService {
       });
 
       if (!response.ok) {
-        return { isConnected: false };
+        return { 
+          isConnected: false,
+          instanceId: instance.instanceId,
+          qrCode: instance.qrCode
+        };
       }
 
       const data = await response.json();
@@ -179,14 +189,30 @@ export class EvolutionApiService {
         instance.phoneNumber = phoneNumber;
       }
 
+      // Se não conectado, tentar obter QR Code
+      if (!isConnected && !instance.qrCode) {
+        const qrCode = await this.getQRCode(clientId);
+        if (qrCode) {
+          instance.qrCode = qrCode;
+        }
+      }
+
       return {
         isConnected,
-        phoneNumber
+        phoneNumber,
+        qrCode: instance.qrCode,
+        instanceId: instance.instanceId,
+        lastConnection: instance.isConnected ? new Date() : undefined
       };
 
     } catch (error) {
       console.error(`❌ [EVOLUTION] Erro ao verificar status para cliente ${clientId}:`, error);
-      return { isConnected: false };
+      const instance = this.instances.get(clientId);
+      return { 
+        isConnected: false,
+        instanceId: instance?.instanceId,
+        qrCode: instance?.qrCode
+      };
     }
   }
 
@@ -287,6 +313,20 @@ export class EvolutionApiService {
         error: error instanceof Error ? error.message : 'Erro desconhecido'
       };
     }
+  }
+
+  /**
+   * Conecta cliente - alias para createInstance para compatibilidade
+   */
+  async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
+    return await this.createInstance(clientId);
+  }
+
+  /**
+   * Desconecta cliente - alias para deleteInstance para compatibilidade
+   */
+  async disconnectClient(clientId: string): Promise<{ success: boolean; error?: string }> {
+    return await this.deleteInstance(clientId);
   }
 
   /**
