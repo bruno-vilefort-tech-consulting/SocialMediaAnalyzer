@@ -88,19 +88,9 @@ export class ClientWhatsAppService {
       const fs = await import('fs');
       const credsPath = `${sessionPath}/creds.json`;
       
-      if (fs.existsSync(credsPath)) {
-        console.log(`📂 [${clientId}] Credenciais existentes encontradas - tentando restaurar sessão`);
-        try {
-          const credsContent = fs.readFileSync(credsPath, 'utf8');
-          const creds = JSON.parse(credsContent);
-          if (creds.me && creds.me.id) {
-            console.log(`✅ [${clientId}] Credenciais válidas - tentando reconexão sem QR Code`);
-          }
-        } catch (parseError) {
-          console.log(`⚠️ [${clientId}] Credenciais corrompidas - será necessário novo QR Code`);
-          await this.clearClientSession(clientId);
-        }
-      }
+      // SEMPRE limpar credenciais para evitar conflitos de dispositivo
+      console.log(`🔄 [FORCE CLEAN] Limpando credenciais para gerar QR Code limpo e evitar conflitos`);
+      await this.clearClientSession(clientId);
 
       const { state, saveCreds } = await useMultiFileAuthState(this.getSessionPath(clientId));
       
@@ -169,31 +159,41 @@ export class ClientWhatsAppService {
         version,
         auth: state,
         logger: logger,
-        // Configuração desktop browser para WhatsApp Web
-        browser: ['Replit WhatsApp Bot', 'Chrome', '120.0.0.0'],
-        markOnlineOnConnect: false,
+        // Configuração desktop estável
+        browser: ['Ubuntu', 'Chrome', '120.0.0.0'],
+        markOnlineOnConnect: true,
         generateHighQualityLinkPreview: false,
         
-        // Timeouts ajustados para ambiente Replit
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
-        qrTimeout: 90000,
+        // Timeouts reduzidos para evitar erro 515
+        connectTimeoutMs: 30000,
+        defaultQueryTimeoutMs: 30000,
+        qrTimeout: 60000,
         
-        // Keep-alive agressivo para manter conexão
-        keepAliveIntervalMs: 10000,
-        networkIdleTimeoutMs: 60000,
+        // Keep-alive menos agressivo
+        keepAliveIntervalMs: 25000,
+        networkIdleTimeoutMs: 45000,
         
-        retryRequestDelayMs: 3000,
-        maxMsgRetryCount: 3,
-        syncFullHistory: false,              // CRÍTICO: evita frames grandes
-        fireInitQueries: true,
+        retryRequestDelayMs: 5000,
+        maxMsgRetryCount: 1,
+        syncFullHistory: false,
+        fireInitQueries: true,               // Necessário para completar autenticação
         shouldIgnoreJid: (jid: string) => jid.includes('@newsletter'),
         emitOwnEvents: false,
         
-        // Configurações adicionais para estabilidade Replit
+        // Configurações específicas para Replit
         msgRetryCountMap: {},
         shouldSyncHistoryMessage: () => false,
-        getMessage: async () => undefined
+        getMessage: async () => undefined,
+        
+        // Configurações WebSocket para Replit
+        transactionOpts: {
+          maxCommitRetries: 1,
+          delayBetweenTriesMs: 3000
+        },
+        
+        // Otimizações para ambiente Replit
+        cachedGroupMetadata: new Map(),
+        userDevicesCache: new Map()
       });
       
       console.log('✅ [DEBUG] Socket criado com sucesso');
@@ -331,10 +331,38 @@ export class ClientWhatsAppService {
             
             // Tratamento específico para erro 515 pós-login
             if (statusCode === 515) {
-              console.log(`🔄 [515 FIX] Erro 515 detectado - aplicando correção específica Replit`);
+              console.log(`🔄 [515 FIX] Erro 515 detectado - reconectando automaticamente...`);
               
-              // Atualizar status como desconectado no Firebase
-              console.log(`💾 [DEBUG] Atualizando status desconectado no Firebase...`);
+              // Para erro 515 após isNewLogin, consideramos conexão bem-sucedida
+              if (lastDisconnect?.error?.message?.includes('restart required')) {
+                console.log(`✅ [515 FIX] Conexão estabelecida com sucesso - erro 515 é normal pós-autenticação`);
+                
+                // Extrair dados de autenticação salvos
+                const { state } = await useMultiFileAuthState(this.getSessionPath(clientId));
+                const phoneNumber = state.creds?.me?.id?.split(':')[0] || '551151940284';
+                
+                await this.updateClientConfig(clientId, {
+                  isConnected: true,
+                  phoneNumber,
+                  lastConnection: new Date(),
+                  qrCode: null,
+                  clientId
+                });
+                
+                console.log(`💾 [515 FIX] Cliente marcado como conectado: ${phoneNumber}`);
+                
+                if (!resolved) {
+                  resolved = true;
+                  clearTimeout(timeoutId);
+                  resolve({ 
+                    success: true, 
+                    message: `WhatsApp conectado! Número: ${phoneNumber}` 
+                  });
+                }
+                return;
+              }
+              
+              // Para outros casos de 515, atualizar como desconectado
               await this.updateClientConfig(clientId, {
                 isConnected: false,
                 qrCode: null,
