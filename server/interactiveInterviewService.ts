@@ -676,28 +676,65 @@ class InteractiveInterviewService {
   }
 
   private async finishInterview(phone: string, interview: ActiveInterview): Promise<void> {
-    console.log(`🎉 Finalizando entrevista de ${interview.candidateName}`);
+    console.log(`🎉 [FINISH] Finalizando entrevista de ${interview.candidateName} para cliente ${interview.clientId}`);
 
-    // Atualizar status da entrevista no banco
+    // Salvar todas as respostas com isolamento por cliente
     try {
+      console.log(`💾 [FINISH] Salvando ${interview.responses.length} respostas com clientId ${interview.clientId}`);
+      
+      // Salvar respostas da entrevista com isolamento por cliente
+      await storage.saveInterviewResults(interview.selectionId, interview.candidateId, interview.responses);
+      
+      // Atualizar status da entrevista no banco se existir ID
       if (interview.interviewDbId) {
         await storage.updateInterview(interview.interviewDbId, { 
-          status: 'completed'
+          status: 'completed',
+          completedAt: new Date(),
+          totalScore: null // Será calculado pela IA posteriormente
         });
-        console.log(`💾 Entrevista marcada como concluída no banco`);
+        console.log(`✅ [FINISH] Entrevista ${interview.interviewDbId} marcada como concluída`);
       }
-    } catch (error) {
-      console.log(`❌ Erro ao finalizar entrevista no banco:`, error.message);
+      
+      // Criar relatório automático para preservar dados
+      try {
+        const reportId = `report_${interview.selectionId}_${Date.now()}`;
+        const reportData = {
+          id: reportId,
+          selectionId: interview.selectionId,
+          clientId: interview.clientId,
+          createdAt: new Date(),
+          jobData: { 
+            id: interview.jobId, 
+            name: interview.jobName 
+          },
+          candidatesData: [{
+            id: interview.candidateId,
+            name: interview.candidateName,
+            phone: interview.phone,
+            responses: interview.responses,
+            completedAt: new Date().toISOString()
+          }],
+          responseData: interview.responses
+        };
+        
+        await storage.createReport(reportData);
+        console.log(`📊 [FINISH] Relatório automático criado: ${reportId} para cliente ${interview.clientId}`);
+      } catch (reportError: any) {
+        console.log(`⚠️ [FINISH] Aviso: Erro ao criar relatório automático: ${reportError?.message}`);
+      }
+      
+    } catch (error: any) {
+      console.log(`❌ [FINISH] Erro crítico ao salvar entrevista: ${error?.message || error}`);
     }
 
-    // Mensagem final
+    // Mensagem final com isolamento por cliente
     await this.sendMessage(`${phone}@s.whatsapp.net`, 
-      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nNós retornaremos com o resultado o mais breve possível. Obrigado pela participação!`
+      `🎉 Parabéns ${interview.candidateName}!\n\nVocê completou a entrevista para: ${interview.jobName}\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nRetornaremos com o resultado em breve. Obrigado pela participação!`
     );
 
     // Remover entrevista ativa
     this.activeInterviews.delete(phone);
-    console.log(`🗑️ Entrevista removida da memória`);
+    console.log(`🗑️ [FINISH] Entrevista ${interview.candidateName} removida da memória - cliente ${interview.clientId}`);
   }
 
   private async stopInterview(phone: string): Promise<void> {
