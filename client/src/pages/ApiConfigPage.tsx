@@ -91,11 +91,11 @@ export default function ApiConfigPage() {
     enabled: !isMaster && !!user?.clientId,
   });
 
-  // WhatsApp Status Query
+  // WhatsApp Status Query - Verificação automática a cada 10 segundos
   const { data: whatsappStatus, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [`/api/whatsapp-client/status`],
     enabled: !isMaster, // Sempre ativo para clientes
-    refetchInterval: 5000,
+    refetchInterval: 10000, // Verificar a cada 10 segundos
     staleTime: 0,
     retry: 1
   });

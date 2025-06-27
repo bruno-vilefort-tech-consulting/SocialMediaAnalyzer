@@ -362,8 +362,28 @@ export class WppConnectService {
   /**
    * Lista todas as sessões ativas
    */
-  getActiveSessions(): string[] {
-    return Array.from(this.sessions.keys());
+  getActiveSessions(): Map<string, WppSession> {
+    return this.sessions;
+  }
+
+  /**
+   * Obtém status de uma sessão específica
+   */
+  getSessionStatus(clientId: string): any {
+    const session = this.sessions.get(clientId) || this.sessions.get(`client_${clientId}`);
+    console.log(`📱 [WPPCONNECT] Status da sessão ${clientId}:`, session);
+    
+    if (session) {
+      return {
+        isConnected: session.isConnected,
+        status: session.status || 'unknown',
+        phoneNumber: session.phoneNumber,
+        page: session.page,
+        client: session.client
+      };
+    }
+    
+    return null;
   }
 }
 

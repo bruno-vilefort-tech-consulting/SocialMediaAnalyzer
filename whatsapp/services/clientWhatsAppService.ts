@@ -75,18 +75,20 @@ class ClientWhatsAppService {
           }
           
           // Verificar todas as sessões em busca de uma ativa (fallback)
-          for (const [sessionKey, session] of activeSessions) {
-            if (session && session.isConnected) {
-              console.log(`✅ [CLIENT-WA] Sessão ativa encontrada em ${sessionKey} para cliente ${clientId}`);
-              
-              return {
-                isConnected: true,
-                qrCode: null,
-                phoneNumber: session.phoneNumber || 'Connected',
-                lastConnection: new Date(),
-                clientId,
-                instanceId: `wpp_${clientId}`
-              };
+          if (activeSessions instanceof Map) {
+            for (const [sessionKey, session] of activeSessions.entries()) {
+              if (session && session.isConnected) {
+                console.log(`✅ [CLIENT-WA] Sessão ativa encontrada em ${sessionKey} para cliente ${clientId}`);
+                
+                return {
+                  isConnected: true,
+                  qrCode: null,
+                  phoneNumber: session.phoneNumber || 'Connected',
+                  lastConnection: new Date(),
+                  clientId,
+                  instanceId: `wpp_${clientId}`
+                };
+              }
             }
           }
         } else {
