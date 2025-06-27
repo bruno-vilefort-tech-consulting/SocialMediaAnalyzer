@@ -377,15 +377,6 @@ export class EvolutionApiService {
         instanceId: instance.instanceId,
         lastConnection: instance.isConnected ? new Date() : undefined
       };
-
-    } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao verificar status para cliente ${clientId}:`, error);
-      const instance = this.instances.get(clientId);
-      return { 
-        isConnected: false,
-        instanceId: instance?.instanceId,
-        qrCode: instance?.qrCode
-      };
     }
   }
 

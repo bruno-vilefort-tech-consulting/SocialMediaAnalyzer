@@ -193,22 +193,25 @@ export class WppConnectService {
     }
     
     // Verificar se cliente ainda está conectado
-    if (session.client && session.isConnected) {
+    if (session.client) {
       try {
-        const isConnected = await session.client.isConnected();
-        session.isConnected = isConnected;
+        // Tentar obter informações do host device para confirmar conexão
+        const hostDevice = await session.client.getHostDevice();
+        const isReallyConnected = hostDevice && hostDevice.wid && hostDevice.wid.user;
         
-        if (isConnected && !session.phoneNumber) {
-          try {
-            const hostDevice = await session.client.getHostDevice();
-            session.phoneNumber = hostDevice?.wid?.user || null;
-          } catch (e) {
-            // Ignore error, phoneNumber will remain null
-          }
+        session.isConnected = !!isReallyConnected;
+        
+        if (isReallyConnected) {
+          session.phoneNumber = hostDevice.wid.user;
+          console.log(`📱 [WPPCONNECT] WhatsApp conectado no número: ${hostDevice.wid.user}`);
+        } else {
+          session.phoneNumber = null;
         }
+        
       } catch (error) {
         console.log(`⚠️ [WPPCONNECT] Erro ao verificar conexão ${clientId}:`, error);
         session.isConnected = false;
+        session.phoneNumber = null;
       }
     }
     
