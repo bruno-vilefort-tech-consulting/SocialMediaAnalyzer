@@ -2,6 +2,7 @@ import { storage } from '../../server/storage';
 import { evolutionApiService } from './evolutionApiService';
 import { wppConnectService } from './wppConnectService';
 import { whatsappWebService } from './whatsappWebService';
+import { connectionDetector } from './connectionDetector';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;

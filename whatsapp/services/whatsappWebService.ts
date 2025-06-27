@@ -5,7 +5,8 @@
  * para conectar dispositivos móveis ao sistema.
  */
 
-import { Client, LocalAuth } from 'whatsapp-web.js';
+// Using dynamic import for whatsapp-web.js due to ES module compatibility
+// import { Client, LocalAuth } from 'whatsapp-web.js';
 import * as path from 'path';
 import * as fs from 'fs';
 
