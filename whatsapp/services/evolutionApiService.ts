@@ -50,28 +50,40 @@ export class EvolutionApiService {
     try {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
-      // Pular Evolution API e usar Baileys diretamente para QR Codes autênticos
-      console.log(`🔄 [EVOLUTION] Usando Baileys diretamente para QR Code autêntico do cliente ${clientId}`);
-      // Comentando Evolution API mock que gera QR codes falsos
-      /*
+      // Usar serviço de QR Code autêntico
+      console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico para cliente ${clientId}`);
+      
+      const { authenticQRService } = await import('./authenticQRService');
+      
       try {
-        const response = await fetch(`${this.apiUrl}/instance`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            instanceName: instanceName,
-            token: this.apiKey
-          }),
-          signal: AbortSignal.timeout(5000)
-        });
-        // ... código Evolution API comentado
-      } catch (apiError) {
-        console.log(`⚠️ [EVOLUTION] API não disponível, usando Baileys: ${apiError}`);
+        // Gerar QR Code autêntico usando biblioteca real
+        const qrCode = await authenticQRService.generateAuthenticQRCode(clientId);
+        
+        // Criar instância com QR Code autêntico
+        const instance: EvolutionInstance = {
+          clientId,
+          instanceId: instanceName,
+          token: 'authentic_token',
+          isConnected: false,
+          qrCode: qrCode,
+          createdAt: new Date()
+        };
+
+        this.instances.set(clientId, instance);
+        
+        console.log(`✅ [EVOLUTION] QR Code autêntico gerado para cliente ${clientId}: ${qrCode.length} chars`);
+        return {
+          success: true,
+          qrCode: qrCode
+        };
+        
+      } catch (qrError) {
+        console.error(`❌ [EVOLUTION] Erro ao gerar QR Code autêntico: ${qrError}`);
+        return {
+          success: false,
+          error: `Falha ao gerar QR Code: ${qrError}`
+        };
       }
-      */
 
       // Fallback para Baileys - gerar QR Code autêntico
       console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico via Baileys para cliente ${clientId}`);
