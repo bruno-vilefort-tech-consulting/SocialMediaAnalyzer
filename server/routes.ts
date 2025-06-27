@@ -5294,17 +5294,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         candidates = await storage.getCandidatesByListId(parseInt(selectedList));
       } else if (candidateSource === "search" && selectedCandidates?.length > 0) {
         // Buscar candidatos específicos selecionados
-        console.log(`📋 Processando ${selectedCandidates.length} candidatos selecionados:`, selectedCandidates);
         for (const candidateData of selectedCandidates) {
           // Se candidateData é um objeto, extrair o ID, senão usar como ID direto
           const candidateId = typeof candidateData === 'object' ? candidateData.id : candidateData;
-          console.log(`🔍 Buscando candidato ID: ${candidateId} (tipo: ${typeof candidateData})`);
           const candidate = await storage.getCandidateById(candidateId);
           if (candidate) {
-            console.log(`✅ Candidato encontrado: ${candidate.name} (${candidate.email})`);
             candidates.push(candidate);
-          } else {
-            console.log(`❌ Candidato não encontrado para ID: ${candidateId}`);
           }
         }
       }
