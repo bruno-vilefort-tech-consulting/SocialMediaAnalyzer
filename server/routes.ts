@@ -5323,7 +5323,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enviar emails para cada candidato
       for (const candidate of candidates) {
-        if (!candidate.email) {
+        // Usar email do candidato selecionado se disponível, senão usar do banco
+        let emailToSend = candidate.email;
+        if (candidateSource === "search" && selectedCandidates?.length > 0) {
+          const selectedCandidate = selectedCandidates.find((c: any) => 
+            (typeof c === 'object' ? c.id : c) === candidate.id
+          );
+          if (selectedCandidate && typeof selectedCandidate === 'object' && selectedCandidate.email) {
+            emailToSend = selectedCandidate.email;
+          }
+        }
+
+        if (!emailToSend) {
           console.log(`⚠️ Candidato ${candidate.name} sem email`);
           emailsError++;
           continue;
@@ -5347,11 +5358,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const assessmentLink = `${process.env.BASE_URL || 'https://sistema.maxcamrh.com.br'}/assessments/${candidate.id}`;
           personalizedMessage += `\n\nLink dos Assessments: ${assessmentLink}`;
 
-          console.log(`📧 Enviando email para: ${candidate.email}`);
+          console.log(`📧 Enviando email para: ${emailToSend}`);
           console.log(`📧 Subject: ${personalizedSubject}`);
 
           await emailService.sendEmail({
-            to: candidate.email,
+            to: emailToSend,
             subject: personalizedSubject,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

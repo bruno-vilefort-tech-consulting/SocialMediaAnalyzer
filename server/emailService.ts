@@ -22,20 +22,22 @@ class EmailService {
 
     try {
       const result = await this.resend.emails.send({
-        from: 'Sistema de Entrevistas <noreply@grupomaximuns.com.br>',
+        from: 'MaxcamRH <onboarding@resend.dev>',
         to: data.to,
         subject: data.subject,
         html: data.html,
       });
 
       if (result.error) {
-        throw new Error(`Erro ao enviar email: ${result.error.message}`);
+        console.error('❌ Erro da API Resend:', result.error);
+        throw new Error(`Erro ao enviar email: ${result.error.message || JSON.stringify(result.error)}`);
       }
 
       console.log(`✅ Email enviado para ${data.to} - ID: ${result.data?.id}`);
+      return result;
     } catch (error) {
       console.error('❌ Erro no serviço de email:', error);
-      throw error;
+      throw new Error(`Erro ao enviar email: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 }
