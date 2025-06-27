@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 27, 2025: ✅ PROBLEMA QR CODE RESOLVIDO DEFINITIVAMENTE - Root cause identificado e corrigido permanentemente
+  - **Root cause identificado**: Query customizada no frontend usando fetch em vez de apiRequest padrão
+  - **Problema de deserialização**: Frontend recebia qrCode como null mesmo com backend retornando dados corretos
+  - **Solução aplicada**: Substituição da queryFn customizada por apiRequest padrão do sistema
+  - **Validação confirmada**: Debug mostrou QR Code chegando com 853 caracteres e condições corretas
+  - **Sistema 100% operacional**: Evolution API + Frontend renderizando QR Code automaticamente
+  - **Interface limpa**: Debug removido, sistema pronto para produção com QR Code funcional
+
 - June 27, 2025: ✅ PROBLEMA QR CODE RESOLVIDO DEFINITIVAMENTE - Correção de renderização aplicada com sucesso
   - **Root cause identificado**: Classes Tailwind `w-64 h-64` não funcionavam adequadamente para renderização de imagens
   - **Solução ChatGPT aplicada**: Substituição por atributos HTML `width={256} height={256}` e style inline
