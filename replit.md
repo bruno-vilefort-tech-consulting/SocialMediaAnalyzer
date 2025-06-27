@@ -115,13 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 27, 2025: ✅ SISTEMA ACTIVECONNECTIONDETECTOR IMPLEMENTADO E FUNCIONANDO - Detecção robusta de conexões WhatsApp ativas
-  - **ActiveSessionDetector criado**: Sistema unificado que verifica todas as fontes de conexão WhatsApp (WppConnect, Evolution API, sessões persistentes)
-  - **clientWhatsAppService integrado**: Arquitetura unificada usando ActiveSessionDetector para detecção robusta
-  - **Endpoint atualizado**: /api/whatsapp-client/status agora usa ActiveSessionDetector para verificação real de conexões
-  - **Múltiplas fontes verificadas**: Sistema detecta conexões ativas em WppConnect, Evolution API e sessões salvas no Firebase
-  - **Logs confirmados**: WhatsApp conectado com sucesso ("Login with success", "Connected", "inChat")
-  - **Sistema operacional**: ActiveSessionDetector detectando corretamente conexões ativas do usuário
+- June 27, 2025: ⚠️ PROBLEMA CRÍTICO DE LIMPEZA AGRESSIVA IDENTIFICADO E CORRIGIDO - Sistema causou desconexão indevida do WhatsApp
+  - **Problema crítico identificado**: Sistema de limpeza forçada desconectou WhatsApp ativo do usuário no celular
+  - **Root cause**: Implementação anterior forçava disconnect() antes de conectar, afetando sessões legítimas
+  - **Correção implementada**: Sistema agora verifica se já existe conexão ativa antes de tentar limpeza
+  - **Proteção adicionada**: Método connectClient() avisa usuário se WhatsApp já está conectado em vez de desconectar
+  - **Mensagem clara**: "WhatsApp já conectado no número X. Use 'Desconectar' primeiro se quiser trocar de número"
+  - **Lição aprendida**: Limpeza de sessões deve ser seletiva, não agressiva, para preservar conexões legítimas
 
 - June 27, 2025: ✅ PROBLEMA QR CODE RESOLVIDO DEFINITIVAMENTE - Root cause identificado e corrigido permanentemente
   - **Root cause identificado**: Query customizada no frontend usando fetch em vez de apiRequest padrão

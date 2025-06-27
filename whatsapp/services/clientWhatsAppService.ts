@@ -104,19 +104,25 @@ class ClientWhatsAppService {
   }
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message?: string }> {
-    console.log(`🔗 [CLIENT-WA] Conectando ${clientId} - FORÇANDO NOVO QR CODE`);
+    console.log(`🔗 [CLIENT-WA] Conectando ${clientId}`);
     
     try {
-      // FORÇA LIMPEZA ANTES DE CONECTAR
-      console.log(`🧹 [CLIENT-WA] Limpando sessões antigas para ${clientId}`);
-      await wppConnectService.disconnect(clientId);
-      await evolutionApiService.disconnectClient(clientId);
+      // Verificar se já está conectado legitimamente
+      const currentStatus = await this.getConnectionStatus(clientId);
+      
+      if (currentStatus.isConnected && currentStatus.phoneNumber) {
+        console.log(`⚠️ [CLIENT-WA] WhatsApp já conectado em ${currentStatus.phoneNumber}`);
+        return {
+          success: false,
+          message: `WhatsApp já conectado no número ${currentStatus.phoneNumber}. Use "Desconectar" primeiro se quiser trocar de número.`
+        };
+      }
       
       // Tentar conectar via WppConnect
       const wppResult = await wppConnectService.createSession(clientId);
       
       if (wppResult.success && wppResult.qrCode) {
-        console.log(`✅ [CLIENT-WA] WppConnect conectado com novo QR Code`);
+        console.log(`✅ [CLIENT-WA] WppConnect conectado`);
         return {
           success: true,
           qrCode: wppResult.qrCode,
