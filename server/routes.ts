@@ -5109,8 +5109,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📱 Status WhatsApp:`, {
         isConnected: status.isConnected,
         hasQrCode: !!status.qrCode,
-        phoneNumber: status.phoneNumber
+        phoneNumber: status.phoneNumber,
+        qrCodeLength: status.qrCode?.length || 0,
+        qrCodePrefix: status.qrCode?.substring(0, 50) || 'null'
       });
+      
+      console.log(`📱 [BACKEND] Enviando resposta completa:`, JSON.stringify(status, null, 2));
       
       res.json(status);
     } catch (error) {
