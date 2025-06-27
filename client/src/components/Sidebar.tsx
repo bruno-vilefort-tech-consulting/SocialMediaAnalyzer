@@ -19,7 +19,8 @@ import {
   Smartphone,
   Wifi,
   WifiOff,
-  TrendingUp
+  TrendingUp,
+  CheckSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -59,6 +60,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
+    { path: "/assessments", label: "Assessments", icon: CheckSquare },
     { path: "/clients", label: "Clientes", icon: Building },
     { path: "/configuracoes", label: "Configurações API", icon: Settings },
   ];
@@ -70,6 +72,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { path: "/vagas", label: "Cadastrar Vagas", icon: Briefcase },
     { path: "/selecoes", label: "Seleções", icon: ClipboardList },
     { path: "/relatorios", label: "Relatórios", icon: FileText },
+    { path: "/assessments", label: "Assessments", icon: CheckSquare },
     { path: "/estatisticas", label: "Estatísticas", icon: TrendingUp },
     { path: "/configuracoes", label: "Configurações", icon: Settings },
   ];
