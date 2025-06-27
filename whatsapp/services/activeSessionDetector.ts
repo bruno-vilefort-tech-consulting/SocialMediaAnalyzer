@@ -83,15 +83,40 @@ export class ActiveSessionDetector {
         if (sessionStatus && sessionStatus.isConnected && sessionStatus.client) {
           let phoneNumber = sessionStatus.phoneNumber;
           
-          // Tentar obter número do dispositivo
+          // Tentar obter número do dispositivo com múltiplos métodos
           if (!phoneNumber && sessionStatus.client) {
             try {
+              // Método 1: getHostDevice
               const hostDevice = await sessionStatus.client.getHostDevice();
               if (hostDevice?.wid?.user) {
                 phoneNumber = `+${hostDevice.wid.user}`;
+                console.log(`📱 [DETECTOR] Número extraído via hostDevice: ${phoneNumber}`);
+              } else if (hostDevice?.id?.user) {
+                phoneNumber = `+${hostDevice.id.user}`;
+                console.log(`📱 [DETECTOR] Número extraído via hostDevice.id: ${phoneNumber}`);
+              }
+              
+              // Método 2: getWid (fallback)
+              if (!phoneNumber && typeof sessionStatus.client.getWid === 'function') {
+                const wid = await sessionStatus.client.getWid();
+                if (wid?.user) {
+                  phoneNumber = `+${wid.user}`;
+                  console.log(`📱 [DETECTOR] Número extraído via getWid: ${phoneNumber}`);
+                }
+              }
+              
+              // Método 3: propriedades internas (último recurso)
+              if (!phoneNumber) {
+                if (sessionStatus.client.session?.wid?.user) {
+                  phoneNumber = `+${sessionStatus.client.session.wid.user}`;
+                  console.log(`📱 [DETECTOR] Número extraído via sessão interna: ${phoneNumber}`);
+                } else if (sessionStatus.client.info?.wid?.user) {
+                  phoneNumber = `+${sessionStatus.client.info.wid.user}`;
+                  console.log(`📱 [DETECTOR] Número extraído via info.wid: ${phoneNumber}`);
+                }
               }
             } catch (e: any) {
-              console.log(`⚠️ [DETECTOR] Erro ao obter dispositivo:`, e.message);
+              console.log(`⚠️ [DETECTOR] Erro ao obter número do telefone:`, e.message);
             }
           }
           

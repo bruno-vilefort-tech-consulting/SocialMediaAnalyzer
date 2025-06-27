@@ -100,6 +100,13 @@ export default function ApiConfigPage() {
     retry: 1
   });
 
+  // Ocultar QR Code automaticamente quando conectado
+  useEffect(() => {
+    if (whatsappStatus?.isConnected && shouldShowQR) {
+      setShouldShowQR(false);
+    }
+  }, [whatsappStatus?.isConnected, shouldShowQR]);
+
   // Carregar dados existentes
   useEffect(() => {
     if (masterSettings) {
@@ -534,6 +541,11 @@ export default function ApiConfigPage() {
                   <div className="flex items-center gap-2 text-green-600">
                     <Wifi className="h-5 w-5" />
                     <span className="font-medium">Conectado</span>
+                    {whatsappStatus?.phoneNumber && (
+                      <Badge variant="outline" className="text-green-600 border-green-600">
+                        {whatsappStatus.phoneNumber}
+                      </Badge>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-600">
@@ -541,36 +553,38 @@ export default function ApiConfigPage() {
                     <span className="font-medium">Desconectado</span>
                   </div>
                 )}
-                {whatsappStatus?.phoneNumber && (
-                  <Badge variant="outline" className="text-green-600 border-green-600">
-                    {whatsappStatus.phoneNumber}
-                  </Badge>
-                )}
               </div>
               
               <div className="flex items-center gap-2">
                 {whatsappStatus?.isConnected ? (
                   <>
-                    <Button
-                      onClick={() => {
-                        const phone = prompt("Digite o número para teste (ex: 5511999999999):");
-                        if (phone) {
-                          setWhatsappPhone(phone);
-                          setWhatsappMessage("Teste de conexão WhatsApp - Sistema funcionando!");
-                          sendTestMessageMutation.mutate();
-                        }
-                      }}
-                      disabled={sendTestMessageMutation.isPending}
-                      variant="default"
-                      size="sm"
-                    >
-                      {sendTestMessageMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <MessageCircle className="h-4 w-4 mr-2" />
+                    <div className="flex items-center gap-2">
+                      {whatsappStatus?.phoneNumber && (
+                        <span className="text-sm text-muted-foreground">
+                          {whatsappStatus.phoneNumber}
+                        </span>
                       )}
-                      Enviar Teste
-                    </Button>
+                      <Button
+                        onClick={() => {
+                          const phone = prompt("Digite o número para teste (ex: 5511999999999):");
+                          if (phone) {
+                            setWhatsappPhone(phone);
+                            setWhatsappMessage("Teste de conexão WhatsApp - Sistema funcionando!");
+                            sendTestMessageMutation.mutate();
+                          }
+                        }}
+                        disabled={sendTestMessageMutation.isPending}
+                        variant="default"
+                        size="sm"
+                      >
+                        {sendTestMessageMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                        )}
+                        Enviar Teste
+                      </Button>
+                    </div>
                     <Button
                       onClick={() => clearSessionMutation.mutate()}
                       disabled={clearSessionMutation.isPending}
@@ -649,8 +663,8 @@ export default function ApiConfigPage() {
 
 
 
-            {/* QR Code */}
-            {whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
+            {/* QR Code - Só mostra quando desconectado E quando shouldShowQR está ativo */}
+            {shouldShowQR && whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
               <div className="space-y-4">
                 <div className="text-center">
                   <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
@@ -681,16 +695,17 @@ export default function ApiConfigPage() {
               </div>
             )}
 
-            {/* Casos quando QR Code NÃO aparece */}
-            {!whatsappStatus?.qrCode && (
+            {/* Banner de erro - Só mostra quando desconectado E tentou conectar mas não tem QR */}
+            {shouldShowQR && !whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
               <div className="p-4 bg-red-100 border border-red-400 rounded">
                 <p className="text-red-800">QR Code não encontrado nos dados</p>
               </div>
             )}
 
+            {/* Banner de sucesso - Só mostra quando conectado */}
             {whatsappStatus?.isConnected && (
-              <div className="p-4 bg-blue-100 border border-blue-400 rounded">
-                <p className="text-blue-800">WhatsApp já está conectado</p>
+              <div className="p-4 bg-green-100 border border-green-400 rounded">
+                <p className="text-green-800">WhatsApp conectado com sucesso! {whatsappStatus?.phoneNumber && `(${whatsappStatus.phoneNumber})`}</p>
               </div>
             )}
 
