@@ -73,10 +73,7 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
   // Mutation para envio de emails
   const sendEmailMutation = useMutation({
     mutationFn: async (emailData: any) => {
-      return apiRequest('/api/send-assessment-email', {
-        method: 'POST',
-        body: JSON.stringify(emailData)
-      });
+      return apiRequest('/api/send-assessment-email', 'POST', emailData);
     },
     onSuccess: () => {
       toast({
