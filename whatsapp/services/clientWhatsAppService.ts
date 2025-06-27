@@ -193,7 +193,7 @@ class ClientWhatsAppService {
       }
       
       // Tentar enviar via StableWpp primeiro
-      if (activeConnection.source === 'stablewpp' || activeConnection.source === 'wppconnect') {
+      if (activeConnection.source === 'stablewpp') {
         const stableResult = await stableWppService.sendMessage(clientId, phoneNumber, message);
         if (stableResult.success) {
           return stableResult;

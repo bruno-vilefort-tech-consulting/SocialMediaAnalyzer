@@ -73,8 +73,8 @@ export class ActiveSessionDetector {
       const possibleKeys = [clientId, `client_${clientId}`];
       
       for (const key of possibleKeys) {
-        const sessionStatus = wppConnectService.getSessionStatus(key);
-        console.log(`📋 [DETECTOR] WppConnect status ${key}:`, {
+        const sessionStatus = stableWppService.getActiveSessions().get(key);
+        console.log(`📋 [DETECTOR] StableWpp status ${key}:`, {
           exists: !!sessionStatus,
           isConnected: sessionStatus?.isConnected,
           hasClient: !!sessionStatus?.client
@@ -123,7 +123,7 @@ export class ActiveSessionDetector {
           return {
             isConnected: true,
             phoneNumber: phoneNumber || 'Connected',
-            source: 'wppconnect',
+            source: 'stablewpp',
             sessionId: key,
             clientInfo: sessionStatus
           };
@@ -225,15 +225,15 @@ export class ActiveSessionDetector {
   async getAllActiveConnections(): Promise<{ [clientId: string]: ActiveConnection }> {
     const connections: { [clientId: string]: ActiveConnection } = {};
     
-    // Verificar todas as sessões WppConnect
-    const wppSessions = wppConnectService.getActiveSessions();
-    for (const [sessionId, session] of wppSessions) {
+    // Verificar todas as sessões StableWpp
+    const stableSessions = stableWppService.getActiveSessions();
+    for (const [sessionId, session] of stableSessions) {
       if (session.isConnected) {
         const clientId = sessionId.replace('client_', '');
         connections[clientId] = {
           isConnected: true,
           phoneNumber: session.phoneNumber,
-          source: 'wppconnect',
+          source: 'stablewpp',
           sessionId
         };
       }
