@@ -50,7 +50,10 @@ export class EvolutionApiService {
     try {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
-      // Primeiro tentar Evolution API real
+      // Pular Evolution API e usar Baileys diretamente para QR Codes autênticos
+      console.log(`🔄 [EVOLUTION] Usando Baileys diretamente para QR Code autêntico do cliente ${clientId}`);
+      // Comentando Evolution API mock que gera QR codes falsos
+      /*
       try {
         const response = await fetch(`${this.apiUrl}/instance`, {
           method: 'POST',
@@ -62,39 +65,13 @@ export class EvolutionApiService {
             instanceName: instanceName,
             token: this.apiKey
           }),
-          signal: AbortSignal.timeout(5000) // 5 segundos timeout
+          signal: AbortSignal.timeout(5000)
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.success !== false && data.instance) {
-            const instance: EvolutionInstance = {
-              clientId,
-              instanceId: data.instance.instanceId || data.instance.name,
-              token: data.instance.token || 'default_token',
-              isConnected: false,
-              createdAt: new Date()
-            };
-
-            this.instances.set(clientId, instance);
-            
-            // Gerar QR Code via Evolution API
-            const qrCode = await this.getQRCode(clientId);
-            
-            // Verificar se QR Code é válido (deve ter mais de 100 caracteres)
-            if (qrCode && qrCode.length > 100) {
-              console.log(`✅ [EVOLUTION] Instância criada para cliente ${clientId}: ${instance.instanceId}`);
-              return {
-                success: true,
-                qrCode: qrCode
-              };
-            }
-          }
-        }
+        // ... código Evolution API comentado
       } catch (apiError) {
         console.log(`⚠️ [EVOLUTION] API não disponível, usando Baileys: ${apiError}`);
       }
+      */
 
       // Fallback para Baileys - gerar QR Code autêntico
       console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico via Baileys para cliente ${clientId}`);
