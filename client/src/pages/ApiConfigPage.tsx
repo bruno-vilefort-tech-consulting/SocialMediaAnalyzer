@@ -643,6 +643,26 @@ export default function ApiConfigPage() {
 
 
 
+            {/* TESTE COM PLACEHOLDER */}
+            <div className="p-4 bg-blue-100 border border-blue-400 rounded mb-4">
+              <h4 className="font-bold text-blue-800">TESTE - Imagem Placeholder:</h4>
+              <img 
+                src="https://via.placeholder.com/256/ff0000/ffffff?text=TESTE"
+                alt="Teste Placeholder" 
+                width={256}
+                height={256}
+                style={{ 
+                  width: '256px',
+                  height: '256px',
+                  border: '4px solid blue',
+                  backgroundColor: 'cyan',
+                  display: 'block'
+                }}
+                onLoad={() => console.log('✅ Placeholder carregou!')}
+                onError={() => console.log('❌ Placeholder falhou!')}
+              />
+            </div>
+
             {/* DEBUG QR CODE */}
             <div className="p-4 bg-yellow-100 border border-yellow-400 rounded mb-4">
               <h4 className="font-bold text-yellow-800">DEBUG - Status WhatsApp:</h4>
@@ -674,7 +694,8 @@ export default function ApiConfigPage() {
                       <img 
                         src={whatsappStatus.qrCode} 
                         alt="QR Code WhatsApp" 
-                        className="w-64 h-64 border-4 border-blue-500"
+                        width={256}
+                        height={256}
                         onLoad={() => {
                           console.log('✅ QR Code carregou com sucesso!');
                           console.log('Src:', whatsappStatus.qrCode?.substring(0, 100));
@@ -684,10 +705,11 @@ export default function ApiConfigPage() {
                           console.log('Src que falhou:', whatsappStatus.qrCode?.substring(0, 100));
                         }}
                         style={{ 
+                          width: '256px',
+                          height: '256px',
                           border: '4px solid red',
                           backgroundColor: 'yellow',
-                          minWidth: '256px',
-                          minHeight: '256px'
+                          display: 'block'
                         }}
                       />
                     </div>
