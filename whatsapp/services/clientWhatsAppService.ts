@@ -24,16 +24,18 @@ class ClientWhatsAppService {
       // Usar Enhanced Connection Service como método primário
       const enhancedStatus = await enhancedConnectionService.detectConnection(clientId);
       
-      if (enhancedStatus.isConnected) {
+      if (enhancedStatus.isConnected && enhancedStatus.phoneNumber) {
         console.log(`✅ [CLIENT-WA] Enhanced Service detectou conexão ativa via ${enhancedStatus.service}: ${enhancedStatus.phoneNumber}`);
         return {
           isConnected: true,
           qrCode: null, // Não mostrar QR quando conectado
-          phoneNumber: enhancedStatus.phoneNumber || null,
+          phoneNumber: enhancedStatus.phoneNumber,
           lastConnection: enhancedStatus.lastConnection || new Date(),
           clientId,
           instanceId: enhancedStatus.instanceId || `client_${clientId}`
         };
+      } else if (enhancedStatus.isConnected && !enhancedStatus.phoneNumber) {
+        console.log(`⚠️ [CLIENT-WA] Enhanced Service reportou conexão mas sem número de telefone - considerando desconectado`);
       }
 
       // Se Enhanced Service não detectou conexão, usar fallback direto para Evolution API

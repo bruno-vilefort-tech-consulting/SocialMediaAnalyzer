@@ -96,42 +96,57 @@ export class EnhancedConnectionService {
       const clientSessionPath = path.join(this.sessionsPath, `client_${clientId}`);
       
       if (!fs.existsSync(clientSessionPath)) {
+        console.log(`📂 [ENHANCED] Pasta de sessão não encontrada: ${clientSessionPath}`);
         return { isConnected: false };
       }
 
       const files = fs.readdirSync(clientSessionPath);
+      console.log(`📂 [ENHANCED] Arquivos na pasta de sessão: ${files.length}`);
+      
+      if (files.length === 0) {
+        console.log(`📂 [ENHANCED] Pasta de sessão vazia para cliente ${clientId}`);
+        return { isConnected: false };
+      }
+
       const now = Date.now();
+      let validPhoneNumber = null;
       
       for (const file of files) {
         const filePath = path.join(clientSessionPath, file);
         const stats = fs.statSync(filePath);
         const hoursSinceModified = (now - stats.mtime.getTime()) / (1000 * 60 * 60);
         
-        // Considerar ativo se modificado nas últimas 24 horas
-        if (hoursSinceModified < 24) {
-          let phoneNumber = undefined;
-          
-          // Tentar extrair número do telefone de arquivos JSON
-          if (file.endsWith('.json')) {
-            try {
-              const content = fs.readFileSync(filePath, 'utf8');
-              const data = JSON.parse(content);
-              phoneNumber = data.me?.id?.user || data.me?.user || data.phoneNumber;
-            } catch {
-              // Ignore parsing errors
+        console.log(`📂 [ENHANCED] Arquivo ${file}: ${hoursSinceModified.toFixed(1)} horas desde última modificação`);
+        
+        // Só considerar ativo se modificado nas últimas 2 horas E contém dados WhatsApp válidos
+        if (hoursSinceModified < 2) {
+          // Procurar por arquivos específicos do WhatsApp (não navegador)
+          if (file.includes('whatsapp') || file.includes('session') || file.includes('auth')) {
+            if (file.endsWith('.json')) {
+              try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                const data = JSON.parse(content);
+                const phoneNumber = data.me?.id?.user || data.me?.user || data.phoneNumber || data.phone;
+                
+                // Verificar se contém dados reais do WhatsApp
+                const hasWhatsAppData = data.me || data.phone || data.session || data.auth || data.creds;
+                
+                if (phoneNumber && phoneNumber.length >= 10 && hasWhatsAppData) {
+                  validPhoneNumber = phoneNumber;
+                  console.log(`✅ [ENHANCED] Número de telefone válido encontrado: ${phoneNumber}`);
+                  break;
+                }
+              } catch (parseError) {
+                // Ignorar erros de parsing silenciosamente
+              }
             }
           }
-          
-          return {
-            isConnected: true,
-            phoneNumber,
-            service: 'Session Files',
-            instanceId: `web_${clientId}`,
-            lastConnection: stats.mtime
-          };
         }
       }
       
+      // NUNCA retornar conectado baseado apenas em arquivos do navegador
+      // Só considerar conectado se encontrarmos dados específicos do WhatsApp
+      console.log(`❌ [ENHANCED] Arquivos de navegador encontrados mas não são sessões WhatsApp válidas para cliente ${clientId}`);
       return { isConnected: false };
     } catch (error) {
       console.log(`⚠️ [ENHANCED] Session files erro:`, error);
