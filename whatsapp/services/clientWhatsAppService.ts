@@ -1,5 +1,7 @@
 import { storage } from '../../server/storage';
 import { evolutionApiService } from './evolutionApiService';
+import { wppConnectService } from './wppConnectService';
+import { whatsappWebService } from './whatsappWebService';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -12,32 +14,104 @@ interface WhatsAppClientConfig {
 
 class ClientWhatsAppService {
   constructor() {
-    console.log('✅ [CLIENT-WA] Evolution API Service inicializado');
+    console.log('✅ [CLIENT-WA] Multi-service WhatsApp manager inicializado');
   }
 
   async getConnectionStatus(clientId: string): Promise<WhatsAppClientConfig> {
     try {
-      console.log(`📊 [CLIENT-WA] Verificando status Evolution API para cliente ${clientId}`);
+      console.log(`📊 [CLIENT-WA] Verificando status com múltiplos serviços para cliente ${clientId}`);
       
-      // Usar Evolution API diretamente
-      const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
-      
-      console.log(`📱 [Evolution] Status recebido:`, {
-        isConnected: evolutionStatus.isConnected,
-        hasQrCode: !!evolutionStatus.qrCode,
-        instanceId: evolutionStatus.instanceId
-      });
+      // Método 1: Verificar WPPConnect (mais confiável para sessões persistentes)
+      let wppConnectStatus;
+      try {
+        wppConnectStatus = await wppConnectService.getConnectionStatus(clientId);
+        console.log(`📱 [WPPConnect] Status:`, {
+          isConnected: wppConnectStatus.isConnected,
+          hasPhone: !!wppConnectStatus.phoneNumber,
+          hasQrCode: !!wppConnectStatus.qrCode
+        });
+        
+        // Se WPPConnect detecta conexão, usar este status
+        if (wppConnectStatus.isConnected && wppConnectStatus.phoneNumber) {
+          console.log(`✅ [CLIENT-WA] WPPConnect detectou conexão ativa: ${wppConnectStatus.phoneNumber}`);
+          return {
+            isConnected: true,
+            qrCode: null, // Não mostrar QR quando conectado
+            phoneNumber: wppConnectStatus.phoneNumber,
+            lastConnection: new Date(),
+            clientId,
+            instanceId: wppConnectStatus.instanceId
+          };
+        }
+      } catch (wppError) {
+        console.log(`⚠️ [WPPConnect] Erro na verificação:`, wppError);
+      }
 
+      // Método 2: Verificar WhatsApp Web Service
+      let webServiceStatus;
+      try {
+        webServiceStatus = await whatsappWebService.getConnectionStatus(clientId);
+        console.log(`📱 [WhatsAppWeb] Status:`, {
+          isConnected: webServiceStatus.isConnected,
+          hasPhone: !!webServiceStatus.phoneNumber
+        });
+        
+        if (webServiceStatus.isConnected && webServiceStatus.phoneNumber) {
+          console.log(`✅ [CLIENT-WA] WhatsApp Web detectou conexão ativa: ${webServiceStatus.phoneNumber}`);
+          return {
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: webServiceStatus.phoneNumber,
+            lastConnection: new Date(),
+            clientId,
+            instanceId: `web_${clientId}`
+          };
+        }
+      } catch (webError) {
+        console.log(`⚠️ [WhatsAppWeb] Erro na verificação:`, webError);
+      }
+
+      // Método 3: Verificar Evolution API como fallback
+      let evolutionStatus;
+      try {
+        evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
+        console.log(`📱 [Evolution] Status:`, {
+          isConnected: evolutionStatus.isConnected,
+          hasQrCode: !!evolutionStatus.qrCode,
+          instanceId: evolutionStatus.instanceId
+        });
+
+        if (evolutionStatus.isConnected) {
+          console.log(`✅ [CLIENT-WA] Evolution API detectou conexão ativa`);
+          return {
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: evolutionStatus.phoneNumber || null,
+            lastConnection: evolutionStatus.lastConnection || new Date(),
+            clientId,
+            instanceId: evolutionStatus.instanceId
+          };
+        }
+      } catch (evoError) {
+        console.log(`⚠️ [Evolution] Erro na verificação:`, evoError);
+      }
+
+      // Se nenhum serviço detectou conexão, retornar status baseado em QR Code disponível
+      const hasQrCode = wppConnectStatus?.qrCode || evolutionStatus?.qrCode;
+      
+      console.log(`📱 [CLIENT-WA] Nenhuma conexão ativa detectada. QR Code disponível: ${!!hasQrCode}`);
+      
       return {
-        isConnected: evolutionStatus.isConnected,
-        qrCode: evolutionStatus.qrCode || null,
-        phoneNumber: evolutionStatus.phoneNumber || null,
-        lastConnection: evolutionStatus.lastConnection || null,
+        isConnected: false,
+        qrCode: hasQrCode || null,
+        phoneNumber: null,
+        lastConnection: null,
         clientId,
-        instanceId: evolutionStatus.instanceId
+        instanceId: evolutionStatus?.instanceId || `client_${clientId}`
       };
+      
     } catch (error) {
-      console.error(`❌ [CLIENT-WA] Erro ao verificar status Evolution API:`, error);
+      console.error(`❌ [CLIENT-WA] Erro geral ao verificar status:`, error);
       return {
         isConnected: false,
         qrCode: null,

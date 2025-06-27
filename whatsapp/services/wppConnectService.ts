@@ -194,11 +194,12 @@ export class WppConnectService {
       
       try {
         // Tentar usar getStatus do WPPConnect para verificar sessão existente
-        const wppConnect = require('@wppconnect-team/wppconnect');
+        const wppConnect = await import('@wppconnect-team/wppconnect');
         const sessionPath = `${this.sessionsPath}/${clientId}`;
         
         // Verificar se existe arquivo de sessão
-        const fs = require('fs').promises;
+        const fs = await import('fs');
+        const fsPromises = fs.promises;
         try {
           await fs.access(sessionPath);
           console.log(`✅ [WPPCONNECT] Sessão persistente encontrada para ${clientId}`);
