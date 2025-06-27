@@ -115,17 +115,6 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 27, 2025: 💎 SISTEMA WHATSAPP CONEXÃO PERMANENTE IMPLEMENTADO - Keep-alive e reconexão automática funcionais
-  - **Keep-alive robusto**: Ping a cada 25 segundos para manter conexão ativa permanentemente
-  - **Monitoramento contínuo**: Verificação automática de todas as sessões a cada 30 segundos
-  - **Reconexão inteligente**: Sistema detecta desconexões e reconecta automaticamente em 5 segundos
-  - **Limpeza adequada**: Timeouts e intervals removidos corretamente ao desconectar
-  - **Status permanente**: WhatsApp fica conectado indefinidamente após primeira conexão
-  - **Fallback resiliente**: Múltiplas tentativas de reconexão com intervalo de 2 minutos
-  - **Logs informativos**: Feedback claro sobre keep-alive, reconexões e status da conexão
-  - **Arquitetura robusta**: Maps separados para keepAliveIntervals e reconnectTimeouts
-  - **Conexão estável**: Sistema mantém conexão ativa mesmo com instabilidades de rede Replit
-
 - June 27, 2025: ⚠️ PROBLEMA CRÍTICO DE LIMPEZA AGRESSIVA IDENTIFICADO E CORRIGIDO - Sistema causou desconexão indevida do WhatsApp
   - **Problema crítico identificado**: Sistema de limpeza forçada desconectou WhatsApp ativo do usuário no celular
   - **Root cause**: Implementação anterior forçava disconnect() antes de conectar, afetando sessões legítimas

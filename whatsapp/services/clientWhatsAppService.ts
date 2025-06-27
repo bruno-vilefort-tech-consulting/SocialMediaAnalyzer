@@ -1,4 +1,4 @@
-import { stableWppService } from './stableWppService';
+import { wppConnectService } from './wppConnectService';
 import { evolutionApiService } from './evolutionApiService';
 import { activeSessionDetector } from './activeSessionDetector';
 import { emergencyConnectionDetector } from './emergencyConnectionDetector';
@@ -68,17 +68,17 @@ class ClientWhatsAppService {
         };
       }
       
-      // Verificar StableWpp para QR Code
-      const stableStatus = await stableWppService.getConnectionStatus(clientId);
-      if (stableStatus.isConnected) {
-        console.log(`📱 [CLIENT-WA] StableWpp conectado`);
+      // Verificar WppConnect para QR Code
+      const wppStatus = await wppConnectService.getConnectionStatus(clientId);
+      if (wppStatus.qrCode) {
+        console.log(`📱 [CLIENT-WA] WppConnect QR Code disponível`);
         return {
-          isConnected: true,
-          qrCode: null,
-          phoneNumber: stableStatus.phoneNumber || null,
-          lastConnection: new Date(),
+          isConnected: false,
+          qrCode: wppStatus.qrCode,
+          phoneNumber: null,
+          lastConnection: null,
           clientId,
-          instanceId: stableStatus.instanceId
+          instanceId: wppStatus.instanceId
         };
       }
 
@@ -118,15 +118,15 @@ class ClientWhatsAppService {
         };
       }
       
-      // Tentar conectar via StableWpp
-      const stableResult = await stableWppService.connectClient(clientId);
+      // Tentar conectar via WppConnect
+      const wppResult = await wppConnectService.createSession(clientId);
       
-      if (stableResult.success && stableResult.qrCode) {
-        console.log(`✅ [CLIENT-WA] StableWpp conectado`);
+      if (wppResult.success && wppResult.qrCode) {
+        console.log(`✅ [CLIENT-WA] WppConnect conectado`);
         return {
           success: true,
-          qrCode: stableResult.qrCode,
-          message: 'QR Code gerado via StableWpp'
+          qrCode: wppResult.qrCode,
+          message: 'QR Code gerado via WppConnect'
         };
       }
       
@@ -140,7 +140,7 @@ class ClientWhatsAppService {
       
       return {
         success: false,
-        message: 'Falha ao conectar via StableWpp e Evolution API'
+        message: 'Falha ao conectar via WppConnect e Evolution API'
       };
       
     } catch (error: any) {
@@ -157,7 +157,7 @@ class ClientWhatsAppService {
     
     try {
       // Desconectar de ambos os serviços
-      const stableResult = await stableWppService.disconnect(clientId);
+      const wppResult = await wppConnectService.disconnect(clientId);
       const evolutionResult = await evolutionApiService.disconnectClient(clientId);
       
       return {
@@ -192,11 +192,11 @@ class ClientWhatsAppService {
         };
       }
       
-      // Tentar enviar via StableWpp primeiro
-      if (activeConnection.source === 'stablewpp') {
-        const stableResult = await stableWppService.sendMessage(clientId, phoneNumber, message);
-        if (stableResult.success) {
-          return stableResult;
+      // Tentar enviar via WppConnect primeiro
+      if (activeConnection.source === 'wppconnect') {
+        const wppResult = await wppConnectService.sendMessage(clientId, phoneNumber, message);
+        if (wppResult.success) {
+          return wppResult;
         }
       }
       
