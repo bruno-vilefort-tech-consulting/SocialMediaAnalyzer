@@ -50,49 +50,80 @@ export class EvolutionApiService {
     try {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
-      const response = await fetch(`${this.apiUrl}/instance`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          instanceName: instanceName,
-          token: this.apiKey
-        })
-      });
+      // Primeiro tentar Evolution API real
+      try {
+        const response = await fetch(`${this.apiUrl}/instance`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            instanceName: instanceName,
+            token: this.apiKey
+          }),
+          signal: AbortSignal.timeout(5000) // 5 segundos timeout
+        });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success !== false && data.instance) {
+            const instance: EvolutionInstance = {
+              clientId,
+              instanceId: data.instance.instanceId || data.instance.name,
+              token: data.instance.token || 'default_token',
+              isConnected: false,
+              createdAt: new Date()
+            };
+
+            this.instances.set(clientId, instance);
+            
+            // Gerar QR Code via Evolution API
+            const qrCode = await this.getQRCode(clientId);
+            
+            // Verificar se QR Code é válido (deve ter mais de 100 caracteres)
+            if (qrCode && qrCode.length > 100) {
+              console.log(`✅ [EVOLUTION] Instância criada para cliente ${clientId}: ${instance.instanceId}`);
+              return {
+                success: true,
+                qrCode: qrCode
+              };
+            }
+          }
+        }
+      } catch (apiError) {
+        console.log(`⚠️ [EVOLUTION] API não disponível, usando Baileys: ${apiError}`);
       }
 
-      const data = await response.json();
+      // Fallback para Baileys - gerar QR Code autêntico
+      console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico via Baileys para cliente ${clientId}`);
       
-      if (data.success !== false && data.instance) {
+      const qrCode = await this.generateAuthenticQRCode(clientId);
+      
+      if (qrCode) {
         const instance: EvolutionInstance = {
           clientId,
-          instanceId: data.instance.instanceId || data.instance.name,
-          token: data.instance.token || 'default_token',
+          instanceId: instanceName,
+          token: 'baileys_token',
           isConnected: false,
+          qrCode,
           createdAt: new Date()
         };
 
         this.instances.set(clientId, instance);
         
-        // Gerar QR Code
-        const qrCode = await this.getQRCode(clientId);
-        
-        console.log(`✅ [EVOLUTION] Instância criada para cliente ${clientId}: ${instance.instanceId}`);
+        console.log(`✅ [EVOLUTION] QR Code autêntico gerado via Baileys para cliente ${clientId}`);
         
         return {
           success: true,
-          qrCode: qrCode || undefined
+          qrCode: qrCode
         };
       }
 
       return {
         success: false,
-        error: data.error || 'Falha ao criar instância'
+        error: 'Falha ao gerar QR Code autêntico'
       };
 
     } catch (error) {
@@ -101,6 +132,83 @@ export class EvolutionApiService {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido'
       };
+    }
+  }
+
+  /**
+   * Gera QR Code autêntico usando Baileys
+   */
+  private async generateAuthenticQRCode(clientId: string): Promise<string | null> {
+    try {
+      // Importar Baileys dinamicamente
+      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
+      const { Boom } = await import('@hapi/boom');
+      
+      return new Promise(async (resolve, reject) => {
+        let sock: any = null;
+        
+        try {
+          const sessionsPath = `whatsapp-sessions/client_${clientId}`;
+          
+          // Criar estado de autenticação
+          const { state, saveCreds } = await useMultiFileAuthState(sessionsPath);
+          
+          // Criar socket WhatsApp
+          sock = makeWASocket({
+            auth: state,
+            printQRInTerminal: false,
+            logger: { level: 'silent' },
+            browser: ['WhatsApp Business', 'Chrome', '1.0.0'],
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
+            mobile: true,
+            fireInitQueries: true
+          });
+
+          sock.ev.on('creds.update', saveCreds);
+
+          sock.ev.on('connection.update', (update: any) => {
+            const { connection, lastDisconnect, qr } = update;
+            
+            if (qr) {
+              console.log(`📱 [BAILEYS] QR Code autêntico gerado para cliente ${clientId} (${qr.length} chars)`);
+              if (sock) sock.end();
+              resolve(qr);
+              return;
+            }
+            
+            if (connection === 'close') {
+              const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+              
+              if (!shouldReconnect) {
+                console.log(`🔌 [BAILEYS] Cliente ${clientId} logout detectado`);
+                if (sock) sock.end();
+                reject(new Error('Logout detectado'));
+              }
+            } else if (connection === 'open') {
+              console.log(`✅ [BAILEYS] Cliente ${clientId} conectado com sucesso`);
+              if (sock) sock.end();
+              resolve(null); // Já conectado, não precisa de QR
+            }
+          });
+
+          // Timeout para QR Code
+          setTimeout(() => {
+            if (sock) sock.end();
+            reject(new Error('Timeout ao gerar QR Code'));
+          }, 30000);
+
+        } catch (error) {
+          console.error(`❌ [BAILEYS] Erro ao configurar socket para cliente ${clientId}:`, error);
+          if (sock) sock.end();
+          reject(error);
+        }
+      });
+
+    } catch (error) {
+      console.error(`❌ [BAILEYS] Erro ao importar dependências:`, error);
+      return null;
     }
   }
 
