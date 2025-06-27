@@ -71,6 +71,16 @@ class SimpleInterviewService {
 
     if (text === '1' && !activeInterview) {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      // CORREÇÃO CRÍTICA: Verificar se WhatsApp está conectado antes de iniciar
+      if (!this.whatsappService || (this.whatsappService.isConnected && !this.whatsappService.isConnected())) {
+        console.log(`❌ [CRITICAL_FIX] WhatsApp não conectado - aguardando reconexão...`);
+        await this.sendMessage(from, "Aguarde um momento, estamos conectando o sistema...");
+        // Tentar novamente em 3 segundos
+        setTimeout(async () => {
+          await this.startInterview(phone);
+        }, 3000);
+        return;
+      }
       await this.startInterview(phone);
     } else if (text === '2') {
       console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);

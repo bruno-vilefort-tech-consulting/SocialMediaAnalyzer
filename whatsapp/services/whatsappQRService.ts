@@ -328,16 +328,18 @@ export class WhatsAppQRService {
         printQRInTerminal: false, // Desabilitar para evitar spam no console
         connectTimeoutMs: 60000, // Aumentar timeout
         defaultQueryTimeoutMs: 60000,
-        keepAliveIntervalMs: 30000, // Reduzir frequência de keep-alive
-        retryRequestDelayMs: 5000, // Aumentar delay entre tentativas
-        maxMsgRetryCount: 3, // Reduzir tentativas
-        qrTimeout: 120000, // QR Code válido por 2 minutos
-        browser: ['Replit WhatsApp Bot', 'Chrome', '1.0.0'],
+        keepAliveIntervalMs: 10000, // Keep-alive mais agressivo
+        retryRequestDelayMs: 2000, // Delay menor para tentativas
+        maxMsgRetryCount: 5, // Mais tentativas
+        qrTimeout: 180000, // QR Code válido por 3 minutos
+        browser: ['Samsung', 'SM-G991B', '13'], // Browser Android para melhor estabilidade
         generateHighQualityLinkPreview: false,
         syncFullHistory: false,
         markOnlineOnConnect: true,
         shouldSyncHistoryMessage: () => false,
         emitOwnEvents: false,
+        mobile: true, // Usar mmg.whatsapp.net (mais estável)
+        fireInitQueries: true, // Iniciar queries imediatamente
         getMessage: async (key) => {
           return {
             conversation: 'placeholder'
@@ -355,6 +357,40 @@ export class WhatsAppQRService {
             hasDisconnect: !!lastDisconnect,
             receivedPendingNotifications 
           });
+          
+          // CORREÇÃO CRÍTICA: Se conexão está aberta, forçar reconexão de serviços WhatsApp
+          if (connection === 'open') {
+            console.log('🔧 [CRITICAL_FIX] Conexão aberta - configurando serviços de entrevista...');
+            
+            // Configurar WhatsAppService no simpleInterviewService
+            try {
+              const whatsappService = {
+                socket: this.socket,
+                isConnected: () => true,
+                sendMessage: async (to: string, message: any) => {
+                  return await this.socket.sendMessage(to, message);
+                }
+              };
+              
+              simpleInterviewService.setWhatsAppService(whatsappService);
+              console.log('✅ [CRITICAL_FIX] SimpleInterviewService configurado com WhatsApp ativo');
+              
+              // HEARTBEAT CRÍTICO: Ping a cada 8 segundos para manter conexão viva
+              setInterval(async () => {
+                try {
+                  if (this.socket && this.socket.ws && this.socket.ws.readyState === 1) {
+                    await this.socket.sendPresenceUpdate('available');
+                    console.log('💓 [HEARTBEAT] Ping enviado para manter conexão viva');
+                  }
+                } catch (pingError) {
+                  console.log('⚠️ [HEARTBEAT] Erro no ping:', pingError.message);
+                }
+              }, 8000);
+              
+            } catch (serviceError) {
+              console.error('❌ [CRITICAL_FIX] Erro ao configurar serviços:', serviceError);
+            }
+          }
           
           if (qr) {
             // Evitar spam de QR codes - só gerar se diferente do anterior
@@ -418,11 +454,23 @@ export class WhatsAppQRService {
               console.error('Erro ao salvar desconexão:', err.message)
             );
             
-            // Detectar tipos específicos de erro
+            // CORREÇÃO CRÍTICA: Detectar erro 428 como prioritário para reconexão imediata
+            const isError428 = errorCode === 428 || errorMessage.includes('Connection Terminated by Server');
             const isStreamError = errorCode === 515 || errorMessage.includes('Stream Errored');
             const isConflictError = errorCode === 440 || errorMessage.includes('conflict') || errorMessage.includes('replaced');
             const shouldReconnect = errorCode !== 401 && errorCode !== 403 && 
                                    !errorMessage.includes('device_removed');
+            
+            // PRIORIDADE MÁXIMA: Erro 428 reconecta IMEDIATAMENTE
+            if (isError428) {
+              console.log('🚨 [CRITICAL_428] Connection Terminated by Server - reconectando IMEDIATAMENTE');
+              setTimeout(() => {
+                this.initializeConnection().catch(err => 
+                  console.error('Erro na reconexão crítica 428:', err.message)
+                );
+              }, 1000); // Apenas 1 segundo de delay
+              return; // Sair imediatamente, não executar outras lógicas
+            }
             
             if (isStreamError) {
               console.log('🔄 Erro de stream detectado - limpando credenciais e forçando nova autenticação...');
