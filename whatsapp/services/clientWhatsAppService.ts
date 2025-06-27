@@ -1,5 +1,4 @@
 import { wppConnectService } from './wppConnectService';
-import { enhancedConnectionService } from './enhancedConnectionService';
 import { evolutionApiService } from './evolutionApiService';
 
 interface WhatsAppClientConfig {
@@ -20,7 +19,7 @@ class ClientWhatsAppService {
     console.log(`🔍 [CLIENT-WA] Verificando status para cliente ${clientId}`);
 
     try {
-      // DETECÇÃO DIRETA WPPCONNECT
+      // DETECÇÃO WPPCONNECT DIRETA
       console.log(`📱 [CLIENT-WA] Testando WppConnect`);
       
       const possibleKeys = [clientId, `client_${clientId}`];
@@ -35,7 +34,7 @@ class ClientWhatsAppService {
           });
           
           if (wppStatus && wppStatus.isConnected && wppStatus.client) {
-            console.log(`✅ [CLIENT-WA] WPPCONNECT ATIVO! Key: ${key}`);
+            console.log(`✅ [CLIENT-WA] WPPCONNECT DETECTADO! Key: ${key}`);
             
             let phoneNumber = wppStatus.phoneNumber;
             if (!phoneNumber) {
@@ -63,36 +62,14 @@ class ClientWhatsAppService {
         }
       }
 
-      // ENHANCED CONNECTION SERVICE
-      console.log(`🔍 [CLIENT-WA] Testando Enhanced Service`);
-      
-      try {
-        const enhancedStatus = await enhancedConnectionService.checkConnection(clientId);
-        
-        if (enhancedStatus.isConnected && enhancedStatus.phoneNumber) {
-          console.log(`✅ [CLIENT-WA] ENHANCED ATIVO!`);
-          
-          return {
-            isConnected: true,
-            qrCode: null,
-            phoneNumber: enhancedStatus.phoneNumber,
-            lastConnection: new Date(),
-            clientId,
-            instanceId: enhancedStatus.instanceId || `enhanced_${clientId}`
-          };
-        }
-      } catch (e: any) {
-        console.log(`❌ [CLIENT-WA] Erro Enhanced:`, e.message);
-      }
-
-      // EVOLUTION API
+      // EVOLUTION API FALLBACK
       console.log(`🔍 [CLIENT-WA] Testando Evolution API`);
       
       try {
         const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
         
         if (evolutionStatus.isConnected) {
-          console.log(`✅ [CLIENT-WA] EVOLUTION ATIVO!`);
+          console.log(`✅ [CLIENT-WA] EVOLUTION DETECTADO!`);
           
           return {
             isConnected: true,
@@ -148,7 +125,8 @@ class ClientWhatsAppService {
     console.log(`🔗 [CLIENT-WA] Conectando ${clientId}`);
     
     try {
-      const wppResult = await wppConnectService.connect(clientId);
+      // Tentar conectar via WppConnect
+      const wppResult = await wppConnectService.createSession(clientId);
       
       if (wppResult.success && wppResult.qrCode) {
         console.log(`✅ [CLIENT-WA] WppConnect conectado`);
@@ -159,6 +137,7 @@ class ClientWhatsAppService {
         };
       }
 
+      // Fallback para Evolution API
       const evolutionResult = await evolutionApiService.connectClient(clientId);
       
       if (evolutionResult.success) {
