@@ -39,72 +39,94 @@ class ClientWhatsAppService {
         console.log(`⚠️ [CLIENT-WA] Enhanced Service reportou conexão mas sem número de telefone - considerando desconectado`);
       }
 
-      // Verificar diretamente as sessões ativas do WppConnect
-      console.log(`🔍 [CLIENT-WA] Verificando sessões ativas WppConnect`);
+      // Verificar diretamente usando WppConnect SessionStatus
+      console.log(`🔍 [CLIENT-WA] Verificando status de sessão WppConnect para ${clientId}`);
       
       try {
-        const activeSessions = wppConnectService.getActiveSessions();
-        console.log(`📱 [CLIENT-WA] Tipo de activeSessions:`, typeof activeSessions);
-        console.log(`📱 [CLIENT-WA] activeSessions:`, activeSessions);
+        const sessionStatus = wppConnectService.getSessionStatus(clientId);
+        console.log(`📱 [CLIENT-WA] Session status resultado:`, sessionStatus);
         
-        // Verificar se é um Map
-        if (activeSessions && typeof activeSessions.has === 'function') {
-          // Listar todas as sessões para debug
-          console.log(`📱 [CLIENT-WA] Sessões disponíveis (Map):`, Array.from(activeSessions.keys()));
+        if (sessionStatus && sessionStatus.isConnected) {
+          console.log(`✅ [CLIENT-WA] WPPCONNECT CONECTADO! Detectado via getSessionStatus`);
           
-          // Tentar várias chaves possíveis para o cliente
-          const possibleKeys = [clientId, `client_${clientId}`];
-          
-          for (const key of possibleKeys) {
-            if (activeSessions.has(key)) {
-              const session = activeSessions.get(key);
-              console.log(`📱 [CLIENT-WA] Sessão WppConnect encontrada para ${key}:`, session);
-              
-              if (session && session.isConnected) {
-                console.log(`✅ [CLIENT-WA] WppConnect sessão ativa detectada!`);
-                
-                return {
-                  isConnected: true,
-                  qrCode: null,
-                  phoneNumber: session.phoneNumber || 'Connected',
-                  lastConnection: new Date(),
-                  clientId,
-                  instanceId: `wpp_${clientId}`
-                };
+          // Tentar obter número do telefone se disponível
+          let phoneNumber = sessionStatus.phoneNumber;
+          if (!phoneNumber && sessionStatus.client) {
+            try {
+              const hostDevice = await sessionStatus.client.getHostDevice();
+              if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
+                phoneNumber = `+${hostDevice.wid.user}`;
+                console.log(`📱 [CLIENT-WA] Número obtido do dispositivo: ${phoneNumber}`);
               }
+            } catch (deviceError: any) {
+              console.log(`⚠️ [CLIENT-WA] Erro ao obter dispositivo:`, deviceError.message);
             }
           }
           
-          // Verificar todas as sessões em busca de uma ativa (fallback)
-          if (activeSessions instanceof Map) {
-            for (const [sessionKey, session] of activeSessions.entries()) {
-              if (session && session.isConnected) {
-                console.log(`✅ [CLIENT-WA] Sessão ativa encontrada em ${sessionKey} para cliente ${clientId}`);
-                
-                return {
-                  isConnected: true,
-                  qrCode: null,
-                  phoneNumber: session.phoneNumber || 'Connected',
-                  lastConnection: new Date(),
-                  clientId,
-                  instanceId: `wpp_${clientId}`
-                };
-              }
-            }
-          }
-        } else {
-          console.log(`⚠️ [CLIENT-WA] activeSessions não é um Map válido`);
+          return {
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: phoneNumber || 'Connected',
+            lastConnection: new Date(),
+            clientId,
+            instanceId: `wpp_${clientId}`
+          };
         }
-      } catch (sessionError) {
+        
+        // Verificar diretamente as sessões ativas como fallback
+        const activeSessions = wppConnectService.getActiveSessions();
+        console.log(`📱 [CLIENT-WA] Sessões ativas:`, Array.from(activeSessions.keys()));
+        
+        const possibleKeys = [clientId, `client_${clientId}`];
+        for (const key of possibleKeys) {
+          if (activeSessions.has(key)) {
+            const session = activeSessions.get(key);
+            console.log(`📋 [CLIENT-WA] Verificando sessão ${key}:`, {
+              exists: !!session,
+              isConnected: session?.isConnected,
+              hasClient: !!session?.client
+            });
+            
+            if (session && session.isConnected && session.client) {
+              console.log(`✅ [CLIENT-WA] SESSÃO ATIVA DETECTADA: ${key}`);
+              
+              return {
+                isConnected: true,
+                qrCode: null,
+                phoneNumber: session.phoneNumber || 'Connected',
+                lastConnection: new Date(),
+                clientId,
+                instanceId: `wpp_${clientId}`
+              };
+            }
+          }
+        }
+        
+      } catch (sessionError: any) {
         console.log(`❌ [CLIENT-WA] Erro ao verificar sessões WppConnect:`, sessionError.message);
       }
 
-      // Se não encontrou sessão WppConnect ativa, detectar via logs/status interno
-      const wppStatus = wppConnectService.getSessionStatus(clientId);
-      console.log(`📱 [CLIENT-WA] Status interno WppConnect para ${clientId}:`, wppStatus);
+      // Verificar status interno do WppConnect com diferentes IDs
+      console.log(`🔍 [CLIENT-WA] Verificando status interno WppConnect`);
       
-      if (wppStatus && wppStatus.isConnected && wppStatus.status === 'inChat') {
-        console.log(`✅ [CLIENT-WA] WppConnect detectado via status interno!`);
+      const statusKeys = [clientId, `client_${clientId}`];
+      for (const key of statusKeys) {
+        const wppStatus = wppConnectService.getSessionStatus(key);
+        console.log(`📱 [CLIENT-WA] Status WppConnect para ${key}:`, wppStatus);
+        
+        if (wppStatus && wppStatus.isConnected) {
+          console.log(`✅ [CLIENT-WA] CONEXÃO WPPCONNECT DETECTADA via status interno!`);
+          
+          return {
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: wppStatus.phoneNumber || 'Connected',
+            lastConnection: new Date(),
+            clientId,
+            instanceId: `wpp_${clientId}`
+          };
+        }
+      }
         
         return {
           isConnected: true,

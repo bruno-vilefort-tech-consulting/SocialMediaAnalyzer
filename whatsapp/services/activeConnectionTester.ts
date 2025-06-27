@@ -60,7 +60,7 @@ export class ActiveConnectionTester {
   }
   
   /**
-   * Testa WppConnect enviando uma mensagem de verificação interna
+   * Testa WppConnect verificando sessões conectadas
    */
   private async testWppConnectPing(clientId: string): Promise<ActiveConnectionResult> {
     try {
@@ -68,17 +68,26 @@ export class ActiveConnectionTester {
       
       // Verificar se existe uma sessão ativa no WppConnect
       const sessions = wppConnectService.getActiveSessions();
+      console.log(`🔍 [ACTIVE-TEST] Sessões ativas no WppConnect:`, Array.from(sessions.keys()));
+      
       const sessionKey = sessions.has(clientId) ? clientId : sessions.has(`client_${clientId}`) ? `client_${clientId}` : null;
       
       if (sessionKey) {
         const session = sessions.get(sessionKey);
+        console.log(`📋 [ACTIVE-TEST] Sessão ${sessionKey} encontrada:`, {
+          isConnected: session?.isConnected,
+          hasClient: !!session?.client,
+          status: session?.status
+        });
+        
         if (session && session.isConnected && session.client) {
-          console.log(`✅ [ACTIVE-TEST] WppConnect sessão ativa encontrada: ${sessionKey}`);
+          console.log(`✅ [ACTIVE-TEST] WppConnect sessão ativa confirmada: ${sessionKey}`);
           
           // Tentar obter informações do cliente conectado
           try {
             const info = await session.client.getHostDevice();
             if (info && info.wid && info.wid.user) {
+              console.log(`📱 [ACTIVE-TEST] Dispositivo info obtido: ${info.wid.user}`);
               return {
                 isActivelyConnected: true,
                 phoneNumber: `+${info.wid.user}`,
@@ -86,10 +95,11 @@ export class ActiveConnectionTester {
                 testResult: `Dispositivo conectado: ${info.wid.user}`
               };
             }
-          } catch (infoError) {
+          } catch (infoError: any) {
             console.log(`⚠️ [ACTIVE-TEST] Erro ao obter info do dispositivo:`, infoError.message);
           }
           
+          // Mesmo sem info do dispositivo, se está conectado é válido
           return {
             isActivelyConnected: true,
             phoneNumber: session.phoneNumber || 'Connected',
@@ -99,13 +109,25 @@ export class ActiveConnectionTester {
         }
       }
       
+      // Verificar status via getSessionStatus também
+      const sessionStatus = wppConnectService.getSessionStatus(clientId);
+      if (sessionStatus && sessionStatus.isConnected) {
+        console.log(`✅ [ACTIVE-TEST] WppConnect status detectou conexão ativa`);
+        return {
+          isActivelyConnected: true,
+          phoneNumber: sessionStatus.phoneNumber || 'Connected',
+          detectionMethod: 'wppconnect-status-check',
+          testResult: `Status: ${sessionStatus.status}`
+        };
+      }
+      
       return {
         isActivelyConnected: false,
         detectionMethod: 'wppconnect-test',
         testResult: 'Nenhuma sessão WppConnect ativa'
       };
       
-    } catch (error) {
+    } catch (error: any) {
       console.log(`❌ [ACTIVE-TEST] Erro no teste WppConnect:`, error.message);
       return {
         isActivelyConnected: false,
