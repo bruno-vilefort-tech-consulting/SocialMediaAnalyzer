@@ -124,8 +124,36 @@ class ClientWhatsAppService {
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message?: string }> {
     try {
-      console.log(`🔗 [CLIENT-WA] Conectando via Evolution API para cliente ${clientId}`);
+      console.log(`🔗 [CLIENT-WA] Iniciando conexão multi-serviço para cliente ${clientId}`);
       
+      // Primeiro, verificar se já existe conexão ativa
+      const currentStatus = await this.getConnectionStatus(clientId);
+      if (currentStatus.isConnected) {
+        console.log(`✅ [CLIENT-WA] Conexão já ativa detectada para ${clientId}: ${currentStatus.phoneNumber}`);
+        return {
+          success: true,
+          message: `WhatsApp já conectado: ${currentStatus.phoneNumber}`
+        };
+      }
+      
+      // Tentar WPPConnect primeiro (mais confiável para persistência)
+      console.log(`🔄 [CLIENT-WA] Tentando conexão via WPPConnect para ${clientId}`);
+      try {
+        const wppResult = await wppConnectService.createSession(clientId);
+        if (wppResult.success && wppResult.qrCode) {
+          console.log(`✅ [CLIENT-WA] WPPConnect gerou QR Code com sucesso`);
+          return {
+            success: true,
+            qrCode: wppResult.qrCode,
+            message: "QR Code gerado via WPPConnect - escaneie com seu WhatsApp"
+          };
+        }
+      } catch (wppError) {
+        console.log(`⚠️ [CLIENT-WA] WPPConnect falhou, tentando Evolution API:`, wppError);
+      }
+      
+      // Fallback para Evolution API
+      console.log(`🔄 [CLIENT-WA] Tentando conexão via Evolution API para ${clientId}`);
       const result = await evolutionApiService.connectClient(clientId);
       
       console.log(`🔗 [Evolution] Resultado da conexão:`, {
@@ -136,7 +164,7 @@ class ClientWhatsAppService {
       
       return result;
     } catch (error) {
-      console.error(`❌ [CLIENT-WA] Erro na conexão Evolution API:`, error);
+      console.error(`❌ [CLIENT-WA] Erro geral na conexão:`, error);
       return {
         success: false,
         message: `Erro na conexão: ${error.message}`

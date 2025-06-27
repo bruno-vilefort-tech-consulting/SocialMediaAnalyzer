@@ -201,11 +201,11 @@ export class WppConnectService {
         const fs = await import('fs');
         const fsPromises = fs.promises;
         try {
-          await fs.access(sessionPath);
+          await fsPromises.access(sessionPath, fs.constants.F_OK);
           console.log(`✅ [WPPCONNECT] Sessão persistente encontrada para ${clientId}`);
           
           // Tentar reconectar à sessão existente
-          const client = await wppConnect.create({
+          const client = await wppConnect.default.create({
             session: clientId,
             folderNameToken: this.sessionsPath,
             headless: true,
@@ -267,13 +267,13 @@ export class WppConnectService {
           session.phoneNumber = hostDevice.wid.user;
           console.log(`📱 [WPPCONNECT] WhatsApp conectado no número: ${hostDevice.wid.user}`);
         } else {
-          session.phoneNumber = null;
+          session.phoneNumber = undefined;
         }
         
       } catch (error) {
         console.log(`⚠️ [WPPCONNECT] Erro ao verificar conexão ${clientId}:`, error);
         session.isConnected = false;
-        session.phoneNumber = null;
+        session.phoneNumber = undefined;
       }
     }
     
