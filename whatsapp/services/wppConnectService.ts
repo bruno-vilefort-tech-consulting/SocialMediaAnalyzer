@@ -195,7 +195,7 @@ export class WppConnectService {
       try {
         // Tentar usar getStatus do WPPConnect para verificar sessão existente
         const wppConnect = await import('@wppconnect-team/wppconnect');
-        const sessionPath = `${this.sessionsPath}/${clientId}`;
+        const sessionPath = `tokens/client_${clientId}`;
         
         // Verificar se existe arquivo de sessão
         const fs = await import('fs');
@@ -205,9 +205,10 @@ export class WppConnectService {
           console.log(`✅ [WPPCONNECT] Sessão persistente encontrada para ${clientId}`);
           
           // Tentar reconectar à sessão existente
+          console.log(`🔄 [WPPCONNECT] Tentando restaurar sessão existente para ${clientId}`);
           const client = await wppConnect.default.create({
-            session: clientId,
-            folderNameToken: this.sessionsPath,
+            session: `client_${clientId}`,
+            folderNameToken: 'tokens', // Usar tokens em vez de whatsapp-sessions
             headless: true,
             devtools: false,
             useChrome: false,
