@@ -1,4 +1,4 @@
-import { wppConnectService } from './wppConnectService';
+import { stableWppService } from './stableWppService';
 import { evolutionApiService } from './evolutionApiService';
 import { activeSessionDetector } from './activeSessionDetector';
 import { emergencyConnectionDetector } from './emergencyConnectionDetector';
@@ -68,17 +68,17 @@ class ClientWhatsAppService {
         };
       }
       
-      // Verificar WppConnect para QR Code
-      const wppStatus = await wppConnectService.getConnectionStatus(clientId);
-      if (wppStatus.qrCode) {
-        console.log(`📱 [CLIENT-WA] WppConnect QR Code disponível`);
+      // Verificar StableWpp para QR Code
+      const stableStatus = await stableWppService.getConnectionStatus(clientId);
+      if (stableStatus.isConnected) {
+        console.log(`📱 [CLIENT-WA] StableWpp conectado`);
         return {
-          isConnected: false,
-          qrCode: wppStatus.qrCode,
-          phoneNumber: null,
-          lastConnection: null,
+          isConnected: true,
+          qrCode: null,
+          phoneNumber: stableStatus.phoneNumber,
+          lastConnection: new Date(),
           clientId,
-          instanceId: wppStatus.instanceId
+          instanceId: stableStatus.instanceId
         };
       }
 
