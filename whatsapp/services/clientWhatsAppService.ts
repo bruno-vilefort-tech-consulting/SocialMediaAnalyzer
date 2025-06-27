@@ -38,8 +38,58 @@ class ClientWhatsAppService {
         console.log(`⚠️ [CLIENT-WA] Enhanced Service reportou conexão mas sem número de telefone - considerando desconectado`);
       }
 
+      // Verificar diretamente as sessões ativas do WppConnect
+      console.log(`🔍 [CLIENT-WA] Verificando sessões ativas WppConnect`);
+      const activeSessions = wppConnectService.getActiveSessions();
+      
+      // Listar todas as sessões para debug
+      console.log(`📱 [CLIENT-WA] Sessões disponíveis:`, Array.from(activeSessions.keys()));
+      
+      // Tentar várias chaves possíveis para o cliente
+      const possibleKeys = [clientId, `client_${clientId}`];
+      
+      for (const key of possibleKeys) {
+        if (activeSessions.has(key)) {
+          const session = activeSessions.get(key);
+          console.log(`📱 [CLIENT-WA] Sessão WppConnect encontrada para ${key}:`, {
+            status: session?.status,
+            isConnected: session?.isConnected,
+            phoneNumber: session?.phoneNumber
+          });
+          
+          if (session && (session.status === 'inChat' || session.status === 'qrReadSuccess')) {
+            console.log(`✅ [CLIENT-WA] WppConnect sessão ativa detectada!`);
+            
+            return {
+              isConnected: true,
+              qrCode: null,
+              phoneNumber: session.phoneNumber || 'Connected',
+              lastConnection: new Date(),
+              clientId,
+              instanceId: `wpp_${clientId}`
+            };
+          }
+        }
+      }
+      
+      // Verificar todas as sessões em busca de uma ativa (fallback)
+      for (const [sessionKey, session] of activeSessions) {
+        if (session && (session.status === 'inChat' || session.status === 'qrReadSuccess')) {
+          console.log(`✅ [CLIENT-WA] Sessão ativa encontrada em ${sessionKey} para cliente ${clientId}`);
+          
+          return {
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: session.phoneNumber || 'Connected',
+            lastConnection: new Date(),
+            clientId,
+            instanceId: `wpp_${clientId}`
+          };
+        }
+      }
+
       // Se Enhanced Service não detectou conexão, usar fallback direto para Evolution API
-      console.log(`🔄 [CLIENT-WA] Enhanced Service não detectou conexão, tentando Evolution API diretamente`);
+      console.log(`🔄 [CLIENT-WA] Nenhuma sessão WppConnect ativa, tentando Evolution API`);
       
       try {
         const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);

@@ -286,6 +286,13 @@ export class WppConnectService {
   }
   
   /**
+   * Retorna sessões ativas em memória
+   */
+  getActiveSessions(): Map<string, WppSession> {
+    return this.sessions;
+  }
+  
+  /**
    * Envia mensagem de teste
    */
   async sendMessage(clientId: string, phone: string, message: string): Promise<{
