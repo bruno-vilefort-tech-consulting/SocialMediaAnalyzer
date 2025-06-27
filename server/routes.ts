@@ -5290,16 +5290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Buscar candidatos baseado na fonte selecionada
       if (candidateSource === "list" && selectedList) {
-        // Buscar candidatos da lista específica
-        const memberships = await storage.getCandidateListMembershipsByListId(parseInt(selectedList));
-        const candidateIds = memberships.map(m => m.candidateId);
-        
-        for (const candidateId of candidateIds) {
-          const candidate = await storage.getCandidateById(candidateId);
-          if (candidate) {
-            candidates.push(candidate);
-          }
-        }
+        // Buscar candidatos da lista específica usando método correto
+        candidates = await storage.getCandidatesByListId(parseInt(selectedList));
       } else if (candidateSource === "search" && selectedCandidates?.length > 0) {
         // Buscar candidatos específicos selecionados
         for (const candidateId of selectedCandidates) {
