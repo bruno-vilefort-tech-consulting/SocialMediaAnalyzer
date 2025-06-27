@@ -1,7 +1,7 @@
 import { storage } from '../../server/storage';
 import { evolutionApiService } from './evolutionApiService';
 import { wppConnectService } from './wppConnectService';
-import { whatsappWebService } from './whatsappWebService';
+import { simplifiedWebService } from './simplifiedWebService';
 import { connectionDetector } from './connectionDetector';
 
 interface WhatsAppClientConfig {
@@ -48,17 +48,17 @@ class ClientWhatsAppService {
         console.log(`⚠️ [WPPConnect] Erro na verificação:`, wppError);
       }
 
-      // Método 2: Verificar WhatsApp Web Service
+      // Método 2: Verificar WhatsApp Web Service (Simplificado)
       let webServiceStatus;
       try {
-        webServiceStatus = await whatsappWebService.getConnectionStatus(clientId);
-        console.log(`📱 [WhatsAppWeb] Status:`, {
+        webServiceStatus = await simplifiedWebService.getConnectionStatus(clientId);
+        console.log(`📱 [SimplifiedWeb] Status:`, {
           isConnected: webServiceStatus.isConnected,
           hasPhone: !!webServiceStatus.phoneNumber
         });
         
         if (webServiceStatus.isConnected && webServiceStatus.phoneNumber) {
-          console.log(`✅ [CLIENT-WA] WhatsApp Web detectou conexão ativa: ${webServiceStatus.phoneNumber}`);
+          console.log(`✅ [CLIENT-WA] Simplified Web detectou conexão ativa: ${webServiceStatus.phoneNumber}`);
           return {
             isConnected: true,
             qrCode: null,
@@ -69,7 +69,7 @@ class ClientWhatsAppService {
           };
         }
       } catch (webError) {
-        console.log(`⚠️ [WhatsAppWeb] Erro na verificação:`, webError);
+        console.log(`⚠️ [SimplifiedWeb] Erro na verificação:`, webError);
       }
 
       // Método 3: Verificar Evolution API como fallback

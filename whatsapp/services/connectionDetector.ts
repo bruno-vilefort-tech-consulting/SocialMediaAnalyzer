@@ -6,7 +6,7 @@
  */
 
 import { wppConnectService } from './wppConnectService';
-import { whatsappWebService } from './whatsappWebService';
+import { simplifiedWebService } from './simplifiedWebService';
 import { evolutionApiService } from './evolutionApiService';
 
 interface ConnectionStatus {
@@ -83,12 +83,23 @@ export class ConnectionDetector {
   }
 
   private async checkWhatsAppWebSession(clientId: string): Promise<ConnectionStatus> {
-    const status = await whatsappWebService.getConnectionStatus(clientId);
-    return {
-      isConnected: status.isConnected,
-      phoneNumber: status.phoneNumber || undefined,
-      instanceId: `web_${clientId}`
-    };
+    try {
+      console.log(`🔍 [DETECTOR] Verificando WhatsApp Web simplificado para ${clientId}`);
+      const status = await simplifiedWebService.getConnectionStatus(clientId);
+      
+      if (status.isConnected) {
+        return {
+          isConnected: true,
+          phoneNumber: status.phoneNumber,
+          service: 'WhatsApp Web Simplified',
+          instanceId: status.instanceId
+        };
+      }
+    } catch (error) {
+      console.log(`⚠️ [DETECTOR] Erro WhatsApp Web simplificado ${clientId}:`, error);
+    }
+    
+    return { isConnected: false };
   }
 
   private async checkEvolutionApiSession(clientId: string): Promise<ConnectionStatus> {
