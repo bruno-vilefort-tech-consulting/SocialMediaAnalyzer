@@ -43,7 +43,7 @@ export default function CandidateSearchModal({
   const filteredCandidates = candidates.filter((candidate: Candidate) =>
     candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    candidate.phone.includes(searchTerm)
+    (candidate.phone && candidate.phone.includes(searchTerm))
   );
 
   const toggleCandidate = (candidate: Candidate) => {
