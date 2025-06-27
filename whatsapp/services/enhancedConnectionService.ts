@@ -113,7 +113,13 @@ export class EnhancedConnectionService {
       
       for (const file of files) {
         const filePath = path.join(clientSessionPath, file);
-        const stats = fs.statSync(filePath);
+        let stats;
+        try {
+          stats = fs.statSync(filePath);
+        } catch (error) {
+          // Ignorar symlinks e arquivos não acessíveis
+          continue;
+        }
         const hoursSinceModified = (now - stats.mtime.getTime()) / (1000 * 60 * 60);
         
         console.log(`📂 [ENHANCED] Arquivo ${file}: ${hoursSinceModified.toFixed(1)} horas desde última modificação`);
