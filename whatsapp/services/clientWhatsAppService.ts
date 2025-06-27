@@ -1,6 +1,7 @@
 import { wppConnectService } from './wppConnectService';
 import { evolutionApiService } from './evolutionApiService';
 import { activeSessionDetector } from './activeSessionDetector';
+import { emergencyConnectionDetector } from './emergencyConnectionDetector';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
