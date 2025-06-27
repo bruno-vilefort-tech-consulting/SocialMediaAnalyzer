@@ -94,22 +94,6 @@ export default function ApiConfigPage() {
   // WhatsApp Status Query
   const { data: whatsappStatus, refetch: refetchWhatsAppStatus } = useQuery<WhatsAppStatus>({
     queryKey: [`/api/whatsapp-client/status`],
-    queryFn: async () => {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/whatsapp-client/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-store'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      return response.json();
-    },
     enabled: !isMaster, // Sempre ativo para clientes
     refetchInterval: 5000,
     staleTime: 0,
