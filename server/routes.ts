@@ -5107,20 +5107,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📊 WhatsApp Client: Status para cliente ${clientId}...`);
       
-      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-      const status = await clientWhatsAppService.getConnectionStatus(clientId.toString());
+      // Usar ActiveSessionDetector para detecção robusta
+      const { ActiveSessionDetector } = await import('../whatsapp/services/activeSessionDetector');
+      const detector = new ActiveSessionDetector();
+      const connectionStatus = await detector.detectActiveConnection(clientId.toString());
       
-      console.log(`📱 Status WhatsApp:`, {
-        isConnected: status.isConnected,
-        hasQrCode: !!status.qrCode,
-        phoneNumber: status.phoneNumber,
-        qrCodeLength: status.qrCode?.length || 0,
-        qrCodePrefix: status.qrCode?.substring(0, 50) || 'null'
-      });
+      console.log(`🔍 [ACTIVE-DETECTOR] Status detectado:`, connectionStatus);
       
-      console.log(`📱 [BACKEND] Enviando resposta completa:`, JSON.stringify(status, null, 2));
+      // Buscar QR Code da configuração se não estiver conectado
+      let qrCode = null;
+      if (!connectionStatus.isConnected) {
+        const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+        const status = await clientWhatsAppService.getConnectionStatus(clientId.toString());
+        qrCode = status.qrCode;
+      }
       
-      res.json(status);
+      const response = {
+        isConnected: connectionStatus.isConnected,
+        qrCode: qrCode,
+        phoneNumber: connectionStatus.phoneNumber,
+        source: connectionStatus.source,
+        details: connectionStatus.details,
+        clientId: clientId.toString(),
+        instanceId: `client_${clientId}`
+      };
+      
+      console.log(`📱 [WHATSAPP-CLIENT] Resposta final:`, response);
+      
+      res.json(response);
     } catch (error) {
       console.error('❌ Erro WhatsApp Client status:', error);
       res.status(500).json({ 

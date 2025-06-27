@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 27, 2025: ✅ SISTEMA ACTIVECONNECTIONDETECTOR IMPLEMENTADO E FUNCIONANDO - Detecção robusta de conexões WhatsApp ativas
+  - **ActiveSessionDetector criado**: Sistema unificado que verifica todas as fontes de conexão WhatsApp (WppConnect, Evolution API, sessões persistentes)
+  - **clientWhatsAppService integrado**: Arquitetura unificada usando ActiveSessionDetector para detecção robusta
+  - **Endpoint atualizado**: /api/whatsapp-client/status agora usa ActiveSessionDetector para verificação real de conexões
+  - **Múltiplas fontes verificadas**: Sistema detecta conexões ativas em WppConnect, Evolution API e sessões salvas no Firebase
+  - **Logs confirmados**: WhatsApp conectado com sucesso ("Login with success", "Connected", "inChat")
+  - **Sistema operacional**: ActiveSessionDetector detectando corretamente conexões ativas do usuário
+
 - June 27, 2025: ✅ PROBLEMA QR CODE RESOLVIDO DEFINITIVAMENTE - Root cause identificado e corrigido permanentemente
   - **Root cause identificado**: Query customizada no frontend usando fetch em vez de apiRequest padrão
   - **Problema de deserialização**: Frontend recebia qrCode como null mesmo com backend retornando dados corretos
