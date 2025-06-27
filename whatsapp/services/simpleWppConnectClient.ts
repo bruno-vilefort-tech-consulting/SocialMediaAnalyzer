@@ -182,12 +182,63 @@ class SimpleWppConnectClient {
     });
   }
 
+  /**
+   * Configura keep-alive permanente para manter conexão ativa indefinidamente
+   */
+  private setupPermanentKeepAlive(client: any, clientId: string): void {
+    console.log(`🔄 [KEEPALIVE] Configurando keep-alive permanente para cliente ${clientId}`);
+    
+    // Parar qualquer keep-alive anterior
+    const existingInterval = this.keepAliveIntervals.get(clientId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+    }
+    
+    // Configurar novo keep-alive com ping a cada 30 segundos
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        // Verificar se cliente ainda existe e está conectado
+        const session = this.sessions.get(clientId);
+        if (!session || !session.client) {
+          console.log(`⚠️ [KEEPALIVE] Sessão ${clientId} não encontrada - parando keep-alive`);
+          clearInterval(keepAliveInterval);
+          this.keepAliveIntervals.delete(clientId);
+          return;
+        }
+        
+        // Enviar ping para manter conexão ativa
+        await client.sendPresenceUpdate('available');
+        console.log(`💓 [KEEPALIVE] Ping enviado para cliente ${clientId} - conexão mantida ativa`);
+        
+      } catch (error) {
+        console.log(`⚠️ [KEEPALIVE] Erro no ping para ${clientId}:`, error.message);
+        // Não parar o keep-alive por erros temporários
+      }
+    }, 30000); // 30 segundos
+    
+    // Armazenar referência do interval
+    this.keepAliveIntervals.set(clientId, keepAliveInterval);
+    
+    console.log(`✅ [KEEPALIVE] Keep-alive permanente ativado para cliente ${clientId} - ping a cada 30s`);
+  }
+
   async disconnectClient(clientId: string): Promise<{ success: boolean; message: string }> {
+    console.log(`🔌 [DISCONNECT] Desconectando cliente ${clientId} - PARAR KEEP-ALIVE PERMANENTE`);
+    
     try {
+      // PRIMEIRO: Parar keep-alive interval
+      const keepAliveInterval = this.keepAliveIntervals.get(clientId);
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        this.keepAliveIntervals.delete(clientId);
+        console.log(`⏹️ [DISCONNECT] Keep-alive parado para cliente ${clientId}`);
+      }
+      
       const session = this.sessions.get(clientId);
       
       if (session && session.client) {
         await session.client.close();
+        console.log(`✅ [DISCONNECT] Sessão ${clientId} desconectada do WhatsApp`);
       }
 
       this.sessions.delete(clientId);
@@ -200,11 +251,11 @@ class SimpleWppConnectClient {
         lastConnection: null
       });
 
-      console.log(`✅ [WPPConnect] Cliente ${clientId} desconectado`);
+      console.log(`🏁 [DISCONNECT] Desconexão completa do cliente ${clientId} - keep-alive parado permanentemente`);
       return { success: true, message: 'WhatsApp desconectado com sucesso' };
 
     } catch (error) {
-      console.error(`❌ [WPPConnect] Erro ao desconectar cliente ${clientId}:`, error);
+      console.error(`❌ [DISCONNECT] Erro ao desconectar cliente ${clientId}:`, error);
       return { success: false, message: 'Erro ao desconectar WhatsApp' };
     }
   }
@@ -286,17 +337,35 @@ class SimpleWppConnectClient {
   }
 
   async clearAllSessions(): Promise<void> {
+    console.log(`🧹 [CLEANUP] Limpando todas as sessões - PARAR TODOS OS KEEP-ALIVES`);
+    
+    // Primeiro: Parar todos os keep-alive intervals
+    for (const [clientId, interval] of this.keepAliveIntervals) {
+      try {
+        clearInterval(interval);
+        console.log(`⏹️ [CLEANUP] Keep-alive parado para cliente ${clientId}`);
+      } catch (error) {
+        console.error(`❌ [CLEANUP] Erro ao parar keep-alive ${clientId}:`, error);
+      }
+    }
+    this.keepAliveIntervals.clear();
+    
+    // Segundo: Fechar todas as sessões WhatsApp
     for (const [clientId, session] of this.sessions) {
       try {
         if (session.client) {
           await session.client.close();
+          console.log(`✅ [CLEANUP] Sessão ${clientId} fechada`);
         }
       } catch (error) {
-        console.error(`Erro ao fechar sessão ${clientId}:`, error);
+        console.error(`❌ [CLEANUP] Erro ao fechar sessão ${clientId}:`, error);
       }
     }
+    
     this.sessions.clear();
     this.connectionPromises.clear();
+    
+    console.log(`🏁 [CLEANUP] Limpeza completa - todos os keep-alives parados permanentemente`);
   }
 }
 

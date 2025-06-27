@@ -37,6 +37,7 @@ interface AuthRequest extends Request {
     role: string;
     clientId?: number;
   };
+  session?: any;
 }
 
 // Authentication middleware

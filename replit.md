@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 27, 2025: ✅ SISTEMA DE CONEXÕES PERMANENTES WHATSAPP IMPLEMENTADO COMPLETAMENTE - Keep-alive permanente até desconexão manual
+  - **autoClose: 0 configurado**: Todas as instâncias WppConnect (simpleWppConnectClient, wppConnectService, wppConnectClientModule) com autoClose: 0
+  - **Keep-alive permanente implementado**: setupPermanentKeepAlive() com ping a cada 30 segundos em todos os serviços
+  - **Gestão de intervals**: keepAliveIntervals Map para rastrear e limpar intervals por clientId
+  - **Desconexão manual controlada**: Disconnect() para todos os keep-alive intervals antes de fechar sessões
+  - **Limpeza completa**: clearAllSessions() para todos os keep-alive intervals ao limpar sessões
+  - **Logs detalhados**: Sistema monitora keep-alive ativo e cleanup de intervals
+  - **Conexões persistem indefinidamente**: WhatsApp mantido ativo até usuário clicar "Desconectar"
+
 - June 27, 2025: ⚠️ PROBLEMA CRÍTICO DE LIMPEZA AGRESSIVA IDENTIFICADO E CORRIGIDO - Sistema causou desconexão indevida do WhatsApp
   - **Problema crítico identificado**: Sistema de limpeza forçada desconectou WhatsApp ativo do usuário no celular
   - **Root cause**: Implementação anterior forçava disconnect() antes de conectar, afetando sessões legítimas
