@@ -1,0 +1,271 @@
+/**
+ * WPPConnect Service - Implementação real do WhatsApp Web
+ * 
+ * Este serviço usa WPPConnect para conectar ao WhatsApp Web real
+ * e gerar QR Codes autênticos que funcionam com o aplicativo.
+ */
+
+import * as wppconnect from '@wppconnect-team/wppconnect';
+import * as path from 'path';
+import * as fs from 'fs';
+
+interface WppSession {
+  clientId: string;
+  client: any;
+  isConnected: boolean;
+  qrCode?: string;
+  phoneNumber?: string;
+  createdAt: Date;
+}
+
+export class WppConnectService {
+  private sessions: Map<string, WppSession> = new Map();
+  private sessionsPath: string;
+  
+  constructor() {
+    this.sessionsPath = path.join(process.cwd(), 'whatsapp-sessions');
+    if (!fs.existsSync(this.sessionsPath)) {
+      fs.mkdirSync(this.sessionsPath, { recursive: true });
+    }
+  }
+  
+  /**
+   * Cria nova sessão WhatsApp e gera QR Code autêntico
+   */
+  async createSession(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
+    try {
+      console.log(`🔄 [WPPCONNECT] Criando sessão real para cliente ${clientId}`);
+      
+      // Limpar sessão anterior se existir
+      await this.disconnect(clientId);
+      
+      const sessionName = `client_${clientId}`;
+      
+      return new Promise((resolve, reject) => {
+        let qrCodeGenerated = false;
+        let timeoutId: NodeJS.Timeout;
+        
+        // Timeout de 60 segundos
+        timeoutId = setTimeout(() => {
+          if (!qrCodeGenerated) {
+            console.error(`❌ [WPPCONNECT] Timeout ao gerar QR Code para cliente ${clientId}`);
+            resolve({
+              success: false,
+              error: 'Timeout ao gerar QR Code - tente novamente'
+            });
+          }
+        }, 60000);
+        
+        wppconnect.create({
+          session: sessionName,
+          folderNameToken: this.sessionsPath,
+          headless: true,
+          devtools: false,
+          useChrome: true,
+          debug: false,
+          logQR: false,
+          browserArgs: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+          ],
+          puppeteerOptions: {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+          },
+          catchQR: (base64Qr: string, asciiQR: string, attempts: number, urlCode?: string) => {
+            if (!qrCodeGenerated) {
+              qrCodeGenerated = true;
+              clearTimeout(timeoutId);
+              
+              console.log(`✅ [WPPCONNECT] QR Code real gerado para cliente ${clientId}: ${base64Qr.length} chars`);
+              
+              // Salvar sessão
+              const session: WppSession = {
+                clientId,
+                client: null,
+                isConnected: false,
+                qrCode: base64Qr,
+                createdAt: new Date()
+              };
+              
+              this.sessions.set(clientId, session);
+              
+              resolve({
+                success: true,
+                qrCode: base64Qr
+              });
+            }
+          },
+          statusFind: (statusSession: any, session: string) => {
+            console.log(`📱 [WPPCONNECT] Status sessão ${session}: ${statusSession}`);
+          },
+          onLoadingScreen: (loading: any, session: string) => {
+            console.log(`📱 [WPPCONNECT] Tela carregada ${session}: ${loading}`);
+          }
+        })
+        .then((client) => {
+          console.log(`✅ [WPPCONNECT] Cliente conectado para ${clientId}`);
+          
+          // Atualizar sessão com cliente conectado
+          const session = this.sessions.get(clientId);
+          if (session) {
+            session.client = client;
+            session.isConnected = true;
+            session.phoneNumber = client.getWid?.()?.user || null;
+          }
+          
+          // Se ainda não gerou QR Code e já conectou, considerar sucesso
+          if (!qrCodeGenerated) {
+            qrCodeGenerated = true;
+            clearTimeout(timeoutId);
+            resolve({
+              success: true,
+              qrCode: session?.qrCode || 'connected'
+            });
+          }
+        })
+        .catch((error) => {
+          console.error(`❌ [WPPCONNECT] Erro ao criar sessão ${clientId}:`, error);
+          clearTimeout(timeoutId);
+          if (!qrCodeGenerated) {
+            resolve({
+              success: false,
+              error: `Erro ao inicializar WhatsApp: ${error.message}`
+            });
+          }
+        });
+      });
+      
+    } catch (error) {
+      console.error(`❌ [WPPCONNECT] Erro geral para cliente ${clientId}:`, error);
+      return {
+        success: false,
+        error: `Falha ao criar sessão: ${error}`
+      };
+    }
+  }
+  
+  /**
+   * Verifica status da conexão
+   */
+  async getConnectionStatus(clientId: string): Promise<{
+    isConnected: boolean;
+    qrCode?: string;
+    phoneNumber?: string;
+    instanceId?: string;
+  }> {
+    const session = this.sessions.get(clientId);
+    
+    if (!session) {
+      return { isConnected: false };
+    }
+    
+    // Verificar se cliente ainda está conectado
+    if (session.client && session.isConnected) {
+      try {
+        const isConnected = await session.client.isConnected();
+        session.isConnected = isConnected;
+        
+        if (isConnected && !session.phoneNumber) {
+          try {
+            const hostDevice = await session.client.getHostDevice();
+            session.phoneNumber = hostDevice?.wid?.user || null;
+          } catch (e) {
+            // Ignore error, phoneNumber will remain null
+          }
+        }
+      } catch (error) {
+        console.log(`⚠️ [WPPCONNECT] Erro ao verificar conexão ${clientId}:`, error);
+        session.isConnected = false;
+      }
+    }
+    
+    return {
+      isConnected: session.isConnected,
+      qrCode: session.qrCode,
+      phoneNumber: session.phoneNumber,
+      instanceId: `client_${clientId}`
+    };
+  }
+  
+  /**
+   * Envia mensagem de teste
+   */
+  async sendMessage(clientId: string, phone: string, message: string): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }> {
+    const session = this.sessions.get(clientId);
+    
+    if (!session || !session.client || !session.isConnected) {
+      return {
+        success: false,
+        error: 'WhatsApp não está conectado'
+      };
+    }
+    
+    try {
+      const formattedPhone = phone.includes('@') ? phone : `${phone}@c.us`;
+      const result = await session.client.sendText(formattedPhone, message);
+      
+      console.log(`✅ [WPPCONNECT] Mensagem enviada para ${phone}:`, result.id);
+      
+      return {
+        success: true,
+        messageId: result.id
+      };
+    } catch (error) {
+      console.error(`❌ [WPPCONNECT] Erro ao enviar mensagem para ${phone}:`, error);
+      return {
+        success: false,
+        error: `Falha ao enviar mensagem: ${error}`
+      };
+    }
+  }
+  
+  /**
+   * Desconecta sessão
+   */
+  async disconnect(clientId: string): Promise<boolean> {
+    const session = this.sessions.get(clientId);
+    
+    if (session?.client) {
+      try {
+        await session.client.close();
+        console.log(`✅ [WPPCONNECT] Sessão ${clientId} desconectada`);
+      } catch (error) {
+        console.log(`⚠️ [WPPCONNECT] Erro ao desconectar ${clientId}:`, error);
+      }
+    }
+    
+    this.sessions.delete(clientId);
+    
+    // Limpar arquivos de sessão
+    const sessionPath = path.join(this.sessionsPath, `client_${clientId}`);
+    if (fs.existsSync(sessionPath)) {
+      try {
+        fs.rmSync(sessionPath, { recursive: true, force: true });
+        console.log(`🗑️ [WPPCONNECT] Arquivos de sessão ${clientId} removidos`);
+      } catch (error) {
+        console.log(`⚠️ [WPPCONNECT] Erro ao remover sessão ${clientId}:`, error);
+      }
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Lista todas as sessões ativas
+   */
+  getActiveSessions(): string[] {
+    return Array.from(this.sessions.keys());
+  }
+}
+
+export const wppConnectService = new WppConnectService();

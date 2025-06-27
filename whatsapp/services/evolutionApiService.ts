@@ -50,38 +50,46 @@ export class EvolutionApiService {
     try {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
-      // Usar serviço de QR Code autêntico
-      console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico para cliente ${clientId}`);
+      // Usar WPPConnect para gerar QR Code real do WhatsApp Web
+      console.log(`🔄 [EVOLUTION] Criando sessão WhatsApp real para cliente ${clientId}`);
       
-      const { authenticQRService } = await import('./authenticQRService');
+      const { wppConnectService } = await import('./wppConnectService');
       
       try {
-        // Gerar QR Code autêntico usando biblioteca real
-        const qrCode = await authenticQRService.generateAuthenticQRCode(clientId);
+        // Criar sessão real com WPPConnect
+        const result = await wppConnectService.createSession(clientId);
         
-        // Criar instância com QR Code autêntico
-        const instance: EvolutionInstance = {
-          clientId,
-          instanceId: instanceName,
-          token: 'authentic_token',
-          isConnected: false,
-          qrCode: qrCode,
-          createdAt: new Date()
-        };
+        if (result.success && result.qrCode) {
+          // Criar instância com QR Code real
+          const instance: EvolutionInstance = {
+            clientId,
+            instanceId: instanceName,
+            token: 'wppconnect_token',
+            isConnected: false,
+            qrCode: result.qrCode,
+            createdAt: new Date()
+          };
 
-        this.instances.set(clientId, instance);
+          this.instances.set(clientId, instance);
+          
+          console.log(`✅ [EVOLUTION] QR Code REAL gerado via WPPConnect para cliente ${clientId}: ${result.qrCode.length} chars`);
+          return {
+            success: true,
+            qrCode: result.qrCode
+          };
+        } else {
+          console.error(`❌ [EVOLUTION] WPPConnect falhou para cliente ${clientId}:`, result.error);
+          return {
+            success: false,
+            error: result.error || 'Falha ao criar sessão WhatsApp'
+          };
+        }
         
-        console.log(`✅ [EVOLUTION] QR Code autêntico gerado para cliente ${clientId}: ${qrCode.length} chars`);
-        return {
-          success: true,
-          qrCode: qrCode
-        };
-        
-      } catch (qrError) {
-        console.error(`❌ [EVOLUTION] Erro ao gerar QR Code autêntico: ${qrError}`);
+      } catch (wppError) {
+        console.error(`❌ [EVOLUTION] Erro WPPConnect para cliente ${clientId}:`, wppError);
         return {
           success: false,
-          error: `Falha ao gerar QR Code: ${qrError}`
+          error: `Erro ao inicializar WhatsApp: ${wppError}`
         };
       }
 
