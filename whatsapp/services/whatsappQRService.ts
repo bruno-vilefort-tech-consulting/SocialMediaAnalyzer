@@ -469,12 +469,12 @@ export class WhatsAppQRService {
                 );
               }, 5000);
             } else if (shouldReconnect) {
-              console.log('🔄 Tentando reconectar em 30 segundos...');
+              console.log('🔄 Tentando reconectar em 5 segundos...');
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
                   console.error('Erro na reconexão:', err.message)
                 );
-              }, 30000);
+              }, 5000);
             } else {
               console.log('❌ Não reconectando devido ao tipo de erro');
             }
@@ -541,13 +541,34 @@ export class WhatsAppQRService {
           console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
           
           try {
+            // CORREÇÃO CRÍTICA: Detectar clientId automaticamente para todas as mensagens
+            const phoneNumber = from.replace('@s.whatsapp.net', '');
+            console.log(`🔍 [MESSAGE] Detectando clientId para telefone: ${phoneNumber}`);
+            
+            // Buscar candidato para obter clientId
+            const candidates = await storage.getAllCandidates();
+            const candidate = candidates.find(c => {
+              const candidatePhone = (c.whatsapp || c.phone || '').replace(/\D/g, '');
+              const searchPhone = phoneNumber.replace(/\D/g, '');
+              return candidatePhone === searchPhone || candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+            });
+            
+            let detectedClientId = null;
+            if (candidate) {
+              detectedClientId = candidate.clientId?.toString();
+              console.log(`✅ [MESSAGE] ClientId detectado: ${detectedClientId} para candidato ${candidate.name}`);
+            } else {
+              console.log(`⚠️ [MESSAGE] Candidato não encontrado, usando clientId padrão`);
+              detectedClientId = '1749849987543'; // Fallback para Grupo Maximuns
+            }
+            
             // Se é áudio, passar a mensagem completa para transcrição real
             if (audioMessage) {
               console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
-              await simpleInterviewService.handleMessage(from, text, message);
+              await simpleInterviewService.handleMessage(from, text, message, detectedClientId);
             } else {
               // Para mensagens de texto, usar o fluxo normal
-              await simpleInterviewService.handleMessage(from, text, null);
+              await simpleInterviewService.handleMessage(from, text, null, detectedClientId);
             }
           } catch (messageError) {
             console.error(`❌ Erro ao processar mensagem individual:`, messageError.message);

@@ -39,12 +39,13 @@ class SimpleInterviewService {
     this.audioDownloadService = new AudioDownloadService(service);
   }
 
-  async handleMessage(from: string, text: string, audioMessage?: any): Promise<void> {
+  async handleMessage(from: string, text: string, audioMessage?: any, clientId?: string): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
     console.log(`\n🎯 [INTERVIEW] ===== NOVA MENSAGEM RECEBIDA =====`);
     console.log(`📱 [INTERVIEW] Telefone: ${phone}`);
     console.log(`💬 [INTERVIEW] Texto: "${text}"`);
     console.log(`🎵 [INTERVIEW] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
+    console.log(`🏢 [INTERVIEW] Cliente ID: ${clientId || 'não informado'}`);
     
     if (audioMessage) {
       console.log(`🎧 [INTERVIEW] Dados do áudio:`, {

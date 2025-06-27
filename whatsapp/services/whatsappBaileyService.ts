@@ -196,7 +196,6 @@ class WhatsAppBaileyService {
           } else {
             // Processar mensagem de texto normalmente
             try {
-              const { interactiveInterviewService } = await import('./interactiveInterviewService');
               await interactiveInterviewService.handleMessage(from, messageText, null, clientId);
             } catch (error) {
               console.log(`❌ [INTERVIEW] Erro ao processar mensagem de texto:`, error.message);
