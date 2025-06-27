@@ -21,12 +21,96 @@ interface WppSession {
 export class WppConnectService {
   private sessions: Map<string, WppSession> = new Map();
   private sessionsPath: string;
+  private keepAliveIntervals: Map<string, NodeJS.Timeout> = new Map();
+  private reconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
   
   constructor() {
     this.sessionsPath = path.join(process.cwd(), 'whatsapp-sessions');
     if (!fs.existsSync(this.sessionsPath)) {
       fs.mkdirSync(this.sessionsPath, { recursive: true });
     }
+    
+    // Iniciar verificação periódica de sessões
+    this.startSessionMonitoring();
+  }
+  
+  /**
+   * Inicia monitoramento contínuo das sessões para manter conexões ativas
+   */
+  private startSessionMonitoring() {
+    setInterval(() => {
+      this.checkAllSessions();
+    }, 30000); // Verificar a cada 30 segundos
+  }
+  
+  /**
+   * Verifica todas as sessões ativas e reconecta se necessário
+   */
+  private async checkAllSessions() {
+    for (const [clientId, session] of this.sessions) {
+      if (session.isConnected && session.client) {
+        try {
+          // Tentar obter status para verificar se ainda está conectado
+          await session.client.getHostDevice();
+        } catch (error) {
+          console.log(`⚠️ [WPPCONNECT] Sessão ${clientId} perdeu conexão, tentando reconectar...`);
+          this.attemptReconnection(clientId);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Tenta reconectar uma sessão perdida
+   */
+  private async attemptReconnection(clientId: string) {
+    console.log(`🔄 [WPPCONNECT] Iniciando reconexão automática para ${clientId}`);
+    
+    // Evitar múltiplas tentativas simultâneas
+    if (this.reconnectTimeouts.has(clientId)) {
+      return;
+    }
+    
+    const timeout = setTimeout(async () => {
+      try {
+        await this.createSession(clientId);
+        console.log(`✅ [WPPCONNECT] Reconexão automática bem-sucedida para ${clientId}`);
+      } catch (error) {
+        console.log(`❌ [WPPCONNECT] Falha na reconexão automática para ${clientId}:`, error);
+        // Tentar novamente em 2 minutos
+        setTimeout(() => this.attemptReconnection(clientId), 120000);
+      } finally {
+        this.reconnectTimeouts.delete(clientId);
+      }
+    }, 5000); // Aguardar 5 segundos antes de tentar reconectar
+    
+    this.reconnectTimeouts.set(clientId, timeout);
+  }
+  
+  /**
+   * Configura keep-alive para uma sessão específica
+   */
+  private setupKeepAlive(clientId: string, client: any) {
+    // Limpar keep-alive anterior se existir
+    const existingInterval = this.keepAliveIntervals.get(clientId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+    }
+    
+    // Configurar novo keep-alive a cada 25 segundos
+    const interval = setInterval(async () => {
+      try {
+        if (client && client.getHostDevice) {
+          await client.getHostDevice();
+          console.log(`💓 [WPPCONNECT] Keep-alive enviado para ${clientId}`);
+        }
+      } catch (error) {
+        console.log(`⚠️ [WPPCONNECT] Keep-alive falhou para ${clientId}, tentando reconectar...`);
+        this.attemptReconnection(clientId);
+      }
+    }, 25000);
+    
+    this.keepAliveIntervals.set(clientId, interval);
   }
   
   /**
@@ -204,11 +288,15 @@ export class WppConnectService {
             session.client = client;
             session.isConnected = true;
             
+            // Configurar keep-alive para manter conexão permanente
+            this.setupKeepAlive(clientId, client);
+            
             // Obter número do telefone usando API correta
             client.getHostDevice().then((hostDevice: any) => {
               if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
                 session.phoneNumber = hostDevice.wid.user;
                 console.log(`📱 [WPPCONNECT] Número do telefone detectado: ${hostDevice.wid.user}`);
+                console.log(`💎 [WPPCONNECT] Conexão permanente ativada para ${clientId} (${hostDevice.wid.user})`);
               }
             }).catch((error: any) => {
               console.log(`⚠️ [WPPCONNECT] Erro ao obter número do telefone:`, error);
@@ -390,6 +478,24 @@ export class WppConnectService {
    * Desconecta sessão
    */
   async disconnect(clientId: string): Promise<boolean> {
+    console.log(`🔄 [WPPCONNECT] Desconectando cliente ${clientId}`);
+    
+    // Limpar keep-alive interval
+    const keepAliveInterval = this.keepAliveIntervals.get(clientId);
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+      this.keepAliveIntervals.delete(clientId);
+      console.log(`🔄 [WPPCONNECT] Keep-alive removido para ${clientId}`);
+    }
+    
+    // Limpar timeout de reconexão
+    const reconnectTimeout = this.reconnectTimeouts.get(clientId);
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      this.reconnectTimeouts.delete(clientId);
+      console.log(`🔄 [WPPCONNECT] Timeout de reconexão removido para ${clientId}`);
+    }
+    
     const session = this.sessions.get(clientId);
     
     if (session?.client) {
