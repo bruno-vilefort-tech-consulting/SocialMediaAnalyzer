@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,12 +59,51 @@ export default function AssessmentForm() {
   const [selectedList, setSelectedList] = useState("");
   const [selectedCandidates, setSelectedCandidates] = useState<Candidate[]>([]);
   const [selectedAssessments, setSelectedAssessments] = useState<string[]>([]);
+  const [emailSubject, setEmailSubject] = useState("Olá [nome do candidato] faça seus Assessments MaxcamRH");
   const [emailMessage, setEmailMessage] = useState(`Olá [nome do candidato], 
 eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessments para responder através do link abaixo.`);
   const [sendOption, setSendOption] = useState(""); // "now" ou "schedule"
   const [scheduledDate, setScheduledDate] = useState<Date>();
   const [scheduledTime, setScheduledTime] = useState("");
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Mutation para envio de emails
+  const sendEmailMutation = useMutation({
+    mutationFn: async (emailData: any) => {
+      return apiRequest('/api/send-assessment-email', {
+        method: 'POST',
+        body: JSON.stringify(emailData)
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Assessment enviado com sucesso!",
+        description: "Os emails foram enviados para os candidatos selecionados.",
+      });
+      // Reset form
+      setSelectionName("");
+      setCandidateSource("");
+      setSelectedList("");
+      setSelectedCandidates([]);
+      setSelectedAssessments([]);
+      setEmailSubject("Olá [nome do candidato] faça seus Assessments MaxcamRH");
+      setEmailMessage(`Olá [nome do candidato], 
+eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessments para responder através do link abaixo.`);
+      setSendOption("");
+      setScheduledDate(undefined);
+      setScheduledTime("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao enviar assessment",
+        description: error.message || "Ocorreu um erro ao enviar os emails. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Buscar listas de candidatos
   const { data: candidateLists = [] } = useQuery({
@@ -99,6 +140,8 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
       ((candidateSource === "list" && selectedList !== "") || 
        (candidateSource === "search" && selectedCandidates.length > 0)) &&
       selectedAssessments.length > 0 &&
+      emailSubject.trim() !== "" &&
+      emailMessage.trim() !== "" &&
       sendOption !== "" &&
       (sendOption === "now" || (scheduledDate && scheduledTime))
     );
@@ -246,6 +289,20 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
                 {selectedAssessments.length} assessment(s) selecionado(s)
               </div>
             )}
+          </div>
+
+          {/* Assunto E-mail */}
+          <div className="space-y-2">
+            <Label htmlFor="emailSubject">Assunto E-mail</Label>
+            <Input
+              id="emailSubject"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="Assunto do e-mail"
+            />
+            <div className="text-xs text-gray-500">
+              Use [nome do candidato] e [clienteid] como placeholders no assunto
+            </div>
           </div>
 
           {/* Mensagem E-mail */}
