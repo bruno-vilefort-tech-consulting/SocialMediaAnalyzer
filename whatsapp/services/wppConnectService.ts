@@ -188,7 +188,68 @@ export class WppConnectService {
   }> {
     const session = this.sessions.get(clientId);
     
+    // Se não tem sessão em memória, tentar verificar se existe sessão persistente
     if (!session) {
+      console.log(`🔍 [WPPCONNECT] Verificando sessão persistente para cliente ${clientId}`);
+      
+      try {
+        // Tentar usar getStatus do WPPConnect para verificar sessão existente
+        const wppConnect = require('@wppconnect-team/wppconnect');
+        const sessionPath = `${this.sessionsPath}/${clientId}`;
+        
+        // Verificar se existe arquivo de sessão
+        const fs = require('fs').promises;
+        try {
+          await fs.access(sessionPath);
+          console.log(`✅ [WPPCONNECT] Sessão persistente encontrada para ${clientId}`);
+          
+          // Tentar reconectar à sessão existente
+          const client = await wppConnect.create({
+            session: clientId,
+            folderNameToken: this.sessionsPath,
+            headless: true,
+            devtools: false,
+            useChrome: false,
+            debug: false,
+            logQR: false,
+            browserWS: '',
+            disableWelcome: true,
+            updatesLog: false,
+            autoClose: 60000,
+            createPathFileToken: true,
+          });
+          
+          // Verificar se realmente está conectado
+          const hostDevice = await client.getHostDevice();
+          if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
+            // Criar nova sessão em memória
+            const newSession: WppSession = {
+              clientId,
+              client: client,
+              isConnected: true,
+              phoneNumber: hostDevice.wid.user,
+              createdAt: new Date()
+            };
+            
+            this.sessions.set(clientId, newSession);
+            
+            console.log(`🔄 [WPPCONNECT] Sessão restaurada para ${clientId} - número: ${hostDevice.wid.user}`);
+            
+            return {
+              isConnected: true,
+              phoneNumber: hostDevice.wid.user,
+              instanceId: `client_${clientId}`
+            };
+          }
+          
+        } catch (accessError) {
+          console.log(`📂 [WPPCONNECT] Nenhuma sessão persistente encontrada para ${clientId}`);
+        }
+        
+      } catch (error) {
+        console.log(`⚠️ [WPPCONNECT] Erro ao verificar sessão persistente ${clientId}:`, error);
+      }
+      
       return { isConnected: false };
     }
     

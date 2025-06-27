@@ -244,6 +244,8 @@ export default function ApiConfigPage() {
     }
   });
 
+
+
   const clearSessionMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem('auth_token');
@@ -549,6 +551,26 @@ export default function ApiConfigPage() {
               <div className="flex items-center gap-2">
                 {whatsappStatus?.isConnected ? (
                   <>
+                    <Button
+                      onClick={() => {
+                        const phone = prompt("Digite o número para teste (ex: 5511999999999):");
+                        if (phone) {
+                          setWhatsappPhone(phone);
+                          setWhatsappMessage("Teste de conexão WhatsApp - Sistema funcionando!");
+                          sendTestMessageMutation.mutate();
+                        }
+                      }}
+                      disabled={sendTestMessageMutation.isPending}
+                      variant="default"
+                      size="sm"
+                    >
+                      {sendTestMessageMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Enviar Teste
+                    </Button>
                     <Button
                       onClick={() => clearSessionMutation.mutate()}
                       disabled={clearSessionMutation.isPending}
