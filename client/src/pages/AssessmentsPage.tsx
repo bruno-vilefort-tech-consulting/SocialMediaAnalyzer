@@ -96,7 +96,7 @@ export default function AssessmentsPage() {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
+    <div className="container mx-auto p-6 space-y-8 pl-[9px] pr-[9px] pt-[0px] pb-[0px]">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -109,7 +109,6 @@ export default function AssessmentsPage() {
           </p>
         </div>
       </div>
-
       {/* Tabs principais dividindo a tela */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
