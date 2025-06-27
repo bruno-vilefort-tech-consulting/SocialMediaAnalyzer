@@ -139,7 +139,6 @@ export class EvolutionApiService {
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 10000,
-            mobile: true,
             fireInitQueries: true
           });
 
