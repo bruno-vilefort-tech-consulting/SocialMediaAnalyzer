@@ -138,7 +138,7 @@ export class WppConnectClientModule {
               },
               disableWelcome: true,
               updatesLog: false,
-              autoClose: 300000, // 5 minutos para dar tempo de escanear o QR
+              autoClose: 0, // Desabilitar auto-close - manter conexão permanente
               createPathFileToken: true,
               catchQR: (base64Qr: string, asciiQR: string) => {
                 console.log(`📱 [DEBUG] QR Code gerado para cliente ${clientId}`);

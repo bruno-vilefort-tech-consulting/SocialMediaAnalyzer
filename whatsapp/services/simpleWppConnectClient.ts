@@ -72,7 +72,7 @@ class SimpleWppConnectClient {
               '--disable-gpu'
             ],
           },
-          autoClose: 300000, // 5 minutos
+          autoClose: 0, // Desabilitar auto-close - manter conexão permanente
           logQR: false,
           disableWelcome: true,
           updatesLog: false

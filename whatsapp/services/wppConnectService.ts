@@ -21,11 +21,100 @@ interface WppSession {
 export class WppConnectService {
   private sessions: Map<string, WppSession> = new Map();
   private sessionsPath: string;
+  private keepAliveIntervals: Map<string, NodeJS.Timeout> = new Map();
   
   constructor() {
     this.sessionsPath = path.join(process.cwd(), 'whatsapp-sessions');
     if (!fs.existsSync(this.sessionsPath)) {
       fs.mkdirSync(this.sessionsPath, { recursive: true });
+    }
+  }
+  
+  /**
+   * Configura keep-alive permanente para manter conexão sempre ativa
+   */
+  private setupPermanentKeepAlive(client: any, clientId: string): void {
+    console.log(`🔄 [KEEP-ALIVE] Configurando keep-alive permanente para cliente ${clientId}`);
+    
+    // Limpar interval anterior se existir
+    const existingInterval = this.keepAliveIntervals.get(clientId);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+    }
+    
+    // Configurar ping a cada 30 segundos para manter conexão viva
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        // Verificar se cliente ainda está conectado
+        const isConnected = await client.isConnected();
+        
+        if (isConnected) {
+          // Enviar ping silencioso para manter conexão
+          await client.getHostDevice();
+          console.log(`💓 [KEEP-ALIVE] Ping enviado para cliente ${clientId} - conexão ativa`);
+        } else {
+          console.log(`⚠️ [KEEP-ALIVE] Cliente ${clientId} desconectado, tentando reconectar...`);
+          // Tentar reconectar automaticamente
+          await this.reconnectClient(clientId);
+        }
+      } catch (error) {
+        console.log(`❌ [KEEP-ALIVE] Erro no ping para cliente ${clientId}:`, error.message);
+        // Em caso de erro, tentar reconectar
+        await this.reconnectClient(clientId);
+      }
+    }, 30000); // 30 segundos
+    
+    this.keepAliveIntervals.set(clientId, keepAliveInterval);
+    console.log(`✅ [KEEP-ALIVE] Keep-alive configurado para cliente ${clientId} - ping a cada 30s`);
+  }
+  
+  /**
+   * Reconecta cliente automaticamente em caso de desconexão
+   */
+  private async reconnectClient(clientId: string): Promise<void> {
+    try {
+      console.log(`🔄 [RECONNECT] Iniciando reconexão automática para cliente ${clientId}`);
+      
+      const session = this.sessions.get(clientId);
+      if (!session) {
+        console.log(`⚠️ [RECONNECT] Sessão não encontrada para cliente ${clientId}`);
+        return;
+      }
+      
+      // Verificar se existe sessão salva no disco
+      const sessionPath = path.join(this.sessionsPath, `client_${clientId}`);
+      if (fs.existsSync(sessionPath)) {
+        console.log(`🔄 [RECONNECT] Restaurando sessão salva para cliente ${clientId}`);
+        
+        const client = await wppconnect.create({
+          session: `client_${clientId}`,
+          folderNameToken: this.sessionsPath,
+          headless: true,
+          devtools: false,
+          useChrome: true,
+          debug: false,
+          logQR: false,
+          autoClose: 0, // Nunca fechar automaticamente
+          disableWelcome: true,
+          updatesLog: false,
+          createPathFileToken: true,
+        });
+        
+        // Atualizar sessão
+        session.client = client;
+        session.isConnected = true;
+        
+        // Reconfigurar keep-alive
+        this.setupPermanentKeepAlive(client, clientId);
+        
+        console.log(`✅ [RECONNECT] Cliente ${clientId} reconectado automaticamente`);
+      } else {
+        console.log(`⚠️ [RECONNECT] Sessão perdida para cliente ${clientId} - será necessário escanear QR Code novamente`);
+        session.isConnected = false;
+        session.qrCode = null;
+      }
+    } catch (error) {
+      console.log(`❌ [RECONNECT] Erro na reconexão automática para cliente ${clientId}:`, error.message);
     }
   }
   
@@ -66,7 +155,7 @@ export class WppConnectService {
             browserWS: '',
             disableWelcome: true,
             updatesLog: false,
-            autoClose: 60000,
+            autoClose: 0, // Desabilitar auto-close - manter conexão permanente
             createPathFileToken: true,
           });
           
@@ -197,6 +286,9 @@ export class WppConnectService {
         })
         .then((client) => {
           console.log(`✅ [WPPCONNECT] Cliente conectado para ${clientId}`);
+          
+          // IMPLEMENTAR KEEP-ALIVE PERMANENTE
+          this.setupPermanentKeepAlive(client, clientId);
           
           // Atualizar sessão com cliente conectado
           const session = this.sessions.get(clientId);
@@ -387,17 +479,27 @@ export class WppConnectService {
   }
   
   /**
-   * Desconecta sessão
+   * Desconecta sessão e para keep-alive permanentemente
    */
   async disconnect(clientId: string): Promise<boolean> {
+    console.log(`🔌 [DISCONNECT] Desconectando cliente ${clientId} - PARAR KEEP-ALIVE PERMANENTE`);
+    
+    // PRIMEIRO: Parar keep-alive interval
+    const keepAliveInterval = this.keepAliveIntervals.get(clientId);
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+      this.keepAliveIntervals.delete(clientId);
+      console.log(`⏹️ [DISCONNECT] Keep-alive parado para cliente ${clientId}`);
+    }
+    
     const session = this.sessions.get(clientId);
     
     if (session?.client) {
       try {
         await session.client.close();
-        console.log(`✅ [WPPCONNECT] Sessão ${clientId} desconectada`);
+        console.log(`✅ [DISCONNECT] Sessão ${clientId} desconectada do WhatsApp`);
       } catch (error) {
-        console.log(`⚠️ [WPPCONNECT] Erro ao desconectar ${clientId}:`, error);
+        console.log(`⚠️ [DISCONNECT] Erro ao desconectar ${clientId}:`, error);
       }
     }
     
@@ -408,12 +510,13 @@ export class WppConnectService {
     if (fs.existsSync(sessionPath)) {
       try {
         fs.rmSync(sessionPath, { recursive: true, force: true });
-        console.log(`🗑️ [WPPCONNECT] Arquivos de sessão ${clientId} removidos`);
+        console.log(`🗑️ [DISCONNECT] Arquivos de sessão ${clientId} removidos`);
       } catch (error) {
-        console.log(`⚠️ [WPPCONNECT] Erro ao remover sessão ${clientId}:`, error);
+        console.log(`⚠️ [DISCONNECT] Erro ao remover sessão ${clientId}:`, error);
       }
     }
     
+    console.log(`🏁 [DISCONNECT] Desconexão completa do cliente ${clientId} - keep-alive parado permanentemente`);
     return true;
   }
   
