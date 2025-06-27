@@ -3,8 +3,8 @@
  * Utiliza os arquivos de sessão existentes para reconectar
  */
 
-const wppConnect = require('@wppconnect-team/wppconnect');
-const path = require('path');
+import wppConnect from '@wppconnect-team/wppconnect';
+import path from 'path';
 
 async function restoreConnection() {
   const clientId = '1749849987543';

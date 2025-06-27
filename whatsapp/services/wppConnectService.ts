@@ -34,7 +34,76 @@ export class WppConnectService {
    */
   async createSession(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
     try {
-      console.log(`🔄 [WPPCONNECT] Criando sessão real para cliente ${clientId}`);
+      console.log(`🔄 [WPPCONNECT] Iniciando sessão para cliente ${clientId}`);
+      
+      // Verificar se já existe sessão válida em memória
+      const existingSession = this.sessions.get(clientId);
+      if (existingSession && existingSession.isConnected) {
+        console.log(`✅ [WPPCONNECT] Sessão já existe e está conectada para ${clientId}`);
+        return { success: true };
+      }
+      
+      // Verificar se existe sessão persistente nos arquivos
+      const fs = await import('fs');
+      const path = await import('path');
+      const sessionPath = path.default.join(process.cwd(), 'tokens', `client_${clientId}`);
+      
+      if (fs.default.existsSync(sessionPath)) {
+        console.log(`🔄 [WPPCONNECT] Encontrada sessão persistente, tentando restaurar para ${clientId}`);
+        
+        try {
+          const wppConnect = await import('@wppconnect-team/wppconnect');
+          
+          // Tentar restaurar sessão existente
+          const client = await wppConnect.default.create({
+            session: `client_${clientId}`,
+            folderNameToken: 'tokens',
+            headless: true,
+            devtools: false,
+            useChrome: false,
+            debug: false,
+            logQR: false,
+            browserWS: '',
+            disableWelcome: true,
+            updatesLog: false,
+            autoClose: 60000,
+            createPathFileToken: true,
+          });
+          
+          console.log(`🔗 [WPPCONNECT] Cliente criado, verificando conexão...`);
+          
+          // Aguardar conexão estabelecer
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Verificar se está conectado
+          const hostDevice = await client.getHostDevice();
+          
+          if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
+            // Sessão restaurada com sucesso
+            const restoredSession: WppSession = {
+              clientId,
+              client: client,
+              isConnected: true,
+              phoneNumber: `+${hostDevice.wid.user}`,
+              createdAt: new Date()
+            };
+            
+            this.sessions.set(clientId, restoredSession);
+            
+            console.log(`✅ [WPPCONNECT] Sessão restaurada automaticamente - número: +${hostDevice.wid.user}`);
+            
+            return { success: true };
+          } else {
+            console.log(`⚠️ [WPPCONNECT] Sessão não conectada, gerando novo QR Code`);
+          }
+          
+        } catch (restoreError) {
+          console.log(`⚠️ [WPPCONNECT] Erro ao restaurar sessão:`, restoreError);
+        }
+      }
+      
+      // Se chegou aqui, precisa gerar novo QR Code
+      console.log(`🔄 [WPPCONNECT] Criando nova sessão com QR Code para cliente ${clientId}`);
       
       // Limpar sessão anterior se existir
       await this.disconnect(clientId);
@@ -204,42 +273,33 @@ export class WppConnectService {
           await fsPromises.access(sessionPath, fs.constants.F_OK);
           console.log(`✅ [WPPCONNECT] Sessão persistente encontrada para ${clientId}`);
           
-          // Tentar reconectar à sessão existente
-          console.log(`🔄 [WPPCONNECT] Tentando restaurar sessão existente para ${clientId}`);
-          const client = await wppConnect.default.create({
-            session: `client_${clientId}`,
-            folderNameToken: 'tokens', // Usar tokens em vez de whatsapp-sessions
-            headless: true,
-            devtools: false,
-            useChrome: false,
-            debug: false,
-            logQR: false,
-            browserWS: '',
-            disableWelcome: true,
-            updatesLog: false,
-            autoClose: 60000,
-            createPathFileToken: true,
-          });
+          // Iniciar processo de restauração automática
+          console.log(`🔄 [WPPCONNECT] Iniciando restauração automática da sessão para ${clientId}`);
           
-          // Verificar se realmente está conectado
-          const hostDevice = await client.getHostDevice();
-          if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
-            // Criar nova sessão em memória
-            const newSession: WppSession = {
-              clientId,
-              client: client,
-              isConnected: true,
-              phoneNumber: hostDevice.wid.user,
-              createdAt: new Date()
-            };
+          // Usar createSession para restaurar conexão existente
+          const restorationResult = await this.createSession(clientId);
+          
+          if (restorationResult.success) {
+            console.log(`✅ [WPPCONNECT] Sessão restaurada com sucesso para ${clientId}`);
             
-            this.sessions.set(clientId, newSession);
-            
-            console.log(`🔄 [WPPCONNECT] Sessão restaurada para ${clientId} - número: ${hostDevice.wid.user}`);
-            
+            // Verificar se agora existe sessão em memória
+            const restoredSession = this.sessions.get(clientId);
+            if (restoredSession && restoredSession.isConnected) {
+              return {
+                isConnected: true,
+                phoneNumber: restoredSession.phoneNumber,
+                instanceId: `client_${clientId}`
+              };
+            }
+          }
+          
+          console.log(`⚠️ [WPPCONNECT] Falha na restauração automática para ${clientId}`);
+          
+          // Retornar QR Code se necessário
+          if (restorationResult.qrCode) {
             return {
-              isConnected: true,
-              phoneNumber: hostDevice.wid.user,
+              isConnected: false,
+              qrCode: restorationResult.qrCode,
               instanceId: `client_${clientId}`
             };
           }
