@@ -21,7 +21,22 @@ class ClientWhatsAppService {
     console.log(`🔍 [CLIENT-WA] Verificando status para cliente ${clientId} usando ActiveSessionDetector`);
 
     try {
-      // Usar o ActiveSessionDetector para detecção robusta
+      // PRIORIDADE 1: Detector de emergência (evita frustração do cliente)
+      const emergencyDetection = await emergencyConnectionDetector.detectEmergencyConnection(clientId);
+      
+      if (emergencyDetection.isConnected && emergencyDetection.confidence === 'high') {
+        console.log(`🚨 [CLIENT-WA] CONEXÃO FORÇADA VIA EMERGÊNCIA - ${emergencyDetection.reason}`);
+        return {
+          isConnected: true,
+          qrCode: null,
+          phoneNumber: emergencyDetection.phoneNumber || null,
+          lastConnection: new Date(),
+          clientId,
+          instanceId: `emergency_${clientId}`
+        };
+      }
+      
+      // PRIORIDADE 2: ActiveSessionDetector para detecção robusta
       const activeConnection = await activeSessionDetector.detectActiveConnection(clientId);
       
       if (activeConnection.isConnected) {
