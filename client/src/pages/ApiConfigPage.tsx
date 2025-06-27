@@ -643,17 +643,42 @@ export default function ApiConfigPage() {
 
 
 
+            {/* DEBUG COMPLETO */}
+            <div className="p-4 bg-yellow-100 border border-yellow-400 rounded mb-4">
+              <h4 className="font-bold text-yellow-800">🔍 DEBUG - Status Atual:</h4>
+              <div className="text-sm space-y-1">
+                <p><strong>whatsappStatus existe:</strong> {String(!!whatsappStatus)}</p>
+                <p><strong>qrCode existe:</strong> {String(!!whatsappStatus?.qrCode)}</p>
+                <p><strong>isConnected:</strong> {String(whatsappStatus?.isConnected)}</p>
+                <p><strong>Condição QR Code:</strong> {String(!!whatsappStatus?.qrCode && !whatsappStatus?.isConnected)}</p>
+                {whatsappStatus?.qrCode && (
+                  <>
+                    <p><strong>QR Code length:</strong> {whatsappStatus.qrCode.length}</p>
+                    <p><strong>QR Code prefix:</strong> {whatsappStatus.qrCode.substring(0, 50)}...</p>
+                  </>
+                )}
+                {whatsappStatus && (
+                  <div className="mt-2">
+                    <p><strong>Objeto completo whatsappStatus:</strong></p>
+                    <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
+                      {JSON.stringify(whatsappStatus, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* QR Code */}
             {whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
-              <div className="space-y-4">
+              <div className="space-y-4 p-4 bg-green-100 border-2 border-green-500 rounded">
                 <div className="text-center">
-                  <h3 className="text-lg font-medium mb-2">Escaneie o QR Code</h3>
+                  <h3 className="text-lg font-medium mb-2 text-green-800">✅ QR CODE ENCONTRADO - RENDERIZANDO</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Abra o WhatsApp no seu celular, vá em "Dispositivos conectados" e escaneie este código
                   </p>
                   
                   <div className="flex justify-center">
-                    <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-gray-200">
+                    <div className="p-4 bg-white rounded-lg shadow-lg border-2 border-red-500">
                       <img 
                         src={whatsappStatus.qrCode} 
                         alt="QR Code WhatsApp" 
@@ -662,8 +687,11 @@ export default function ApiConfigPage() {
                         style={{ 
                           width: '256px',
                           height: '256px',
-                          display: 'block'
+                          display: 'block',
+                          border: '2px solid blue'
                         }}
+                        onLoad={() => console.log('✅ QR Code carregou!')}
+                        onError={(e) => console.error('❌ QR Code erro:', e)}
                       />
                     </div>
                   </div>
@@ -672,6 +700,19 @@ export default function ApiConfigPage() {
                     QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Casos quando QR Code NÃO aparece */}
+            {!whatsappStatus?.qrCode && (
+              <div className="p-4 bg-red-100 border border-red-400 rounded">
+                <p className="text-red-800 font-bold">❌ QR Code não encontrado nos dados</p>
+              </div>
+            )}
+
+            {whatsappStatus?.isConnected && (
+              <div className="p-4 bg-blue-100 border border-blue-400 rounded">
+                <p className="text-blue-800 font-bold">✅ WhatsApp já conectado - QR Code oculto</p>
               </div>
             )}
 
