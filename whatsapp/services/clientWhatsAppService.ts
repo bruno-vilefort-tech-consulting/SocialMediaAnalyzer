@@ -2,6 +2,7 @@ import { storage } from '../../server/storage';
 import { evolutionApiService } from './evolutionApiService';
 import { wppConnectService } from './wppConnectService';
 import { enhancedConnectionService } from './enhancedConnectionService';
+import { activeConnectionTester } from './activeConnectionTester';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -140,8 +141,27 @@ class ClientWhatsAppService {
         console.log(`⚠️ [Evolution] Erro na verificação:`, evoError);
       }
 
+      // Último recurso: Teste ativo de conexão para detectar conexões que não aparecem nos sistemas
+      console.log(`🧪 [CLIENT-WA] Executando teste ativo de conexão para detectar WhatsApp conectado`);
+      const activeTest = await activeConnectionTester.testActiveConnection(clientId);
+      
+      if (activeTest.isActivelyConnected) {
+        console.log(`✅ [CLIENT-WA] CONEXÃO ATIVA DETECTADA via ${activeTest.detectionMethod}!`);
+        console.log(`📱 [CLIENT-WA] Número detectado: ${activeTest.phoneNumber}`);
+        
+        return {
+          isConnected: true,
+          qrCode: null, // Conexão ativa não precisa de QR
+          phoneNumber: activeTest.phoneNumber || 'Connected',
+          lastConnection: new Date(),
+          clientId,
+          instanceId: `active_${clientId}`
+        };
+      }
+
       // Se todos os métodos falharam, retornar status desconectado
       console.log(`❌ [CLIENT-WA] Nenhuma conexão detectada pelos métodos disponíveis`);
+      console.log(`🔍 [CLIENT-WA] Resultado do teste ativo: ${activeTest.testResult || activeTest.error}`);
       
       return {
         isConnected: false,
