@@ -75,7 +75,7 @@ class ClientWhatsAppService {
         return {
           isConnected: true,
           qrCode: null,
-          phoneNumber: stableStatus.phoneNumber,
+          phoneNumber: stableStatus.phoneNumber || null,
           lastConnection: new Date(),
           clientId,
           instanceId: stableStatus.instanceId
@@ -118,15 +118,15 @@ class ClientWhatsAppService {
         };
       }
       
-      // Tentar conectar via WppConnect
-      const wppResult = await wppConnectService.createSession(clientId);
+      // Tentar conectar via StableWpp
+      const stableResult = await stableWppService.connectClient(clientId);
       
-      if (wppResult.success && wppResult.qrCode) {
-        console.log(`✅ [CLIENT-WA] WppConnect conectado`);
+      if (stableResult.success && stableResult.qrCode) {
+        console.log(`✅ [CLIENT-WA] StableWpp conectado`);
         return {
           success: true,
-          qrCode: wppResult.qrCode,
-          message: 'QR Code gerado via WppConnect'
+          qrCode: stableResult.qrCode,
+          message: 'QR Code gerado via StableWpp'
         };
       }
       
@@ -140,7 +140,7 @@ class ClientWhatsAppService {
       
       return {
         success: false,
-        message: 'Falha ao conectar via WppConnect e Evolution API'
+        message: 'Falha ao conectar via StableWpp e Evolution API'
       };
       
     } catch (error: any) {
@@ -157,7 +157,7 @@ class ClientWhatsAppService {
     
     try {
       // Desconectar de ambos os serviços
-      const wppResult = await wppConnectService.disconnect(clientId);
+      const stableResult = await stableWppService.disconnect(clientId);
       const evolutionResult = await evolutionApiService.disconnectClient(clientId);
       
       return {
@@ -192,11 +192,11 @@ class ClientWhatsAppService {
         };
       }
       
-      // Tentar enviar via WppConnect primeiro
-      if (activeConnection.source === 'wppconnect') {
-        const wppResult = await wppConnectService.sendMessage(clientId, phoneNumber, message);
-        if (wppResult.success) {
-          return wppResult;
+      // Tentar enviar via StableWpp primeiro
+      if (activeConnection.source === 'stablewpp' || activeConnection.source === 'wppconnect') {
+        const stableResult = await stableWppService.sendMessage(clientId, phoneNumber, message);
+        if (stableResult.success) {
+          return stableResult;
         }
       }
       

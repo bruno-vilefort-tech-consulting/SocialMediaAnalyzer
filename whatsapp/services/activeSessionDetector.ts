@@ -10,13 +10,13 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { wppConnectService } from './wppConnectService';
+import { stableWppService } from './stableWppService';
 import { evolutionApiService } from './evolutionApiService';
 
 interface ActiveConnection {
   isConnected: boolean;
   phoneNumber?: string;
-  source: 'wppconnect' | 'evolution' | 'persistent' | 'none';
+  source: 'stablewpp' | 'evolution' | 'persistent' | 'none';
   sessionId?: string;
   clientInfo?: any;
 }
