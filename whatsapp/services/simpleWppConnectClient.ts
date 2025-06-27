@@ -12,6 +12,7 @@ interface ClientSession {
 class SimpleWppConnectClient {
   private sessions: Map<string, ClientSession> = new Map();
   private connectionPromises: Map<string, Promise<any>> = new Map();
+  private keepAliveIntervals: Map<string, NodeJS.Timeout> = new Map();
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message: string }> {
     try {
@@ -72,7 +73,7 @@ class SimpleWppConnectClient {
               '--disable-gpu'
             ],
           },
-          autoClose: 0, // Desabilitar auto-close - manter conexão permanente
+          autoClose: 0, // NUNCA fechar automaticamente - conexão permanente
           logQR: false,
           disableWelcome: true,
           updatesLog: false
@@ -90,6 +91,9 @@ class SimpleWppConnectClient {
           };
 
           this.sessions.set(clientId, session);
+
+          // Configurar keep-alive permanente para manter conexão ativa indefinidamente
+          this.setupPermanentKeepAlive(client, clientId);
 
           // Atualizar configuração no Firebase
           await this.updateClientConfig(clientId, {

@@ -155,7 +155,7 @@ export class WppConnectService {
             browserWS: '',
             disableWelcome: true,
             updatesLog: false,
-            autoClose: 0, // Desabilitar auto-close - manter conexão permanente
+            autoClose: 0, // NUNCA fechar automaticamente - manter conexão permanente
             createPathFileToken: true,
           });
           
@@ -222,6 +222,10 @@ export class WppConnectService {
           useChrome: true,
           debug: false,
           logQR: false,
+          autoClose: 0, // NUNCA fechar automaticamente - conexão permanente
+          disableWelcome: true,
+          updatesLog: false,
+          createPathFileToken: true,
           browserArgs: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
