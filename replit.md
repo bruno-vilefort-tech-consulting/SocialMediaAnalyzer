@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 27, 2025: ✅ SISTEMA WHATSAPP MESSAGE CADENCE PROBLEMA CRÍTICO COMANDO "1" RESOLVIDO - Import paths corrigidos e fluxo de entrevista restaurado
+  - **Root cause identificado**: Import paths incorretos em interactiveInterviewService.ts causavam falha na continuação após comando "1"
+  - **Imports corrigidos**: Todas as referências a whatsappBaileyService agora usam caminho correto '../whatsapp/services/whatsappBaileyService'
+  - **Fluxo validado**: Sistema processa comando "1" e inicia entrevista corretamente com Daniel Braga (cliente 1749849987543)
+  - **Interview state funcionando**: Active interview criada com currentQuestion: 0, totalQuestions: 2, agendamento automático da primeira pergunta
+  - **Client isolation mantido**: Todas as operações filtradas corretamente por clientId sem vazamento de dados
+  - **Sistema operacional**: Entrevista continua automaticamente após comando "1", aguarda apenas conexão WhatsApp ativa para envio de mensagens
+
 - June 27, 2025: ✅ SISTEMA WHATSAPP MESSAGE CADENCE COMPLETAMENTE FUNCIONAL - Todas as correções críticas aplicadas e validadas
   - **Mobile API error RESOLVIDO**: Desabilitado fallback problemático que causava "Mobile API is not supported anymore"
   - **Fluxo de mensagens corrigido**: Comando "1" inicia entrevistas, "2" recusa, apenas áudio aceito durante entrevistas
