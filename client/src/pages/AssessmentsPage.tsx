@@ -32,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AssessmentForm from "@/components/Assessments/AssessmentForm";
 
 export default function AssessmentsPage() {
   const [activeTab, setActiveTab] = useState("enviar");
