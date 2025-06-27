@@ -115,24 +115,6 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- June 27, 2025: ✅ SISTEMA WHATSAPP MESSAGE CADENCE PROBLEMA CRÍTICO COMANDO "1" RESOLVIDO - Import paths corrigidos e fluxo de entrevista restaurado
-  - **Root cause identificado**: Import paths incorretos em interactiveInterviewService.ts causavam falha na continuação após comando "1"
-  - **Imports corrigidos**: Todas as referências a whatsappBaileyService agora usam caminho correto '../whatsapp/services/whatsappBaileyService'
-  - **Fluxo validado**: Sistema processa comando "1" e inicia entrevista corretamente com Daniel Braga (cliente 1749849987543)
-  - **Interview state funcionando**: Active interview criada com currentQuestion: 0, totalQuestions: 2, agendamento automático da primeira pergunta
-  - **Client isolation mantido**: Todas as operações filtradas corretamente por clientId sem vazamento de dados
-  - **Sistema operacional**: Entrevista continua automaticamente após comando "1", aguarda apenas conexão WhatsApp ativa para envio de mensagens
-
-- June 27, 2025: ✅ SISTEMA WHATSAPP MESSAGE CADENCE COMPLETAMENTE FUNCIONAL - Todas as correções críticas aplicadas e validadas
-  - **Mobile API error RESOLVIDO**: Desabilitado fallback problemático que causava "Mobile API is not supported anymore"
-  - **Fluxo de mensagens corrigido**: Comando "1" inicia entrevistas, "2" recusa, apenas áudio aceito durante entrevistas
-  - **Transcrição de áudio melhorada**: OpenAI Whisper com tratamento de erros robusto e isolamento por cliente
-  - **Isolamento de cliente aprimorado**: Todas as operações filtradas corretamente por clientId (23 candidatos para cliente 1749849987543)
-  - **Geração automática de relatórios**: Sistema cria relatórios automaticamente ao completar entrevistas
-  - **Sistema de áudio funcional**: Arquivos .ogg salvos corretamente com nomenclatura isolada por cliente/seleção
-  - **Keep-alive estável**: Conexões WhatsApp mantidas ativas sem crashes ou desconexões involuntárias
-  - **Validação completa**: Sistema pronto para produção com fluxo completo WhatsApp → áudio → transcrição → banco
-
 - June 27, 2025: ✅ SISTEMA DE CONEXÕES PERMANENTES WHATSAPP IMPLEMENTADO COMPLETAMENTE - Keep-alive permanente até desconexão manual
   - **autoClose: 0 configurado**: Todas as instâncias WppConnect (simpleWppConnectClient, wppConnectService, wppConnectClientModule) com autoClose: 0
   - **Keep-alive permanente implementado**: setupPermanentKeepAlive() com ping a cada 30 segundos em todos os serviços

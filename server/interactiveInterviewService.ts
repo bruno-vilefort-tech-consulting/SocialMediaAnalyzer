@@ -63,7 +63,7 @@ class InteractiveInterviewService {
       // Fallback para método original se não houve correção
       console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto...`);
       
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
+      const { whatsappBaileyService } = await import('./whatsappBaileyService');
       const connection = whatsappBaileyService.getConnection(clientId);
       
       if (!connection?.socket) {
@@ -136,8 +136,7 @@ class InteractiveInterviewService {
         mimetype: audioData.mimetype || 'não informado',
         size: audioData.fileLength || audioData.seconds || 'não informado',
         hasCompleteMessage: !!audioMessage.message,
-        hasKey: !!audioMessage.key,
-        isFixed: !!audioMessage._audioFixed
+        hasKey: !!audioMessage.key
       });
     }
 
@@ -148,50 +147,26 @@ class InteractiveInterviewService {
       console.log(`📊 [INTERVIEW] Status da entrevista: pergunta ${activeInterview.currentQuestion + 1}/${activeInterview.questions.length}`);
     }
 
-    // Comando 1: Iniciar entrevista
     if (text === '1' && !activeInterview) {
-      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista para ${phone}`);
+      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
       this.activeInterviews.clear();
       console.log(`🧹 [INTERVIEW] Cache de entrevistas ativas completamente limpo`);
-      
-      try {
-        await this.startInterview(phone, clientId);
-        console.log(`✅ [INTERVIEW] Entrevista iniciada com sucesso para ${phone}`);
-      } catch (error: any) {
-        console.log(`❌ [INTERVIEW] Erro ao iniciar entrevista para ${phone}:`, error?.message || error);
-        await this.sendMessage(from, "❌ Erro ao iniciar entrevista. Tente novamente digitando 1.");
-      }
-      return;
-    } 
-    
-    // Comando 2: Recusar entrevista
-    if (text === '2') {
+      await this.startInterview(phone, clientId);
+    } else if (text === '2') {
       console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);
       await this.sendMessage(from, "Entendido. Obrigado!");
-      return;
-    } 
-    
-    // Comandos de parada
-    if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
+    } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
       console.log(`⏹️ [INTERVIEW] Comando "parar/sair" detectado`);
       await this.stopInterview(phone);
-      return;
-    }
-    
-    // Processamento de resposta durante entrevista ativa
-    if (activeInterview) {
+    } else if (activeInterview) {
       console.log(`📝 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}`);
       console.log(`🔍 [INTERVIEW] Entrevista ativa - seleção: ${activeInterview.selectionId}, candidato: ${activeInterview.candidateId}`);
       
-      // VALIDAÇÃO CRÍTICA: Apenas respostas de áudio são aceitas durante entrevista
-      if (!audioMessage) {
-        console.log(`❌ [INTERVIEW] Resposta apenas texto rejeitada - exigindo áudio`);
-        await this.sendMessage(from, "Por gentileza, responda por áudio 🎤\n\nMantendo microfone pressionado enquanto fala.");
-        return;
-      }
-      
-      // Verificar se entrevista usa seleção mais recente
+      // VERIFICAÇÃO CRÍTICA: Se a entrevista ativa usa IDs antigos, reiniciar com seleção mais recente
       try {
+        const storageModule = await import('./storage.js');
+        const storage = storageModule.default;
         const allSelections = await storage.getAllSelections();
         const latestSelection = allSelections
           .filter(s => clientId ? s.clientId.toString() === clientId : true)
@@ -209,9 +184,8 @@ class InteractiveInterviewService {
       
       await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
-      // Instruções quando não há entrevista ativa
       console.log(`❓ [INTERVIEW] Comando não reconhecido - enviando instruções`);
-      await this.sendMessage(from, "Para participar da entrevista:\n\n1 - Sim, quero participar\n2 - Não, obrigado");
+      await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar");
     }
     
     console.log(`🎯 [INTERVIEW] ===== FIM DO PROCESSAMENTO =====\n`);
@@ -331,15 +305,8 @@ class InteractiveInterviewService {
       );
 
       // Enviar primeira pergunta após pequeno delay
-      console.log(`⏰ [INTERVIEW] Agendando primeira pergunta em 2 segundos para ${phone}`);
       setTimeout(async () => {
-        console.log(`🎯 [INTERVIEW] Executando primeira pergunta para ${phone}`);
-        try {
-          await this.sendNextQuestion(phone, interview);
-          console.log(`✅ [INTERVIEW] Primeira pergunta enviada com sucesso para ${phone}`);
-        } catch (error: any) {
-          console.log(`❌ [INTERVIEW] Erro ao enviar primeira pergunta para ${phone}:`, error?.message || error);
-        }
+        await this.sendNextQuestion(phone, interview);
       }, 2000);
       
     } catch (error) {
@@ -405,7 +372,7 @@ class InteractiveInterviewService {
         const audioBuffer = await response.arrayBuffer();
         
         // Enviar áudio via WhatsApp - buscar serviço dinamicamente para evitar dependência circular
-        const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
+        const { whatsappBaileyService } = await import('./whatsappBaileyService');
         const connection = whatsappBaileyService.getConnection(clientId);
         if (connection?.socket) {
           await connection.socket.sendMessage(`${phone}@s.whatsapp.net`, {
@@ -424,74 +391,59 @@ class InteractiveInterviewService {
 
   private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`\n🎯 [RESPONSE] ===== PROCESSANDO RESPOSTA =====`);
-    console.log(`📝 [RESPONSE] Telefone: ${phone}`);
-    console.log(`📝 [RESPONSE] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
-    console.log(`📝 [RESPONSE] Texto recebido: "${text}"`);
-    console.log(`🎵 [RESPONSE] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
-    console.log(`🏢 [RESPONSE] ClientId: ${interview.clientId}`);
-    console.log(`📋 [RESPONSE] SeleçãoId: ${interview.selectionId || 'NÃO_DEFINIDO'}`);
-    console.log(`👤 [RESPONSE] CandidatoId: ${interview.candidateId}`);
+    console.log(`\n🎯 [DEBUG_NOVA_SELEÇÃO] ===== PROCESSANDO RESPOSTA =====`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Telefone: ${phone}`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
+    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Texto recebido: "${text}"`);
+    console.log(`🎵 [DEBUG_NOVA_SELEÇÃO] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
+    console.log(`🏢 [DEBUG_NOVA_SELEÇÃO] ClientId: ${interview.clientId}`);
+    console.log(`📋 [DEBUG_NOVA_SELEÇÃO] SeleçãoId: ${interview.selectionId || 'NÃO_DEFINIDO'}`);
+    console.log(`👤 [DEBUG_NOVA_SELEÇÃO] CandidatoId: ${interview.candidateId}`);
 
-    let responseText = text || "Resposta de áudio";
+    let responseText = text;
     let audioFile: string | undefined;
-    let transcriptionSuccess = false;
 
-    // Processar áudio se presente
+    // Se há áudio, processar
     if (audioMessage) {
       console.log(`🎧 [AUDIO] Iniciando processamento de áudio...`);
       
-      // Verificar se o áudio já foi processado pelo Baileys
-      if (audioMessage._audioFixed && audioMessage._audioPath) {
-        console.log(`✅ [AUDIO] Usando áudio já processado: ${audioMessage._audioPath}`);
-        audioFile = audioMessage._audioPath;
+      try {
+        // Usar novo método de download direto com nomenclatura padronizada
+        const audioPath = await this.downloadAudioDirect(
+          audioMessage, 
+          phone, 
+          interview.clientId, 
+          interview.selectionId, 
+          interview.currentQuestion + 1
+        );
         
-        // Transcrever usando arquivo já salvo
-        try {
-          const transcription = await this.transcribeAudio(audioMessage._audioPath, phone);
-          if (transcription && transcription.trim().length > 0) {
-            responseText = transcription;
-            transcriptionSuccess = true;
-            console.log(`✅ [AUDIO] Transcrição bem-sucedida: "${responseText.substring(0, 100)}..."`);
-          }
-        } catch (transcribeError) {
-          console.log(`❌ [AUDIO] Erro na transcrição:`, transcribeError.message);
-        }
-      } else {
-        // Usar método de download direto
-        try {
-          const audioPath = await this.downloadAudioDirect(
-            audioMessage, 
-            phone, 
-            interview.clientId, 
-            interview.selectionId, 
-            interview.currentQuestion + 1
-          );
+        if (audioPath) {
+          console.log(`✅ [AUDIO] Áudio baixado: ${audioPath}`);
           
-          if (audioPath) {
-            console.log(`✅ [AUDIO] Áudio baixado: ${audioPath}`);
-            audioFile = audioPath;
+          // Transcrever áudio usando arquivo direto
+          try {
+            const transcription = await this.transcribeAudio(audioPath, phone);
             
-            // Transcrever áudio
-            try {
-              const transcription = await this.transcribeAudio(audioPath, phone);
-              if (transcription && transcription.trim().length > 0) {
-                responseText = transcription;
-                transcriptionSuccess = true;
-                console.log(`✅ [AUDIO] Transcrição: "${responseText.substring(0, 100)}..."`);
-              }
-            } catch (transcribeError) {
-              console.log(`❌ [AUDIO] Erro na transcrição:`, transcribeError.message);
+            if (transcription && transcription.trim().length > 0) {
+              responseText = transcription;
+              audioFile = audioPath;
+              console.log(`✅ [AUDIO] Transcrição: "${responseText}"`);
+            } else {
+              console.log(`⚠️ [AUDIO] Transcrição vazia, usando resposta padrão`);
+              responseText = "Resposta de áudio processada";
+              audioFile = audioPath;
             }
+          } catch (transcribeError) {
+            console.log(`❌ [AUDIO] Erro na transcrição:`, transcribeError.message);
+            responseText = "Resposta de áudio recebida";
+            audioFile = audioPath;
           }
-        } catch (error) {
-          console.log(`❌ [AUDIO] Erro no processamento:`, error.message);
+        } else {
+          console.log(`❌ [AUDIO] Falha no download do áudio`);
+          responseText = "Resposta de áudio recebida";
         }
-      }
-      
-      // Garantir que sempre temos um arquivo de áudio salvo
-      if (!audioFile) {
-        console.log(`⚠️ [AUDIO] Áudio não foi salvo, criando resposta padrão`);
+      } catch (error) {
+        console.log(`❌ [AUDIO] Erro geral no processamento:`, error.message);
         responseText = "Resposta de áudio recebida";
       }
     }
@@ -637,35 +589,43 @@ class InteractiveInterviewService {
   }
 
   private async transcribeAudio(audioPath: string, phone: string): Promise<string> {
-    console.log(`🎯 [WHISPER] Processando transcrição de áudio...`);
+    console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
     
     try {
+      // Usar chave do ambiente que está funcionando
       const openaiApiKey = process.env.OPENAI_API_KEY;
       
       if (!openaiApiKey) {
-        console.log(`❌ [WHISPER] OpenAI API Key não configurada`);
+        console.log(`❌ OpenAI API não configurada para transcrição`);
         return '';
       }
+      
+      console.log(`🔑 [WHISPER] Usando chave OpenAI do ambiente`);
       
       const fs = await import('fs');
+      const path = await import('path');
       
       if (!fs.existsSync(audioPath)) {
-        console.log(`❌ [WHISPER] Arquivo não encontrado: ${audioPath}`);
-        return '';
+        throw new Error(`Arquivo de áudio não encontrado: ${audioPath}`);
       }
+      
+      console.log(`💾 [WHISPER] Usando arquivo: ${audioPath}`);
       
       const stats = fs.statSync(audioPath);
-      console.log(`📊 [WHISPER] Arquivo: ${audioPath} (${stats.size} bytes)`);
+      console.log(`📊 [WHISPER] Tamanho do arquivo: ${stats.size} bytes`);
       
-      if (stats.size < 500) {
-        console.log(`❌ [WHISPER] Arquivo muito pequeno para transcrição`);
+      if (stats.size < 1000) {
+        console.log(`❌ [WHISPER] Arquivo muito pequeno: ${stats.size} bytes`);
         return '';
       }
       
+      // Usar OpenAI SDK como no simpleInterviewService que funciona
       const { OpenAI } = await import('openai');
-      const openai = new OpenAI({ apiKey: openaiApiKey });
+      const openai = new OpenAI({
+        apiKey: openaiApiKey
+      });
 
-      console.log(`🚀 [WHISPER] Iniciando transcrição...`);
+      console.log(`🚀 [WHISPER] Transcrevendo via OpenAI SDK...`);
 
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(audioPath),
@@ -674,81 +634,43 @@ class InteractiveInterviewService {
         response_format: 'text'
       });
 
+      console.log(`✅ [WHISPER] Transcrição via SDK obtida: "${transcription}"`);
+      
       if (transcription && transcription.trim().length > 0) {
-        const cleanTranscription = transcription.trim();
-        console.log(`✅ [WHISPER] Transcrição concluída: "${cleanTranscription.substring(0, 100)}..."`);
-        return cleanTranscription;
+        return transcription.trim();
       }
       
-      console.log(`⚠️ [WHISPER] Transcrição vazia retornada`);
       return '';
       
-    } catch (error: any) {
-      console.log(`❌ [WHISPER] Erro na transcrição: ${error?.message || error}`);
+    } catch (error) {
+      console.log(`❌ [WHISPER] Erro na transcrição:`, error.message);
       return '';
     }
   }
 
   private async finishInterview(phone: string, interview: ActiveInterview): Promise<void> {
-    console.log(`🎉 [FINISH] Finalizando entrevista de ${interview.candidateName} para cliente ${interview.clientId}`);
+    console.log(`🎉 Finalizando entrevista de ${interview.candidateName}`);
 
-    // Salvar todas as respostas com isolamento por cliente
+    // Atualizar status da entrevista no banco
     try {
-      console.log(`💾 [FINISH] Salvando ${interview.responses.length} respostas com clientId ${interview.clientId}`);
-      
-      // Salvar respostas da entrevista com isolamento por cliente
-      await storage.saveInterviewResults(interview.selectionId, interview.candidateId, interview.responses);
-      
-      // Atualizar status da entrevista no banco se existir ID
       if (interview.interviewDbId) {
         await storage.updateInterview(interview.interviewDbId, { 
-          status: 'completed',
-          completedAt: new Date(),
-          totalScore: null // Será calculado pela IA posteriormente
+          status: 'completed'
         });
-        console.log(`✅ [FINISH] Entrevista ${interview.interviewDbId} marcada como concluída`);
+        console.log(`💾 Entrevista marcada como concluída no banco`);
       }
-      
-      // Criar relatório automático para preservar dados
-      try {
-        const reportId = `report_${interview.selectionId}_${Date.now()}`;
-        const reportData = {
-          id: reportId,
-          selectionId: interview.selectionId,
-          clientId: interview.clientId,
-          createdAt: new Date(),
-          jobData: { 
-            id: interview.jobId, 
-            name: interview.jobName 
-          },
-          candidatesData: [{
-            id: interview.candidateId,
-            name: interview.candidateName,
-            phone: interview.phone,
-            responses: interview.responses,
-            completedAt: new Date().toISOString()
-          }],
-          responseData: interview.responses
-        };
-        
-        await storage.createReport(reportData);
-        console.log(`📊 [FINISH] Relatório automático criado: ${reportId} para cliente ${interview.clientId}`);
-      } catch (reportError: any) {
-        console.log(`⚠️ [FINISH] Aviso: Erro ao criar relatório automático: ${reportError?.message}`);
-      }
-      
-    } catch (error: any) {
-      console.log(`❌ [FINISH] Erro crítico ao salvar entrevista: ${error?.message || error}`);
+    } catch (error) {
+      console.log(`❌ Erro ao finalizar entrevista no banco:`, error.message);
     }
 
-    // Mensagem final com isolamento por cliente
+    // Mensagem final
     await this.sendMessage(`${phone}@s.whatsapp.net`, 
-      `🎉 Parabéns ${interview.candidateName}!\n\nVocê completou a entrevista para: ${interview.jobName}\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nRetornaremos com o resultado em breve. Obrigado pela participação!`
+      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nNós retornaremos com o resultado o mais breve possível. Obrigado pela participação!`
     );
 
     // Remover entrevista ativa
     this.activeInterviews.delete(phone);
-    console.log(`🗑️ [FINISH] Entrevista ${interview.candidateName} removida da memória - cliente ${interview.clientId}`);
+    console.log(`🗑️ Entrevista removida da memória`);
   }
 
   private async stopInterview(phone: string): Promise<void> {
@@ -810,7 +732,7 @@ class InteractiveInterviewService {
     console.log(`📤 Enviando mensagem para ${to}: "${text.substring(0, 50)}..."`);
     
     // Buscar conexão ativa para qualquer cliente que possa enviar a mensagem - importação dinâmica
-    const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
+    const { whatsappBaileyService } = await import('./whatsappBaileyService');
     const connections = whatsappBaileyService.getAllConnections();
     
     for (const [clientId, connection] of connections) {

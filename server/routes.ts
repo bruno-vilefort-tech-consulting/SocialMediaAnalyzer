@@ -19,7 +19,6 @@ import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 import { htmlExportService } from "./htmlExportService";
-import { interactiveInterviewService } from "./interactiveInterviewService";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'maximus-interview-system-secret-key-2024';
 console.log(`🔑 JWT_SECRET configurado: ${JWT_SECRET?.substring(0, 10)}...`);
@@ -3939,54 +3938,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Save response error:', error);
       res.status(500).json({ message: 'Failed to save response' });
-    }
-  });
-
-  // Teste direto do serviço de entrevista interativa
-  app.post('/api/whatsapp/test-interview', async (req, res) => {
-    const { phone, message, clientId } = req.body;
-    
-    console.log(`🧪 [TEST_INTERVIEW] Iniciando teste de entrevista:`);
-    console.log(`📱 Telefone: ${phone}`);
-    console.log(`💬 Mensagem: "${message}"`);
-    console.log(`🏢 Cliente ID: ${clientId}`);
-    
-    try {
-      const fullPhone = `${phone}@s.whatsapp.net`;
-      
-      console.log(`🎯 [TEST_INTERVIEW] Chamando handleMessage para ${fullPhone}`);
-      await interactiveInterviewService.handleMessage(fullPhone, message, null, clientId);
-      
-      console.log(`✅ [TEST_INTERVIEW] Mensagem processada com sucesso`);
-      
-      // Verificar se entrevista foi criada
-      const activeInterviews = interactiveInterviewService.getActiveInterviews();
-      const interview = activeInterviews.get(phone);
-      
-      if (interview) {
-        console.log(`📋 [TEST_INTERVIEW] Entrevista ativa encontrada:`, {
-          candidateId: interview.candidateId,
-          candidateName: interview.candidateName,
-          currentQuestion: interview.currentQuestion,
-          totalQuestions: interview.questions.length
-        });
-      } else {
-        console.log(`❌ [TEST_INTERVIEW] Nenhuma entrevista ativa encontrada para ${phone}`);
-      }
-      
-      res.json({ 
-        success: true, 
-        message: 'Mensagem processada',
-        hasActiveInterview: !!interview,
-        interviewData: interview ? {
-          candidateName: interview.candidateName,
-          currentQuestion: interview.currentQuestion,
-          totalQuestions: interview.questions.length
-        } : null
-      });
-    } catch (error: any) {
-      console.log(`❌ [TEST_INTERVIEW] Erro ao processar mensagem:`, error?.message || error);
-      res.json({ success: false, error: error?.message || 'Erro desconhecido' });
     }
   });
 
