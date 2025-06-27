@@ -540,10 +540,36 @@ class SimpleInterviewService {
   }
 
   private async sendMessage(to: string, message: string): Promise<void> {
-    if (this.whatsappService) {
-      await this.whatsappService.sendTextMessage(to, message);
-    } else {
-      console.log(`📱 Enviaria mensagem para ${to}: ${message}`);
+    try {
+      console.log(`📤 [SEND] Tentando enviar mensagem para ${to}: "${message.substring(0, 50)}..."`);
+      
+      if (this.whatsappService && this.whatsappService.socket) {
+        // Usar socket direto do WhatsApp QR Service
+        await this.whatsappService.socket.sendMessage(to, { text: message });
+        console.log(`✅ [SEND] Mensagem enviada via socket`);
+      } else if (this.whatsappService && this.whatsappService.sendTextMessage) {
+        // Usar método sendTextMessage se disponível
+        const phone = to.replace('@s.whatsapp.net', '');
+        await this.whatsappService.sendTextMessage(phone, message);
+        console.log(`✅ [SEND] Mensagem enviada via sendTextMessage`);
+      } else {
+        // Fallback: usar interactiveInterviewService que tem método de envio funcionando
+        console.log(`🔄 [SEND] Usando fallback via interactiveInterviewService`);
+        const { interactiveInterviewService } = await import('./interactiveInterviewService');
+        await interactiveInterviewService.sendMessage(to, message);
+        console.log(`✅ [SEND] Mensagem enviada via fallback`);
+      }
+    } catch (error) {
+      console.log(`❌ [SEND] Erro ao enviar mensagem:`, error.message);
+      // Não falhar silenciosamente - tentar método alternativo
+      try {
+        console.log(`🔄 [SEND] Tentando método alternativo...`);
+        const { interactiveInterviewService } = await import('./interactiveInterviewService');
+        await interactiveInterviewService.sendMessage(to, message);
+        console.log(`✅ [SEND] Mensagem enviada via método alternativo`);
+      } catch (fallbackError) {
+        console.log(`❌ [SEND] Falha total no envio:`, fallbackError.message);
+      }
     }
   }
 

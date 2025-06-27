@@ -610,12 +610,19 @@ export class WhatsAppQRService {
               detectedClientId = '1749849987543'; // Fallback para Grupo Maximuns
             }
             
+            // CORREÇÃO CRÍTICA: Inicializar simpleInterviewService com este serviço WhatsApp ativo
+            if (!simpleInterviewService.whatsappService) {
+              console.log(`🔧 [CRITICAL_FIX] Inicializando simpleInterviewService com WhatsApp ativo...`);
+              simpleInterviewService.setWhatsAppService(this);
+            }
+            
             // Se é áudio, passar a mensagem completa para transcrição real
             if (audioMessage) {
               console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
               await simpleInterviewService.handleMessage(from, text, message, detectedClientId);
             } else {
               // Para mensagens de texto, usar o fluxo normal
+              console.log(`💬 [TEXT] Processando mensagem de texto: "${text}"`);
               await simpleInterviewService.handleMessage(from, text, null, detectedClientId);
             }
           } catch (messageError) {
