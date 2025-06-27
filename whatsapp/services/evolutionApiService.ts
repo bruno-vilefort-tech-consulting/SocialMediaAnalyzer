@@ -51,38 +51,78 @@ export class EvolutionApiService {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
       // Usar WPPConnect para gerar QR Code real do WhatsApp Web
-      console.log(`🔄 [EVOLUTION] Criando sessão WhatsApp real para cliente ${clientId}`);
+      console.log(`🔄 [EVOLUTION] Verificando conexão existente para cliente ${clientId}`);
       
       const { wppConnectService } = await import('./wppConnectService');
       
       try {
-        // Criar sessão real com WPPConnect
-        const result = await wppConnectService.createSession(clientId);
+        // Verificar se já está conectado
+        const status = await wppConnectService.getConnectionStatus(clientId);
         
-        if (result.success && result.qrCode) {
-          // Criar instância com QR Code real
+        if (status.isConnected && status.phoneNumber) {
+          // Já conectado, atualizar instância
           const instance: EvolutionInstance = {
             clientId,
             instanceId: instanceName,
             token: 'wppconnect_token',
-            isConnected: false,
-            qrCode: result.qrCode,
+            isConnected: true,
+            phoneNumber: status.phoneNumber,
             createdAt: new Date()
           };
 
           this.instances.set(clientId, instance);
           
-          console.log(`✅ [EVOLUTION] QR Code REAL gerado via WPPConnect para cliente ${clientId}: ${result.qrCode.length} chars`);
+          console.log(`✅ [EVOLUTION] Cliente ${clientId} já conectado no número: ${status.phoneNumber}`);
           return {
             success: true,
-            qrCode: result.qrCode
+            qrCode: undefined // Não precisa de QR Code se já conectado
+          };
+        } else if (status.qrCode) {
+          // QR Code disponível mas ainda não conectado
+          const instance: EvolutionInstance = {
+            clientId,
+            instanceId: instanceName,
+            token: 'wppconnect_token',
+            isConnected: false,
+            qrCode: status.qrCode,
+            createdAt: new Date()
+          };
+
+          this.instances.set(clientId, instance);
+          
+          console.log(`✅ [EVOLUTION] QR Code existente para cliente ${clientId}: ${status.qrCode.length} chars`);
+          return {
+            success: true,
+            qrCode: status.qrCode
           };
         } else {
-          console.error(`❌ [EVOLUTION] WPPConnect falhou para cliente ${clientId}:`, result.error);
-          return {
-            success: false,
-            error: result.error || 'Falha ao criar sessão WhatsApp'
-          };
+          // Criar nova sessão
+          const result = await wppConnectService.createSession(clientId);
+          
+          if (result.success && result.qrCode) {
+            const instance: EvolutionInstance = {
+              clientId,
+              instanceId: instanceName,
+              token: 'wppconnect_token',
+              isConnected: false,
+              qrCode: result.qrCode,
+              createdAt: new Date()
+            };
+
+            this.instances.set(clientId, instance);
+            
+            console.log(`✅ [EVOLUTION] QR Code REAL gerado via WPPConnect para cliente ${clientId}: ${result.qrCode.length} chars`);
+            return {
+              success: true,
+              qrCode: result.qrCode
+            };
+          } else {
+            console.error(`❌ [EVOLUTION] WPPConnect falhou para cliente ${clientId}:`, result.error);
+            return {
+              success: false,
+              error: result.error || 'Falha ao criar sessão WhatsApp'
+            };
+          }
         }
         
       } catch (wppError) {
@@ -261,6 +301,35 @@ export class EvolutionApiService {
     lastConnection?: Date; 
   }> {
     try {
+      // Verificar status real no WPPConnect
+      const { wppConnectService } = await import('./wppConnectService');
+      const realStatus = await wppConnectService.getConnectionStatus(clientId);
+      
+      // Atualizar instância local com status real
+      const instance = this.instances.get(clientId);
+      if (instance) {
+        instance.isConnected = realStatus.isConnected;
+        if (realStatus.phoneNumber) {
+          instance.phoneNumber = realStatus.phoneNumber;
+        }
+        // Limpar QR Code se conectado
+        if (realStatus.isConnected) {
+          instance.qrCode = undefined;
+        }
+      }
+      
+      return {
+        isConnected: realStatus.isConnected,
+        qrCode: realStatus.isConnected ? undefined : realStatus.qrCode,
+        phoneNumber: realStatus.phoneNumber,
+        instanceId: realStatus.instanceId || `client_${clientId}`,
+        lastConnection: instance?.createdAt || new Date()
+      };
+      
+    } catch (error) {
+      console.log(`⚠️ [EVOLUTION] Erro ao verificar status real para ${clientId}:`, error);
+      
+      // Fallback para instância local
       const instance = this.instances.get(clientId);
       if (!instance) {
         return { isConnected: false };

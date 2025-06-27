@@ -103,6 +103,24 @@ export class WppConnectService {
           },
           statusFind: (statusSession: any, session: string) => {
             console.log(`📱 [WPPCONNECT] Status sessão ${session}: ${statusSession}`);
+            
+            // Quando conectado, obter informações do cliente
+            if (statusSession === 'inChat') {
+              const existingSession = this.sessions.get(clientId);
+              if (existingSession && existingSession.client) {
+                existingSession.isConnected = true;
+                
+                // Obter número do telefone
+                existingSession.client.getHostDevice().then((hostDevice: any) => {
+                  if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
+                    existingSession.phoneNumber = hostDevice.wid.user;
+                    console.log(`✅ [WPPCONNECT] Cliente ${clientId} conectado no número: ${hostDevice.wid.user}`);
+                  }
+                }).catch((error: any) => {
+                  console.log(`⚠️ [WPPCONNECT] Erro ao obter número do telefone:`, error);
+                });
+              }
+            }
           },
           onLoadingScreen: (loading: any, session: string) => {
             console.log(`📱 [WPPCONNECT] Tela carregada ${session}: ${loading}`);
@@ -116,7 +134,16 @@ export class WppConnectService {
           if (session) {
             session.client = client;
             session.isConnected = true;
-            session.phoneNumber = client.getWid?.()?.user || null;
+            
+            // Obter número do telefone usando API correta
+            client.getHostDevice().then((hostDevice: any) => {
+              if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
+                session.phoneNumber = hostDevice.wid.user;
+                console.log(`📱 [WPPCONNECT] Número do telefone detectado: ${hostDevice.wid.user}`);
+              }
+            }).catch((error: any) => {
+              console.log(`⚠️ [WPPCONNECT] Erro ao obter número do telefone:`, error);
+            });
           }
           
           // Se ainda não gerou QR Code e já conectou, considerar sucesso

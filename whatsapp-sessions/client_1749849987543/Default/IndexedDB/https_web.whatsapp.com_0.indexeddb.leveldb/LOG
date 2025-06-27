@@ -248,3 +248,43 @@
 2025/06/27-03:02:43.376 26fa Delete type=2 #75
 2025/06/27-03:02:43.376 26fa Delete type=2 #76
 2025/06/27-03:02:43.377 26fa Delete type=2 #78
+2025/06/27-03:02:52.104 26fc Level-0 table #83: started
+2025/06/27-03:02:52.192 26fc Level-0 table #83: 984777 bytes OK
+2025/06/27-03:02:52.199 26fc Delete type=0 #77
+2025/06/27-03:02:53.194 26fa Compacting 1@1 + 3@2 files
+2025/06/27-03:02:56.096 26fa Generated table #84@1: 40984 keys, 2203316 bytes
+2025/06/27-03:02:56.181 26fa Generated table #85@1: 18287 keys, 2166522 bytes
+2025/06/27-03:02:56.295 26fa Generated table #86@1: 87373 keys, 2233086 bytes
+2025/06/27-03:02:56.318 26fa Generated table #87@1: 7702 keys, 163241 bytes
+2025/06/27-03:02:56.319 26fa Compacted 1@1 + 3@2 files => 6766165 bytes
+2025/06/27-03:02:56.329 26fa compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/06/27-03:02:56.329 26fa Delete type=2 #79
+2025/06/27-03:02:56.329 26fa Delete type=2 #80
+2025/06/27-03:02:56.329 26fa Delete type=2 #81
+2025/06/27-03:02:56.329 26fa Delete type=2 #83
+2025/06/27-03:03:06.760 26fa Level-0 table #89: started
+2025/06/27-03:03:06.821 26fa Level-0 table #89: 1048232 bytes OK
+2025/06/27-03:03:06.839 26fa Delete type=0 #82
+2025/06/27-03:03:26.794 26fa Compacting 1@1 + 4@2 files
+2025/06/27-03:03:26.909 26fa Generated table #90@1: 38508 keys, 2197937 bytes
+2025/06/27-03:03:26.970 26fa Generated table #91@1: 26208 keys, 2183148 bytes
+2025/06/27-03:03:27.095 26fa Generated table #92@1: 70226 keys, 2209898 bytes
+2025/06/27-03:03:27.135 26fa Generated table #93@1: 30228 keys, 639645 bytes
+2025/06/27-03:03:27.135 26fa Compacted 1@1 + 4@2 files => 7230628 bytes
+2025/06/27-03:03:27.147 26fa compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/06/27-03:03:27.148 26fa Delete type=2 #84
+2025/06/27-03:03:27.148 26fa Delete type=2 #85
+2025/06/27-03:03:27.148 26fa Delete type=2 #86
+2025/06/27-03:03:27.148 26fa Delete type=2 #87
+2025/06/27-03:03:27.148 26fa Delete type=2 #89
+2025/06/27-03:03:52.213 26fa Level-0 table #95: started
+2025/06/27-03:03:52.289 26fa Level-0 table #95: 1064390 bytes OK
+2025/06/27-03:03:52.303 26fa Delete type=0 #88
+2025/06/27-03:03:54.997 26fa Compacting 1@1 + 2@2 files
+2025/06/27-03:03:55.161 26fa Generated table #96@1: 39317 keys, 2200482 bytes
+2025/06/27-03:03:55.318 26fa Generated table #97@1: 24761 keys, 2167852 bytes
+2025/06/27-03:03:55.318 26fa Compacted 1@1 + 2@2 files => 4368334 bytes
+2025/06/27-03:03:55.329 26fa compacted to: files[ 0 0 4 0 0 0 0 ]
+2025/06/27-03:03:55.330 26fa Delete type=2 #90
+2025/06/27-03:03:55.330 26fa Delete type=2 #91
+2025/06/27-03:03:55.330 26fa Delete type=2 #95
