@@ -104,14 +104,19 @@ class ClientWhatsAppService {
   }
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message?: string }> {
-    console.log(`🔗 [CLIENT-WA] Conectando ${clientId}`);
+    console.log(`🔗 [CLIENT-WA] Conectando ${clientId} - FORÇANDO NOVO QR CODE`);
     
     try {
+      // FORÇA LIMPEZA ANTES DE CONECTAR
+      console.log(`🧹 [CLIENT-WA] Limpando sessões antigas para ${clientId}`);
+      await wppConnectService.disconnect(clientId);
+      await evolutionApiService.disconnectClient(clientId);
+      
       // Tentar conectar via WppConnect
       const wppResult = await wppConnectService.createSession(clientId);
       
       if (wppResult.success && wppResult.qrCode) {
-        console.log(`✅ [CLIENT-WA] WppConnect conectado`);
+        console.log(`✅ [CLIENT-WA] WppConnect conectado com novo QR Code`);
         return {
           success: true,
           qrCode: wppResult.qrCode,
@@ -123,7 +128,7 @@ class ClientWhatsAppService {
       const evolutionResult = await evolutionApiService.connectClient(clientId);
       
       if (evolutionResult.success) {
-        console.log(`✅ [CLIENT-WA] Evolution conectado`);
+        console.log(`✅ [CLIENT-WA] Evolution conectado com novo QR Code`);
         return evolutionResult;
       }
       
