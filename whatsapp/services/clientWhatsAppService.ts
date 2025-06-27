@@ -1,5 +1,6 @@
 import { wppConnectService } from './wppConnectService';
 import { evolutionApiService } from './evolutionApiService';
+import { activeSessionDetector } from './activeSessionDetector';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -16,90 +17,56 @@ class ClientWhatsAppService {
   }
 
   async getConnectionStatus(clientId: string): Promise<WhatsAppClientConfig> {
-    console.log(`🔍 [CLIENT-WA] Verificando status para cliente ${clientId}`);
+    console.log(`🔍 [CLIENT-WA] Verificando status para cliente ${clientId} usando ActiveSessionDetector`);
 
     try {
-      // DETECÇÃO WPPCONNECT DIRETA
-      console.log(`📱 [CLIENT-WA] Testando WppConnect`);
+      // Usar o ActiveSessionDetector para detecção robusta
+      const activeConnection = await activeSessionDetector.detectActiveConnection(clientId);
       
-      const possibleKeys = [clientId, `client_${clientId}`];
+      if (activeConnection.isConnected) {
+        console.log(`✅ [CLIENT-WA] Conexão ativa detectada via ${activeConnection.source} - Número: ${activeConnection.phoneNumber}`);
+        return {
+          isConnected: true,
+          qrCode: null,
+          phoneNumber: activeConnection.phoneNumber || null,
+          lastConnection: new Date(),
+          clientId,
+          instanceId: activeConnection.sessionId
+        };
+      }
       
-      for (const key of possibleKeys) {
-        try {
-          const wppStatus = wppConnectService.getSessionStatus(key);
-          console.log(`📋 [CLIENT-WA] Status ${key}:`, {
-            exists: !!wppStatus,
-            isConnected: wppStatus?.isConnected,
-            hasClient: !!wppStatus?.client
-          });
-          
-          if (wppStatus && wppStatus.isConnected && wppStatus.client) {
-            console.log(`✅ [CLIENT-WA] WPPCONNECT DETECTADO! Key: ${key}`);
-            
-            let phoneNumber = wppStatus.phoneNumber;
-            if (!phoneNumber) {
-              try {
-                const hostDevice = await wppStatus.client.getHostDevice();
-                if (hostDevice?.wid?.user) {
-                  phoneNumber = `+${hostDevice.wid.user}`;
-                }
-              } catch (e: any) {
-                console.log(`⚠️ [CLIENT-WA] Erro dispositivo:`, e.message);
-              }
-            }
-            
-            return {
-              isConnected: true,
-              qrCode: null,
-              phoneNumber: phoneNumber || 'Connected',
-              lastConnection: new Date(),
-              clientId,
-              instanceId: `wpp_${clientId}`
-            };
-          }
-        } catch (e: any) {
-          console.log(`❌ [CLIENT-WA] Erro ${key}:`, e.message);
-        }
+      // Se não há conexão ativa, verificar se há QR Code disponível
+      console.log(`🔍 [CLIENT-WA] Nenhuma conexão ativa, verificando QR Codes...`);
+      
+      // Verificar Evolution API para QR Code
+      const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
+      if (evolutionStatus.qrCode) {
+        console.log(`📱 [CLIENT-WA] Evolution API QR Code disponível`);
+        return {
+          isConnected: false,
+          qrCode: evolutionStatus.qrCode,
+          phoneNumber: null,
+          lastConnection: null,
+          clientId,
+          instanceId: evolutionStatus.instanceId
+        };
+      }
+      
+      // Verificar WppConnect para QR Code
+      const wppStatus = await wppConnectService.getConnectionStatus(clientId);
+      if (wppStatus.qrCode) {
+        console.log(`📱 [CLIENT-WA] WppConnect QR Code disponível`);
+        return {
+          isConnected: false,
+          qrCode: wppStatus.qrCode,
+          phoneNumber: null,
+          lastConnection: null,
+          clientId,
+          instanceId: wppStatus.instanceId
+        };
       }
 
-      // EVOLUTION API FALLBACK
-      console.log(`🔍 [CLIENT-WA] Testando Evolution API`);
-      
-      try {
-        const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
-        
-        if (evolutionStatus.isConnected) {
-          console.log(`✅ [CLIENT-WA] EVOLUTION DETECTADO!`);
-          
-          return {
-            isConnected: true,
-            qrCode: null,
-            phoneNumber: evolutionStatus.phoneNumber || 'Connected',
-            lastConnection: new Date(),
-            clientId,
-            instanceId: evolutionStatus.instanceId
-          };
-        }
-
-        if (evolutionStatus.qrCode) {
-          console.log(`📱 [CLIENT-WA] Evolution QR disponível`);
-          
-          return {
-            isConnected: false,
-            qrCode: evolutionStatus.qrCode,
-            phoneNumber: null,
-            lastConnection: new Date(),
-            clientId,
-            instanceId: evolutionStatus.instanceId
-          };
-        }
-      } catch (e: any) {
-        console.log(`❌ [CLIENT-WA] Erro Evolution:`, e.message);
-      }
-
-      // NENHUMA CONEXÃO DETECTADA
-      console.log(`❌ [CLIENT-WA] Nenhuma conexão detectada para ${clientId}`);
-      
+      console.log(`❌ [CLIENT-WA] Nenhuma conexão ou QR Code encontrado para cliente ${clientId}`);
       return {
         isConnected: false,
         qrCode: null,
@@ -107,10 +74,9 @@ class ClientWhatsAppService {
         lastConnection: null,
         clientId
       };
-
-    } catch (error: any) {
-      console.log(`❌ [CLIENT-WA] Erro geral:`, error.message);
       
+    } catch (error) {
+      console.error(`❌ [CLIENT-WA] Erro ao verificar status:`, error);
       return {
         isConnected: false,
         qrCode: null,
@@ -133,10 +99,10 @@ class ClientWhatsAppService {
         return {
           success: true,
           qrCode: wppResult.qrCode,
-          message: 'Conectado via WppConnect'
+          message: 'QR Code gerado via WppConnect'
         };
       }
-
+      
       // Fallback para Evolution API
       const evolutionResult = await evolutionApiService.connectClient(clientId);
       
@@ -144,17 +110,17 @@ class ClientWhatsAppService {
         console.log(`✅ [CLIENT-WA] Evolution conectado`);
         return evolutionResult;
       }
-
+      
       return {
         success: false,
-        message: 'Falha ao conectar'
+        message: 'Falha ao conectar via WppConnect e Evolution API'
       };
-
+      
     } catch (error: any) {
-      console.log(`❌ [CLIENT-WA] Erro connect:`, error.message);
+      console.error(`❌ [CLIENT-WA] Erro ao conectar:`, error);
       return {
         success: false,
-        message: `Erro: ${error.message}`
+        message: `Erro de conexão: ${error.message}`
       };
     }
   }
@@ -163,51 +129,59 @@ class ClientWhatsAppService {
     console.log(`🔌 [CLIENT-WA] Desconectando ${clientId}`);
     
     try {
-      await wppConnectService.disconnect(clientId);
-      await evolutionApiService.disconnectClient(clientId);
-
+      // Desconectar de ambos os serviços
+      const wppResult = await wppConnectService.disconnect(clientId);
+      const evolutionResult = await evolutionApiService.disconnectClient(clientId);
+      
       return {
         success: true,
-        message: 'Desconectado'
+        message: 'Cliente desconectado de todos os serviços'
       };
-
+      
     } catch (error: any) {
-      console.log(`❌ [CLIENT-WA] Erro disconnect:`, error.message);
+      console.error(`❌ [CLIENT-WA] Erro ao desconectar:`, error);
       return {
         success: false,
-        message: `Erro: ${error.message}`
+        message: `Erro de desconexão: ${error.message}`
       };
     }
   }
 
-  async sendMessage(clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
-    console.log(`📤 [CLIENT-WA] Enviando para ${phoneNumber}`);
+  async sendMessage(clientId: string, phoneNumber: string, message: string): Promise<{
+    success: boolean;
+    messageId?: string;
+    error?: string;
+  }> {
+    console.log(`📤 [CLIENT-WA] Enviando mensagem para ${phoneNumber} via cliente ${clientId}`);
     
     try {
-      const wppResult = await wppConnectService.sendMessage(clientId, phoneNumber, message);
+      // Verificar conexão ativa primeiro
+      const activeConnection = await activeSessionDetector.detectActiveConnection(clientId);
       
-      if (wppResult.success) {
-        console.log(`✅ [CLIENT-WA] Enviado via WppConnect`);
-        return wppResult;
+      if (!activeConnection.isConnected) {
+        return {
+          success: false,
+          error: 'WhatsApp não está conectado'
+        };
       }
-
+      
+      // Tentar enviar via WppConnect primeiro
+      if (activeConnection.source === 'wppconnect') {
+        const wppResult = await wppConnectService.sendMessage(clientId, phoneNumber, message);
+        if (wppResult.success) {
+          return wppResult;
+        }
+      }
+      
+      // Fallback para Evolution API
       const evolutionResult = await evolutionApiService.sendMessage(clientId, phoneNumber, message);
+      return evolutionResult;
       
-      if (evolutionResult.success) {
-        console.log(`✅ [CLIENT-WA] Enviado via Evolution`);
-        return evolutionResult;
-      }
-
-      return {
-        success: false,
-        error: 'Falha ao enviar'
-      };
-
     } catch (error: any) {
-      console.log(`❌ [CLIENT-WA] Erro sendMessage:`, error.message);
+      console.error(`❌ [CLIENT-WA] Erro ao enviar mensagem:`, error);
       return {
         success: false,
-        error: error.message
+        error: `Erro de envio: ${error.message}`
       };
     }
   }
