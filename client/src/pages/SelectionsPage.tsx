@@ -448,7 +448,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
   };
 
   // Salvar seleção
-  const salvarSelecao = () => {
+  const salvarSelecao = async () => {
     console.log('🎯 salvarSelecao iniciada');
     
     if (!nomeSelecao.trim()) {
@@ -502,6 +502,13 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     console.log('📋 Dados da seleção:', selectionData);
     console.log('🔄 Tipo de envio:', tipoEnvio);
     console.log('📱 Enviar WhatsApp:', enviarWhatsApp);
+    
+    // Primeiro recolher o menu (fechar formulário)
+    setShowForm(false);
+    resetForm();
+    
+    // Aguardar um momento para a interface atualizar
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     if (editingSelection) {
       console.log('✏️ Editando seleção existente');
