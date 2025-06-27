@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 26, 2025: ✅ PROBLEMA QR CODE RESOLVIDO DEFINITIVAMENTE - Interface agora exibe QR Code automaticamente
+  - **Root cause identificado**: Variável `shouldShowQR` controlava exibição mas só ativava com clique no botão
+  - **Correção implementada**: QR Code agora aparece automaticamente quando gerado pelo Evolution API
+  - **Debug removido**: Interface limpa sem elementos de debug temporários
+  - **Funcionalidade validada**: QR Code 853 caracteres sendo exibido corretamente na página Configurações
+  - **Sistema operacional**: Evolution API gerando QR Code + Frontend exibindo automaticamente
+  - **UX melhorada**: Usuário vê QR Code imediatamente sem precisar clicar em botões
+
 - June 26, 2025: ✅ SISTEMA WHATSAPP EVOLUTION API COMPLETAMENTE FUNCIONAL - QR Code gerado e interface operacional
   - **Endpoint duplicado corrigido**: Removida duplicação em routes.ts que causava conflitos na resposta
   - **QR Code 100% funcional**: Sistema gera QR Code de 853 caracteres base64 PNG corretamente

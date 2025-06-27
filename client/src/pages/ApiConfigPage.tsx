@@ -641,6 +641,8 @@ export default function ApiConfigPage() {
               </div>
             </div>
 
+
+
             {/* QR Code */}
             {whatsappStatus?.qrCode && !whatsappStatus?.isConnected && (
               <div className="space-y-4">
@@ -664,6 +666,19 @@ export default function ApiConfigPage() {
                     QR Code expira em 90 segundos. Se não funcionar, clique em "Atualizar QR"
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Casos quando QR Code NÃO aparece */}
+            {!whatsappStatus?.qrCode && (
+              <div className="p-4 bg-red-100 border border-red-400 rounded">
+                <p className="text-red-800">QR Code não encontrado nos dados</p>
+              </div>
+            )}
+
+            {whatsappStatus?.isConnected && (
+              <div className="p-4 bg-blue-100 border border-blue-400 rounded">
+                <p className="text-blue-800">WhatsApp já está conectado</p>
               </div>
             )}
 
