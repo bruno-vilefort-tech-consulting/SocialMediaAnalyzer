@@ -150,10 +150,17 @@ class InteractiveInterviewService {
 
     // Comando 1: Iniciar entrevista
     if (text === '1' && !activeInterview) {
-      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista para ${phone}`);
       this.activeInterviews.clear();
       console.log(`🧹 [INTERVIEW] Cache de entrevistas ativas completamente limpo`);
-      await this.startInterview(phone, clientId);
+      
+      try {
+        await this.startInterview(phone, clientId);
+        console.log(`✅ [INTERVIEW] Entrevista iniciada com sucesso para ${phone}`);
+      } catch (error: any) {
+        console.log(`❌ [INTERVIEW] Erro ao iniciar entrevista para ${phone}:`, error?.message || error);
+        await this.sendMessage(from, "❌ Erro ao iniciar entrevista. Tente novamente digitando 1.");
+      }
       return;
     } 
     
@@ -324,8 +331,15 @@ class InteractiveInterviewService {
       );
 
       // Enviar primeira pergunta após pequeno delay
+      console.log(`⏰ [INTERVIEW] Agendando primeira pergunta em 2 segundos para ${phone}`);
       setTimeout(async () => {
-        await this.sendNextQuestion(phone, interview);
+        console.log(`🎯 [INTERVIEW] Executando primeira pergunta para ${phone}`);
+        try {
+          await this.sendNextQuestion(phone, interview);
+          console.log(`✅ [INTERVIEW] Primeira pergunta enviada com sucesso para ${phone}`);
+        } catch (error: any) {
+          console.log(`❌ [INTERVIEW] Erro ao enviar primeira pergunta para ${phone}:`, error?.message || error);
+        }
       }, 2000);
       
     } catch (error) {
