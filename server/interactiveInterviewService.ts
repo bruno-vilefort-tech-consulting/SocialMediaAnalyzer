@@ -63,7 +63,7 @@ class InteractiveInterviewService {
       // Fallback para método original se não houve correção
       console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto...`);
       
-      const { whatsappBaileyService } = await import('./whatsappBaileyService');
+      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
       const connection = whatsappBaileyService.getConnection(clientId);
       
       if (!connection?.socket) {
@@ -405,7 +405,7 @@ class InteractiveInterviewService {
         const audioBuffer = await response.arrayBuffer();
         
         // Enviar áudio via WhatsApp - buscar serviço dinamicamente para evitar dependência circular
-        const { whatsappBaileyService } = await import('./whatsappBaileyService');
+        const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
         const connection = whatsappBaileyService.getConnection(clientId);
         if (connection?.socket) {
           await connection.socket.sendMessage(`${phone}@s.whatsapp.net`, {
@@ -810,7 +810,7 @@ class InteractiveInterviewService {
     console.log(`📤 Enviando mensagem para ${to}: "${text.substring(0, 50)}..."`);
     
     // Buscar conexão ativa para qualquer cliente que possa enviar a mensagem - importação dinâmica
-    const { whatsappBaileyService } = await import('./whatsappBaileyService');
+    const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
     const connections = whatsappBaileyService.getAllConnections();
     
     for (const [clientId, connection] of connections) {
