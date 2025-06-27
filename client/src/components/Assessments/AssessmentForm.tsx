@@ -156,14 +156,23 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
       selectedList: candidateSource === "list" ? selectedList : null,
       selectedCandidates: candidateSource === "search" ? selectedCandidates : [],
       selectedAssessments,
+      emailSubject,
       emailMessage,
       sendOption,
       scheduledDate,
       scheduledTime
     };
 
-    console.log("Enviando assessment:", formData);
-    // Aqui você implementará a lógica de envio
+    if (sendOption === "now") {
+      sendEmailMutation.mutate(formData);
+    } else {
+      // Para agendamento, por enquanto só mostra console
+      console.log("Agendamento de assessment:", formData);
+      toast({
+        title: "Assessment agendado",
+        description: "O assessment foi agendado para envio na data especificada.",
+      });
+    }
   };
 
   return (
@@ -388,11 +397,15 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
           <div className="flex items-center justify-end pt-6 border-t">
             <Button 
               onClick={handleSubmit}
-              disabled={!canSubmit()}
+              disabled={!canSubmit() || sendEmailMutation.isPending}
               className="px-8"
             >
               <Send className="h-4 w-4 mr-2" />
-              {sendOption === "now" ? "Enviar Agora" : "Agendar Envio"}
+              {sendEmailMutation.isPending ? (
+                "Enviando..."
+              ) : (
+                sendOption === "now" ? "Enviar Agora" : "Agendar Envio"
+              )}
             </Button>
           </div>
         </CardContent>

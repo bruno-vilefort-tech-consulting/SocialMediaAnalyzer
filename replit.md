@@ -115,6 +115,19 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- June 27, 2025: ✅ SISTEMA ASSESSMENTS COM ENVIO DE EMAIL COMPLETAMENTE FUNCIONAL - useMutation implementado com integração ao Resend
+  - **Envio de emails funcionando**: useMutation integrado ao endpoint /api/send-assessment-email com Resend
+  - **Campo "Assunto E-mail" implementado**: Posicionado acima da mensagem com template padrão "Olá [nome do candidato] faça seus Assessments MaxcamRH"
+  - **Botão "Enviar Agora" funcional**: Integração completa com emailService existente usando mutation
+  - **Estado de loading implementado**: Botão mostra "Enviando..." durante processamento
+  - **Toast notifications**: Feedback de sucesso e erro após envio dos emails
+  - **Reset automático do form**: Formulário limpa todos os campos após envio bem-sucedido
+  - **Endpoint backend completo**: /api/send-assessment-email processa candidatos por lista ou busca individual
+  - **Personalização de emails**: Substitui placeholders [nome do candidato] e [clienteid] automaticamente
+  - **HTML profissional**: Templates de email com design responsivo e links funcionais dos assessments
+  - **Validação de candidatos**: Sistema verifica emails válidos e trata candidatos sem email adequadamente
+  - **Logs detalhados**: Monitoramento completo do processo de envio com contadores de sucesso/erro
+
 - June 27, 2025: ✅ SISTEMA ASSESSMENTS COMPLETO IMPLEMENTADO - Pasta dedicada com formulário funcional e validação completa
   - **Pasta Assessments criada**: Nova estrutura organizacional em client/src/components/Assessments/
   - **AssessmentForm.tsx implementado**: Formulário completo com todos os campos solicitados

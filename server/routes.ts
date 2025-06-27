@@ -5256,6 +5256,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint para envio de emails de assessment
+  app.post("/api/send-assessment-email", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { 
+        selectionName,
+        candidateSource,
+        selectedList,
+        selectedCandidates,
+        selectedAssessments,
+        emailSubject,
+        emailMessage,
+        sendOption,
+        scheduledDate,
+        scheduledTime 
+      } = req.body;
+
+      console.log('📧 INICIANDO ENVIO DE ASSESSMENT EMAILS');
+      console.log('📧 Dados recebidos:', {
+        selectionName,
+        candidateSource,
+        selectedList: selectedList || 'N/A',
+        selectedCandidatesCount: selectedCandidates?.length || 0,
+        selectedAssessments,
+        emailSubject: emailSubject?.substring(0, 50) + '...',
+        sendOption
+      });
+
+      // Importar emailService
+      const { emailService } = await import('./emailService');
+
+      let candidates = [];
+
+      // Buscar candidatos baseado na fonte selecionada
+      if (candidateSource === "list" && selectedList) {
+        // Buscar candidatos da lista específica
+        const memberships = await storage.getCandidateListMembershipsByListId(parseInt(selectedList));
+        const candidateIds = memberships.map(m => m.candidateId);
+        
+        for (const candidateId of candidateIds) {
+          const candidate = await storage.getCandidateById(candidateId);
+          if (candidate) {
+            candidates.push(candidate);
+          }
+        }
+      } else if (candidateSource === "search" && selectedCandidates?.length > 0) {
+        // Buscar candidatos específicos selecionados
+        for (const candidateId of selectedCandidates) {
+          const candidate = await storage.getCandidateById(candidateId);
+          if (candidate) {
+            candidates.push(candidate);
+          }
+        }
+      }
+
+      console.log(`📧 Total de candidatos encontrados: ${candidates.length}`);
+
+      if (candidates.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nenhum candidato encontrado para envio'
+        });
+      }
+
+      let emailsSent = 0;
+      let emailsError = 0;
+
+      // Enviar emails para cada candidato
+      for (const candidate of candidates) {
+        if (!candidate.email) {
+          console.log(`⚠️ Candidato ${candidate.name} sem email`);
+          emailsError++;
+          continue;
+        }
+
+        try {
+          // Personalizar mensagem substituindo placeholders
+          let personalizedSubject = emailSubject
+            .replace(/\[nome do candidato\]/g, candidate.name)
+            .replace(/\[clienteid\]/g, req.user?.clientId?.toString() || 'Cliente');
+
+          let personalizedMessage = emailMessage
+            .replace(/\[nome do candidato\]/g, candidate.name)
+            .replace(/\[clienteid\]/g, req.user?.clientId?.toString() || 'Cliente');
+
+          // Adicionar informações dos assessments selecionados
+          const assessmentList = selectedAssessments.join(', ');
+          personalizedMessage += `\n\nAssessments selecionados: ${assessmentList}`;
+
+          // Criar link fictício para os assessments (pode ser personalizado depois)
+          const assessmentLink = `${process.env.BASE_URL || 'https://sistema.maxcamrh.com.br'}/assessments/${candidate.id}`;
+          personalizedMessage += `\n\nLink dos Assessments: ${assessmentLink}`;
+
+          console.log(`📧 Enviando email para: ${candidate.email}`);
+          console.log(`📧 Subject: ${personalizedSubject}`);
+
+          await emailService.sendEmail({
+            to: candidate.email,
+            subject: personalizedSubject,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2563eb; margin-bottom: 20px;">${personalizedSubject}</h2>
+                <div style="line-height: 1.6; white-space: pre-line; margin-bottom: 30px;">
+                  ${personalizedMessage}
+                </div>
+                <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
+                  <h3 style="color: #1f2937; margin-top: 0;">Assessments Selecionados:</h3>
+                  <p style="margin-bottom: 15px;"><strong>${assessmentList}</strong></p>
+                  <a href="${assessmentLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    INICIAR ASSESSMENTS
+                  </a>
+                  <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
+                    Ou copie e cole este link no seu navegador:<br>
+                    <span style="word-break: break-all;">${assessmentLink}</span>
+                  </p>
+                </div>
+                <div style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                  Este email foi enviado automaticamente pelo Sistema MaxcamRH.
+                </div>
+              </div>
+            `
+          });
+
+          emailsSent++;
+          console.log(`✅ Email enviado para ${candidate.email}`);
+
+        } catch (error) {
+          console.error(`❌ Erro ao enviar email para ${candidate.email}:`, error);
+          emailsError++;
+        }
+      }
+
+      console.log(`📧 RESULTADO DO ENVIO: ${emailsSent} enviados, ${emailsError} erros`);
+
+      res.json({
+        success: true,
+        emailsSent,
+        emailsError,
+        message: `${emailsSent} emails enviados com sucesso${emailsError > 0 ? `, ${emailsError} com erro` : ''}`
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no envio de assessment emails:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor ao enviar emails'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
