@@ -115,6 +115,10 @@ export class WhatsAppQRService {
   }
 
   private async safeInitialize() {
+    console.log('🚫 [WHATSAPP-QR] Mobile API desabilitado - funcionalidade não mais suportada');
+    // Mobile API foi descontinuado - desabilitar completamente
+    return;
+    
     try {
       // Timeout ainda mais curto para não atrasar o servidor - 3 segundos máximo
       await Promise.race([
