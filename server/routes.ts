@@ -2576,7 +2576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client WhatsApp endpoints - Sistema original que funcionava
+  // Client WhatsApp status endpoint with robust ActiveSessionDetector
   app.get("/api/client/whatsapp/status", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -2584,30 +2584,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`📊 [EVOLUTION] Buscando status WhatsApp para cliente ${user.clientId}...`);
+      console.log(`🔍 [ACTIVE-DETECTOR] Verificando status WhatsApp para cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       
-      // Verificar status via Evolution API
-      const status = await evolutionApiService.getConnectionStatus(user.clientId.toString());
-      const instance = evolutionApiService.getInstance(user.clientId.toString());
+      // Usar o ActiveSessionDetector para detecção robusta
+      const status = await clientWhatsAppService.getConnectionStatus(user.clientId.toString());
+      
+      console.log(`📊 [ACTIVE-DETECTOR] Status detectado:`, {
+        isConnected: status.isConnected,
+        phoneNumber: status.phoneNumber,
+        source: status.instanceId,
+        hasQrCode: !!status.qrCode
+      });
       
       const finalStatus = {
         isConnected: status.isConnected,
-        qrCode: instance?.qrCode || null,
-        phoneNumber: status.phoneNumber || null,
-        lastConnection: instance?.createdAt || null
+        qrCode: status.qrCode,
+        phoneNumber: status.phoneNumber,
+        lastConnection: status.lastConnection,
+        instanceId: status.instanceId
       };
       
-      console.log(`📱 [EVOLUTION] Status final:`, finalStatus);
       res.json(finalStatus);
     } catch (error) {
-      console.error('❌ [EVOLUTION] Erro ao buscar status WhatsApp:', error);
-      res.status(500).json({
+      console.error(`❌ [ACTIVE-DETECTOR] Erro ao verificar status:`, error);
+      res.status(500).json({ 
         isConnected: false,
-        qrCode: null,
-        phoneNumber: null,
-        error: 'Erro interno'
+        error: 'Erro interno ao verificar status WhatsApp'
       });
     }
   });
