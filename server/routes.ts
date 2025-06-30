@@ -3204,6 +3204,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if Comercial 5 report exists endpoint
+  app.get("/api/check-comercial-5", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
+    try {
+      console.log('🔍 Verificando existência do relatório Comercial 5...');
+      
+      // Buscar em reports
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db');
+      
+      const reportsQuery = query(
+        collection(firebaseDb, 'reports'),
+        where('name', '==', 'Comercial 5')
+      );
+      
+      const reportsSnapshot = await getDocs(reportsQuery);
+      const reportExists = !reportsSnapshot.empty;
+      
+      if (reportExists) {
+        const reportData = reportsSnapshot.docs[0].data();
+        console.log('✅ Relatório Comercial 5 encontrado:', reportData);
+        
+        res.json({ 
+          exists: true,
+          report: {
+            id: reportsSnapshot.docs[0].id,
+            name: reportData.name,
+            clientId: reportData.clientId,
+            createdAt: reportData.createdAt,
+            status: reportData.status,
+            totalCandidates: reportData.totalCandidates || 0,
+            completedInterviews: reportData.completedInterviews || 0
+          }
+        });
+      } else {
+        console.log('❌ Relatório Comercial 5 não encontrado');
+        res.json({ exists: false });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar relatório Comercial 5:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao verificar relatório Comercial 5',
+        error: error.message 
+      });
+    }
+  });
+
   // Test OpenAI API endpoint
   app.post("/api/test-openai", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
     try {
