@@ -23,22 +23,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔐 useAuth: Verificando token no localStorage...');
     // Verifica se há um token salvo no localStorage
     const token = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('user');
 
+    console.log('🔐 useAuth:', { hasToken: !!token, hasUser: !!savedUser });
+
     if (token && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
+        console.log('🔐 useAuth: Usuário carregado do localStorage:', parsedUser);
         setUser(parsedUser);
       } catch (error) {
-        console.error('Erro ao carregar usuário salvo:', error);
+        console.error('🔐 useAuth: Erro ao carregar usuário salvo:', error);
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
       }
     }
     
     setIsLoading(false);
+    console.log('🔐 useAuth: Inicialização concluída');
   }, []);
 
   const logout = () => {
