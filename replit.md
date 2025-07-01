@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 01, 2025: 🧹 LIMPEZA COMPLETA DE SCRIPTS DESNECESSÁRIOS REALIZADA - Projeto otimizado sem quebrar funcionalidades
+  - **Scripts removidos com segurança**: restore-whatsapp-connection.js, simple-evolution-server.js, start-both-servers.js, start-evolution-api.js, start-evolution.js, test-whatsapp-connection.js, test-whatsapp-status.js
+  - **Scripts essenciais preservados**: drizzle.config.ts, postcss.config.js, tailwind.config.ts, vite.config.ts
+  - **Análise completa realizada**: Verificação de dependências e referências no código principal confirmou que os scripts removidos eram apenas para debug/teste
+  - **Funcionalidade validada**: Sistema continua operacional na porta 5000 com todas as funcionalidades intactas
+  - **Benefícios obtidos**: Projeto mais limpo, organizado e focado apenas nos arquivos essenciais para funcionamento
+  - **Zero impacto**: Remoção não afetou nenhuma funcionalidade existente (Assessments, WhatsApp, Dashboard, etc.)
+
 - June 27, 2025: ✅ SISTEMA ASSESSMENTS COMPLETO E TOTALMENTE FUNCIONAL - Envio de emails operacional com Resend integrado
   - **Envio de emails funcionando**: useMutation integrado ao endpoint /api/send-assessment-email com Resend
   - **Campo "Assunto E-mail" implementado**: Posicionado acima da mensagem com template padrão "Olá [nome do candidato] faça seus Assessments MaxcamRH"
