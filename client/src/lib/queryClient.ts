@@ -4,8 +4,8 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     // Se o token for inválido, limpar localStorage 
     if (res.status === 401) {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_user");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
       // Não redirecionar automaticamente, deixar o React Router lidar com isso
     }
     const text = (await res.text()) || res.statusText;
@@ -18,7 +18,7 @@ export async function apiRequest(
   method: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const token = localStorage.getItem("auth_token");
+  const token = localStorage.getItem("authToken");
   const headers: Record<string, string> = {};
   
   if (data) {
@@ -52,7 +52,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem("authToken");
     const headers: Record<string, string> = {};
     
     if (token) {

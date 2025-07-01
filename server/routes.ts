@@ -110,6 +110,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rota para verificar token/usuário atual
+  app.get('/api/auth/user', authenticate, (req: AuthRequest, res) => {
+    res.json(req.user);
+  });
+
   // User routes
   app.get('/api/users', authenticate, authorize(['master']), async (req, res) => {
     try {
