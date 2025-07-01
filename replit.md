@@ -127,11 +127,17 @@ Sistema de autenticação PostgreSQL com as seguintes credenciais:
 - Senha: daniel123  
 - Role: master
 
-**Usuário Cliente:**
+**Usuário Cliente 1:**
 - Email: cliente@grupomaximuns.com.br
 - Senha: cliente123
 - Role: client
 - Client ID: 1749849987543
+
+**Usuário Cliente 2 - Grupo Maximuns:**
+- Email: maximuns@grupomaximuns.com.br
+- Senha: maximuns123
+- Role: client
+- Client ID: maximuns_client_id
 
 ## Recent Changes
 
