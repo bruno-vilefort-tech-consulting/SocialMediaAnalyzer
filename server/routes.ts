@@ -82,13 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Email e senha são obrigatórios' });
       }
 
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.validateUserPassword(email, password);
       if (!user) {
-        return res.status(401).json({ message: 'Credenciais inválidas' });
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
         return res.status(401).json({ message: 'Credenciais inválidas' });
       }
 
