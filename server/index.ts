@@ -95,8 +95,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// In-memory storage for Evolution API instances
-const evolutionInstances = new Map();
+
 
 // Evolution API endpoints integrados no servidor principal
 app.get('/evolution-api', (req, res) => {
