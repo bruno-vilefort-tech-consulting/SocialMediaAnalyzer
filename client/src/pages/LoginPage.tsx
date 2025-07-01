@@ -1,149 +1,110 @@
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Lock, Mail } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-
-const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "Senha é obrigatória"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
+import { Checkbox } from "@/components/ui/checkbox";
+import { Mic } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { login } = useAuth();
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
-    setError(null);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      await login(email, password);
+      setLocation("/"); // Redirect to root, which will use RedirectToDashboard logic
+    } catch (error) {
+      toast({
+        title: "Erro no login",
+        description: "Email ou senha inválidos",
+        variant: "destructive",
       });
-
-      const result = await response.json();
-
-      if (response.ok && result.token) {
-        // Salva o token no localStorage
-        localStorage.setItem('authToken', result.token);
-        localStorage.setItem('user', JSON.stringify(result.user));
-        
-        // Recarrega a página para redirecionar para o dashboard
-        window.location.reload();
-      } else {
-        setError(result.message || 'Erro ao fazer login');
-      }
-    } catch (err: any) {
-      console.error('Erro no login:', err);
-      setError(err.message || 'Erro ao fazer login');
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            MaxcamRH
-          </CardTitle>
-          <p className="text-sm text-muted-foreground text-center">
-            Entre com suas credenciais para acessar o sistema
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-slate-100 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 bg-primary rounded-xl flex items-center justify-center mb-6">
+            <Mic className="text-white text-2xl" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900">Sistema de Entrevista IA</h2>
+          <p className="mt-2 text-sm text-slate-600">Plataforma automatizada para seleção de candidatos</p>
+        </div>
+        
+        <Card className="shadow-xl border border-slate-200">
+          <CardHeader>
+            <CardTitle>Entrar</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  {...register("email")}
                   id="email"
                   type="email"
-                  placeholder="seu@email.com"
-                  className="pl-10"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="master@maximus.com"
+                  required
+                  className="mt-2"
                 />
               </div>
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              
+              <div>
+                <Label htmlFor="password">Senha</Label>
                 <Input
-                  {...register("password")}
                   id="password"
                   type="password"
-                  placeholder="Sua senha"
-                  className="pl-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="mt-2"
                 />
               </div>
-              {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Entrando...
-                </>
-              ) : (
-                "Entrar"
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Credenciais de teste:
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Email: admin@maxcamrh.com
-            </p>
-            <p className="text-xs text-gray-500">
-              Senha: admin123
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="remember" />
+                  <Label htmlFor="remember" className="text-sm">Lembrar-me</Label>
+                </div>
+                <Button 
+                  variant="link" 
+                  className="text-sm"
+                  onClick={() => setLocation("/forgot-password")}
+                >
+                  Esqueceu a senha?
+                </Button>
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
