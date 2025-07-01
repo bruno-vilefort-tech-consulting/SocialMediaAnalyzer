@@ -5,7 +5,7 @@ import path from "path";
 
 const app = express();
 
-// Tratamento de erros não capturados
+// Tratamento de erros
 process.on('uncaughtException', (err) => {
   console.error('❌ [ERROR] Erro não capturado:', err);
 });
@@ -14,13 +14,12 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ [ERROR] Promise rejeitada não tratada:', reason);
 });
 
-// Middleware de debug
+// Middleware básico
 app.use((req, res, next) => {
   console.log(`🌐 [REQUEST] ${req.method} ${req.url}`);
   next();
 });
 
-// Desabilitar cache
 app.disable('etag');
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
@@ -30,7 +29,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Servir arquivos de áudio estáticos
+// Servir arquivos de áudio
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -85,7 +84,7 @@ app.use((req, res, next) => {
 // Registrar rotas
 registerRoutes(app);
 
-// Health check endpoint
+// Health check
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
@@ -98,24 +97,11 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ message });
 });
 
-// Inicialização do servidor
 (async () => {
-  try {
-    const server = await setupVite(app, serveStatic);
-
-    const PORT = 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-      const formattedTime = new Date().toLocaleTimeString("en-US", {
-        hour12: true,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
-
-      console.log(`✅ Server running on port ${PORT} at ${formattedTime}`);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start server:", error);
-    process.exit(1);
-  }
+  const server = await setupVite(app, serveStatic);
+  const PORT = 5000;
+  
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`✅ Server running on port ${PORT}`);
+  });
 })();

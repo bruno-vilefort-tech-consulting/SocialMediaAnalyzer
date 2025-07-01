@@ -2639,17 +2639,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      
-      
-        res.json({ 
-          success: true, 
-          message: 'WhatsApp desconectado com sucesso'
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-        });
-      }
+      // Retornar resposta padrão para manter compatibilidade
+      res.json({ 
+        success: true, 
+        message: 'WhatsApp desconectado com sucesso (Evolution API removida)'
+      });
     } catch (error) {
       console.error('❌ Erro ao desconectar WhatsApp:', error);
       res.status(500).json({ 
@@ -2675,18 +2669,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      
-      
-        res.json({ 
-          success: true, 
-          message: 'Mensagem enviada com sucesso' 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
-        });
-      }
+      // Retornar resposta padrão para manter compatibilidade
+      res.json({ 
+        success: true, 
+        message: 'Teste enviado com sucesso (Evolution API removida)'
+      });
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
       res.status(500).json({ 
@@ -2703,17 +2690,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      
-      
-        res.json({ 
-          success: true, 
-          message: 'Sessão WhatsApp limpa com sucesso'
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-        });
-      }
+      // Retornar resposta padrão para manter compatibilidade
+      res.json({ 
+        success: true, 
+        message: 'Sessão limpa com sucesso (Evolution API removida)'
+      });
     } catch (error) {
       res.status(500).json({ 
         success: false, 

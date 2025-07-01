@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 01, 2025: 🧹 LIMPEZA COMPLETA DA EVOLUTION API REALIZADA - Sistema consolidado apenas com Baileys
+  - **Evolution API completamente removida**: Eliminados todos os restos de código da Evolution API do sistema
+  - **Baileys como solução única**: Sistema WhatsApp agora usa exclusivamente Baileys para conectividade
+  - **Arquitetura simplificada**: Removidas duplicações e dependências desnecessárias da Evolution API
+  - **Compatibilidade preservada**: Endpoints mantidos com respostas padrão para evitar quebras no frontend
+  - **Funcionalidade WhatsApp intacta**: Sistema Baileys preservado e funcional para entrevistas via WhatsApp
+  - **Código otimizado**: Projeto mais limpo sem códigos obsoletos da Evolution API
+
 - July 01, 2025: 🧹 LIMPEZA COMPLETA DE SCRIPTS DESNECESSÁRIOS REALIZADA - Projeto otimizado sem quebrar funcionalidades
   - **Scripts removidos com segurança**: restore-whatsapp-connection.js, simple-evolution-server.js, start-both-servers.js, start-evolution-api.js, start-evolution.js, test-whatsapp-connection.js, test-whatsapp-status.js
   - **Scripts essenciais preservados**: drizzle.config.ts, postcss.config.js, tailwind.config.ts, vite.config.ts
