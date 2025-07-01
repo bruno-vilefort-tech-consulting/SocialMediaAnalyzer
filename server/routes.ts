@@ -2563,9 +2563,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🐛 [DEBUG] Resultado:`, result);
       
       res.json({
-        success: result.success,
-        message: result.message,
-        qrCode: result.qrCode ? 'QR Code gerado' : null,
         clientId
       });
     } catch (error) {
@@ -2644,7 +2641,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       
       
-      if (result.success) {
         res.json({ 
           success: true, 
           message: 'WhatsApp desconectado com sucesso'
@@ -2652,7 +2648,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ 
           success: false, 
-          message: result.error || 'Erro ao desconectar WhatsApp' 
         });
       }
     } catch (error) {
@@ -2682,7 +2677,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       
       
-      if (result.success) {
         res.json({ 
           success: true, 
           message: 'Mensagem enviada com sucesso' 
@@ -2711,7 +2705,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       
       
-      if (result.success) {
         res.json({ 
           success: true, 
           message: 'Sessão WhatsApp limpa com sucesso'
@@ -2719,7 +2712,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ 
           success: false, 
-          message: result.error || 'Erro ao limpar sessão WhatsApp' 
         });
       }
     } catch (error) {
@@ -2745,7 +2737,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       
       
-      if (result.success) {
         res.json({ 
           success: true, 
           message: 'Mensagem enviada com sucesso'
@@ -2753,7 +2744,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(400).json({ 
           success: false, 
-          message: result.error || 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
         });
       }
     } catch (error) {
@@ -2971,15 +2961,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.sendMessage(clientId.toString(), phoneNumber, message);
       
-      if (result.success) {
         res.json({ 
           success: true, 
-          message: result.message 
         });
       } else {
         res.status(500).json({ 
           success: false, 
-          error: result.message 
         });
       }
     } catch (error) {
@@ -3578,14 +3565,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const clientId = user.clientId.toString();
       
-      
-        success: result.success,
-        hasQrCode: !!result.qrCode,
-        qrCodeLength: result.qrCode?.length || 0,
-        error: result.error
+      // Retornar status padrão para manter compatibilidade
+      res.json({
+        success: false,
+        message: 'Evolution API removida - usar apenas Baileys'
       });
-      
-      res.json(result);
     } catch (error) {
       res.status(500).json({ 
         success: false, 
@@ -3826,17 +3810,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enviar mensagem teste usando o serviço correto
       const result = await clientWhatsAppService.sendMessage(clientIdStr, phoneNumber, message);
       
-      if (result.success) {
         console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso`);
         res.json({ 
           success: true, 
-          message: result.message 
         });
       } else {
-        console.log(`❌ [WHATSAPP TEST] Falha no envio: ${result.message}`);
         res.status(400).json({ 
           success: false, 
-          message: result.message 
         });
       }
       
@@ -4792,14 +4772,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneAuthService } = await import('./phoneAuthService');
       const result = await phoneAuthService.requestVerificationCode(phoneNumber, clientId);
 
-      if (result.success) {
         res.json({ 
           success: true, 
-          message: result.message,
           code: result.code // Em produção, remover esta linha
         });
       } else {
-        res.status(400).json({ message: result.message });
       }
     } catch (error: any) {
       console.error('❌ Erro ao solicitar código:', error);
@@ -4825,10 +4802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneAuthService } = await import('./phoneAuthService');
       const result = await phoneAuthService.verifyCodeAndConnect(phoneNumber, code, clientId);
 
-      if (result.success) {
-        res.json({ success: true, message: result.message });
       } else {
-        res.status(400).json({ message: result.message });
       }
     } catch (error: any) {
       console.error('❌ Erro ao verificar código:', error);

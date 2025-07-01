@@ -5,24 +5,18 @@ import path from "path";
 
 const app = express();
 
-// Tratamento de erros não capturados para restart em falhas críticas
+// Tratamento de erros não capturados
 process.on('uncaughtException', (err) => {
-  console.error('❌ [BAILEYS] Erro não capturado, sistema pode precisar reiniciar:', err);
-  // Não fazer exit(1) no Replit - deixar que o sistema gerencie
+  console.error('❌ [ERROR] Erro não capturado:', err);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ [BAILEYS] Promise rejeitada não tratada:', reason);
+  console.error('❌ [ERROR] Promise rejeitada não tratada:', reason);
 });
 
-// Debug middleware ANTES de tudo
+// Middleware de debug
 app.use((req, res, next) => {
-  console.log(`🌐 [ALL REQUESTS] ${req.method} ${req.url}`);
-  if (req.method === 'POST' && req.url.includes('whatsapp')) {
-    console.log(`📮 [POST WHATSAPP] Headers:`, Object.keys(req.headers));
-    console.log(`📮 [POST WHATSAPP] Authorization:`, req.headers.authorization?.substring(0, 30) + '...');
-    console.log(`📮 [POST WHATSAPP] Body:`, req.body);
-  }
+  console.log(`🌐 [REQUEST] ${req.method} ${req.url}`);
   next();
 });
 
@@ -36,17 +30,15 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Servir arquivos de áudio estáticos com Content-Type correto
+// Servir arquivos de áudio estáticos
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
   setHeaders: (res, filePath) => {
-    // Headers CORS essenciais para áudio
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
     
     if (filePath.endsWith('.ogg')) {
-      // Testar diferentes tipos MIME para compatibilidade
       res.setHeader('Content-Type', 'audio/ogg');
     } else if (filePath.endsWith('.webm')) {
       res.setHeader('Content-Type', 'audio/webm');
@@ -54,14 +46,12 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
       res.setHeader('Content-Type', 'audio/mpeg');
     }
     
-    // Headers essenciais para streaming de áudio
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'no-cache'); // Temporário para debug
-    
-    console.log(`🎵 [AUDIO_SERVE] Servindo: ${filePath} com Content-Type: ${res.getHeader('Content-Type')}`);
+    res.setHeader('Cache-Control', 'no-cache');
   }
 }));
 
+// Middleware de logging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -92,15 +82,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// Registrar rotas
+registerRoutes(app);
+
+// Health check endpoint
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Middleware de tratamento de erros
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(`❌ [ERROR] ${err.message}`);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ message });
+});
+
+// Inicialização do servidor
 (async () => {
   try {
-    registerRoutes(app);
     const server = await setupVite(app, serveStatic);
-
-    // Health check endpoint
-    app.get("/health", (_req, res) => {
-      res.json({ status: "ok", timestamp: new Date().toISOString() });
-    });
 
     const PORT = 5000;
     server.listen(PORT, "0.0.0.0", () => {
@@ -118,11 +119,3 @@ app.use((req, res, next) => {
     process.exit(1);
   }
 })();
-
-// Middleware de tratamento de erros
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(`❌ [ERROR] ${err.message}`);
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  res.status(status).json({ message });
-});
