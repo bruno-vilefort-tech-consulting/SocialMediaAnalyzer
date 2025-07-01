@@ -139,6 +139,12 @@ Sistema de autenticação PostgreSQL com as seguintes credenciais:
 - Role: client
 - Client ID: maximuns_client_id
 
+**Usuário Cliente 3 - Contato Grupo Maximuns:**
+- Email: contato@grupomaximuns.com.br
+- Senha: contato123
+- Role: client
+- Client ID: 1749849987543
+
 ## Recent Changes
 
 - July 01, 2025: ✅ FIREBASE 100% CONECTADO E VALIDADO - Sistema totalmente operacional com dados reais
