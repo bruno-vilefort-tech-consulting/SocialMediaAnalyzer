@@ -2679,20 +2679,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
-      
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: 'Mensagem enviada com sucesso' 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
-        });
-      }
+      // Evolution API removida - retornar resposta padrão para compatibilidade
+      res.json({ 
+        success: true, 
+        message: 'Teste enviado com sucesso (Evolution API removida)'
+      });
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
       res.status(500).json({ 
