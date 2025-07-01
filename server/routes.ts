@@ -11,9 +11,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
-import { whatsappQRService } from "../whatsapp/services/whatsappQRService";
-import { whatsappManager } from "../whatsapp/services/whatsappManager";
-// WppConnect removido - usando apenas Baileys
+// WhatsApp services removidos - Evolution API completamente removida
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";
 import { collection, query, where, getDocs, updateDoc, doc, Timestamp } from "firebase/firestore";
@@ -37,7 +35,6 @@ interface AuthRequest extends Request {
     role: string;
     clientId?: number;
   };
-  session?: any;
 }
 
 // Authentication middleware
@@ -2563,6 +2560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🐛 [DEBUG] Resultado:`, result);
       
       res.json({
+        success: result.success,
+        message: result.message,
+        qrCode: result.qrCode ? 'QR Code gerado' : null,
         clientId
       });
     } catch (error) {
@@ -2618,13 +2618,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user?.clientId) {
+        console.log('❌ [EVOLUTION] Client ID não encontrado');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
+      console.log(`🔗 [EVOLUTION] Conectando WhatsApp para cliente ${user.clientId}...`);
       
+      // Evolution API removida - retornar resposta padrão para compatibilidade
+      const result = { success: true, instanceId: `client_${user.clientId}` };
       
+      console.log(`📱 [EVOLUTION] Resultado connect:`, result);
       res.json(result);
     } catch (error) {
+      console.error('❌ [EVOLUTION] Erro ao conectar WhatsApp:', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno ao conectar WhatsApp'
@@ -2639,7 +2645,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      // Retornar resposta padrão para manter compatibilidade
+      console.log(`🔌 [EVOLUTION] Desconectando WhatsApp para cliente ${user.clientId}...`);
+      
+      // Evolution API removida - retornar resposta padrão para compatibilidade
       res.json({ 
         success: true, 
         message: 'WhatsApp desconectado com sucesso (Evolution API removida)'
@@ -2669,11 +2677,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Retornar resposta padrão para manter compatibilidade
-      res.json({ 
-        success: true, 
-        message: 'Teste enviado com sucesso (Evolution API removida)'
-      });
+      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
+      
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Mensagem enviada com sucesso' 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
+        });
+      }
     } catch (error) {
       console.error('❌ Erro ao enviar teste WhatsApp:', error);
       res.status(500).json({ 
@@ -2690,12 +2709,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      // Retornar resposta padrão para manter compatibilidade
-      res.json({ 
-        success: true, 
-        message: 'Sessão limpa com sucesso (Evolution API removida)'
-      });
+      console.log(`🧹 [EVOLUTION] Limpando sessão WhatsApp para cliente ${user.clientId}...`);
+      
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.deleteInstance(user.clientId.toString());
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: 'Sessão WhatsApp limpa com sucesso'
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || 'Erro ao limpar sessão WhatsApp' 
+        });
+      }
     } catch (error) {
+      console.error('❌ [EVOLUTION] Erro ao limpar sessão WhatsApp:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao limpar sessão' 
@@ -2716,8 +2747,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
+      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
       
+      if (result.success) {
         res.json({ 
           success: true, 
           message: 'Mensagem enviada com sucesso'
@@ -2725,6 +2760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(400).json({ 
           success: false, 
+          message: result.error || 'Erro ao enviar mensagem - verifique se WhatsApp está conectado' 
         });
       }
     } catch (error) {
@@ -2942,12 +2978,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
       const result = await clientWhatsAppService.sendMessage(clientId.toString(), phoneNumber, message);
       
+      if (result.success) {
         res.json({ 
           success: true, 
+          message: result.message 
         });
       } else {
         res.status(500).json({ 
           success: false, 
+          error: result.message 
         });
       }
     } catch (error) {
@@ -3149,53 +3188,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao verificar candidatos de teste' 
-      });
-    }
-  });
-
-  // Check if Comercial 5 report exists endpoint
-  app.get("/api/check-comercial-5", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
-    try {
-      console.log('🔍 Verificando existência do relatório Comercial 5...');
-      
-      // Buscar em reports
-      const { collection, query, where, getDocs } = await import('firebase/firestore');
-      const { firebaseDb } = await import('./db');
-      
-      const reportsQuery = query(
-        collection(firebaseDb, 'reports'),
-        where('name', '==', 'Comercial 5')
-      );
-      
-      const reportsSnapshot = await getDocs(reportsQuery);
-      const reportExists = !reportsSnapshot.empty;
-      
-      if (reportExists) {
-        const reportData = reportsSnapshot.docs[0].data();
-        console.log('✅ Relatório Comercial 5 encontrado:', reportData);
-        
-        res.json({ 
-          exists: true,
-          report: {
-            id: reportsSnapshot.docs[0].id,
-            name: reportData.name,
-            clientId: reportData.clientId,
-            createdAt: reportData.createdAt,
-            status: reportData.status,
-            totalCandidates: reportData.totalCandidates || 0,
-            completedInterviews: reportData.completedInterviews || 0
-          }
-        });
-      } else {
-        console.log('❌ Relatório Comercial 5 não encontrado');
-        res.json({ exists: false });
-      }
-    } catch (error) {
-      console.error('❌ Erro ao verificar relatório Comercial 5:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Erro interno ao verificar relatório Comercial 5',
-        error: error.message 
       });
     }
   });
@@ -3537,6 +3529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Evolution API Routes
   app.post("/api/evolution/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -3545,15 +3538,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
+      console.log(`🔗 [Evolution] Tentando conectar cliente ${clientId} via Evolution API...`);
       
-      // Retornar status padrão para manter compatibilidade
-      res.json({
-        success: false,
-        message: 'Evolution API removida - usar apenas Baileys'
+      // Forçar uso da Evolution API
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.connectClient(clientId);
+      
+      console.log(`🔗 [Evolution] Resultado da conexão Evolution API:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0,
+        error: result.error
       });
+      
+      res.json(result);
     } catch (error) {
+      console.error('❌ Erro Evolution API connect:', error);
       res.status(500).json({ 
         success: false, 
+        message: `Erro ao conectar via Evolution API: ${error.message}` 
       });
     }
   });
@@ -3566,12 +3569,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
+      console.log(`🔌 [Evolution] Desconectando cliente ${clientId} via Evolution API...`);
       
+      // Usar Evolution API
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.disconnectClient(clientId);
       
       res.json(result);
     } catch (error) {
+      console.error('❌ Erro Evolution API disconnect:', error);
       res.status(500).json({ 
         success: false, 
+        message: 'Erro interno ao desconectar Evolution API' 
       });
     }
   });
@@ -3584,8 +3593,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
+      console.log(`🔗 [Evolution] Verificando status para cliente ${clientId}...`);
       
+      // Usar Evolution API diretamente
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const connection = await evolutionApiService.getConnectionStatus(clientId);
       
+      console.log(`📱 [Evolution] Status Evolution API:`, {
         hasConnection: !!connection,
         isConnected: connection?.isConnected || false,
         hasQrCode: !!connection?.qrCode,
@@ -3602,6 +3616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         instanceId: connection?.instanceId || `evolution_${clientId}`
       };
       
+      console.log(`📤 [Evolution] Response enviada:`, {
         hasQrCode: !!responseData.qrCode,
         qrCodeLength: responseData.qrCode?.length || 0,
         isConnected: responseData.isConnected
@@ -3609,6 +3624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(responseData);
     } catch (error) {
+      console.error('❌ Erro Evolution API status:', error);
       res.status(500).json({ 
         isConnected: false,
         qrCode: null,
@@ -3632,6 +3648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
+      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
+      const result = await evolutionApiService.sendMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message
@@ -3639,6 +3657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(result);
     } catch (error) {
+      console.error('❌ Erro Evolution API test:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao enviar mensagem teste' 
@@ -3791,13 +3810,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enviar mensagem teste usando o serviço correto
       const result = await clientWhatsAppService.sendMessage(clientIdStr, phoneNumber, message);
       
+      if (result.success) {
         console.log(`✅ [WHATSAPP TEST] Mensagem enviada com sucesso`);
         res.json({ 
           success: true, 
+          message: result.message 
         });
       } else {
+        console.log(`❌ [WHATSAPP TEST] Falha no envio: ${result.message}`);
         res.status(400).json({ 
           success: false, 
+          message: result.message 
         });
       }
       
@@ -4753,11 +4776,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneAuthService } = await import('./phoneAuthService');
       const result = await phoneAuthService.requestVerificationCode(phoneNumber, clientId);
 
+      if (result.success) {
         res.json({ 
           success: true, 
+          message: result.message,
           code: result.code // Em produção, remover esta linha
         });
       } else {
+        res.status(400).json({ message: result.message });
       }
     } catch (error: any) {
       console.error('❌ Erro ao solicitar código:', error);
@@ -4783,7 +4809,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phoneAuthService } = await import('./phoneAuthService');
       const result = await phoneAuthService.verifyCodeAndConnect(phoneNumber, code, clientId);
 
+      if (result.success) {
+        res.json({ success: true, message: result.message });
       } else {
+        res.status(400).json({ message: result.message });
       }
     } catch (error: any) {
       console.error('❌ Erro ao verificar código:', error);
@@ -5211,160 +5240,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao limpar sessão' 
-      });
-    }
-  });
-
-  // Endpoint para envio de emails de assessment
-  app.post("/api/send-assessment-email", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
-    try {
-      const { 
-        selectionName,
-        candidateSource,
-        selectedList,
-        selectedCandidates,
-        selectedAssessments,
-        emailSubject,
-        emailMessage,
-        sendOption,
-        scheduledDate,
-        scheduledTime 
-      } = req.body;
-
-      console.log('📧 INICIANDO ENVIO DE ASSESSMENT EMAILS');
-      console.log('📧 Dados recebidos:', {
-        selectionName,
-        candidateSource,
-        selectedList: selectedList || 'N/A',
-        selectedCandidatesCount: selectedCandidates?.length || 0,
-        selectedAssessments,
-        emailSubject: emailSubject?.substring(0, 50) + '...',
-        sendOption
-      });
-
-      // Importar emailService
-      const { emailService } = await import('./emailService');
-
-      let candidates = [];
-
-      // Buscar candidatos baseado na fonte selecionada
-      if (candidateSource === "list" && selectedList) {
-        // Buscar candidatos da lista específica usando método correto
-        candidates = await storage.getCandidatesByListId(parseInt(selectedList));
-      } else if (candidateSource === "search" && selectedCandidates?.length > 0) {
-        // Buscar candidatos específicos selecionados
-        for (const candidateData of selectedCandidates) {
-          // Se candidateData é um objeto, extrair o ID, senão usar como ID direto
-          const candidateId = typeof candidateData === 'object' ? candidateData.id : candidateData;
-          const candidate = await storage.getCandidateById(candidateId);
-          if (candidate) {
-            candidates.push(candidate);
-          }
-        }
-      }
-
-      console.log(`📧 Total de candidatos encontrados: ${candidates.length}`);
-
-      if (candidates.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Nenhum candidato encontrado para envio'
-        });
-      }
-
-      let emailsSent = 0;
-      let emailsError = 0;
-
-      // Enviar emails para cada candidato
-      for (const candidate of candidates) {
-        // Usar email do candidato selecionado se disponível, senão usar do banco
-        let emailToSend = candidate.email;
-        if (candidateSource === "search" && selectedCandidates?.length > 0) {
-          const selectedCandidate = selectedCandidates.find((c: any) => 
-            (typeof c === 'object' ? c.id : c) === candidate.id
-          );
-          if (selectedCandidate && typeof selectedCandidate === 'object' && selectedCandidate.email) {
-            emailToSend = selectedCandidate.email;
-          }
-        }
-
-        if (!emailToSend) {
-          console.log(`⚠️ Candidato ${candidate.name} sem email`);
-          emailsError++;
-          continue;
-        }
-
-        try {
-          // Personalizar mensagem substituindo placeholders
-          let personalizedSubject = emailSubject
-            .replace(/\[nome do candidato\]/g, candidate.name)
-            .replace(/\[clienteid\]/g, req.user?.clientId?.toString() || 'Cliente');
-
-          let personalizedMessage = emailMessage
-            .replace(/\[nome do candidato\]/g, candidate.name)
-            .replace(/\[clienteid\]/g, req.user?.clientId?.toString() || 'Cliente');
-
-          // Adicionar informações dos assessments selecionados
-          const assessmentList = selectedAssessments.join(', ');
-          personalizedMessage += `\n\nAssessments selecionados: ${assessmentList}`;
-
-          // Criar link fictício para os assessments (pode ser personalizado depois)
-          const assessmentLink = `${process.env.BASE_URL || 'https://sistema.maxcamrh.com.br'}/assessments/${candidate.id}`;
-          personalizedMessage += `\n\nLink dos Assessments: ${assessmentLink}`;
-
-          console.log(`📧 Enviando email para: ${emailToSend}`);
-          console.log(`📧 Subject: ${personalizedSubject}`);
-
-          await emailService.sendEmail({
-            to: emailToSend,
-            subject: personalizedSubject,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #2563eb; margin-bottom: 20px;">${personalizedSubject}</h2>
-                <div style="line-height: 1.6; white-space: pre-line; margin-bottom: 30px;">
-                  ${personalizedMessage}
-                </div>
-                <div style="margin-top: 30px; padding: 20px; background-color: #f3f4f6; border-radius: 8px;">
-                  <h3 style="color: #1f2937; margin-top: 0;">Assessments Selecionados:</h3>
-                  <p style="margin-bottom: 15px;"><strong>${assessmentList}</strong></p>
-                  <a href="${assessmentLink}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                    INICIAR ASSESSMENTS
-                  </a>
-                  <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
-                    Ou copie e cole este link no seu navegador:<br>
-                    <span style="word-break: break-all;">${assessmentLink}</span>
-                  </p>
-                </div>
-                <div style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
-                  Este email foi enviado automaticamente pelo Sistema MaxcamRH.
-                </div>
-              </div>
-            `
-          });
-
-          emailsSent++;
-          console.log(`✅ Email enviado para ${candidate.email}`);
-
-        } catch (error) {
-          console.error(`❌ Erro ao enviar email para ${candidate.email}:`, error);
-          emailsError++;
-        }
-      }
-
-      console.log(`📧 RESULTADO DO ENVIO: ${emailsSent} enviados, ${emailsError} erros`);
-
-      res.json({
-        success: true,
-        emailsSent,
-        emailsError,
-        message: `${emailsSent} emails enviados com sucesso${emailsError > 0 ? `, ${emailsError} com erro` : ''}`
-      });
-
-    } catch (error) {
-      console.error('❌ Erro no envio de assessment emails:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erro interno no servidor ao enviar emails'
       });
     }
   });
