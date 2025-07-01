@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/jobs', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const clientId = req.user?.role === 'client' ? req.user.clientId : req.query.clientId as string;
-      const jobs = await storage.getJobsByClient(clientId || '');
+      const jobs = await storage.getJobsByClientId(clientId || '');
       res.json(jobs);
     } catch (error) {
       console.error('❌ Erro ao buscar vagas:', error);
@@ -198,7 +198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/candidates', authenticate, authorize(['master', 'client']), async (req: AuthRequest, res) => {
     try {
       const clientId = req.user?.role === 'client' ? req.user.clientId : req.query.clientId as string;
-      const candidates = await storage.getCandidatesByClient(clientId || '');
+      const candidates = await storage.getCandidatesByClientId(clientId || '');
       res.json(candidates);
     } catch (error) {
       console.error('❌ Erro ao buscar candidatos:', error);
