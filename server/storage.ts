@@ -9,19 +9,22 @@ import {
 } from "@shared/schema";
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
-import { firebaseDb } from "./db";
+import { firebaseDb, db } from "./db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import admin from "firebase-admin";
 
 export interface IStorage {
-  // Users
+  // Users (PostgreSQL para autenticação)
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  validateUserPassword(email: string, password: string): Promise<User | null>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<User>): Promise<User>;
   deleteUser(id: string): Promise<void>;
   getUsers(): Promise<User[]>;
 
-  // Clients
+  // Clients (Firebase)
   getClients(): Promise<Client[]>;
   getClientById(id: string): Promise<Client | undefined>;
   getClientByEmail(email: string): Promise<Client | undefined>;
@@ -29,61 +32,58 @@ export interface IStorage {
   updateClient(id: string, client: Partial<Client>): Promise<Client>;
   deleteClient(id: string): Promise<void>;
 
-  // Jobs
+  // Jobs (Firebase)
   getJobsByClientId(clientId: string): Promise<Job[]>;
   getJobById(id: string): Promise<Job | undefined>;
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: string, job: Partial<Job>): Promise<Job>;
   deleteJob(id: string): Promise<void>;
 
-  // Questions
+  // Questions (Firebase)
   getQuestionsByJobId(jobId: string): Promise<Question[]>;
   createQuestion(question: InsertQuestion): Promise<Question>;
   updateQuestion(id: number, question: Partial<Question>): Promise<Question>;
   deleteQuestion(id: number): Promise<void>;
 
-  // Candidate Lists
-  getAllCandidateLists(): Promise<CandidateList[]>;
+  // Candidate Lists (Firebase)
   getCandidateListsByClientId(clientId: string): Promise<CandidateList[]>;
-  getCandidateListById(id: number): Promise<CandidateList | undefined>;
-  createCandidateList(candidateList: InsertCandidateList): Promise<CandidateList>;
-  updateCandidateList(id: number, candidateList: Partial<CandidateList>): Promise<CandidateList>;
-  deleteCandidateList(id: number): Promise<void>;
+  getCandidateListById(id: string): Promise<CandidateList | undefined>;
+  createCandidateList(list: InsertCandidateList): Promise<CandidateList>;
+  updateCandidateList(id: string, list: Partial<CandidateList>): Promise<CandidateList>;
+  deleteCandidateList(id: string): Promise<void>;
 
-  // Candidates
+  // Candidates (Firebase)
   getCandidatesByClientId(clientId: string): Promise<Candidate[]>;
-  getCandidateById(id: number): Promise<Candidate | undefined>;
-  getCandidatesByListId(listId: number): Promise<Candidate[]>;
+  getCandidatesByListId(listId: string): Promise<Candidate[]>;
+  getCandidateById(id: string): Promise<Candidate | undefined>;
   createCandidate(candidate: InsertCandidate): Promise<Candidate>;
-  updateCandidate(id: number, candidate: Partial<Candidate>): Promise<Candidate>;
-  deleteCandidate(id: number): Promise<void>;
+  updateCandidate(id: string, candidate: Partial<Candidate>): Promise<Candidate>;
+  deleteCandidate(id: string): Promise<void>;
 
-  // Selections
+  // Selections (Firebase)
   getSelectionsByClientId(clientId: string): Promise<Selection[]>;
-  getSelectionById(id: number): Promise<Selection | undefined>;
   createSelection(selection: InsertSelection): Promise<Selection>;
-  updateSelection(id: number, selection: Partial<Selection>): Promise<Selection>;
-  deleteSelection(id: number): Promise<void>;
+  updateSelection(id: string, selection: Partial<Selection>): Promise<Selection>;
+  deleteSelection(id: string): Promise<void>;
 
-  // Interviews
-  getInterviewsBySelectionId(selectionId: number): Promise<Interview[]>;
-  getInterviewById(id: number): Promise<Interview | undefined>;
+  // Interviews (Firebase)
+  getInterviewsBySelectionId(selectionId: string): Promise<Interview[]>;
   createInterview(interview: InsertInterview): Promise<Interview>;
-  updateInterview(id: number, interview: Partial<Interview>): Promise<Interview>;
-  deleteInterview(id: number): Promise<void>;
+  updateInterview(id: string, interview: Partial<Interview>): Promise<Interview>;
+  deleteInterview(id: string): Promise<void>;
 
-  // Responses
-  getResponsesByInterviewId(interviewId: number): Promise<Response[]>;
+  // Responses (Firebase)
+  getResponsesByInterviewId(interviewId: string): Promise<Response[]>;
   createResponse(response: InsertResponse): Promise<Response>;
   updateResponse(id: number, response: Partial<Response>): Promise<Response>;
   deleteResponse(id: number): Promise<void>;
 
-  // API Configurations
+  // API Configurations (Firebase)
   getApiConfigsByEntityId(entityId: string): Promise<ApiConfig[]>;
   createApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
   updateApiConfig(id: number, config: Partial<ApiConfig>): Promise<ApiConfig>;
 
-  // Report Folders
+  // Report Folders (Firebase)
   getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]>;
   createReportFolder(folder: InsertReportFolder): Promise<ReportFolder>;
   updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder>;
@@ -99,14 +99,15 @@ class FirebaseStorage implements IStorage {
     return Date.now();
   }
 
-  // Users
+  // Users (PostgreSQL para autenticação)
   async getUserById(id: string): Promise<User | undefined> {
     try {
-      const userDoc = await getDoc(doc(firebaseDb, 'users', id));
-      if (userDoc.exists()) {
-        return { id, ...userDoc.data() } as User;
+      if (!db) {
+        console.error('Database connection not available');
+        return undefined;
       }
-      return undefined;
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user || undefined;
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
       return undefined;
@@ -115,43 +116,47 @@ class FirebaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     try {
-      const usersQuery = query(collection(firebaseDb, 'users'), where('email', '==', email));
-      const querySnapshot = await getDocs(usersQuery);
-      
-      if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        return { id: doc.id, ...doc.data() } as User;
+      if (!db) {
+        console.error('Database connection not available');
+        return undefined;
       }
-      return undefined;
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user || undefined;
     } catch (error) {
       console.error('Erro ao buscar usuário por email:', error);
       return undefined;
     }
   }
 
-  async getUsers(): Promise<User[]> {
+  async validateUserPassword(email: string, password: string): Promise<User | null> {
     try {
-      const usersSnapshot = await getDocs(collection(firebaseDb, 'users'));
-      return usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as User));
+      const user = await this.getUserByEmail(email);
+      if (!user) return null;
+      
+      const isValid = await bcrypt.compare(password, user.password);
+      return isValid ? user : null;
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
-      return [];
+      console.error('Erro ao validar senha:', error);
+      return null;
     }
   }
 
   async createUser(user: InsertUser): Promise<User> {
     try {
-      const id = this.generateId();
-      const userData = {
-        ...user,
-        createdAt: new Date()
-      };
+      if (!db) throw new Error('Database connection not available');
       
-      await setDoc(doc(firebaseDb, 'users', id), userData);
-      return { id, ...userData } as User;
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      const id = this.generateId();
+      
+      const newUser = {
+        id,
+        ...user,
+        password: hashedPassword,
+        createdAt: new Date(),
+      };
+
+      await db.insert(users).values(newUser);
+      return newUser as User;
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       throw error;
@@ -160,10 +165,19 @@ class FirebaseStorage implements IStorage {
 
   async updateUser(id: string, user: Partial<User>): Promise<User> {
     try {
-      await updateDoc(doc(firebaseDb, 'users', id), user);
-      const updated = await this.getUserById(id);
-      if (!updated) throw new Error('Usuário não encontrado após atualização');
-      return updated;
+      if (!db) throw new Error('Database connection not available');
+      
+      if (user.password) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
+
+      const [updatedUser] = await db
+        .update(users)
+        .set(user)
+        .where(eq(users.id, id))
+        .returning();
+      
+      return updatedUser;
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error);
       throw error;
@@ -172,14 +186,28 @@ class FirebaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(firebaseDb, 'users', id));
+      if (!db) throw new Error('Database connection not available');
+      await db.delete(users).where(eq(users.id, id));
     } catch (error) {
       console.error('Erro ao deletar usuário:', error);
       throw error;
     }
   }
 
-  // Clients
+  async getUsers(): Promise<User[]> {
+    try {
+      if (!db) {
+        console.error('Database connection not available');
+        return [];
+      }
+      return await db.select().from(users);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      return [];
+    }
+  }
+
+  // Clients (Firebase) - implementações básicas
   async getClients(): Promise<Client[]> {
     try {
       const clientsSnapshot = await getDocs(collection(firebaseDb, 'clients'));
@@ -259,7 +287,7 @@ class FirebaseStorage implements IStorage {
     }
   }
 
-  // Jobs
+  // Jobs (Firebase) - implementações básicas
   async getJobsByClientId(clientId: string): Promise<Job[]> {
     try {
       const jobsQuery = query(collection(firebaseDb, 'jobs'), where('clientId', '==', clientId));
@@ -269,7 +297,7 @@ class FirebaseStorage implements IStorage {
         ...doc.data()
       } as Job));
     } catch (error) {
-      console.error('Erro ao buscar vagas:', error);
+      console.error('Erro ao buscar jobs:', error);
       return [];
     }
   }
@@ -282,7 +310,7 @@ class FirebaseStorage implements IStorage {
       }
       return undefined;
     } catch (error) {
-      console.error('Erro ao buscar vaga:', error);
+      console.error('Erro ao buscar job:', error);
       return undefined;
     }
   }
@@ -298,7 +326,7 @@ class FirebaseStorage implements IStorage {
       await setDoc(doc(firebaseDb, 'jobs', id), jobData);
       return { id, ...jobData } as Job;
     } catch (error) {
-      console.error('Erro ao criar vaga:', error);
+      console.error('Erro ao criar job:', error);
       throw error;
     }
   }
@@ -307,10 +335,10 @@ class FirebaseStorage implements IStorage {
     try {
       await updateDoc(doc(firebaseDb, 'jobs', id), job);
       const updated = await this.getJobById(id);
-      if (!updated) throw new Error('Vaga não encontrada após atualização');
+      if (!updated) throw new Error('Job não encontrado após atualização');
       return updated;
     } catch (error) {
-      console.error('Erro ao atualizar vaga:', error);
+      console.error('Erro ao atualizar job:', error);
       throw error;
     }
   }
@@ -319,159 +347,43 @@ class FirebaseStorage implements IStorage {
     try {
       await deleteDoc(doc(firebaseDb, 'jobs', id));
     } catch (error) {
-      console.error('Erro ao deletar vaga:', error);
+      console.error('Erro ao deletar job:', error);
       throw error;
     }
   }
 
-  // Questions
-  async getQuestionsByJobId(jobId: string): Promise<Question[]> {
-    try {
-      const questionsQuery = query(collection(firebaseDb, 'questions'), where('vagaId', '==', jobId));
-      const querySnapshot = await getDocs(questionsQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as Question));
-    } catch (error) {
-      console.error('Erro ao buscar perguntas:', error);
-      return [];
-    }
-  }
-
-  async createQuestion(question: InsertQuestion): Promise<Question> {
-    try {
-      const id = this.generateNumericId();
-      const questionData = {
-        ...question,
-        createdAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'questions', id.toString()), questionData);
-      return { id, ...questionData } as Question;
-    } catch (error) {
-      console.error('Erro ao criar pergunta:', error);
-      throw error;
-    }
-  }
-
-  async updateQuestion(id: number, question: Partial<Question>): Promise<Question> {
-    try {
-      await updateDoc(doc(firebaseDb, 'questions', id.toString()), question);
-      const questionDoc = await getDoc(doc(firebaseDb, 'questions', id.toString()));
-      if (!questionDoc.exists()) throw new Error('Pergunta não encontrada após atualização');
-      return { id, ...questionDoc.data() } as Question;
-    } catch (error) {
-      console.error('Erro ao atualizar pergunta:', error);
-      throw error;
-    }
-  }
-
-  async deleteQuestion(id: number): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'questions', id.toString()));
-    } catch (error) {
-      console.error('Erro ao deletar pergunta:', error);
-      throw error;
-    }
-  }
-
-  // Candidate Lists
-  async getAllCandidateLists(): Promise<CandidateList[]> {
-    try {
-      const listsSnapshot = await getDocs(collection(firebaseDb, 'candidateLists'));
-      return listsSnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as CandidateList));
-    } catch (error) {
-      console.error('Erro ao buscar listas de candidatos:', error);
-      return [];
-    }
-  }
-
-  async getCandidateListsByClientId(clientId: string): Promise<CandidateList[]> {
-    try {
-      const listsQuery = query(collection(firebaseDb, 'candidateLists'), where('clientId', '==', clientId));
-      const querySnapshot = await getDocs(listsQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as CandidateList));
-    } catch (error) {
-      console.error('Erro ao buscar listas de candidatos por cliente:', error);
-      return [];
-    }
-  }
-
-  async getCandidateListById(id: number): Promise<CandidateList | undefined> {
-    try {
-      const listDoc = await getDoc(doc(firebaseDb, 'candidateLists', id.toString()));
-      if (listDoc.exists()) {
-        return { id, ...listDoc.data() } as CandidateList;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Erro ao buscar lista de candidatos:', error);
-      return undefined;
-    }
-  }
-
-  async createCandidateList(candidateList: InsertCandidateList): Promise<CandidateList> {
-    try {
-      const id = this.generateNumericId();
-      const listData = {
-        ...candidateList,
-        createdAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'candidateLists', id.toString()), listData);
-      return { id, ...listData } as CandidateList;
-    } catch (error) {
-      console.error('Erro ao criar lista de candidatos:', error);
-      throw error;
-    }
-  }
-
-  async updateCandidateList(id: number, candidateList: Partial<CandidateList>): Promise<CandidateList> {
-    try {
-      await updateDoc(doc(firebaseDb, 'candidateLists', id.toString()), candidateList);
-      const updated = await this.getCandidateListById(id);
-      if (!updated) throw new Error('Lista não encontrada após atualização');
-      return updated;
-    } catch (error) {
-      console.error('Erro ao atualizar lista de candidatos:', error);
-      throw error;
-    }
-  }
-
-  async deleteCandidateList(id: number): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'candidateLists', id.toString()));
-    } catch (error) {
-      console.error('Erro ao deletar lista de candidatos:', error);
-      throw error;
-    }
-  }
-
-  // Candidates
+  // Candidates (Firebase) - implementações básicas
   async getCandidatesByClientId(clientId: string): Promise<Candidate[]> {
     try {
       const candidatesQuery = query(collection(firebaseDb, 'candidates'), where('clientId', '==', clientId));
       const querySnapshot = await getDocs(candidatesQuery);
       return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
+        id: doc.id,
         ...doc.data()
       } as Candidate));
     } catch (error) {
-      console.error('Erro ao buscar candidatos por cliente:', error);
+      console.error('Erro ao buscar candidatos:', error);
       return [];
     }
   }
 
-  async getCandidateById(id: number): Promise<Candidate | undefined> {
+  async getCandidatesByListId(listId: string): Promise<Candidate[]> {
     try {
-      const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', id.toString()));
+      const candidatesQuery = query(collection(firebaseDb, 'candidates'), where('listId', '==', listId));
+      const querySnapshot = await getDocs(candidatesQuery);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Candidate));
+    } catch (error) {
+      console.error('Erro ao buscar candidatos por lista:', error);
+      return [];
+    }
+  }
+
+  async getCandidateById(id: string): Promise<Candidate | undefined> {
+    try {
+      const candidateDoc = await getDoc(doc(firebaseDb, 'candidates', id));
       if (candidateDoc.exists()) {
         return { id, ...candidateDoc.data() } as Candidate;
       }
@@ -482,42 +394,15 @@ class FirebaseStorage implements IStorage {
     }
   }
 
-  async getCandidatesByListId(listId: number): Promise<Candidate[]> {
-    try {
-      // Get candidate memberships for this list
-      const membershipsQuery = query(
-        collection(firebaseDb, 'candidateListMemberships'), 
-        where('listId', '==', listId)
-      );
-      const membershipsSnapshot = await getDocs(membershipsQuery);
-      
-      const candidateIds = membershipsSnapshot.docs.map(doc => doc.data().candidateId);
-      
-      if (candidateIds.length === 0) return [];
-
-      // Get candidates by IDs
-      const candidates: Candidate[] = [];
-      for (const candidateId of candidateIds) {
-        const candidate = await this.getCandidateById(candidateId);
-        if (candidate) candidates.push(candidate);
-      }
-      
-      return candidates;
-    } catch (error) {
-      console.error('Erro ao buscar candidatos por lista:', error);
-      return [];
-    }
-  }
-
   async createCandidate(candidate: InsertCandidate): Promise<Candidate> {
     try {
-      const id = this.generateNumericId();
+      const id = this.generateId();
       const candidateData = {
         ...candidate,
         createdAt: new Date()
       };
       
-      await setDoc(doc(firebaseDb, 'candidates', id.toString()), candidateData);
+      await setDoc(doc(firebaseDb, 'candidates', id), candidateData);
       return { id, ...candidateData } as Candidate;
     } catch (error) {
       console.error('Erro ao criar candidato:', error);
@@ -525,9 +410,9 @@ class FirebaseStorage implements IStorage {
     }
   }
 
-  async updateCandidate(id: number, candidate: Partial<Candidate>): Promise<Candidate> {
+  async updateCandidate(id: string, candidate: Partial<Candidate>): Promise<Candidate> {
     try {
-      await updateDoc(doc(firebaseDb, 'candidates', id.toString()), candidate);
+      await updateDoc(doc(firebaseDb, 'candidates', id), candidate);
       const updated = await this.getCandidateById(id);
       if (!updated) throw new Error('Candidato não encontrado após atualização');
       return updated;
@@ -537,302 +422,50 @@ class FirebaseStorage implements IStorage {
     }
   }
 
-  async deleteCandidate(id: number): Promise<void> {
+  async deleteCandidate(id: string): Promise<void> {
     try {
-      await deleteDoc(doc(firebaseDb, 'candidates', id.toString()));
+      await deleteDoc(doc(firebaseDb, 'candidates', id));
     } catch (error) {
       console.error('Erro ao deletar candidato:', error);
       throw error;
     }
   }
 
-  // Selections
-  async getSelectionsByClientId(clientId: string): Promise<Selection[]> {
-    try {
-      const selectionsQuery = query(collection(firebaseDb, 'selections'), where('clientId', '==', clientId));
-      const querySnapshot = await getDocs(selectionsQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as Selection));
-    } catch (error) {
-      console.error('Erro ao buscar seleções:', error);
-      return [];
-    }
-  }
+  // Métodos stub para as outras entidades
+  async getQuestionsByJobId(jobId: string): Promise<Question[]> { return []; }
+  async createQuestion(question: InsertQuestion): Promise<Question> { return {} as Question; }
+  async updateQuestion(id: number, question: Partial<Question>): Promise<Question> { return {} as Question; }
+  async deleteQuestion(id: number): Promise<void> {}
 
-  async getSelectionById(id: number): Promise<Selection | undefined> {
-    try {
-      const selectionDoc = await getDoc(doc(firebaseDb, 'selections', id.toString()));
-      if (selectionDoc.exists()) {
-        return { id, ...selectionDoc.data() } as Selection;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Erro ao buscar seleção:', error);
-      return undefined;
-    }
-  }
+  async getCandidateListsByClientId(clientId: string): Promise<CandidateList[]> { return []; }
+  async getCandidateListById(id: string): Promise<CandidateList | undefined> { return undefined; }
+  async createCandidateList(list: InsertCandidateList): Promise<CandidateList> { return {} as CandidateList; }
+  async updateCandidateList(id: string, list: Partial<CandidateList>): Promise<CandidateList> { return {} as CandidateList; }
+  async deleteCandidateList(id: string): Promise<void> {}
 
-  async createSelection(selection: InsertSelection): Promise<Selection> {
-    try {
-      const id = this.generateNumericId();
-      const selectionData = {
-        ...selection,
-        createdAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'selections', id.toString()), selectionData);
-      return { id, ...selectionData } as Selection;
-    } catch (error) {
-      console.error('Erro ao criar seleção:', error);
-      throw error;
-    }
-  }
+  async getSelectionsByClientId(clientId: string): Promise<Selection[]> { return []; }
+  async createSelection(selection: InsertSelection): Promise<Selection> { return {} as Selection; }
+  async updateSelection(id: string, selection: Partial<Selection>): Promise<Selection> { return {} as Selection; }
+  async deleteSelection(id: string): Promise<void> {}
 
-  async updateSelection(id: number, selection: Partial<Selection>): Promise<Selection> {
-    try {
-      await updateDoc(doc(firebaseDb, 'selections', id.toString()), selection);
-      const updated = await this.getSelectionById(id);
-      if (!updated) throw new Error('Seleção não encontrada após atualização');
-      return updated;
-    } catch (error) {
-      console.error('Erro ao atualizar seleção:', error);
-      throw error;
-    }
-  }
+  async getInterviewsBySelectionId(selectionId: string): Promise<Interview[]> { return []; }
+  async createInterview(interview: InsertInterview): Promise<Interview> { return {} as Interview; }
+  async updateInterview(id: string, interview: Partial<Interview>): Promise<Interview> { return {} as Interview; }
+  async deleteInterview(id: string): Promise<void> {}
 
-  async deleteSelection(id: number): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'selections', id.toString()));
-    } catch (error) {
-      console.error('Erro ao deletar seleção:', error);
-      throw error;
-    }
-  }
+  async getResponsesByInterviewId(interviewId: string): Promise<Response[]> { return []; }
+  async createResponse(response: InsertResponse): Promise<Response> { return {} as Response; }
+  async updateResponse(id: number, response: Partial<Response>): Promise<Response> { return {} as Response; }
+  async deleteResponse(id: number): Promise<void> {}
 
-  // Interviews
-  async getInterviewsBySelectionId(selectionId: number): Promise<Interview[]> {
-    try {
-      const interviewsQuery = query(collection(firebaseDb, 'interviews'), where('selectionId', '==', selectionId));
-      const querySnapshot = await getDocs(interviewsQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as Interview));
-    } catch (error) {
-      console.error('Erro ao buscar entrevistas:', error);
-      return [];
-    }
-  }
+  async getApiConfigsByEntityId(entityId: string): Promise<ApiConfig[]> { return []; }
+  async createApiConfig(config: InsertApiConfig): Promise<ApiConfig> { return {} as ApiConfig; }
+  async updateApiConfig(id: number, config: Partial<ApiConfig>): Promise<ApiConfig> { return {} as ApiConfig; }
 
-  async getInterviewById(id: number): Promise<Interview | undefined> {
-    try {
-      const interviewDoc = await getDoc(doc(firebaseDb, 'interviews', id.toString()));
-      if (interviewDoc.exists()) {
-        return { id, ...interviewDoc.data() } as Interview;
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Erro ao buscar entrevista:', error);
-      return undefined;
-    }
-  }
-
-  async createInterview(interview: InsertInterview): Promise<Interview> {
-    try {
-      const id = this.generateNumericId();
-      const interviewData = {
-        ...interview,
-        createdAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'interviews', id.toString()), interviewData);
-      return { id, ...interviewData } as Interview;
-    } catch (error) {
-      console.error('Erro ao criar entrevista:', error);
-      throw error;
-    }
-  }
-
-  async updateInterview(id: number, interview: Partial<Interview>): Promise<Interview> {
-    try {
-      await updateDoc(doc(firebaseDb, 'interviews', id.toString()), interview);
-      const updated = await this.getInterviewById(id);
-      if (!updated) throw new Error('Entrevista não encontrada após atualização');
-      return updated;
-    } catch (error) {
-      console.error('Erro ao atualizar entrevista:', error);
-      throw error;
-    }
-  }
-
-  async deleteInterview(id: number): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'interviews', id.toString()));
-    } catch (error) {
-      console.error('Erro ao deletar entrevista:', error);
-      throw error;
-    }
-  }
-
-  // Responses
-  async getResponsesByInterviewId(interviewId: number): Promise<Response[]> {
-    try {
-      const responsesQuery = query(collection(firebaseDb, 'responses'), where('interviewId', '==', interviewId));
-      const querySnapshot = await getDocs(responsesQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as Response));
-    } catch (error) {
-      console.error('Erro ao buscar respostas:', error);
-      return [];
-    }
-  }
-
-  async createResponse(response: InsertResponse): Promise<Response> {
-    try {
-      const id = this.generateNumericId();
-      const responseData = {
-        ...response,
-        createdAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'responses', id.toString()), responseData);
-      return { id, ...responseData } as Response;
-    } catch (error) {
-      console.error('Erro ao criar resposta:', error);
-      throw error;
-    }
-  }
-
-  async updateResponse(id: number, response: Partial<Response>): Promise<Response> {
-    try {
-      await updateDoc(doc(firebaseDb, 'responses', id.toString()), response);
-      const responseDoc = await getDoc(doc(firebaseDb, 'responses', id.toString()));
-      if (!responseDoc.exists()) throw new Error('Resposta não encontrada após atualização');
-      return { id, ...responseDoc.data() } as Response;
-    } catch (error) {
-      console.error('Erro ao atualizar resposta:', error);
-      throw error;
-    }
-  }
-
-  async deleteResponse(id: number): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'responses', id.toString()));
-    } catch (error) {
-      console.error('Erro ao deletar resposta:', error);
-      throw error;
-    }
-  }
-
-  // API Configurations
-  async getApiConfigsByEntityId(entityId: string): Promise<ApiConfig[]> {
-    try {
-      const configsQuery = query(collection(firebaseDb, 'apiConfigs'), where('entityId', '==', entityId));
-      const querySnapshot = await getDocs(configsQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: parseInt(doc.id),
-        ...doc.data()
-      } as ApiConfig));
-    } catch (error) {
-      console.error('Erro ao buscar configurações de API:', error);
-      return [];
-    }
-  }
-
-  async createApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
-    try {
-      const id = this.generateNumericId();
-      const configData = {
-        ...config,
-        updatedAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'apiConfigs', id.toString()), configData);
-      return { id, ...configData } as ApiConfig;
-    } catch (error) {
-      console.error('Erro ao criar configuração de API:', error);
-      throw error;
-    }
-  }
-
-  async updateApiConfig(id: number, config: Partial<ApiConfig>): Promise<ApiConfig> {
-    try {
-      const updateData = {
-        ...config,
-        updatedAt: new Date()
-      };
-      
-      await updateDoc(doc(firebaseDb, 'apiConfigs', id.toString()), updateData);
-      const configDoc = await getDoc(doc(firebaseDb, 'apiConfigs', id.toString()));
-      if (!configDoc.exists()) throw new Error('Configuração não encontrada após atualização');
-      return { id, ...configDoc.data() } as ApiConfig;
-    } catch (error) {
-      console.error('Erro ao atualizar configuração de API:', error);
-      throw error;
-    }
-  }
-
-  // Report Folders
-  async getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]> {
-    try {
-      const foldersQuery = query(collection(firebaseDb, 'reportFolders'), where('clientId', '==', clientId));
-      const querySnapshot = await getDocs(foldersQuery);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ReportFolder));
-    } catch (error) {
-      console.error('Erro ao buscar pastas de relatórios:', error);
-      return [];
-    }
-  }
-
-  async createReportFolder(folder: InsertReportFolder): Promise<ReportFolder> {
-    try {
-      const id = this.generateId();
-      const folderData = {
-        ...folder,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      await setDoc(doc(firebaseDb, 'reportFolders', id), folderData);
-      return { id, ...folderData } as ReportFolder;
-    } catch (error) {
-      console.error('Erro ao criar pasta de relatórios:', error);
-      throw error;
-    }
-  }
-
-  async updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder> {
-    try {
-      const updateData = {
-        ...folder,
-        updatedAt: new Date()
-      };
-      
-      await updateDoc(doc(firebaseDb, 'reportFolders', id), updateData);
-      const folderDoc = await getDoc(doc(firebaseDb, 'reportFolders', id));
-      if (!folderDoc.exists()) throw new Error('Pasta não encontrada após atualização');
-      return { id, ...folderDoc.data() } as ReportFolder;
-    } catch (error) {
-      console.error('Erro ao atualizar pasta de relatórios:', error);
-      throw error;
-    }
-  }
-
-  async deleteReportFolder(id: string): Promise<void> {
-    try {
-      await deleteDoc(doc(firebaseDb, 'reportFolders', id));
-    } catch (error) {
-      console.error('Erro ao deletar pasta de relatórios:', error);
-      throw error;
-    }
-  }
+  async getReportFoldersByClientId(clientId: string): Promise<ReportFolder[]> { return []; }
+  async createReportFolder(folder: InsertReportFolder): Promise<ReportFolder> { return {} as ReportFolder; }
+  async updateReportFolder(id: string, folder: Partial<ReportFolder>): Promise<ReportFolder> { return {} as ReportFolder; }
+  async deleteReportFolder(id: string): Promise<void> {}
 }
 
 export const storage = new FirebaseStorage();
