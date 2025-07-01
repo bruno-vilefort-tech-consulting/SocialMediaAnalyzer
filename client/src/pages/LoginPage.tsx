@@ -30,12 +30,10 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log('🔐 Iniciando login com:', { email: data.email });
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('🔐 Fazendo requisição para /api/auth/login');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -44,25 +42,20 @@ export default function LoginPage() {
         },
       });
 
-      console.log('🔐 Response status:', response.status);
       const result = await response.json();
-      console.log('🔐 Response data:', result);
 
       if (response.ok && result.token) {
-        console.log('🔐 Login bem-sucedido, salvando token...');
         // Salva o token no localStorage
         localStorage.setItem('authToken', result.token);
         localStorage.setItem('user', JSON.stringify(result.user));
         
-        console.log('🔐 Token salvo, recarregando página...');
         // Recarrega a página para redirecionar para o dashboard
         window.location.reload();
       } else {
-        console.error('🔐 Login falhou:', result);
         setError(result.message || 'Erro ao fazer login');
       }
     } catch (err: any) {
-      console.error('🔐 Erro no login:', err);
+      console.error('Erro no login:', err);
       setError(err.message || 'Erro ao fazer login');
     } finally {
       setIsLoading(false);

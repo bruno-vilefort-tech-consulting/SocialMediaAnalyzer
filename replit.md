@@ -113,6 +113,20 @@ The system uses a comprehensive PostgreSQL schema with the following main entiti
 
 Preferred communication style: Simple, everyday language in Brazilian Portuguese (português brasileiro).
 
+## Login Credentials
+
+Sistema de autenticação PostgreSQL com as seguintes credenciais:
+
+**Usuário Master 1:**
+- Email: admin@maxcamrh.com
+- Senha: admin123
+- Role: master
+
+**Usuário Master 2:**
+- Email: daniel@grupomaximuns.com.br
+- Senha: daniel123  
+- Role: master
+
 ## Recent Changes
 
 - July 01, 2025: 🧹 LIMPEZA FINAL COMPLETA REALIZADA - Projeto totalmente otimizado e limpo
