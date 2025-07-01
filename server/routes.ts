@@ -2621,19 +2621,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = req.user;
       if (!user?.clientId) {
-        console.log('❌ [EVOLUTION] Client ID não encontrado');
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔗 [EVOLUTION] Conectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.createInstance(user.clientId.toString());
       
-      console.log(`📱 [EVOLUTION] Resultado connect:`, result);
       res.json(result);
     } catch (error) {
-      console.error('❌ [EVOLUTION] Erro ao conectar WhatsApp:', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno ao conectar WhatsApp'
@@ -2648,10 +2642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🔌 [EVOLUTION] Desconectando WhatsApp para cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.deleteInstance(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -2689,10 +2680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
@@ -2721,10 +2709,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Client ID required' });
       }
 
-      console.log(`🧹 [EVOLUTION] Limpando sessão WhatsApp para cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.deleteInstance(user.clientId.toString());
       
       if (result.success) {
         res.json({ 
@@ -2738,7 +2723,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
     } catch (error) {
-      console.error('❌ [EVOLUTION] Erro ao limpar sessão WhatsApp:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao limpar sessão' 
@@ -2759,10 +2743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      console.log(`📤 [EVOLUTION] Enviando teste WhatsApp para ${phoneNumber} via cliente ${user.clientId}...`);
       
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.sendMessage(user.clientId.toString(), phoneNumber, message);
       
       if (result.success) {
         res.json({ 
@@ -3588,7 +3569,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Evolution API Routes
   app.post("/api/evolution/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
       const user = req.user;
@@ -3597,13 +3577,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
-      console.log(`🔗 [Evolution] Tentando conectar cliente ${clientId} via Evolution API...`);
       
-      // Forçar uso da Evolution API
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.connectClient(clientId);
       
-      console.log(`🔗 [Evolution] Resultado da conexão Evolution API:`, {
         success: result.success,
         hasQrCode: !!result.qrCode,
         qrCodeLength: result.qrCode?.length || 0,
@@ -3612,10 +3587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(result);
     } catch (error) {
-      console.error('❌ Erro Evolution API connect:', error);
       res.status(500).json({ 
         success: false, 
-        message: `Erro ao conectar via Evolution API: ${error.message}` 
       });
     }
   });
@@ -3628,18 +3601,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
-      console.log(`🔌 [Evolution] Desconectando cliente ${clientId} via Evolution API...`);
       
-      // Usar Evolution API
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.disconnectClient(clientId);
       
       res.json(result);
     } catch (error) {
-      console.error('❌ Erro Evolution API disconnect:', error);
       res.status(500).json({ 
         success: false, 
-        message: 'Erro interno ao desconectar Evolution API' 
       });
     }
   });
@@ -3652,13 +3619,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const clientId = user.clientId.toString();
-      console.log(`🔗 [Evolution] Verificando status para cliente ${clientId}...`);
       
-      // Usar Evolution API diretamente
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const connection = await evolutionApiService.getConnectionStatus(clientId);
       
-      console.log(`📱 [Evolution] Status Evolution API:`, {
         hasConnection: !!connection,
         isConnected: connection?.isConnected || false,
         hasQrCode: !!connection?.qrCode,
@@ -3675,7 +3637,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         instanceId: connection?.instanceId || `evolution_${clientId}`
       };
       
-      console.log(`📤 [Evolution] Response enviada:`, {
         hasQrCode: !!responseData.qrCode,
         qrCodeLength: responseData.qrCode?.length || 0,
         isConnected: responseData.isConnected
@@ -3683,7 +3644,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(responseData);
     } catch (error) {
-      console.error('❌ Erro Evolution API status:', error);
       res.status(500).json({ 
         isConnected: false,
         qrCode: null,
@@ -3707,8 +3667,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Phone number and message required' });
       }
 
-      const { evolutionApiService } = await import('../whatsapp/services/evolutionApiService');
-      const result = await evolutionApiService.sendMessage(
         user.clientId.toString(), 
         phoneNumber, 
         message
@@ -3716,7 +3674,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(result);
     } catch (error) {
-      console.error('❌ Erro Evolution API test:', error);
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao enviar mensagem teste' 
