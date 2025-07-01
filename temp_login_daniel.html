@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login Automático Daniel</title>
+    <title>Login Automático Cliente</title>
 </head>
 <body>
-    <h1>Fazendo login como Daniel...</h1>
+    <h1>Fazendo login como Cliente...</h1>
     <script>
         // Limpar dados do usuário anterior
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
         
-        // Definir dados do usuário Daniel
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEiLCJlbWFpbCI6ImRhbmllbEBncnVwb21heGltdW5zLmNvbS5iciIsInJvbGUiOiJtYXN0ZXIiLCJjbGllbnRJZCI6bnVsbCwiaWF0IjoxNzUxMzgyOTk3LCJleHAiOjE3NTE0NjkzOTd9.9T1nyQwDwDEVHx-OLnMMQMGRQ4LXlsjzdW_U1Xwp6Fw";
+        // Definir dados do usuário Cliente
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzZXJfY2xpZW50XzEiLCJlbWFpbCI6ImNsaWVudGVAZ3J1cG9tYXhpbXVucy5jb20uYnIiLCJyb2xlIjoiY2xpZW50IiwiY2xpZW50SWQiOiIxNzQ5ODQ5OTg3NTQzIiwiaWF0IjoxNzUxMzgzNTM5LCJleHAiOjE3NTE0Njk5Mzl9.iYfbOXCSmd7kba_iM1smqZ2jUFrt0OQY8ICzvdPzYrc";
         const user = {
-            "id": "1",
-            "email": "daniel@grupomaximuns.com.br",
-            "name": "Daniel Admin",
-            "role": "master",
-            "clientId": null
+            "id": "user_client_1",
+            "email": "cliente@grupomaximuns.com.br",
+            "name": "Cliente Demo",
+            "role": "client",
+            "clientId": "1749849987543"
         };
         
         localStorage.setItem('authToken', token);
