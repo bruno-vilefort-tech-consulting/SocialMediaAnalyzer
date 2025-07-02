@@ -5418,13 +5418,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🧪 [DIRECT-QR-TEST] Testando QR direto para cliente ${clientId}, slot ${slotNumber}`);
 
-      // Return a simple response instead of attempting QR generation during startup
-      const result = {
-        success: false,
-        hasQrCode: false,
-        qrCodeLength: 0,
-        message: 'Direct QR generation disabled during startup. Use regular connect endpoint instead.'
-      };
+      // Lazy load WhatsApp service
+      await lazyLoadWhatsAppServices();
+      
+      if (!simpleMultiBaileyService) {
+        return res.status(503).json({
+          success: false,
+          hasQrCode: false,
+          qrCodeLength: 0,
+          message: 'WhatsApp service não disponível'
+        });
+      }
+
+      const result = await simpleMultiBaileyService.connectSlot(clientId.toString(), slotNumber);
 
       console.log(`📱 [DIRECT-QR-TEST] Resultado:`, {
         success: result.success,

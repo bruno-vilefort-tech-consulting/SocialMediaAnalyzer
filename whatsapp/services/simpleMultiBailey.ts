@@ -3,13 +3,12 @@
  * Versão simplificada sem dependências complexas
  */
 
-import makeWASocket, { 
-    ConnectionState, 
-    useMultiFileAuthState, 
-    DisconnectReason,
-    Browsers,
-    fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys'
+// Dynamic import for Baileys to prevent startup issues
+let makeWASocket: any = null;
+let useMultiFileAuthState: any = null;
+let DisconnectReason: any = null;
+let Browsers: any = null;
+let fetchLatestBaileysVersion: any = null;
 import { Boom } from '@hapi/boom'
 import P from 'pino'
 import fs from 'fs'
