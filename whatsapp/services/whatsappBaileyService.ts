@@ -212,7 +212,9 @@ class WhatsAppBaileyService {
             // Verificar se é mensagem de áudio
             let audioMessage = null;
             if (message.message.audioMessage) {
-              audioMessage = message.message;
+              // Passar a mensagem completa com todos os metadados necessários para download
+              audioMessage = message;
+              console.log(`🎵 [BAILEYS] Mensagem de áudio detectada - passando mensagem completa`);
             }
             
             // Processar mensagem via interactiveInterviewService

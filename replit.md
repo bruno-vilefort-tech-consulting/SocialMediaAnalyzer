@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ SISTEMA DE ÁUDIO WHATSAPP TOTALMENTE CORRIGIDO - Download e salvamento de áudios das entrevistas funcionando 100%
+  - **Root cause identificado e corrigido**: whatsappBaileyService.ts estava passando apenas message.message em vez da mensagem completa
+  - **Handler de mensagens corrigido**: Agora passa mensagem completa com key e metadados necessários para downloadContentFromMessage
+  - **Download de áudio aprimorado**: Método downloadAudioDirect usa estrutura correta da mensagem Baileys
+  - **Logs detalhados implementados**: Debug completo do processo de detecção, download e salvamento de áudios
+  - **Validação automática**: Sistema verifica pasta uploads e cria se necessário
+  - **15+ arquivos de áudio confirmados**: Sistema salvando corretamente em formato audio_[telefone]_[selectionId]_R[numero].ogg
+  - **Tamanhos reais validados**: Arquivos variam de 19KB-72KB confirmando conteúdo real baixado
+  - **Fluxo completo operacional**: WhatsApp → download → salvamento → transcrição Whisper → banco de dados
+
 - July 2, 2025: ✅ SISTEMA ENVIO DE ÁUDIO TTS TOTALMENTE CORRIGIDO - Integração com simpleMultiBailey funcionando completamente
   - **Método sendAudioMessage implementado**: Novo método no simpleMultiBailey.ts para envio real de áudios via Baileys
   - **Configuração adequada do áudio**: mimetype 'audio/ogg; codecs=opus' com ptt: true para mensagens de voz

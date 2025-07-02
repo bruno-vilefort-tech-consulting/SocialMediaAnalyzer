@@ -72,18 +72,21 @@ class InteractiveInterviewService {
         return null;
       }
       
-      // Tentar download com estrutura corrigida
-      let audioMessage = null;
-      if (message.message?.audioMessage) {
-        audioMessage = message.message.audioMessage;
-      } else if (message.message?.viewOnceMessageV2?.message?.audioMessage) {
-        audioMessage = message.message.viewOnceMessageV2.message.audioMessage;
-      }
+      // Tentar download com mensagem completa do Baileys
+      console.log(`🔍 [AUDIO_DOWNLOAD] Estrutura da mensagem:`, {
+        hasMessage: !!message.message,
+        hasAudioMessage: !!message.message?.audioMessage,
+        hasKey: !!message.key,
+        messageType: message.messageType || 'unknown'
+      });
       
-      if (audioMessage) {
+      if (message.message?.audioMessage) {
         try {
           const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-          const stream = await downloadContentFromMessage(audioMessage, 'audio');
+          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download com downloadContentFromMessage...`);
+          
+          // Usar a mensagem completa para o download
+          const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
           
           const chunks: Buffer[] = [];
           for await (const chunk of stream) {
@@ -93,14 +96,27 @@ class InteractiveInterviewService {
           const audioBuffer = Buffer.concat(chunks);
           
           if (audioBuffer && audioBuffer.length > 100) {
-            const fs = await import('fs');
+            console.log(`✅ [AUDIO_DOWNLOAD] Buffer válido recebido: ${audioBuffer.length} bytes`);
+            
+            // Verificar se pasta uploads existe
+            const path = await import('path');
+            const uploadsDir = path.dirname(audioPath);
+            if (!fs.existsSync(uploadsDir)) {
+              await fs.promises.mkdir(uploadsDir, { recursive: true });
+              console.log(`📁 [AUDIO_DOWNLOAD] Pasta uploads criada`);
+            }
+            
             await fs.promises.writeFile(audioPath, audioBuffer);
-            console.log(`✅ [AUDIO_DOWNLOAD] Download direto sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
+            console.log(`✅ [AUDIO_DOWNLOAD] Arquivo salvo com sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
             return audioPath;
+          } else {
+            console.log(`⚠️ [AUDIO_DOWNLOAD] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes`);
           }
         } catch (error) {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Download direto falhou: ${error.message}`);
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download:`, error.message);
         }
+      } else {
+        console.log(`❌ [AUDIO_DOWNLOAD] Mensagem não contém audioMessage válido`);
       }
       
       // Criar arquivo temporário para manter fluxo
