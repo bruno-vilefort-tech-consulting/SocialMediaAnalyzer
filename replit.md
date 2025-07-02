@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ INTERFACE CONFIGURAÇÕES WHATSAPP MELHORADA - Sistema de navegação entre conexões implementado
+  - **Exibição de uma conexão por vez**: Interface agora mostra apenas uma conexão WhatsApp de cada vez
+  - **Navegação entre slots**: Botões "Anterior" e "Próxima" para navegar entre as 3 conexões disponíveis
+  - **Botão "Nova Conexão"**: Permite acessar próxima conexão disponível para configuração
+  - **Indicadores visuais**: Pontos coloridos mostram status das conexões (ativa/inativa/atual)
+  - **Contadores informativos**: Exibe "X de Y" conexões e quantidade de conexões ativas
+  - **Interface limpa**: Layout focado em uma conexão reduz confusão visual
+  - **Funcionalidade preservada**: Todos os recursos mantidos (conectar, desconectar, testar mensagens)
+
 - July 2, 2025: ✅ CORREÇÕES CRÍTICAS DE ROUTING E ENVIO WHATSAPP FINALIZADAS - Sistema de entrevistas totalmente funcional
   - **Fix critical getClientConnections**: Corrigida chamada síncrona para await getClientConnections() em sendMessage
   - **Fix parâmetro clientId**: Todas as chamadas sendMessage agora incluem clientId obrigatório para routing correto

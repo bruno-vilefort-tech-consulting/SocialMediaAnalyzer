@@ -281,6 +281,9 @@ const MultiWhatsAppConnections: React.FC = () => {
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
 
+  // Estado para controlar qual conexão está sendo exibida
+  const [currentConnectionIndex, setCurrentConnectionIndex] = useState(0);
+
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
@@ -471,6 +474,26 @@ const MultiWhatsAppConnections: React.FC = () => {
     );
   }
 
+  // Funções de navegação entre conexões
+  const currentConnection = connections[currentConnectionIndex];
+  const canAddNewConnection = connections.length < 3;
+
+  const handleAddNewConnection = () => {
+    // Navegar para a próxima conexão disponível (desconectada)
+    const nextIndex = connections.findIndex(conn => !conn.isConnected && !conn.qrCode);
+    if (nextIndex !== -1) {
+      setCurrentConnectionIndex(nextIndex);
+    }
+  };
+
+  const handleNavigateConnection = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && currentConnectionIndex > 0) {
+      setCurrentConnectionIndex(currentConnectionIndex - 1);
+    } else if (direction === 'next' && currentConnectionIndex < connections.length - 1) {
+      setCurrentConnectionIndex(currentConnectionIndex + 1);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header com resumo */}
@@ -479,7 +502,7 @@ const MultiWhatsAppConnections: React.FC = () => {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              Múltiplas Conexões WhatsApp
+              Conexões WhatsApp
             </span>
             <div className="flex items-center gap-2">
               <Badge variant="outline">
@@ -497,7 +520,7 @@ const MultiWhatsAppConnections: React.FC = () => {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Gerencie até 3 conexões WhatsApp simultâneas. Cada slot pode usar uma conta diferente para aumentar a capacidade de envio.
+            Gerencie suas conexões WhatsApp (máximo 3). Uma conexão é exibida por vez.
           </p>
           {error && (
             <div className="mt-3 p-3 bg-red-100 border border-red-400 rounded text-red-800 text-sm">
@@ -507,18 +530,72 @@ const MultiWhatsAppConnections: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Grid com as 3 conexões */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {connections.map((connection) => (
-          <ConnectionSlot
-            key={connection.connectionId}
-            connection={connection}
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-            onTest={handleTest}
-            isConnecting={connectingSlots.has(connection.slotNumber)}
-            isDisconnecting={disconnectingSlots.has(connection.slotNumber)}
-            isTesting={testingSlots.has(connection.slotNumber)}
+      {/* Navegação e Controles */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleNavigateConnection('prev')}
+            disabled={currentConnectionIndex === 0}
+          >
+            ← Anterior
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleNavigateConnection('next')}
+            disabled={currentConnectionIndex === connections.length - 1}
+          >
+            Próxima →
+          </Button>
+        </div>
+
+        <div className="text-center">
+          <span className="text-sm text-muted-foreground">
+            Exibindo {currentConnectionIndex + 1} de {connections.length}
+          </span>
+        </div>
+
+        {canAddNewConnection && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAddNewConnection}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            + Nova Conexão
+          </Button>
+        )}
+      </div>
+
+      {/* Conexão Atual */}
+      {currentConnection && (
+        <ConnectionSlot
+          key={currentConnection.connectionId}
+          connection={currentConnection}
+          onConnect={handleConnect}
+          onDisconnect={handleDisconnect}
+          onTest={handleTest}
+          isConnecting={connectingSlots.has(currentConnection.slotNumber)}
+          isDisconnecting={disconnectingSlots.has(currentConnection.slotNumber)}
+          isTesting={testingSlots.has(currentConnection.slotNumber)}
+        />
+      )}
+
+      {/* Indicador de Posição */}
+      <div className="flex justify-center space-x-2">
+        {connections.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentConnectionIndex(index)}
+            className={`w-3 h-3 rounded-full transition-colors ${
+              index === currentConnectionIndex
+                ? 'bg-blue-600'
+                : connections[index].isConnected
+                ? 'bg-green-500'
+                : 'bg-gray-300'
+            }`}
           />
         ))}
       </div>
