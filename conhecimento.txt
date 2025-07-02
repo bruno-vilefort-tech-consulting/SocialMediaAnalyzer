@@ -1,0 +1,16 @@
+O script simple-evolution-server.js ESTÁ SENDO USADO ATIVAMENTE e NÃO DEVE SER APAGADO do ROOT do sistema.
+
+✅ whatsappBaileyService.ts           (usado ativamente)
+✅ simpleMultiBailey.ts               (usado EXTENSIVAMENTE)  
+✅ multiWhatsAppService.ts            (usado em routes)
+✅ baileys-config.ts                  (usado em simpleMultiBailey)
+✅ whatsappQRService.ts               (usado EXTENSIVAMENTE)
+✅ clientWhatsAppService.ts           (usado EXTENSIVAMENTE)
+✅ evolutionApiService.ts             (usado em múltiplos services)
+✅ wppConnectService.ts               (usado em 6 lugares)
+✅ activeSessionDetector.ts           (usado ativamente)
+✅ emergencyConnectionDetector.ts     (usado em clientWhatsAppService)
+✅ connectionDetector.ts              (tem imports internos)
+✅ simplifiedWebService.ts            (usado em connectionDetector)
+✅ whatsappService.ts                 (usado em 3 lugares)
+✅ whatsappManager.ts                 (usado EXTENSIVAMENTE)

@@ -1,1 +1,0 @@
-// Backup do arquivo original antes da correção

@@ -86,16 +86,16 @@ export default function SelectionsPage() {
   });
 
   // Filtrar dados baseado no role do usuário
-  const filteredSelections = user?.role === 'master' 
-    ? selections 
+  const filteredSelections = user?.role === 'master'
+    ? selections
     : selections.filter(selection => selection.clientId === user?.clientId);
 
-  const filteredCandidateLists = user?.role === 'master' 
-    ? candidateLists 
+  const filteredCandidateLists = user?.role === 'master'
+    ? candidateLists
     : candidateLists.filter(list => list.clientId === user?.clientId);
 
-  const filteredJobs = user?.role === 'master' 
-    ? jobs 
+  const filteredJobs = user?.role === 'master'
+    ? jobs
     : jobs.filter(job => job.clientId === user?.clientId);
 
   // Buscar clientes (apenas para master)
@@ -192,7 +192,30 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
 
 
-  // Enviar campanha WhatsApp Baileys (novo sistema isolado por cliente)
+  // 🔥 NOVO: Enviar campanha via Baileys direto (usando endpoint existente mas com logs diferenciados)
+  const sendDirectBaileysMutation = useMutation({
+    mutationFn: async (selectionId: number) => {
+      // Usar o endpoint existente mas com parâmetro especial para identificar como "direto"
+      const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp?baileys=direct`, 'POST');
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      toast({
+        title: "Entrevistas Baileys enviadas!",
+        description: `${data.sentCount || 0} mensagens enviadas via Baileys puro. ${data.errorCount || 0} erros. Slots: ${data.activeSlots?.join(', ') || 'N/A'}`
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro no envio Baileys",
+        description: error?.message || "Verifique se o Baileys está conectado",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Enviar campanha WhatsApp Baileys (sistema atual)
   const sendWhatsAppBaileysCampaignMutation = useMutation({
     mutationFn: async (selectionId: number) => {
       const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp`, 'POST');
@@ -200,16 +223,16 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      toast({ 
-        title: "Entrevistas WhatsApp enviadas!", 
+      toast({
+        title: "Entrevistas WhatsApp enviadas!",
         description: `${data.sentCount || 0} mensagens enviadas com sucesso. ${data.errorCount || 0} erros.`
       });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Erro ao enviar entrevistas WhatsApp", 
+      toast({
+        title: "Erro ao enviar entrevistas WhatsApp",
         description: error?.message || "Verifique se o WhatsApp está conectado",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
@@ -220,25 +243,25 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       // Primeiro criar a seleção
       const createResponse = await apiRequest('/api/selections', 'POST', selectionData);
       const newSelection = await createResponse.json();
-      
+
       // Atualizar queries para mostrar a seleção criada
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      
+
       // Se for para enviar por WhatsApp, aguardar 2 segundos e depois enviar
       if (selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both') {
         // Aguardar 2 segundos conforme solicitado
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         try {
           // Buscar candidatos da lista para calcular total
           const candidatesResponse = await apiRequest(`/api/lists/${selectionData.candidateListId}/candidates`, 'GET');
           const candidates = await candidatesResponse.json();
           const totalCandidates = candidates.length;
-          
+
           if (totalCandidates === 0) {
             throw new Error("Nenhum candidato encontrado na lista selecionada");
           }
-          
+
           // Inicializar barra de progresso
           setSendingProgress({
             isVisible: true,
@@ -247,11 +270,11 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
             percentage: 0,
             selectionName: selectionData.name
           });
-          
+
           // Simular progresso incrementalmente
           for (let i = 1; i <= totalCandidates; i++) {
             await new Promise(resolve => setTimeout(resolve, 300)); // 300ms por candidato
-            
+
             const percentage = Math.round((i / totalCandidates) * 100);
             setSendingProgress(prev => ({
               ...prev,
@@ -259,19 +282,19 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
               percentage
             }));
           }
-          
-          // Enviar realmente via API com timeout
-          console.log(`🚀 Iniciando envio WhatsApp para seleção ${newSelection.id}`);
-          
+
+          // 🔥 ENVIO DIRETO VIA BAILEYS PURO - usando endpoint existente
+          console.log(`🟣 Iniciando envio via Baileys puro para seleção ${newSelection.id}`);
+
           const sendResponse = await Promise.race([
-            apiRequest(`/api/selections/${newSelection.id}/send-whatsapp`, 'POST'),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout: Envio demorou mais que 30 segundos')), 30000)
+            apiRequest(`/api/selections/${newSelection.id}/send-whatsapp?baileys=direct`, 'POST'),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout: Envio Baileys demorou mais que 30 segundos')), 30000)
             )
           ]) as Response;
-          
+
           console.log(`📡 Resposta do envio WhatsApp:`, sendResponse.status);
-          
+
           if (!sendResponse.ok) {
             let errorMessage = 'Erro no envio WhatsApp';
             try {
@@ -286,54 +309,54 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
             console.error(`❌ Lançando erro:`, errorMessage);
             throw new Error(errorMessage);
           }
-          
+
           const sendResult = await sendResponse.json();
           console.log(`✅ Resultado do envio:`, sendResult);
-          
+
           // Finalizar progresso
           setSendingProgress(prev => ({
             ...prev,
             isVisible: false
           }));
-          
+
           return { selection: newSelection, sendResult };
-          
+
         } catch (sendError: any) {
           console.error(`❌ Erro no envio WhatsApp:`, sendError);
           console.error(`❌ Mensagem do erro:`, sendError.message);
-          
+
           // Usar a mensagem do erro diretamente se existir
           let errorMessage = sendError.message || "Erro desconhecido no envio";
-          
+
           // Garantir que mensagens específicas sejam mais claras
-          if (errorMessage.includes("WhatsApp não está conectado")) {
-            errorMessage = "WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.";
+          if (errorMessage.includes("Baileys não está conectado")) {
+            errorMessage = "Baileys não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.";
           }
-          
+
           setSendingProgress(prev => ({
             ...prev,
             isVisible: false,
             error: errorMessage
           }));
-          
+
           return { selection: newSelection, sendError: { message: errorMessage } };
         }
       }
-      
+
       return { selection: newSelection };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       resetForm();
-      
+
       if (data.sendResult) {
-        toast({ 
-          title: "Entrevistas enviadas com sucesso!", 
+        toast({
+          title: "Entrevistas enviadas com sucesso!",
           description: `${data.sendResult.sentCount || sendingProgress.total} mensagens WhatsApp enviadas.`
         });
       } else if (data.sendError) {
-        toast({ 
-          title: "Seleção criada mas falha no envio", 
+        toast({
+          title: "Seleção criada mas falha no envio",
           description: data.sendError.message || "Erro no envio via WhatsApp",
           variant: "destructive"
         });
@@ -343,17 +366,20 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     },
     onError: (error: any) => {
       setSendingProgress(prev => ({ ...prev, isVisible: false }));
-      toast({ 
-        title: "Erro ao criar seleção", 
+      toast({
+        title: "Erro ao criar seleção",
         description: error.message || "Erro desconhecido",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
 
-  // Mutation para reenviar WhatsApp
+  // Mutation para reenviar WhatsApp  
   const resendWhatsAppMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/selections/${id}/send-whatsapp`, 'POST'),
+    mutationFn: async (id: number) => {
+      const response = await apiRequest(`/api/selections/${id}/send-whatsapp`, 'POST');
+      return await response.json();
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       toast({
@@ -376,7 +402,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     setEditingSelection(null);
     setNomeSelecao("");
     // For client users, automatically set their clientId; for master users, reset to null
-    setSelectedClientId(user?.role === 'client' ? user.clientId : null);
+    setSelectedClientId(user?.role === 'client' ? (user.clientId || null) : null);
     setCandidateListId(null);
     setJobId("");
     setMensagemWhatsApp(defaultWhatsAppMessage);
@@ -395,25 +421,25 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
   // Iniciar edição
   const startEdit = (selection: Selection) => {
     setEditingSelection(selection);
-    setNomeSelecao(selection.nomeSelecao);
+    setNomeSelecao(selection.name);
     setSelectedClientId(selection.clientId);
-    setCandidateListId(selection.candidateListId);
+    setCandidateListId(selection.candidateListId || null);
     setJobId(selection.jobId);
-    setMensagemWhatsApp(selection.mensagemWhatsApp || defaultWhatsAppMessage);
+    setMensagemWhatsApp(selection.whatsappTemplate || defaultWhatsAppMessage);
     setEnviarWhatsApp(true); // Sempre WhatsApp por padrão
-    setAgendamento(selection.agendamento ? new Date(selection.agendamento).toISOString().slice(0, 16) : "");
-    setTipoEnvio(selection.agendamento ? "agendar" : "agora");
+    setAgendamento(selection.scheduledFor ? new Date(selection.scheduledFor).toISOString().slice(0, 16) : "");
+    setTipoEnvio(selection.scheduledFor ? "agendar" : "agora");
     setShowForm(true);
   };
 
   // Duplicar seleção
   const duplicateSelection = (selection: Selection) => {
     setEditingSelection(null); // Não é edição, é criação de nova seleção
-    setNomeSelecao(`${selection.name || selection.nomeSelecao} - Cópia`);
+    setNomeSelecao(`${selection.name} - Cópia`);
     setSelectedClientId(selection.clientId);
-    setCandidateListId(selection.candidateListId);
+    setCandidateListId(selection.candidateListId || null);
     setJobId(selection.jobId);
-    setMensagemWhatsApp(selection.whatsappTemplate || selection.mensagemWhatsApp || defaultWhatsAppMessage);
+    setMensagemWhatsApp(selection.whatsappTemplate || defaultWhatsAppMessage);
     setEnviarWhatsApp(true); // Sempre WhatsApp por padrão
     setAgendamento(""); // Reset agendamento para nova seleção
     setTipoEnvio("agora"); // Default para enviar agora
@@ -423,34 +449,34 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
   // Formatar data e hora
   const formatDateTime = (dateInput: any) => {
     if (!dateInput) return { date: 'N/A', time: 'N/A' };
-    
+
     let date: Date;
-    
+
     // Verificar se é um timestamp do Firebase (objeto com seconds)
     if (dateInput && typeof dateInput === 'object' && 'seconds' in dateInput) {
       date = new Date(dateInput.seconds * 1000);
     } else {
       date = new Date(dateInput);
     }
-    
+
     // Verificar se a data é válida
     if (isNaN(date.getTime())) {
       return { date: 'Data inválida', time: 'N/A' };
     }
-    
+
     const dateFormatted = date.toLocaleDateString('pt-BR');
-    const timeFormatted = date.toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    const timeFormatted = date.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
-    
+
     return { date: dateFormatted, time: timeFormatted };
   };
 
   // Salvar seleção
   const salvarSelecao = () => {
     console.log('🎯 salvarSelecao iniciada');
-    
+
     if (!nomeSelecao.trim()) {
       toast({ title: "Nome da seleção é obrigatório", variant: "destructive" });
       return;
@@ -502,7 +528,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     console.log('📋 Dados da seleção:', selectionData);
     console.log('🔄 Tipo de envio:', tipoEnvio);
     console.log('📱 Enviar WhatsApp:', enviarWhatsApp);
-    
+
     if (editingSelection) {
       console.log('✏️ Editando seleção existente');
       updateSelectionMutation.mutate(selectionData);
@@ -528,7 +554,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       return true;
     })
     .filter(selection =>
-      (selection.name || selection.nomeSelecao || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (selection.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
   return (
@@ -550,7 +576,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Progresso: {sendingProgress.current}/{sendingProgress.total}</span>
@@ -558,7 +584,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                 </div>
                 <Progress value={sendingProgress.percentage} className="h-3" />
               </div>
-              
+
               <div className="text-sm text-blue-600">
                 Enviando mensagens WhatsApp para os candidatos...
               </div>
@@ -605,7 +631,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
               </Select>
             </div>
           )}
-          <Button 
+          <Button
             onClick={() => {
               resetForm();
               setShowForm(true);
@@ -765,7 +791,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
             {/* Botões de ação */}
             <div className="flex gap-2 pt-4 border-t">
-              <Button 
+              <Button
                 onClick={salvarSelecao}
                 disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
@@ -773,13 +799,13 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                 {createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending ? (
                   createAndSendMutation.isPending ? "Enviando WhatsApp..." : "Salvando..."
                 ) : (
-                  tipoEnvio === "agora" 
+                  tipoEnvio === "agora"
                     ? (editingSelection ? "Salvar e Enviar" : "Salvar e Enviar")
                     : (editingSelection ? "Salvar e Agendar" : "Salvar e Agendar")
                 )}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={resetForm}
                 disabled={createSelectionMutation.isPending || updateSelectionMutation.isPending || createAndSendMutation.isPending}
               >
@@ -828,18 +854,18 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                   <TableRow key={selection.id}>
                     <TableCell className="font-medium">{selection.name}</TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         className={
                           selection.status === 'active' ? 'bg-blue-500 hover:bg-blue-600 text-white' :
-                          selection.status === 'enviado' ? 'bg-green-500 hover:bg-green-600 text-white' :
-                          selection.status === 'completed' ? 'bg-gray-500 hover:bg-gray-600 text-white' :
-                          'bg-yellow-500 hover:bg-yellow-600 text-white'
+                            selection.status === 'enviado' ? 'bg-green-500 hover:bg-green-600 text-white' :
+                              selection.status === 'completed' ? 'bg-gray-500 hover:bg-gray-600 text-white' :
+                                'bg-yellow-500 hover:bg-yellow-600 text-white'
                         }
                       >
                         {selection.status === 'draft' ? 'Rascunho' :
-                         selection.status === 'active' ? 'Ativo' :
-                         selection.status === 'enviado' ? 'Enviado' :
-                         selection.status === 'completed' ? 'Concluído' : selection.status}
+                          selection.status === 'active' ? 'Ativo' :
+                            selection.status === 'enviado' ? 'Enviado' :
+                              selection.status === 'completed' ? 'Concluído' : selection.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -861,11 +887,11 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                             <span>{selection.status === 'enviado' ? '100%' : selection.status === 'active' ? '0%' : '0%'}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                              style={{ 
-                                width: selection.status === 'enviado' ? '100%' : 
-                                       selection.status === 'active' ? '0%' : '0%' 
+                              style={{
+                                width: selection.status === 'enviado' ? '100%' :
+                                  selection.status === 'active' ? '0%' : '0%'
                               }}
                             ></div>
                           </div>
@@ -902,18 +928,32 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
-                        
+
                         {(selection.status === 'draft' || selection.status === 'active') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => resendWhatsAppMutation.mutate(selection.id)}
-                            disabled={resendWhatsAppMutation.isPending}
-                            title="Reenviar WhatsApp"
-                            className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resendWhatsAppMutation.mutate(selection.id)}
+                              disabled={resendWhatsAppMutation.isPending}
+                              title="Reenviar WhatsApp (método atual)"
+                              className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => sendDirectBaileysMutation.mutate(selection.id)}
+                              disabled={sendDirectBaileysMutation.isPending}
+                              title="Enviar via Baileys Puro (sem Evolution API)"
+                              className="text-purple-600 hover:text-purple-700 border-purple-300 hover:bg-purple-50"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              🟣
+                            </Button>
+                          </>
                         )}
 
                         <AlertDialog>
