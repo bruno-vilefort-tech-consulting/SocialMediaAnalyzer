@@ -1849,7 +1849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ [SELECOES] Cliente tem ${connectionsStatus.activeConnections}/${connectionsStatus.totalConnections} conexões ativas`);
       
       // Para envio, usar o primeiro slot conectado através do novo sistema
-      const { simpleMultiBailey } = await import('../whatsapp/services/simpleMultiBailey');
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
       const firstActiveConnection = connectionsStatus.connections?.find(conn => conn.isConnected);
       if (!firstActiveConnection) {
         console.log(`❌ [SELECOES] Nenhum slot ativo encontrado para cliente ${clientIdStr}`);
@@ -1933,7 +1933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // 🔥 CORREÇÃO: Enviar via sistema multiWhatsApp usando slot ativo
             console.log(`📲 [SELECOES] Enviando via slot ${slotNumber} para ${candidate.whatsapp}`);
-            const sendResult = await simpleMultiBailey.sendMessage(
+            const sendResult = await simpleMultiBaileyService.sendMessage(
               clientIdStr,
               slotNumber,
               candidate.whatsapp,

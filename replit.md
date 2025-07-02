@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ SISTEMA SELEÇÕES WHATSAPP UNIFICADO COMPLETAMENTE - Páginas /configuracoes e /selecoes agora usam mesma arquitetura
+  - **Inconsistência arquitetural corrigida**: Página /selecoes usava clientWhatsAppService enquanto /configuracoes usava multiWhatsAppService
+  - **Unificação completa implementada**: Ambas as páginas agora usam exclusivamente multiWhatsAppService para verificação de status
+  - **Endpoint /api/selections/:id/send-whatsapp atualizado**: Substituição de clientWhatsAppService.getConnectionStatus() por multiWhatsAppService.getClientConnections()
+  - **Sistema de envio corrigido**: Utiliza simpleMultiBaileyService.sendMessage() com slot específico para envio real
+  - **Validação de conexões unificada**: Mesma verificação de activeConnections em ambas as interfaces
+  - **Status consistente**: Páginas mostram dados idênticos sobre conexões WhatsApp (1/3 ativas)
+  - **Arquitetura limpa**: Sistema híbrido eliminado, apenas multiWhatsApp usado em toda aplicação
+  - **Funcionalidade preservada**: Todos os recursos de envio de mensagens e verificação de status mantidos
+
 - July 2, 2025: ✅ SISTEMA ENVIO DE MENSAGENS WHATSAPP CORRIGIDO - Problema de sockets não salvos resolvido definitivamente
   - **Root cause identificado**: Método sendTestMessage() apenas simulava envio, não usava socket real do Baileys
   - **Correção implementada**: Substituição da simulação por envio real usando socket.sendMessage() do Baileys
