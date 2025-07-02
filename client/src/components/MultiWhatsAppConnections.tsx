@@ -83,6 +83,10 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
     onConnect(connection.slotNumber);
   };
 
+  const handleHideQR = () => {
+    setShowQR(false);
+  };
+
   const handleTest = () => {
     if (testPhone.trim() && testMessage.trim()) {
       onTest(connection.slotNumber, testPhone, testMessage);
@@ -148,14 +152,23 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
               </Button>
 
               {showQR && connection.qrCode && (
-                <Button
-                  onClick={handleConnect}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Atualizar QR
-                </Button>
+                <>
+                  <Button
+                    onClick={handleConnect}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Atualizar QR
+                  </Button>
+                  <Button
+                    onClick={handleHideQR}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Esconder QR
+                  </Button>
+                </>
               )}
             </>
           )}

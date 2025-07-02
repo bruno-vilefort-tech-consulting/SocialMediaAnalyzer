@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ INTERFACE WHATSAPP COMPLETA - Sistema de conexões com controle de visibilidade e QR Code escondível implementado
+  - **UI progressiva implementada**: Apenas primeira conexão visível inicialmente com botão "Adicionar Conexão"
+  - **Expansão gradual**: Botão permite expandir até máximo de 3 conexões, desaparecendo automaticamente no limite
+  - **Controle de QR Code**: Novo botão "Esconder QR" permite ocultar QR Code após conexão
+  - **Layout responsivo**: Grid mantido em 3 colunas com filtro por visibleConnections
+  - **Estado de interface**: visibleConnections controla quantas conexões mostrar, showQR controla exibição do QR Code
+  - **Funcionalidade completa**: Conectar, atualizar QR, esconder QR e adicionar conexões operacionais
+
 - July 2, 2025: ✅ CORREÇÕES CRÍTICAS DE ROUTING E ENVIO WHATSAPP FINALIZADAS - Sistema de entrevistas totalmente funcional
   - **Fix critical getClientConnections**: Corrigida chamada síncrona para await getClientConnections() em sendMessage
   - **Fix parâmetro clientId**: Todas as chamadas sendMessage agora incluem clientId obrigatório para routing correto
