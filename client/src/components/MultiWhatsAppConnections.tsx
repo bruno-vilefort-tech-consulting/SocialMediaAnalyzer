@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MessageCircle, Wifi, WifiOff, RefreshCw, Power, Loader2 } from "lucide-react";
+import { MessageCircle, Wifi, WifiOff, RefreshCw, Power, Loader2, Plus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -280,6 +280,9 @@ const MultiWhatsAppConnections: React.FC = () => {
   const [connectingSlots, setConnectingSlots] = useState<Set<number>>(new Set());
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
+  
+  // Estado para controlar quantas conexões estão visíveis
+  const [visibleConnections, setVisibleConnections] = useState<number>(1);
 
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
