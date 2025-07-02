@@ -271,36 +271,57 @@ class SimpleMultiBaileyService {
       // Criar diretório de sessão para este slot
       const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
       
-      // NOVA ESTRATÉGIA: Sempre limpar sessão existente para forçar novo QR Code
-      if (fs.existsSync(sessionPath)) {
-        console.log(`🧹 [BAILEYS-SLOT-${slotNumber}] Limpando sessão antiga para forçar novo QR Code...`);
-        fs.rmSync(sessionPath, { recursive: true, force: true });
+      // 🔥 CORREÇÃO 1: NÃO APAGAR SESSÃO - apenas criar se não existir
+      if (!fs.existsSync(sessionPath)) {
+        fs.mkdirSync(sessionPath, { recursive: true });
+        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Nova sessão criada: ${sessionPath}`);
+      } else {
+        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Usando sessão existente: ${sessionPath}`);
       }
       
-      fs.mkdirSync(sessionPath, { recursive: true });
-      console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Nova sessão criada: ${sessionPath}`);
-      
-      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação limpo...`);
+      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação...`);
       
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação limpo carregado`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
       
       let qrCodeData: string | null = null;
       
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações OTIMIZADAS v6.7.18...`);
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com versão DINÂMICA do WhatsApp...`);
       
-      // 🔥 USAR CONFIGURAÇÃO OTIMIZADA DA NOVA CLASSE
+      // 🔥 CORREÇÃO 2: Buscar versão real do WhatsApp em tempo real
+      let latestVersion: [number, number, number] = [2, 2419, 6]; // Fallback padrão
+      try {
+        if (fetchLatestBaileysVersion) {
+          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Buscando versão mais recente do WhatsApp Web...`);
+          const versionInfo = await fetchLatestBaileysVersion();
+          if (versionInfo?.version && Array.isArray(versionInfo.version) && versionInfo.version.length >= 3) {
+            latestVersion = [versionInfo.version[0], versionInfo.version[1], versionInfo.version[2]];
+            console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Versão WhatsApp obtida: ${latestVersion.join('.')}`);
+          } else {
+            console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] Versão inválida recebida, usando fallback`);
+          }
+        } else {
+          console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] fetchLatestBaileysVersion não disponível, usando fallback`);
+        }
+      } catch (versionError) {
+        console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] Falha ao obter versão dinâmica, usando fallback:`, versionError);
+      }
+      
+      // 🔥 USAR CONFIGURAÇÃO COM VERSÃO DINÂMICA
       const socketConfig = await BaileysConfig.getSocketConfig(state);
+      if (latestVersion && latestVersion.length >= 3) {
+        socketConfig.version = [latestVersion[0], latestVersion[1], latestVersion[2]];
+      }
       const socket = makeWASocket(socketConfig);
       
       console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket SUPER OTIMIZADO criado para v6.7.18`);
       console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
       
-      // 🔥 NOVA ESTRATÉGIA: Separar QR Code de autenticação completa
-      const qrPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
-        let qrResolved = false;
+      // 🔥 CORREÇÃO 3: Aguardar conexão 'open' ou gerar QR Code
+      const connectionPromise = new Promise<{ qrCode?: string; connected?: boolean; success: boolean }>((resolve) => {
+        let resolved = false;
         
-        socket.ev.on('connection.update', async (update) => {
+        socket.ev.on('connection.update', async (update: any) => {
           const { connection, lastDisconnect, qr } = update;
           
           console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Update:`, { 
@@ -310,9 +331,17 @@ class SimpleMultiBaileyService {
             hasLastDisconnect: !!lastDisconnect
           });
           
-          // 🔥 FASE 1: Capturar QR Code (retornar imediatamente)
-          if (qr && !qrResolved) {
-            qrResolved = true;
+          // 🔥 Se usuário já estava logado e conexão abre imediatamente
+          if (connection === 'open' && !resolved) {
+            resolved = true;
+            console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Usuário já conectado! Retornando isConnected=true`);
+            resolve({ connected: true, success: true });
+            return;
+          }
+          
+          // 🔥 Se precisa gerar QR Code
+          if (qr && !resolved) {
+            resolved = true;
             
             try {
               const QRCode = await import('qrcode');
@@ -325,7 +354,7 @@ class SimpleMultiBaileyService {
                 }
               });
               
-              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} chars) - Retornando para usuário`);
+              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} chars) - Aguardando scan...`);
               resolve({ qrCode: qrCodeData, success: true });
               
             } catch (qrError) {
@@ -335,19 +364,45 @@ class SimpleMultiBaileyService {
           }
         });
         
-        // Timeout aumentado para QR Code (3 minutos)
+        // Timeout aumentado para 90 segundos conforme sugerido
         setTimeout(() => {
-          if (!qrResolved) {
-            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code`);
+          if (!resolved) {
+            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout após 90s`);
             resolve({ success: false });
           }
-        }, 180000); // 3 minutos para gerar QR
+        }, 90000); // 90 segundos conforme sugerido
       });
       
       // 🔥 SISTEMA CONTÍNUO: Monitorar conexão após QR Code
       this.setupContinuousMonitoring(socket, connectionId, clientId, slotNumber, saveCreds);
       
-      const qrResult = await qrPromise;
+      const qrResult = await connectionPromise;
+      
+      // 🔥 CORREÇÃO 4: Tratar usuário já conectado
+      if (qrResult.success && qrResult.connected) {
+        // Usuário já estava logado
+        const connection: SimpleConnection = {
+          connectionId,
+          clientId,
+          slotNumber,
+          isConnected: true,
+          qrCode: null,
+          phoneNumber: null, // Será atualizado no monitoramento
+          lastConnection: new Date(),
+          service: 'baileys',
+          socket // 🔥 CRUCIAL: Manter socket ativo
+        };
+
+        this.connections.set(connectionId, connection);
+        
+        console.log(`✅ [SIMPLE-BAILEYS] Usuário já conectado para slot ${slotNumber}. Monitoramento ativo.`);
+        
+        return {
+          success: true,
+          message: 'Já conectado',
+          isConnected: true
+        };
+      }
       
       if (qrResult.success && qrResult.qrCode) {
         // Salvar conexão com socket ativo para monitoramento contínuo
