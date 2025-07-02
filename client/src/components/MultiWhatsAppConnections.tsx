@@ -51,7 +51,15 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
 }) => {
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Teste de conexão WhatsApp');
-  const [showQR, setShowQR] = useState(false);
+  // QR deve aparecer se já existe um QR Code ou se o usuário clicou para conectar
+  const [showQR, setShowQR] = useState(!!connection.qrCode);
+
+  // Atualizar showQR quando connection.qrCode mudar
+  React.useEffect(() => {
+    if (connection.qrCode && !connection.isConnected) {
+      setShowQR(true);
+    }
+  }, [connection.qrCode, connection.isConnected]);
 
   const getServiceBadgeColor = (service: string) => {
     switch (service) {
