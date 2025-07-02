@@ -1808,6 +1808,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Função auxiliar para distribuir candidatos entre slots (round-robin)
+  function distributeToSlots<T>(items: T[], slots: any[]): { slotNumber: number; items: T[] }[] {
+    const distribution: { slotNumber: number; items: T[] }[] = slots.map(slot => ({
+      slotNumber: slot.slotNumber,
+      items: []
+    }));
+    
+    items.forEach((item, index) => {
+      const slotIndex = index % slots.length;
+      distribution[slotIndex].items.push(item);
+    });
+    
+    return distribution;
+  }
+
   // Enviar entrevistas via WhatsApp Baileys (novo sistema isolado por cliente)
   app.post("/api/selections/:id/send-whatsapp", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
@@ -1848,10 +1863,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`✅ [SELECOES] Cliente tem ${connectionsStatus.activeConnections}/${connectionsStatus.totalConnections} conexões ativas`);
       
-      // Para envio, usar o primeiro slot conectado através do novo sistema
+      // 🎯 ROUND-ROBIN: Buscar todos os slots ativos para distribuição
       const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
-      const firstActiveConnection = connectionsStatus.connections?.find(conn => conn.isConnected);
-      if (!firstActiveConnection) {
+      const activeConnections = connectionsStatus.connections?.filter(conn => conn.isConnected) || [];
+      
+      if (activeConnections.length === 0) {
         console.log(`❌ [SELECOES] Nenhum slot ativo encontrado para cliente ${clientIdStr}`);
         return res.status(400).json({
           success: false,
@@ -1861,8 +1877,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log(`📱 [SELECOES] Usando slot ${firstActiveConnection.slotNumber} para envio`);
-      const slotNumber = firstActiveConnection.slotNumber;
+      console.log(`📱 [ROUND-ROBIN] Slots ativos encontrados: [${activeConnections.map(c => c.slotNumber).join(', ')}]`);
+      console.log(`📊 [ROUND-ROBIN] Distribuição será feita entre ${activeConnections.length} slots`);
 
       // Buscar candidatos da lista usando método que existe
       const allMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
@@ -1884,14 +1900,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log(`💼 Vaga encontrada: ${job.nomeVaga} (${job.perguntas?.length || 0} perguntas)`);
 
+      // 🎯 IMPLEMENTAR ROUND-ROBIN: Distribuir candidatos entre slots ativos
+      const candidatesWithWhatsApp = candidates.filter(candidate => candidate.whatsapp);
+      const slotDistribution = distributeToSlots(candidatesWithWhatsApp, activeConnections);
+      
+      console.log(`📊 [ROUND-ROBIN] Distribuição de ${candidatesWithWhatsApp.length} candidatos:`);
+      slotDistribution.forEach(dist => {
+        console.log(`   📱 Slot ${dist.slotNumber}: ${dist.items.length} candidatos`);
+        dist.items.forEach(candidate => {
+          console.log(`      - ${candidate.name} (${candidate.whatsapp})`);
+        });
+      });
+
       let messagesSent = 0;
       let messagesError = 0;
 
-      // Enviar via WhatsApp usando o sistema Baileys isolado por cliente
-      for (const candidate of candidates) {
-        if (candidate.whatsapp) {
+      // 🎯 ENVIAR MENSAGENS: Processar cada slot com seus candidatos
+      for (const slotGroup of slotDistribution) {
+        const slotNumber = slotGroup.slotNumber;
+        const slotCandidates = slotGroup.items;
+        
+        console.log(`📱 [SLOT-${slotNumber}] Processando ${slotCandidates.length} candidatos`);
+        
+        for (const candidate of slotCandidates) {
           try {
-            console.log(`📱 Enviando WhatsApp para ${candidate.name} (${candidate.whatsapp})`);
+            console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.name} (${candidate.whatsapp})`);
             
             // Gerar token único primeiro
             const token = `interview_${Date.now()}_${candidate.id}`;
@@ -1931,8 +1964,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
             personalizedMessage = personalizedMessage + confirmationText;
 
-            // 🔥 CORREÇÃO: Enviar via sistema multiWhatsApp usando slot ativo
-            console.log(`📲 [SELECOES] Enviando via slot ${slotNumber} para ${candidate.whatsapp}`);
+            // 🔥 ROUND-ROBIN: Enviar via sistema multiWhatsApp usando slot específico
+            console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.whatsapp}`);
             const sendResult = await simpleMultiBaileyService.sendMessage(
               clientIdStr,
               candidate.whatsapp,
@@ -1968,11 +2001,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             messagesError++;
             console.error(`❌ Erro no envio WhatsApp para ${candidate.name}:`, error);
           }
-        } else {
-          console.log(`⚠️ Candidato ${candidate.name} sem WhatsApp`);
-          messagesError++;
         }
+        
+        console.log(`📊 [SLOT-${slotNumber}] Finalizado: ${slotCandidates.length} candidatos processados`);
       }
+
+      console.log(`🎯 [ROUND-ROBIN] Distribuição completa - Total: ${messagesSent} enviadas, ${messagesError} erros`);
 
       // Atualizar status da seleção
       if (messagesSent > 0) {
@@ -1993,7 +2027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         sentCount: messagesSent,
         errorCount: messagesError,
-        message: `${messagesSent} mensagens enviadas via WhatsApp, ${messagesError} erros`
+        message: `${messagesSent} mensagens enviadas via WhatsApp com round-robin entre ${activeConnections.length} slots, ${messagesError} erros`
       });
 
     } catch (error) {
@@ -2005,6 +2039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errorCount: 0
       });
     }
+  });
   });
 
   app.post("/api/selections/:id/send", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
