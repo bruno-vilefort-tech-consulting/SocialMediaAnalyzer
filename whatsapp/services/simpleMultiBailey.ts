@@ -110,9 +110,14 @@ class SimpleMultiBaileyService {
         fs.mkdirSync(sessionPath, { recursive: true });
       }
       
+      console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Criando sessão em: ${sessionPath}`);
+      
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
       
       let qrCodeData: string | null = null;
+      
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Iniciando socket Baileys...`);
       
       const socket = makeWASocket({
         auth: state,
@@ -120,6 +125,8 @@ class SimpleMultiBaileyService {
         browser: ['Baileys Multi', 'Chrome', '1.0.0'],
         logger: { level: 'silent', child: () => ({ level: 'silent' } as any) } as any
       });
+      
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado com sucesso`);
       
       // Promise para aguardar QR Code ou conexão
       const connectionPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
@@ -166,13 +173,14 @@ class SimpleMultiBaileyService {
         
         socket.ev.on('creds.update', saveCreds);
         
-        // Timeout de 30 segundos para gerar QR Code
+        // Timeout de 60 segundos para gerar QR Code
         setTimeout(() => {
           if (!resolved) {
+            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code`);
             resolved = true;
             resolve({ success: false });
           }
-        }, 30000);
+        }, 60000);
       });
       
       const result = await connectionPromise;
