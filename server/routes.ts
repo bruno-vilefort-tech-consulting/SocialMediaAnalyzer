@@ -1825,16 +1825,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return distribution;
   }
 
-  // Enviar entrevistas via WhatsApp Baileys (novo sistema isolado por cliente)
+  // Enviar entrevistas via WhatsApp Baileys com sistema anti-rate limit
   app.post("/api/selections/:id/send-whatsapp", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const selectionId = parseInt(req.params.id);
       const isBaileysDirect = req.query.baileys === 'direct';
       
+      // 🛡️ CONFIGURAÇÃO ANTI-RATE LIMIT recebida do frontend
+      const rateLimitConfig = req.body?.rateLimitConfig || {
+        delayPerMessage: 1000, // Default: 1s entre mensagens
+        batchSize: 10, // Default: lotes de 10
+        estimatedTime: 60 // Default: 1 min estimado
+      };
+      
+      console.log(`🛡️ [RATE-LIMIT] Config recebida:`, rateLimitConfig);
+      
       if (isBaileysDirect) {
-        console.log(`🟣 [BAILEYS-DIRETO] Iniciando envio BAILEYS PURO para seleção ${selectionId}`);
+        console.log(`🟣 [BAILEYS-DIRETO] Iniciando envio BAILEYS PURO para seleção ${selectionId} com rate limit ${rateLimitConfig.delayPerMessage}ms`);
       } else {
-        console.log(`🚀 Iniciando envio WhatsApp Baileys para seleção ${selectionId}`);
+        console.log(`🚀 Iniciando envio WhatsApp Baileys para seleção ${selectionId} com proteção anti-rate limit`);
       }
       
       const selection = await storage.getSelectionById(selectionId);
@@ -1951,12 +1960,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let messagesSent = 0;
       let messagesError = 0;
+      let rateLimitDetected = 0;
+      let adaptiveDelayMultiplier = 1.0; // Multiplicador adaptativo para o delay
 
-      // 🎯 ROUND-ROBIN: Processar cada slot com seus candidatos
+      // 🛡️ BATCH PROCESSING: Dividir processamento em lotes para evitar rate limit
+      console.log(`🛡️ [RATE-LIMIT] Aplicando rate limiting: ${rateLimitConfig.delayPerMessage}ms entre mensagens`);
+      
+      // 🎯 ROUND-ROBIN: Processar cada slot com seus candidatos aplicando rate limit
       for (const { slotNumber, items: slotCandidates } of slotsDistribution) {
-        console.log(`🚀 [SLOT-${slotNumber}] Iniciando processamento de ${slotCandidates.length} candidatos`);
+        console.log(`🚀 [SLOT-${slotNumber}] Iniciando processamento de ${slotCandidates.length} candidatos com rate limit`);
         
-        for (const candidate of slotCandidates) {
+        for (let candidateIndex = 0; candidateIndex < slotCandidates.length; candidateIndex++) {
+          const candidate = slotCandidates[candidateIndex];
           if (candidate.whatsapp) {
             try {
               // Criar entrevista para o candidato
@@ -1992,16 +2007,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
               personalizedMessage = personalizedMessage + confirmationText;
 
-              // 🔥 ROUND-ROBIN: Enviar via sistema multiWhatsApp usando slot específico
+              // 🔥 ROUND-ROBIN: Enviar via sistema multiWhatsApp usando slot específico com retry e backoff
               console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.whatsapp}`);
-              const sendResult = await simpleMultiBaileyService.sendMessage(
-                clientIdStr,
-                candidate.whatsapp,
-                personalizedMessage,
-                slotNumber
-              );
               
-              console.log(`📱 Resultado do envio para ${candidate.name}:`, sendResult);
+              let sendResult;
+              let attempt = 1;
+              const maxAttempts = 3;
+              
+              // 🛡️ RETRY COM BACKOFF EXPONENCIAL em caso de rate limit
+              while (attempt <= maxAttempts) {
+                sendResult = await simpleMultiBaileyService.sendMessage(
+                  clientIdStr,
+                  candidate.whatsapp,
+                  personalizedMessage,
+                  slotNumber
+                );
+                
+                // Se sucesso ou erro não relacionado a rate limit, sair do loop
+                if (sendResult?.success || 
+                    (!sendResult?.error?.includes('rate') && 
+                     !sendResult?.error?.includes('limit') &&
+                     !sendResult?.error?.includes('blocked') &&
+                     !sendResult?.error?.includes('spam'))) {
+                  break;
+                }
+                
+                // Rate limit detectado - aplicar backoff exponencial E aumentar delay global
+                if (attempt < maxAttempts) {
+                  rateLimitDetected++;
+                  
+                  // 🧠 ADAPTIVE LEARNING: Aumentar delay para próximas mensagens
+                  if (rateLimitDetected > 2) {
+                    adaptiveDelayMultiplier = Math.min(adaptiveDelayMultiplier * 1.5, 3.0); // Máximo 3x o delay
+                    console.log(`🧠 [ADAPTIVE] Rate limit frequente detectado. Aumentando delay global para ${adaptiveDelayMultiplier.toFixed(1)}x`);
+                  }
+                  
+                  const backoffDelay = rateLimitConfig.delayPerMessage * Math.pow(2, attempt - 1); // 1x, 2x, 4x
+                  console.log(`🚫 [RATE-LIMIT-DETECTED] Tentativa ${attempt} falhou (${sendResult?.error}). Backoff: ${backoffDelay}ms`);
+                  await new Promise(resolve => setTimeout(resolve, backoffDelay));
+                }
+                
+                attempt++;
+              }
+              
+              console.log(`📱 Resultado final do envio para ${candidate.name} (${attempt - 1} tentativas):`, sendResult);
 
               if (sendResult && sendResult.success) {
                 messagesSent++;
@@ -2025,6 +2074,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: 'failed'
                 });
               }
+
+              // 🛡️ RATE LIMITING: Aplicar delay adaptativo entre mensagens (exceto na última mensagem do slot)
+              if (candidateIndex < slotCandidates.length - 1) {
+                const adaptiveDelay = Math.ceil(rateLimitConfig.delayPerMessage * adaptiveDelayMultiplier);
+                console.log(`⏱️ [RATE-LIMIT] Aguardando ${adaptiveDelay}ms (${adaptiveDelayMultiplier.toFixed(1)}x) antes da próxima mensagem...`);
+                await new Promise(resolve => setTimeout(resolve, adaptiveDelay));
+              }
             } catch (error) {
               messagesError++;
               console.error(`❌ Erro no envio WhatsApp para ${candidate.name}:`, error);
@@ -2032,10 +2088,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        console.log(`📊 [SLOT-${slotNumber}] Finalizado: ${slotCandidates.length} candidatos processados`);
+        console.log(`📊 [SLOT-${slotNumber}] Finalizado: ${slotCandidates.length} candidatos processados com rate limit`);
+        
+        // 🛡️ RATE LIMITING: Pequeno delay entre slots para dar respiro adicional
+        if (slotNumber < slotsDistribution.length) {
+          const slotDelay = Math.min(rateLimitConfig.delayPerMessage * 0.5, 500); // 50% do delay ou máximo 500ms
+          console.log(`⏱️ [RATE-LIMIT] Pausa entre slots: ${slotDelay}ms`);
+          await new Promise(resolve => setTimeout(resolve, slotDelay));
+        }
       }
 
-      console.log(`🎯 [ROUND-ROBIN] Distribuição completa - Total: ${messagesSent} enviadas, ${messagesError} erros`);
+      console.log(`🛡️ [RATE-LIMIT] Envio completo com proteção anti-rate limit:`);
+      console.log(`  📊 Total: ${messagesSent} enviadas, ${messagesError} erros`);
+      console.log(`  🚫 Rate limits detectados: ${rateLimitDetected}`);
+      console.log(`  🧠 Delay adaptativo final: ${adaptiveDelayMultiplier.toFixed(1)}x`);
+      console.log(`  ⏱️ Configuração: ${rateLimitConfig.delayPerMessage}ms base`);
+      console.log(`  🎯 Distribuição: ${activeConnections.length} slots ativos`);
 
       // Atualizar status da seleção
       if (messagesSent > 0) {
@@ -2056,7 +2124,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         sentCount: messagesSent,
         errorCount: messagesError,
-        message: `${messagesSent} mensagens enviadas via WhatsApp com round-robin entre ${activeConnections.length} slots, ${messagesError} erros`
+        rateLimitApplied: rateLimitConfig,
+        rateLimitStats: {
+          detectedCount: rateLimitDetected,
+          finalDelayMultiplier: adaptiveDelayMultiplier,
+          adaptiveDelayApplied: adaptiveDelayMultiplier > 1.0
+        },
+        message: `🛡️ ${messagesSent} mensagens enviadas via WhatsApp com sistema anti-rate limit ${adaptiveDelayMultiplier > 1.0 ? '(adaptativo)' : ''} (${rateLimitConfig.delayPerMessage}ms/msg) entre ${activeConnections.length} slots, ${messagesError} erros${rateLimitDetected > 0 ? `, ${rateLimitDetected} rate limits detectados` : ''}`
       });
 
     } catch (error) {
@@ -2379,13 +2453,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 } else {
                   console.log(`⚠️ Tentativa ${attempts} falhou para ${normalizedPhone}`);
                   if (attempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                    await new Promise(resolve => setTimeout(resolve, 300)); // Otimizado: 300ms antes do retry
                   }
                 }
               } catch (error) {
                 console.error(`❌ Erro tentativa ${attempts} para ${normalizedPhone}:`, error);
                 if (attempts < maxAttempts) {
-                  await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                  await new Promise(resolve => setTimeout(resolve, 300)); // Otimizado: 300ms antes do retry
                 }
               }
             }
