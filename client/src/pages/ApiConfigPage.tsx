@@ -12,6 +12,7 @@ import { Bot, Settings, CheckCircle, AlertCircle, Loader2, Save, Volume2, Messag
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import MultiWhatsAppConnections from "@/components/MultiWhatsAppConnections";
 
 interface MasterSettings {
   openaiApiKey?: string | null;

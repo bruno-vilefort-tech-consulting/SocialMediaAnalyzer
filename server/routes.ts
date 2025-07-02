@@ -13,6 +13,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "../whatsapp/services/whatsappQRService";
 import { whatsappManager } from "../whatsapp/services/whatsappManager";
+import { multiWhatsAppService } from "../whatsapp/services/multiWhatsAppService";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";
@@ -5252,6 +5253,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: 'Erro interno ao limpar sessão' 
+      });
+    }
+  });
+
+  // ==================== MÚLTIPLAS CONEXÕES WHATSAPP ====================
+  
+  // Obter status de todas as 3 conexões de um cliente
+  app.get("/api/multi-whatsapp/connections", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.query.clientId : null);
+      
+      if (!clientId) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Client ID required' 
+        });
+      }
+
+      console.log(`🔍 [MULTI-WA] Verificando conexões para cliente ${clientId}`);
+      
+      const connections = await multiWhatsAppService.getClientConnections(clientId.toString());
+      
+      console.log(`📱 [MULTI-WA] Status das conexões:`, {
+        clientId,
+        totalConnections: connections.totalConnections,
+        activeConnections: connections.activeConnections
+      });
+      
+      res.json({
+        success: true,
+        clientId: connections.clientId,
+        connections: connections.connections,
+        totalConnections: connections.totalConnections,
+        activeConnections: connections.activeConnections
+      });
+      
+    } catch (error) {
+      console.error('❌ [MULTI-WA] Erro ao obter conexões:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao obter conexões',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Conectar um slot específico (1, 2 ou 3)
+  app.post("/api/multi-whatsapp/connect/:slotNumber", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      const slotNumber = parseInt(req.params.slotNumber);
+      
+      if (!clientId) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Client ID required' 
+        });
+      }
+
+      if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 3) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Slot number must be 1, 2, or 3' 
+        });
+      }
+
+      console.log(`🔗 [MULTI-WA] Conectando slot ${slotNumber} para cliente ${clientId}`);
+      
+      const result = await multiWhatsAppService.connectSlot(clientId.toString(), slotNumber);
+      
+      console.log(`📱 [MULTI-WA] Resultado conexão slot ${slotNumber}:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0
+      });
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error(`❌ [MULTI-WA] Erro ao conectar slot:`, error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao conectar slot',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Desconectar um slot específico
+  app.post("/api/multi-whatsapp/disconnect/:slotNumber", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      const slotNumber = parseInt(req.params.slotNumber);
+      
+      if (!clientId) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Client ID required' 
+        });
+      }
+
+      if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 3) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Slot number must be 1, 2, or 3' 
+        });
+      }
+
+      console.log(`🔌 [MULTI-WA] Desconectando slot ${slotNumber} para cliente ${clientId}`);
+      
+      const result = await multiWhatsAppService.disconnectSlot(clientId.toString(), slotNumber);
+      
+      console.log(`📱 [MULTI-WA] Resultado desconexão slot ${slotNumber}:`, result);
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error(`❌ [MULTI-WA] Erro ao desconectar slot:`, error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao desconectar slot',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Enviar mensagem de teste usando qualquer conexão ativa
+  app.post("/api/multi-whatsapp/test", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      const { phoneNumber, message, preferredSlot } = req.body;
+      
+      if (!clientId) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Client ID required' 
+        });
+      }
+
+      if (!phoneNumber || !message) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Phone number and message are required' 
+        });
+      }
+
+      console.log(`📤 [MULTI-WA] Enviando teste para ${phoneNumber} via cliente ${clientId}`);
+      
+      const result = await multiWhatsAppService.sendMessage(
+        clientId.toString(),
+        phoneNumber,
+        message,
+        preferredSlot ? parseInt(preferredSlot) : undefined
+      );
+      
+      console.log(`📱 [MULTI-WA] Resultado envio teste:`, result);
+      
+      res.json(result);
+      
+    } catch (error) {
+      console.error(`❌ [MULTI-WA] Erro ao enviar teste:`, error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno ao enviar mensagem de teste',
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   });
