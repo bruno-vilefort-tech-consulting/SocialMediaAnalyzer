@@ -1,22 +1,50 @@
-// Test script to check WhatsApp connection status
-import fetch from 'node-fetch';
+/**
+ * Script para testar o status do sistema WhatsApp e simular uma entrevista interativa
+ */
 
 async function testWhatsAppStatus() {
+  console.log('🔍 [STATUS] Testando sistema WhatsApp e TTS...\n');
+  
   try {
-    const response = await fetch('http://localhost:5000/api/whatsapp-client/status', {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjE3NTAxMzEwNDkxNzMiLCJlbWFpbCI6ImRhbmllbG1vcmVpcmFicmFnYUBnbWFpbC5jb20iLCJyb2xlIjoiY2xpZW50IiwiY2xpZW50SWQiOjE3NDk4NDk5ODc1NDMsImlhdCI6MTc1MDcxMTgyNn0.Gkm3oOFR8WI0hU9R2jQS2iBcKfZJSe_iMzgOxQwPcnw',
-        'Content-Type': 'application/json'
-      }
+    // 1. Verificar conexões WhatsApp do cliente
+    console.log('1️⃣ Verificando conexões WhatsApp...');
+    const { simpleMultiBaileyService } = await import('./whatsapp/services/simpleMultiBailey.ts');
+    const clientId = '1749849987543';
+    const clientConnections = await simpleMultiBaileyService.getClientConnections(clientId);
+    
+    console.log('📊 [STATUS] Resultado das conexões:', {
+      hasConnections: !!clientConnections,
+      activeConnections: clientConnections?.activeConnections || 0,
+      totalConnections: clientConnections?.connections?.length || 0
     });
-
-    const data = await response.json();
-    console.log('WhatsApp Status Response:', JSON.stringify(data, null, 2));
+    
+    if (!clientConnections || clientConnections.activeConnections === 0) {
+      console.log('❌ [STATUS] Nenhuma conexão WhatsApp ativa');
+      console.log('💡 [STATUS] Conecte pelo menos uma instância na página Configurações antes de testar');
+      return;
+    }
+    
+    console.log('✅ [STATUS] Conexões WhatsApp disponíveis!\n');
+    
+    // 2. Testar sistema interativo de entrevistas
+    console.log('2️⃣ Simulando início de entrevista interativa...');
+    const { interactiveInterviewService } = await import('./server/interactiveInterviewService.js');
+    
+    const testPhone = '5511984316526';
+    const testMessage = '1'; // Comando para iniciar entrevista
+    
+    console.log(`📱 [STATUS] Simulando mensagem "${testMessage}" do número ${testPhone}`);
+    
+    // Simular handleMessage
+    await interactiveInterviewService.handleMessage(testPhone + '@s.whatsapp.net', testMessage, null, clientId);
+    
+    console.log('✅ [STATUS] Simulação de entrevista executada!');
+    console.log('📋 [STATUS] Verifique os logs acima para detalhes do processo TTS');
     
   } catch (error) {
-    console.error('Error testing WhatsApp status:', error);
+    console.error('❌ [STATUS] Erro no teste:', error);
   }
 }
 
-testWhatsAppStatus();
+// Executar teste
+testWhatsAppStatus().catch(console.error);

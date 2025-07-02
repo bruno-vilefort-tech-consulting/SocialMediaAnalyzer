@@ -357,18 +357,52 @@ class InteractiveInterviewService {
 
   private async sendQuestionAudio(phone: string, questionText: string, clientId: string): Promise<void> {
     try {
+      console.log(`\n🎙️ [TTS_DEBUG] ===== INICIANDO GERAÇÃO DE ÁUDIO TTS =====`);
+      console.log(`📱 [TTS_DEBUG] Telefone: ${phone}`);
+      console.log(`👤 [TTS_DEBUG] Cliente ID: ${clientId}`);
+      console.log(`📝 [TTS_DEBUG] Texto: "${questionText}"`);
+      
       // Buscar configuração OpenAI
+      console.log(`🔍 [TTS_DEBUG] Buscando configuração OpenAI...`);
       const config = await storage.getMasterSettings();
-      if (!config?.openaiApiKey) {
-        console.log(`❌ OpenAI API não configurada`);
+      
+      if (!config) {
+        console.log(`❌ [TTS_DEBUG] Master settings não encontrados`);
         return;
+      }
+      
+      if (!config.openaiApiKey) {
+        console.log(`❌ [TTS_DEBUG] OpenAI API Key não configurada no master settings`);
+        
+        // Verificar se existe na variável de ambiente
+        const envKey = process.env.OPENAI_API_KEY;
+        if (envKey) {
+          console.log(`✅ [TTS_DEBUG] Encontrou OPENAI_API_KEY na variável de ambiente: ${envKey.substring(0, 10)}...`);
+          config.openaiApiKey = envKey;
+        } else {
+          console.log(`❌ [TTS_DEBUG] OPENAI_API_KEY não encontrada nem no banco nem nas variáveis de ambiente`);
+          return;
+        }
+      } else {
+        console.log(`✅ [TTS_DEBUG] OpenAI API Key encontrada no master settings: ${config.openaiApiKey.substring(0, 10)}...`);
       }
 
       // Buscar configuração de voz do cliente
+      console.log(`🔍 [TTS_DEBUG] Buscando configuração de voz do cliente...`);
       const clientConfig = await storage.getApiConfig('client', clientId);
       const voice = clientConfig?.openaiVoice || 'nova';
+      console.log(`🎵 [TTS_DEBUG] Voz configurada: ${voice}`);
 
-      console.log(`🎙️ Gerando TTS para: "${questionText}" com voz: ${voice}`);
+      console.log(`🌐 [TTS_DEBUG] Fazendo requisição para OpenAI TTS...`);
+
+      const ttsRequest = {
+        model: "tts-1",
+        input: questionText,
+        voice: voice,
+        response_format: "opus",
+        speed: 1.0
+      };
+      console.log(`📝 [TTS_DEBUG] Dados da requisição TTS:`, ttsRequest);
 
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
@@ -376,21 +410,19 @@ class InteractiveInterviewService {
           "Authorization": `Bearer ${config.openaiApiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "tts-1",
-          input: questionText,
-          voice: voice,
-          response_format: "opus",
-          speed: 1.0
-        })
+        body: JSON.stringify(ttsRequest)
       });
 
+      console.log(`📡 [TTS_DEBUG] Resposta OpenAI - Status: ${response.status}`);
+
       if (response.ok) {
-        console.log(`✅ [TTS] Áudio gerado com sucesso - convertendo para buffer`);
+        console.log(`✅ [TTS_DEBUG] Áudio gerado com sucesso - convertendo para buffer`);
         const audioBuffer = await response.arrayBuffer();
+        console.log(`💾 [TTS_DEBUG] Buffer criado - Tamanho: ${audioBuffer.byteLength} bytes`);
         
         // Tentar enviar áudio via sistema multi-WhatsApp
         try {
+          console.log(`📁 [TTS_DEBUG] Preparando sistema de arquivos temporários...`);
           const fs = await import('fs');
           const path = await import('path');
           
@@ -398,6 +430,7 @@ class InteractiveInterviewService {
           const tempDir = path.join(process.cwd(), 'temp');
           if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
+            console.log(`📁 [TTS_DEBUG] Diretório temp criado: ${tempDir}`);
           }
           
           const tempFileName = `tts_${phone}_${Date.now()}.ogg`;
@@ -405,29 +438,48 @@ class InteractiveInterviewService {
           
           // Salvar buffer como arquivo
           fs.writeFileSync(tempFilePath, Buffer.from(audioBuffer));
-          console.log(`💾 [TTS] Áudio salvo temporariamente: ${tempFilePath}`);
+          console.log(`💾 [TTS_DEBUG] Áudio salvo temporariamente: ${tempFilePath}`);
           
+          console.log(`🔗 [TTS_DEBUG] Importando simpleMultiBailey...`);
           const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          
+          console.log(`📡 [TTS_DEBUG] Buscando conexões do cliente ${clientId}...`);
           const clientConnections = await simpleMultiBaileyService.getClientConnections(clientId);
           
+          console.log(`📊 [TTS_DEBUG] Resultado das conexões:`, {
+            hasConnections: !!clientConnections,
+            activeConnections: clientConnections?.activeConnections || 0,
+            totalConnections: clientConnections?.connections?.length || 0
+          });
+          
           if (clientConnections && clientConnections.activeConnections > 0) {
-            console.log(`📱 [TTS] Enviando áudio via simpleMultiBailey para ${phone}`);
+            console.log(`📱 [TTS_DEBUG] Cliente tem ${clientConnections.activeConnections} conexões ativas`);
             
             // Usar primeiro slot ativo
             const activeSlot = clientConnections.connections.find((conn: any) => conn.isConnected);
+            console.log(`🎯 [TTS_DEBUG] Slot ativo encontrado:`, {
+              hasActiveSlot: !!activeSlot,
+              slotNumber: activeSlot?.slotNumber,
+              isConnected: activeSlot?.isConnected
+            });
+            
             if (activeSlot) {
+              console.log(`📤 [TTS_DEBUG] Enviando áudio via slot ${activeSlot.slotNumber} para ${phone}...`);
               const result = await simpleMultiBaileyService.sendAudioMessage(clientId, activeSlot.slotNumber, phone, Buffer.from(audioBuffer));
               
+              console.log(`📋 [TTS_DEBUG] Resultado do envio:`, result);
+              
               if (result.success) {
-                console.log(`🎵 [TTS] Áudio TTS enviado com sucesso para ${phone} via slot ${activeSlot.slotNumber}`);
+                console.log(`🎵 [TTS_DEBUG] ✅ Áudio TTS enviado com sucesso para ${phone} via slot ${activeSlot.slotNumber}`);
               } else {
-                console.log(`❌ [TTS] Falha no envio do áudio: ${result.error}`);
+                console.log(`❌ [TTS_DEBUG] Falha no envio do áudio: ${result.error}`);
               }
             } else {
-              console.log(`❌ [TTS] Nenhum slot ativo encontrado`);
+              console.log(`❌ [TTS_DEBUG] Nenhum slot ativo encontrado nas conexões`);
             }
           } else {
-            console.log(`❌ [TTS] Nenhuma conexão WhatsApp ativa encontrada`);
+            console.log(`❌ [TTS_DEBUG] Nenhuma conexão WhatsApp ativa encontrada para cliente ${clientId}`);
+            console.log(`💡 [TTS_DEBUG] Configure ao menos uma conexão WhatsApp ativa na página Configurações`);
           }
           
           // Limpar arquivo temporário
@@ -443,12 +495,19 @@ class InteractiveInterviewService {
           }, 10000); // Remover após 10 segundos
           
         } catch (audioError: any) {
-          console.log(`❌ [TTS] Erro ao enviar áudio via simpleMultiBailey:`, audioError.message);
+          console.log(`❌ [TTS_DEBUG] Erro ao enviar áudio via simpleMultiBailey:`, audioError.message);
+          console.log(`📋 [TTS_DEBUG] Stack trace do erro de áudio:`, audioError.stack);
         }
+      } else {
+        const errorText = await response.text();
+        console.log(`❌ [TTS_DEBUG] Erro na API OpenAI: ${response.status} - ${errorText}`);
       }
-    } catch (error) {
-      console.log(`❌ Erro TTS:`, error.message);
+    } catch (error: any) {
+      console.log(`❌ [TTS_DEBUG] Erro geral no TTS:`, error.message);
+      console.log(`📋 [TTS_DEBUG] Stack trace do erro geral:`, error.stack);
     }
+    
+    console.log(`🏁 [TTS_DEBUG] ===== FINALIZADO PROCESSO TTS =====\n`);
   }
 
   private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
