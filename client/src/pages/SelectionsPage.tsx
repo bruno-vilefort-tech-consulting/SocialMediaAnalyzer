@@ -192,50 +192,29 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
 
 
-  // 🔥 NOVO: Enviar campanha via Baileys direto (usando endpoint existente mas com logs diferenciados)
-  const sendDirectBaileysMutation = useMutation({
+  // Enviar entrevistas via WhatsApp usando Baileys Puro Direto (única opção)
+  const sendWhatsAppMutation = useMutation({
     mutationFn: async (selectionId: number) => {
-      // Usar o endpoint existente mas com parâmetro especial para identificar como "direto"
       const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp?baileys=direct`, 'POST');
       return await response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       toast({
-        title: "Entrevistas Baileys enviadas!",
-        description: `${data.sentCount || 0} mensagens enviadas via Baileys puro. ${data.errorCount || 0} erros. Slots: ${data.activeSlots?.join(', ') || 'N/A'}`
+        title: "Entrevistas enviadas com sucesso!",
+        description: `${data.sentCount || 0} mensagens enviadas via WhatsApp. ${data.errorCount || 0} erros.`
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Erro no envio Baileys",
-        description: error?.message || "Verifique se o Baileys está conectado",
-        variant: "destructive"
-      });
-    }
-  });
-
-  // Enviar campanha WhatsApp Baileys (sistema atual)
-  const sendWhatsAppBaileysCampaignMutation = useMutation({
-    mutationFn: async (selectionId: number) => {
-      const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp`, 'POST');
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      toast({
-        title: "Entrevistas WhatsApp enviadas!",
-        description: `${data.sentCount || 0} mensagens enviadas com sucesso. ${data.errorCount || 0} erros.`
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao enviar entrevistas WhatsApp",
+        title: "Erro no envio",
         description: error?.message || "Verifique se o WhatsApp está conectado",
         variant: "destructive"
       });
     }
   });
+
+
 
   // Criar seleção e enviar automaticamente via WhatsApp com barra de progresso
   const createAndSendMutation = useMutation({
@@ -374,27 +353,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     }
   });
 
-  // Mutation para reenviar WhatsApp  
-  const resendWhatsAppMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest(`/api/selections/${id}/send-whatsapp`, 'POST');
-      return await response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      toast({
-        title: "Reenvio WhatsApp",
-        description: `${data.sentCount || 0} mensagens reenviadas com sucesso!`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro no Reenvio",
-        description: error.message || "Falha ao reenviar mensagens WhatsApp.",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // Reset do formulário
   const resetForm = () => {
@@ -930,30 +889,16 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                         </Button>
 
                         {(selection.status === 'draft' || selection.status === 'active') && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => resendWhatsAppMutation.mutate(selection.id)}
-                              disabled={resendWhatsAppMutation.isPending}
-                              title="Reenviar WhatsApp (método atual)"
-                              className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => sendDirectBaileysMutation.mutate(selection.id)}
-                              disabled={sendDirectBaileysMutation.isPending}
-                              title="Enviar via Baileys Puro (sem Evolution API)"
-                              className="text-purple-600 hover:text-purple-700 border-purple-300 hover:bg-purple-50"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                              🟣
-                            </Button>
-                          </>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => sendWhatsAppMutation.mutate(selection.id)}
+                            disabled={sendWhatsAppMutation.isPending}
+                            title="Enviar via WhatsApp"
+                            className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
                         )}
 
                         <AlertDialog>
