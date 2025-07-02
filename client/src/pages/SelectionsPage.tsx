@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X } from "lucide-react";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X, Loader2, CheckCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -69,6 +69,14 @@ export default function SelectionsPage() {
   const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  
+  // Estados para envio em background
+  const [backgroundSends, setBackgroundSends] = useState<Map<number, { 
+    selectionName: string;
+    progress: { sent: number; total: number };
+    isComplete: boolean;
+    startTime: Date;
+  }>>(new Map());
 
   // Buscar seleções
   const { data: selections = [], isLoading } = useQuery<Selection[]>({
@@ -192,20 +200,73 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
 
 
-  // Enviar entrevistas via WhatsApp usando Baileys Puro Direto (única opção)
-  const sendWhatsAppMutation = useMutation({
-    mutationFn: async (selectionId: number) => {
-      const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp?baileys=direct`, 'POST');
+  // Mutation apenas para salvar seleção (rápida)
+  const saveOnlyMutation = useMutation({
+    mutationFn: async (selectionData: any) => {
+      const response = await apiRequest('/api/selections', 'POST', selectionData);
       return await response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
       toast({
-        title: "Entrevistas enviadas com sucesso!",
-        description: `${data.sentCount || 0} mensagens enviadas via WhatsApp. ${data.errorCount || 0} erros.`
+        title: "Seleção salva!",
+        description: "Processando envio em background...",
       });
+    }
+  });
+
+  // Mutation para envio em background (não bloqueia interface)
+  const backgroundSendMutation = useMutation({
+    mutationFn: async (selectionId: number) => {
+      const response = await apiRequest(`/api/selections/${selectionId}/send-whatsapp?baileys=direct`, 'POST');
+      return await response.json();
     },
-    onError: (error: any) => {
+    onSuccess: (data, selectionId) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      
+      // Marca o envio como completo
+      setBackgroundSends(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(selectionId);
+        if (existing) {
+          newMap.set(selectionId, {
+            ...existing,
+            isComplete: true,
+            progress: { sent: data.sentCount || 0, total: data.sentCount || 0 }
+          });
+        }
+        return newMap;
+      });
+
+      toast({
+        title: "Entrevistas enviadas com sucesso!",
+        description: `${data.sentCount || 0} mensagens enviadas via WhatsApp.`
+      });
+
+      // Remove da lista após 5 segundos
+      setTimeout(() => {
+        setBackgroundSends(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(selectionId);
+          return newMap;
+        });
+      }, 5000);
+    },
+    onError: (error: any, selectionId) => {
+      // Marca como erro
+      setBackgroundSends(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(selectionId);
+        if (existing) {
+          newMap.set(selectionId, {
+            ...existing,
+            isComplete: true,
+            progress: { sent: 0, total: existing.progress.total }
+          });
+        }
+        return newMap;
+      });
+
       toast({
         title: "Erro no envio",
         description: error?.message || "Verifique se o WhatsApp está conectado",
@@ -492,10 +553,34 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       console.log('✏️ Editando seleção existente');
       updateSelectionMutation.mutate(selectionData);
     } else {
-      // Para novas seleções, use createAndSendMutation que cria E envia automaticamente
+      // Nova implementação: Salvar primeiro, depois enviar em background
       if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
-        console.log('🚀 Criando e enviando nova seleção via WhatsApp');
-        createAndSendMutation.mutate(selectionData);
+        console.log('🚀 Salvando seleção e enviando em background');
+        
+        // Primeiro salva a seleção
+        saveOnlyMutation.mutate(selectionData, {
+          onSuccess: (savedSelection) => {
+            // Fecha o formulário imediatamente após salvar
+            resetForm();
+            
+            // Adiciona à lista de envios em background
+            setBackgroundSends(prev => {
+              const newMap = new Map(prev);
+              newMap.set(savedSelection.id, {
+                selectionName: savedSelection.name,
+                progress: { sent: 0, total: 0 },
+                isComplete: false,
+                startTime: new Date()
+              });
+              return newMap;
+            });
+            
+            // Inicia o envio em background (não bloqueia)
+            setTimeout(() => {
+              backgroundSendMutation.mutate(savedSelection.id);
+            }, 500); // Pequeno delay para garantir que o formulário fecha
+          }
+        });
       } else {
         console.log('📝 Criando seleção sem envio automático');
         createSelectionMutation.mutate(selectionData);
@@ -892,8 +977,8 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => sendWhatsAppMutation.mutate(selection.id)}
-                            disabled={sendWhatsAppMutation.isPending}
+                            onClick={() => backgroundSendMutation.mutate(selection.id)}
+                            disabled={backgroundSendMutation.isPending}
                             title="Enviar via WhatsApp"
                             className="text-green-600 hover:text-green-700 border-green-300 hover:bg-green-50"
                           >
@@ -931,6 +1016,69 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           )}
         </CardContent>
       </Card>
+
+      {/* Background Send Status */}
+      {backgroundSends.size > 0 && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              Envios em Andamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Array.from(backgroundSends.entries()).map(([selectionId, sendData]) => (
+                <div key={selectionId} className="bg-white p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium text-gray-900">
+                      {sendData.selectionName}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {sendData.isComplete ? (
+                        <span className="flex items-center gap-1 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          Concluído
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-blue-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Enviando...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {sendData.progress.total > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Progresso: {sendData.progress.sent} / {sendData.progress.total}</span>
+                        <span>
+                          {Math.round((sendData.progress.sent / sendData.progress.total) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            sendData.isComplete ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                          style={{ 
+                            width: `${Math.round((sendData.progress.sent / sendData.progress.total) * 100)}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-gray-500 mt-2">
+                    Iniciado há {Math.round((Date.now() - sendData.startTime.getTime()) / 1000)}s
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
