@@ -29,8 +29,7 @@ class WhatsAppBaileyService {
   private connections: Map<string, WhatsAppState> = new Map();
 
   async initWhatsApp(clientId: string) {
-    console.log(`⚠️ [BAILEYS] Serviço desabilitado - usando Evolution API`);
-    throw new Error('Baileys service disabled - use Evolution API');
+    await initializeDependencies();
     
     if (this.connections.has(clientId)) {
       const existing = this.connections.get(clientId)!;
@@ -45,7 +44,15 @@ class WhatsAppBaileyService {
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
       // Corrigindo configurações para ambiente Replit - CORREÇÃO ERRO 515
-      const latestVersion = await fetchLatestBaileysVersion().catch(() => [2, 2419, 6]);
+      let latestVersion = [2, 2419, 6]; // Versão fixa como fallback
+      try {
+        const baileys = await import('@whiskeysockets/baileys');
+        if (baileys.fetchLatestWaWebVersion) {
+          latestVersion = await baileys.fetchLatestWaWebVersion().catch(() => [2, 2419, 6]);
+        }
+      } catch {
+        console.log('⚠️ [BAILEYS] Usando versão padrão do WhatsApp Web');
+      }
       
       const sock = makeWASocket({ 
         auth: state,
@@ -295,6 +302,15 @@ class WhatsAppBaileyService {
       console.error(`❌ Erro ao enviar mensagem via cliente ${clientId}:`, error);
       return false;
     }
+  }
+
+  getConnectionStatus(clientId: string) {
+    const connection = this.connections.get(clientId);
+    return {
+      isConnected: connection?.isConnected || false,
+      qrCode: connection?.qrCode || null,
+      phoneNumber: connection?.phoneNumber || null
+    };
   }
 
   getStatus(clientId: string) {

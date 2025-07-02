@@ -2,6 +2,7 @@ import { wppConnectService } from './wppConnectService';
 import { evolutionApiService } from './evolutionApiService';
 import { activeSessionDetector } from './activeSessionDetector';
 import { emergencyConnectionDetector } from './emergencyConnectionDetector';
+import { whatsappBaileyService } from './whatsappBaileyService';
 
 interface WhatsAppClientConfig {
   isConnected: boolean;
@@ -54,21 +55,25 @@ class ClientWhatsAppService {
       // Se não há conexão ativa, verificar se há QR Code disponível
       console.log(`🔍 [CLIENT-WA] Nenhuma conexão ativa, verificando QR Codes...`);
       
-      // Verificar Evolution API para QR Code
-      const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
-      if (evolutionStatus.qrCode) {
-        console.log(`📱 [CLIENT-WA] Evolution API QR Code disponível`);
-        return {
-          isConnected: false,
-          qrCode: evolutionStatus.qrCode,
-          phoneNumber: null,
-          lastConnection: null,
-          clientId,
-          instanceId: evolutionStatus.instanceId
-        };
+      // PRIORIDADE 1: Verificar Baileys para QR Code
+      try {
+        const baileysStatus = await whatsappBaileyService.getConnectionStatus(clientId);
+        if (baileysStatus?.qrCode) {
+          console.log(`📱 [CLIENT-WA] Baileys QR Code disponível`);
+          return {
+            isConnected: false,
+            qrCode: baileysStatus.qrCode,
+            phoneNumber: null,
+            lastConnection: null,
+            clientId,
+            instanceId: `baileys_${clientId}`
+          };
+        }
+      } catch (error) {
+        console.log(`⚠️ [CLIENT-WA] Baileys não disponível, tentando outras opções...`);
       }
       
-      // Verificar WppConnect para QR Code
+      // PRIORIDADE 2: Verificar WppConnect para QR Code
       const wppStatus = await wppConnectService.getConnectionStatus(clientId);
       if (wppStatus.qrCode) {
         console.log(`📱 [CLIENT-WA] WppConnect QR Code disponível`);
@@ -79,6 +84,20 @@ class ClientWhatsAppService {
           lastConnection: null,
           clientId,
           instanceId: wppStatus.instanceId
+        };
+      }
+      
+      // PRIORIDADE 3: Verificar Evolution API para QR Code (fallback)
+      const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
+      if (evolutionStatus.qrCode) {
+        console.log(`📱 [CLIENT-WA] Evolution API QR Code disponível`);
+        return {
+          isConnected: false,
+          qrCode: evolutionStatus.qrCode,
+          phoneNumber: null,
+          lastConnection: null,
+          clientId,
+          instanceId: evolutionStatus.instanceId
         };
       }
 
@@ -118,7 +137,23 @@ class ClientWhatsAppService {
         };
       }
       
-      // Tentar conectar via WppConnect
+      // PRIORIDADE 1: Tentar conectar via Baileys
+      try {
+        const baileysResult = await whatsappBaileyService.initWhatsApp(clientId);
+        
+        if (baileysResult?.qrCode) {
+          console.log(`✅ [CLIENT-WA] Baileys conectado com QR Code`);
+          return {
+            success: true,
+            qrCode: baileysResult.qrCode,
+            message: 'QR Code gerado via Baileys'
+          };
+        }
+      } catch (error: any) {
+        console.log(`⚠️ [CLIENT-WA] Baileys falhou, tentando WppConnect...`);
+      }
+
+      // PRIORIDADE 2: Tentar conectar via WppConnect
       const wppResult = await wppConnectService.createSession(clientId);
       
       if (wppResult.success && wppResult.qrCode) {
@@ -130,7 +165,7 @@ class ClientWhatsAppService {
         };
       }
       
-      // Fallback para Evolution API
+      // PRIORIDADE 3: Fallback para Evolution API
       const evolutionResult = await evolutionApiService.connectClient(clientId);
       
       if (evolutionResult.success) {
@@ -140,7 +175,7 @@ class ClientWhatsAppService {
       
       return {
         success: false,
-        message: 'Falha ao conectar via WppConnect e Evolution API'
+        message: 'Falha ao conectar via Baileys, WppConnect e Evolution API'
       };
       
     } catch (error: any) {
