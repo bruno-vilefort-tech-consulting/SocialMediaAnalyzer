@@ -11,6 +11,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
+import { nanoid } from "nanoid";
 // WhatsApp services - lazy imports to prevent startup blocking
 let whatsappQRService: any = null;
 let whatsappManager: any = null;
@@ -1879,127 +1880,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`📱 [ROUND-ROBIN] Slots ativos encontrados: [${activeConnections.map(c => c.slotNumber).join(', ')}]`);
       console.log(`📊 [ROUND-ROBIN] Distribuição será feita entre ${activeConnections.length} slots`);
+      
+      // Buscar candidatos para envio
+      const candidateListMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
+      console.log(`📋 CandidateListMemberships encontrados: ${candidateListMemberships.length}`);
+      
+      let candidateIds = [];
+      
+      // Determinar candidatos baseado no tipo de seleção (lista ou busca)
+      if (selection.searchQuery && selection.searchQuery.trim()) {
+        console.log(`🔍 Seleção por busca: "${selection.searchQuery}"`);
+        // Buscar por nome ou email
+        const allCandidates = await storage.getCandidatesByClientId(selection.clientId);
+        const searchCandidates = allCandidates.filter(candidate => 
+          candidate.name.toLowerCase().includes(selection.searchQuery!.toLowerCase()) ||
+          candidate.email.toLowerCase().includes(selection.searchQuery!.toLowerCase())
+        );
+        candidateIds = searchCandidates.map(candidate => candidate.id);
+        console.log(`🔍 Encontrados ${candidateIds.length} candidatos por busca`);
+      } else if (selection.listId) {
+        console.log(`📝 Seleção por lista: ${selection.listId}`);
+        const listMemberships = candidateListMemberships.filter(m => m.listId === selection.listId);
+        candidateIds = listMemberships.map(m => m.candidateId);
+        console.log(`📝 Encontrados ${candidateIds.length} candidatos na lista`);
+      } else {
+        console.log('⚠️ Seleção sem lista nem busca especificada');
+        return res.status(400).json({ message: 'Selection must have either listId or searchQuery' });
+      }
 
-      // Buscar candidatos da lista usando método que existe
-      const allMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
-      const candidateListMembers = allMemberships.filter(member => member.listId === selection.candidateListId);
-      console.log(`👥 Membros da lista encontrados: ${candidateListMembers.length}`);
+      if (candidateIds.length === 0) {
+        console.log('⚠️ Nenhum candidato encontrado para envio');
+        return res.status(400).json({ message: 'No candidates found for sending' });
+      }
 
-      // Buscar dados completos dos candidatos
-      const candidateIds = candidateListMembers.map(member => member.candidateId);
-      const allCandidates = await storage.getAllCandidates();
-      const candidates = allCandidates.filter(candidate => 
-        candidateIds.includes(candidate.id) && candidate.clientId === selection.clientId
-      );
-      console.log(`🎯 Candidatos encontrados: ${candidates.length}`);
+      // Buscar detalhes dos candidatos
+      const allCandidates = await storage.getCandidatesByClientId(selection.clientId);
+      const candidates = allCandidates.filter(candidate => candidateIds.includes(candidate.id));
+      
+      console.log(`👥 Candidatos para envio: ${candidates.length}`);
+      console.log(`📋 Detalhes: ${candidates.map(c => `${c.name} (${c.whatsapp})`).join(', ')}`);
 
-      // Buscar vaga
+      // 🎯 ROUND-ROBIN: Distribuir candidatos entre slots ativos
+      const slotsDistribution = distributeToSlots(candidates, activeConnections);
+      
+      console.log(`📊 [ROUND-ROBIN] Distribuição final:`);
+      slotsDistribution.forEach(slot => {
+        console.log(`  - Slot ${slot.slotNumber}: ${slot.items.length} candidatos`);
+      });
+
+      // Obter dados adicionais
       const job = await storage.getJobById(selection.jobId);
+      const client = await storage.getClientById(selection.clientId);
+
       if (!job) {
         return res.status(404).json({ message: 'Job not found' });
       }
-      console.log(`💼 Vaga encontrada: ${job.nomeVaga} (${job.perguntas?.length || 0} perguntas)`);
-
-      // 🎯 IMPLEMENTAR ROUND-ROBIN: Distribuir candidatos entre slots ativos
-      const candidatesWithWhatsApp = candidates.filter(candidate => candidate.whatsapp);
-      const slotDistribution = distributeToSlots(candidatesWithWhatsApp, activeConnections);
-      
-      console.log(`📊 [ROUND-ROBIN] Distribuição de ${candidatesWithWhatsApp.length} candidatos:`);
-      slotDistribution.forEach(dist => {
-        console.log(`   📱 Slot ${dist.slotNumber}: ${dist.items.length} candidatos`);
-        dist.items.forEach(candidate => {
-          console.log(`      - ${candidate.name} (${candidate.whatsapp})`);
-        });
-      });
 
       let messagesSent = 0;
       let messagesError = 0;
 
-      // 🎯 ENVIAR MENSAGENS: Processar cada slot com seus candidatos
-      for (const slotGroup of slotDistribution) {
-        const slotNumber = slotGroup.slotNumber;
-        const slotCandidates = slotGroup.items;
-        
-        console.log(`📱 [SLOT-${slotNumber}] Processando ${slotCandidates.length} candidatos`);
+      // 🎯 ROUND-ROBIN: Processar cada slot com seus candidatos
+      for (const { slotNumber, items: slotCandidates } of slotsDistribution) {
+        console.log(`🚀 [SLOT-${slotNumber}] Iniciando processamento de ${slotCandidates.length} candidatos`);
         
         for (const candidate of slotCandidates) {
-          try {
-            console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.name} (${candidate.whatsapp})`);
-            
-            // Gerar token único primeiro
-            const token = `interview_${Date.now()}_${candidate.id}`;
-            
-            // Criar entrevista com token
-            const interview = await storage.createInterview({
-              candidateId: candidate.id,
-              selectionId: selection.id,
-              token: token,
-              status: 'pending'
-            });
+          if (candidate.whatsapp) {
+            try {
+              // Criar entrevista para o candidato
+              const interviewToken = nanoid(12);
+              const interviewLink = `${process.env.REPLIT_DEV_DOMAIN || 'https://ai-interview-system.replit.app'}/entrevista/${interviewToken}`;
 
-            console.log(`🎤 Entrevista criada: ID ${interview.id}, Token: ${token}`);
-
-            // Gerar link da entrevista
-            const interviewLink = `${process.env.REPLIT_DOMAINS || 'https://your-domain.replit.app'}/entrevista/${token}`;
-
-            // Buscar dados do cliente para substituir placeholder
-            const client = await storage.getClientById(selection.clientId);
-            
-            // Personalizar mensagem WhatsApp
-            let personalizedMessage = selection.whatsappTemplate || 
-              "Olá {nome}, você foi selecionado para uma entrevista virtual da vaga {vaga}. Acesse: {link}";
-            
-            personalizedMessage = personalizedMessage
-              .replace(/\{nome\}/g, candidate.name)
-              .replace(/\[nome do candidato\]/g, candidate.name)
-              .replace(/\[nome do cliente\]/g, client?.companyName || 'Nossa Empresa')
-              .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
-              .replace(/\{vaga\}/g, job.nomeVaga)
-              .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
-              .replace(/\[nome da vaga\]/g, job.nomeVaga)
-              .replace(/\[número de perguntas\]/g, job.perguntas?.length?.toString() || '3')
-              .replace(/\{link\}/g, interviewLink);
-
-            // Adicionar automaticamente a pergunta de confirmação após a mensagem inicial
-            const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
-            personalizedMessage = personalizedMessage + confirmationText;
-
-            // 🔥 ROUND-ROBIN: Enviar via sistema multiWhatsApp usando slot específico
-            console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.whatsapp}`);
-            const sendResult = await simpleMultiBaileyService.sendMessage(
-              clientIdStr,
-              candidate.whatsapp,
-              personalizedMessage,
-              slotNumber
-            );
-            
-            console.log(`📱 Resultado do envio para ${candidate.name}:`, sendResult);
-
-            if (sendResult && sendResult.success) {
-              messagesSent++;
-              console.log(`✅ WhatsApp enviado com sucesso para ${candidate.name}`);
-              
-              // Registrar log de mensagem
-              await storage.createMessageLog({
-                interviewId: interview.id,
-                type: 'invitation',
-                channel: 'whatsapp',
-                status: 'sent'
+              const interview = await storage.createInterview({
+                candidateId: candidate.id,
+                selectionId: selection.id,
+                jobId: selection.jobId,
+                token: interviewToken,
+                status: 'pending'
               });
-            } else {
+
+              console.log(`🎫 Entrevista criada para ${candidate.name} - Token: ${interviewToken}`);
+
+              // Personalizar mensagem
+              let personalizedMessage = selection.message || 
+                "Olá {nome}, você foi selecionado para uma entrevista virtual da vaga {vaga}. Acesse: {link}";
+              
+              personalizedMessage = personalizedMessage
+                .replace(/\{nome\}/g, candidate.name)
+                .replace(/\[nome do candidato\]/g, candidate.name)
+                .replace(/\[nome do cliente\]/g, client?.companyName || 'Nossa Empresa')
+                .replace(/\[Nome do Cliente\]/g, client?.companyName || 'Nossa Empresa')
+                .replace(/\{vaga\}/g, job.nomeVaga)
+                .replace(/\[Nome da Vaga\]/g, job.nomeVaga)
+                .replace(/\[nome da vaga\]/g, job.nomeVaga)
+                .replace(/\[número de perguntas\]/g, job.perguntas?.length?.toString() || '3')
+                .replace(/\{link\}/g, interviewLink);
+
+              // Adicionar automaticamente a pergunta de confirmação após a mensagem inicial
+              const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
+              personalizedMessage = personalizedMessage + confirmationText;
+
+              // 🔥 ROUND-ROBIN: Enviar via sistema multiWhatsApp usando slot específico
+              console.log(`📲 [SLOT-${slotNumber}] Enviando para ${candidate.whatsapp}`);
+              const sendResult = await simpleMultiBaileyService.sendMessage(
+                clientIdStr,
+                candidate.whatsapp,
+                personalizedMessage,
+                slotNumber
+              );
+              
+              console.log(`📱 Resultado do envio para ${candidate.name}:`, sendResult);
+
+              if (sendResult && sendResult.success) {
+                messagesSent++;
+                console.log(`✅ WhatsApp enviado com sucesso para ${candidate.name}`);
+                
+                // Registrar log de mensagem
+                await storage.createMessageLog({
+                  interviewId: interview.id,
+                  type: 'invitation',
+                  channel: 'whatsapp',
+                  status: 'sent'
+                });
+              } else {
+                messagesError++;
+                console.log(`❌ Falha no envio WhatsApp para ${candidate.name}: ${sendResult?.error || 'Erro desconhecido'}`);
+                
+                await storage.createMessageLog({
+                  interviewId: interview.id,
+                  type: 'invitation',
+                  channel: 'whatsapp',
+                  status: 'failed'
+                });
+              }
+            } catch (error) {
               messagesError++;
-              console.log(`❌ Falha no envio WhatsApp para ${candidate.name}: ${sendResult?.message || 'Erro desconhecido'}`);
-              
-              await storage.createMessageLog({
-                interviewId: interview.id,
-                type: 'invitation',
-                channel: 'whatsapp',
-                status: 'failed'
-              });
+              console.error(`❌ Erro no envio WhatsApp para ${candidate.name}:`, error);
             }
-          } catch (error) {
-            messagesError++;
-            console.error(`❌ Erro no envio WhatsApp para ${candidate.name}:`, error);
           }
         }
         
@@ -2039,7 +2055,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errorCount: 0
       });
     }
-  });
   });
 
   app.post("/api/selections/:id/send", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
