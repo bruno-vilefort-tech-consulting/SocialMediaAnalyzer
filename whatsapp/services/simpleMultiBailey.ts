@@ -540,13 +540,80 @@ class SimpleMultiBaileyService {
       saveCreds();
     });
     
-    // 🔥 NOVO: Monitorar eventos de mensagem para detectar conexão ativa
-    socket.ev.on('messages.upsert', () => {
+    // 🔥 NOVO: Monitorar eventos de mensagem para detectar conexão ativa E processar entrevistas
+    socket.ev.on('messages.upsert', async ({ messages }: any) => {
       const existingConnection = this.connections.get(connectionId);
       if (existingConnection && !existingConnection.isConnected) {
         console.log(`📨 [MONITOR-${slotNumber}] Mensagens detectadas - confirmando conexão ativa`);
         existingConnection.isConnected = true;
         this.connections.set(connectionId, existingConnection);
+      }
+
+      // 🎯 CORREÇÃO CRÍTICA: Processar mensagens recebidas para entrevistas
+      try {
+        for (const message of messages) {
+          // Só processar mensagens de entrada (não enviadas por nós)
+          if (!message.key?.fromMe && message.message) {
+            const from = message.key.remoteJid;
+            const text = message.message.conversation || 
+                        message.message.extendedTextMessage?.text || '';
+            const audioMessage = message.message?.audioMessage;
+            
+            console.log(`\n🎯 [MESSAGE-HANDLER-${slotNumber}] ===== NOVA MENSAGEM RECEBIDA =====`);
+            console.log(`📱 [MESSAGE-HANDLER-${slotNumber}] De: ${from?.replace('@s.whatsapp.net', '')}`);
+            console.log(`💬 [MESSAGE-HANDLER-${slotNumber}] Texto: "${text}"`);
+            console.log(`🎵 [MESSAGE-HANDLER-${slotNumber}] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
+            
+            // Detectar clientId automaticamente
+            const phoneNumber = from?.replace('@s.whatsapp.net', '');
+            let detectedClientId = null;
+            
+            try {
+              // Importar storage dinamicamente para evitar circular reference
+              const { storage } = await import('../../server/storage.js');
+              const candidates = await storage.getAllCandidates();
+              const candidate = candidates.find((c: any) => {
+                const candidatePhone = (c.whatsapp || c.phone || '').replace(/\D/g, '');
+                const searchPhone = phoneNumber?.replace(/\D/g, '') || '';
+                return candidatePhone === searchPhone || candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+              });
+              
+              if (candidate) {
+                detectedClientId = candidate.clientId?.toString();
+                console.log(`✅ [MESSAGE-HANDLER-${slotNumber}] ClientId detectado: ${detectedClientId} para candidato ${candidate.name}`);
+              } else {
+                console.log(`⚠️ [MESSAGE-HANDLER-${slotNumber}] Candidato não encontrado, usando clientId padrão`);
+                detectedClientId = clientId; // Usar clientId da conexão atual
+              }
+            } catch (error) {
+              console.log(`❌ [MESSAGE-HANDLER-${slotNumber}] Erro detectando clientId:`, error.message);
+              detectedClientId = clientId; // Fallback para clientId da conexão
+            }
+            
+            // 🎯 CORREÇÃO PRINCIPAL: Direcionar para interactiveInterviewService
+            try {
+              const { interactiveInterviewService } = await import('../../server/interactiveInterviewService.js');
+              
+              // Passar mensagem completa para áudios, texto simples para texto
+              if (audioMessage) {
+                console.log(`🎵 [MESSAGE-HANDLER-${slotNumber}] Processando mensagem de áudio completa...`);
+                await interactiveInterviewService.handleMessage(from, text, message, detectedClientId);
+              } else {
+                console.log(`💬 [MESSAGE-HANDLER-${slotNumber}] Processando mensagem de texto...`);
+                await interactiveInterviewService.handleMessage(from, text, null, detectedClientId);
+              }
+              
+              console.log(`✅ [MESSAGE-HANDLER-${slotNumber}] Mensagem processada pelo InteractiveInterviewService`);
+              
+            } catch (handlerError) {
+              console.error(`❌ [MESSAGE-HANDLER-${slotNumber}] Erro processando mensagem:`, handlerError.message);
+            }
+            
+            console.log(`🎯 [MESSAGE-HANDLER-${slotNumber}] ===== FIM DO PROCESSAMENTO =====\n`);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ [MONITOR-${slotNumber}] Erro processando mensagens:`, error.message);
       }
     });
     

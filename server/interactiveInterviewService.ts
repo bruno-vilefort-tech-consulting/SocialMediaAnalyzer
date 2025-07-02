@@ -729,26 +729,84 @@ class InteractiveInterviewService {
     return candidate;
   }
 
-  private async sendMessage(to: string, text: string): Promise<void> {
-    console.log(`📤 Enviando mensagem para ${to}: "${text.substring(0, 50)}..."`);
+  private async sendMessage(to: string, text: string, clientId?: string): Promise<void> {
+    console.log(`📤 [INTERVIEW-SEND] Enviando mensagem para ${to}: "${text.substring(0, 50)}..."`);
     
-    // Buscar conexão ativa para qualquer cliente que possa enviar a mensagem - importação dinâmica
-    const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-    const connections = whatsappBaileyService.getAllConnections();
-    
-    for (const [clientId, connection] of connections) {
-      if (connection.isConnected && connection.socket) {
-        try {
-          await connection.socket.sendMessage(to, { text });
-          console.log(`✅ Mensagem enviada via cliente ${clientId}`);
-          return;
-        } catch (error) {
-          console.log(`❌ Erro ao enviar via cliente ${clientId}:`, error.message);
+    try {
+      // 🔥 CORREÇÃO: Usar o novo sistema multiBailey em vez do antigo whatsappBaileyService
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+      
+      // Se temos clientId específico, usar suas conexões
+      if (clientId) {
+        console.log(`📱 [INTERVIEW-SEND] Buscando conexões ativas para cliente ${clientId}`);
+        
+        const allConnections = simpleMultiBaileyService.getClientConnections(clientId);
+        const activeConnections = allConnections.connections.filter((conn: any) => conn.isConnected);
+        
+        if (activeConnections.length > 0) {
+          const connection = activeConnections[0]; // Usar primeira conexão ativa
+          console.log(`📨 [INTERVIEW-SEND] Usando slot ${connection.slotNumber} para envio`);
+          
+          // Extrair apenas o número de telefone do formato JID
+          const phoneNumber = to.replace('@s.whatsapp.net', '');
+          
+          const result = await simpleMultiBaileyService.sendTestMessage(
+            clientId, 
+            connection.slotNumber, 
+            phoneNumber, 
+            text
+          );
+          
+          if (result.success) {
+            console.log(`✅ [INTERVIEW-SEND] Mensagem enviada via slot ${connection.slotNumber}`);
+            return;
+          } else {
+            console.log(`❌ [INTERVIEW-SEND] Falha no envio via slot ${connection.slotNumber}: ${result.error}`);
+          }
+        } else {
+          console.log(`❌ [INTERVIEW-SEND] Nenhuma conexão ativa encontrada para cliente ${clientId}`);
         }
       }
+      
+      // Fallback: buscar qualquer conexão ativa do sistema
+      console.log(`🔍 [INTERVIEW-SEND] Fallback: buscando qualquer conexão ativa do sistema`);
+      
+      // Buscar todas as conexões de todos os clientes
+      const allClients = ['1749849987543']; // Lista de clientes conhecidos
+      
+      for (const fallbackClientId of allClients) {
+        try {
+          const clientConnections = simpleMultiBaileyService.getClientConnections(fallbackClientId);
+          const activeConnections = clientConnections.connections.filter((conn: any) => conn.isConnected);
+          
+          if (activeConnections.length > 0) {
+            const connection = activeConnections[0];
+            console.log(`📨 [INTERVIEW-SEND] Fallback: usando cliente ${fallbackClientId}, slot ${connection.slotNumber}`);
+            
+            const phoneNumber = to.replace('@s.whatsapp.net', '');
+            
+            const result = await simpleMultiBaileyService.sendTestMessage(
+              fallbackClientId,
+              connection.slotNumber,
+              phoneNumber,
+              text
+            );
+            
+            if (result.success) {
+              console.log(`✅ [INTERVIEW-SEND] Mensagem enviada via fallback cliente ${fallbackClientId}`);
+              return;
+            }
+          }
+        } catch (fallbackError) {
+          console.log(`❌ [INTERVIEW-SEND] Erro no fallback cliente ${fallbackClientId}:`, fallbackError.message);
+        }
+      }
+      
+      console.log(`❌ [INTERVIEW-SEND] Nenhuma conexão WhatsApp ativa encontrada em todo o sistema`);
+      
+    } catch (error) {
+      console.log(`❌ [INTERVIEW-SEND] Erro geral no envio:`, error.message);
     }
-    
-    console.log(`❌ Nenhuma conexão WhatsApp ativa encontrada para enviar mensagem`);
   }
 
   // Método público para verificar entrevistas ativas
