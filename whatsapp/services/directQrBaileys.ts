@@ -40,7 +40,29 @@ export class DirectQrBaileys {
         browser: ['DirectQR', 'Chrome', '1.0.0'],
         connectTimeoutMs: 30000,
         defaultQueryTimeoutMs: 30000,
-        logger: { level: 'silent', child: () => ({ level: 'silent' } as any) } as any
+        logger: {
+          level: 'silent',
+          silent: true,
+          trace: () => {},
+          debug: () => {},
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          fatal: () => {},
+          child: () => ({
+            level: 'silent',
+            silent: true,
+            trace: () => {},
+            debug: () => {},
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+            fatal: () => {},
+            child: () => ({})
+          }),
+          // Adicionar propriedades extras que o Baileys pode usar
+          ...Object.fromEntries(['trace', 'debug', 'info', 'warn', 'error', 'fatal'].map(method => [method, () => {}]))
+        } as any
       });
 
       // Promise para aguardar apenas QR Code
