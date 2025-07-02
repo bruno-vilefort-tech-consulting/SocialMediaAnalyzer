@@ -4081,7 +4081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionId: r.questionId || (index + 1),
             questionText: r.questionText || questions[index]?.pergunta || 'Pergunta não encontrada',
             transcription: r.transcription || r.respostaTexto || 'Transcrição não disponível',
-            audioUrl: r.audioUrl || r.respostaAudioUrl || '',
+            audioUrl: r.audioUrl || r.respostaAudioUrl || r.audioFile || '',
             score: r.score !== undefined && r.score !== null ? r.score : 0, // Usar score já calculado - não recalcular
             recordingDuration: r.recordingDuration || 0,
             aiAnalysis: r.aiAnalysis || 'Análise não disponível'

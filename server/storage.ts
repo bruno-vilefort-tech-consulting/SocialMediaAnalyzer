@@ -1346,16 +1346,54 @@ export class FirebaseStorage implements IStorage {
       }
 
       // Processar respostas encontradas
-      const processedResponses = matchingResponses.map(resp => ({
-        id: resp.id,
-        questionId: resp.questionId,
-        questionText: resp.questionText || `Pergunta ${resp.questionId}`,
-        transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
-        audioUrl: resp.audioFile ? `/uploads/${resp.audioFile.split('/').pop()}` : '',
-        score: resp.score !== undefined && resp.score !== null ? resp.score : 0,
-        recordingDuration: resp.recordingDuration || 0,
-        aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
-        ...resp
+      const processedResponses = await Promise.all(matchingResponses.map(async (resp) => {
+        let audioUrl = '';
+        
+        // Verificar várias possibilidades de arquivo de áudio
+        if (resp.audioFile) {
+          audioUrl = `/uploads/${resp.audioFile.split('/').pop()}`;
+        } else if (resp.audioUrl) {
+          audioUrl = resp.audioUrl;
+        } else {
+          // Tentar encontrar arquivo existente baseado no padrão
+          const fs = await import('fs');
+          const path = await import('path');
+          
+          const candidatePhone = candidate?.whatsapp || resp.candidatePhone || '';
+          const possibleFiles = [
+            `audio_${candidatePhone}_${selectionId}_R${resp.questionId}.ogg`,
+            `audio_5511984316526_${selectionId}_R${resp.questionId}.ogg`, // Telefone conhecido que tem arquivos
+            `audio_${candidatePhone.replace(/\D/g, '')}_${selectionId}_R${resp.questionId}.ogg`
+          ];
+          
+          for (const fileName of possibleFiles) {
+            const filePath = path.join('uploads', fileName);
+            try {
+              await fs.access(filePath, fs.constants.F_OK);
+              audioUrl = `/uploads/${fileName}`;
+              console.log(`✅ [AUDIO_FOUND] Arquivo encontrado: ${fileName}`);
+              break;
+            } catch (error) {
+              // Arquivo não existe, continuar tentando
+            }
+          }
+          
+          if (!audioUrl) {
+            console.log(`❌ [AUDIO_NOT_FOUND] Nenhum arquivo encontrado para seleção ${selectionId}, pergunta ${resp.questionId}`);
+          }
+        }
+        
+        return {
+          id: resp.id,
+          questionId: resp.questionId,
+          questionText: resp.questionText || `Pergunta ${resp.questionId}`,
+          transcription: resp.transcription || resp.responseText || 'Transcrição via Whisper em processamento',
+          audioUrl: audioUrl,
+          score: resp.score !== undefined && resp.score !== null ? resp.score : 0,
+          recordingDuration: resp.recordingDuration || 0,
+          aiAnalysis: resp.aiAnalysis || 'Análise IA pendente',
+          ...resp
+        };
       }));
 
       console.log(`✅ [ISOLAMENTO] Processadas ${processedResponses.length} respostas da seleção ${selectionId}`);
