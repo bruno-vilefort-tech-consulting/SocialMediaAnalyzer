@@ -277,6 +277,9 @@ const MultiWhatsAppConnections: React.FC = () => {
   const [connectingSlots, setConnectingSlots] = useState<Set<number>>(new Set());
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
+  
+  // Estado local das conexões para exibir QR Code imediatamente
+  const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
   // Query para obter status das conexões
   const { data: connectionsData, isLoading, refetch } = useQuery<MultiConnectionStatus>({
@@ -287,6 +290,13 @@ const MultiWhatsAppConnections: React.FC = () => {
       return response.json();
     }
   });
+
+  // Sincronizar estado local com dados da API
+  React.useEffect(() => {
+    if (connectionsData?.connections) {
+      setConnections(connectionsData.connections);
+    }
+  }, [connectionsData]);
 
   // Mutation para conectar slot usando DirectQrBaileys
   const connectMutation = useMutation({
@@ -477,7 +487,7 @@ const MultiWhatsAppConnections: React.FC = () => {
 
       {/* Grid com as 3 conexões */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {connectionsData?.connections.map((connection) => (
+        {connections.map((connection) => (
           <ConnectionSlot
             key={connection.connectionId}
             connection={connection}
