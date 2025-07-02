@@ -537,3 +537,4 @@ class WhatsAppBaileyService {
 }
 
 export const whatsappBaileyService = new WhatsAppBaileyService();
+export { WhatsAppBaileyService };

@@ -13,7 +13,7 @@ import fs from "fs";
 import OpenAI from "openai";
 import { whatsappQRService } from "../whatsapp/services/whatsappQRService";
 import { whatsappManager } from "../whatsapp/services/whatsappManager";
-import { multiWhatsAppBaileysService } from "../whatsapp/services/multiWhatsAppBaileysService";
+import { simpleMultiBaileyService } from "../whatsapp/services/simpleMultiBailey";
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";

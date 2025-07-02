@@ -3,7 +3,7 @@
  * Cada cliente pode ter até 3 conexões simultâneas independentes
  */
 
-import { whatsappBaileyService } from './whatsappBaileyService';
+import { whatsappBaileyService, WhatsAppBaileyService } from './whatsappBaileyService';
 
 interface WhatsAppConnection {
   connectionId: string; // client_id_slot_number (ex: 1749849987543_1)
@@ -25,6 +25,7 @@ interface MultiConnectionStatus {
 
 class MultiWhatsAppBaileysService {
   private connections: Map<string, WhatsAppConnection> = new Map();
+  private baileysServices: Map<string, any> = new Map();
   private readonly MAX_CONNECTIONS_PER_CLIENT = 3;
 
   constructor() {
