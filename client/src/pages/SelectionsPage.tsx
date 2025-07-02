@@ -557,12 +557,18 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
         console.log('🚀 Salvando seleção e enviando em background');
         
+        // Fecha o formulário IMEDIATAMENTE antes de qualquer operação
+        resetForm();
+        
+        // Toast de confirmação imediato
+        toast({
+          title: "Processamento iniciado",
+          description: "Salvando seleção e iniciando envios em background..."
+        });
+        
         // Primeiro salva a seleção
         saveOnlyMutation.mutate(selectionData, {
           onSuccess: (savedSelection) => {
-            // Fecha o formulário imediatamente após salvar
-            resetForm();
-            
             // Adiciona à lista de envios em background
             setBackgroundSends(prev => {
               const newMap = new Map(prev);
@@ -578,7 +584,14 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
             // Inicia o envio em background (não bloqueia)
             setTimeout(() => {
               backgroundSendMutation.mutate(savedSelection.id);
-            }, 500); // Pequeno delay para garantir que o formulário fecha
+            }, 500);
+          },
+          onError: (error) => {
+            toast({
+              title: "Erro ao salvar seleção",
+              description: error.message || "Erro desconhecido",
+              variant: "destructive"
+            });
           }
         });
       } else {
