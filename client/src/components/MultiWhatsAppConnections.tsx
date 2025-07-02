@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MessageCircle, Wifi, WifiOff, RefreshCw, Power, Trash2, Loader2 } from "lucide-react";
+import { MessageCircle, Wifi, WifiOff, RefreshCw, Power, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -193,14 +193,6 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                 <p className="text-xs text-muted-foreground">
                   QR Code válido por 2 minutos. Monitoramento contínuo ATIVO.
                 </p>
-
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                  💡 <strong>Protocolo Mobile Ativo:</strong> Usando mmg.whatsapp.net para contornar bloqueios
-                </div>
-
-                <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-                  🔄 <strong>Processo:</strong> 1) Escaneie → 2) Aguarde autenticação → 3) Conexão estabelecida
-                </div>
               </div>
             </div>
           </div>
@@ -232,34 +224,6 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
             <p className="text-green-700 text-xs mt-1">
               🔒 Conexão segura via protocolo mobile
             </p>
-          </div>
-        )}
-
-        {/* Banner de erro de conectividade */}
-        {!connection.isConnected && !connection.qrCode && (
-          <div className="p-3 bg-yellow-100 border border-yellow-400 rounded">
-            <p className="text-yellow-800 text-sm font-medium">
-              ⚠️ Aguardando Conexão
-            </p>
-            <p className="text-yellow-700 text-xs mt-1">
-              Sistema otimizado com protocolo mobile (mmg.whatsapp.net) para contornar bloqueios de rede.
-            </p>
-            <div className="mt-2">
-              <Button
-                onClick={() => handleConnect()}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                disabled={isConnecting}
-              >
-                {isConnecting ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                )}
-                Conectar via Mobile
-              </Button>
-            </div>
           </div>
         )}
 
