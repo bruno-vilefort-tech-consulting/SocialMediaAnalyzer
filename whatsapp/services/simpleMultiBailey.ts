@@ -97,27 +97,34 @@ class SimpleMultiBaileyService {
     console.log(`🔌 [SIMPLE-BAILEYS] Tentando conectar slot ${slotNumber} para cliente ${clientId}`);
 
     try {
+      console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão...`);
+      
       // Implementar conexão real do Baileys
       const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
       const { Boom } = await import('@hapi/boom');
       const path = await import('path');
       const fs = await import('fs');
       
+      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Dependências importadas com sucesso`);
+      
       // Criar diretório de sessão para este slot
       const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
       
       if (!fs.existsSync(sessionPath)) {
         fs.mkdirSync(sessionPath, { recursive: true });
+        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Diretório criado: ${sessionPath}`);
+      } else {
+        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Diretório já existe: ${sessionPath}`);
       }
       
-      console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Criando sessão em: ${sessionPath}`);
+      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação...`);
       
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
       
       let qrCodeData: string | null = null;
       
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Iniciando socket Baileys...`);
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys...`);
       
       const socket = makeWASocket({
         auth: state,
@@ -127,6 +134,7 @@ class SimpleMultiBaileyService {
       });
       
       console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado com sucesso`);
+      console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
       
       // Promise para aguardar QR Code ou conexão
       const connectionPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
