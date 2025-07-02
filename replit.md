@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ BUG WHATSAPP TEMPLATE CORRIGIDO DEFINITIVAMENTE - Sistema agora usa mensagem personalizada do formulário
+  - **Root cause identificado**: Endpoint send-whatsapp estava usando `selection.message` em vez de `selection.whatsappTemplate`
+  - **Correção implementada**: Linha 1970 em server/routes.ts corrigida para usar `selection.whatsappTemplate`
+  - **Template funcional**: Sistema agora utiliza "Mensagem Inicial WhatsApp" personalizada do formulário
+  - **Placeholders funcionais**: [nome do candidato] e [nome do cliente] substituídos corretamente
+  - **Teste validado**: Mensagens personalizadas enviadas em vez de template padrão do sistema
+  - **Sistema pronto**: WhatsApp template configurável funcionando completamente
+
 - July 2, 2025: ✅ SISTEMA ROUND-ROBIN WHATSAPP TOTALMENTE IMPLEMENTADO E FUNCIONAL (FINAL)
   - **Sistema round-robin implementado**: Distribuição inteligente de candidatos entre slots ativos funcionando
   - **Correção candidateListId**: Endpoint send-whatsapp agora aceita tanto listId quanto candidateListId para compatibilidade

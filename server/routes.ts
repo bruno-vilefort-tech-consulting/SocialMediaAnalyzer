@@ -1966,8 +1966,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               console.log(`🎫 Entrevista criada para ${candidate.name} - Token: ${interviewToken}`);
 
-              // Personalizar mensagem
-              let personalizedMessage = selection.message || 
+              // Personalizar mensagem - USAR WHATSAPP TEMPLATE DO FORMULÁRIO
+              let personalizedMessage = selection.whatsappTemplate || 
                 "Olá {nome}, você foi selecionado para uma entrevista virtual da vaga {vaga}. Acesse: {link}";
               
               personalizedMessage = personalizedMessage
