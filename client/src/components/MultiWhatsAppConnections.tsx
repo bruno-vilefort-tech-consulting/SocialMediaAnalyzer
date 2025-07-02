@@ -144,9 +144,9 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                 size="sm"
               >
                 {isConnecting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
                 ) : (
-                  <MessageCircle className="h-4 w-4 mr-2" />
+                  <MessageCircle className="h-4 w-4 mr-1" />
                 )}
                 Conectar
               </Button>
@@ -158,15 +158,15 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                     variant="outline"
                     size="sm"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Atualizar QR
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Atualizar
                   </Button>
                   <Button
                     onClick={handleHideQR}
                     variant="outline"
                     size="sm"
                   >
-                    Esconder QR
+                    Esconder
                   </Button>
                 </>
               )}
