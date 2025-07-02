@@ -1935,9 +1935,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`📲 [SELECOES] Enviando via slot ${slotNumber} para ${candidate.whatsapp}`);
             const sendResult = await simpleMultiBaileyService.sendMessage(
               clientIdStr,
-              slotNumber,
               candidate.whatsapp,
-              personalizedMessage
+              personalizedMessage,
+              slotNumber
             );
             
             console.log(`📱 Resultado do envio para ${candidate.name}:`, sendResult);
@@ -5537,6 +5537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📤 [MULTI-WA] Enviando teste para ${phoneNumber} via cliente ${clientId}`);
       
       // Verificar se há conexões ativas antes de tentar enviar
+      const { multiWhatsAppService } = await import('../whatsapp/services/multiWhatsAppService');
       const connections = await multiWhatsAppService.getClientConnections(clientId.toString());
       
       if (connections.activeConnections === 0) {
