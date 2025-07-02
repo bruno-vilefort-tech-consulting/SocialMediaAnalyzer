@@ -156,10 +156,10 @@ class InteractiveInterviewService {
       await this.startInterview(phone, clientId);
     } else if (text === '2') {
       console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);
-      await this.sendMessage(from, "Entendido. Obrigado!");
+      await this.sendMessage(from, "Entendido. Obrigado!", clientId);
     } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
       console.log(`⏹️ [INTERVIEW] Comando "parar/sair" detectado`);
-      await this.stopInterview(phone);
+      await this.stopInterview(phone, clientId);
     } else if (activeInterview) {
       console.log(`📝 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}`);
       console.log(`🔍 [INTERVIEW] Entrevista ativa - seleção: ${activeInterview.selectionId}, candidato: ${activeInterview.candidateId}`);
@@ -186,7 +186,7 @@ class InteractiveInterviewService {
       await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
       console.log(`❓ [INTERVIEW] Comando não reconhecido - enviando instruções`);
-      await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar");
+      await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar", clientId);
     }
     
     console.log(`🎯 [INTERVIEW] ===== FIM DO PROCESSAMENTO =====\n`);
@@ -666,7 +666,8 @@ class InteractiveInterviewService {
 
     // Mensagem final
     await this.sendMessage(`${phone}@s.whatsapp.net`, 
-      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nNós retornaremos com o resultado o mais breve possível. Obrigado pela participação!`
+      `🎉 Parabéns ${interview.candidateName}! Você completou a entrevista para ${interview.jobName}.\n\n📊 Total de respostas: ${interview.responses.length}\n✅ Suas respostas foram registradas com sucesso!\n\nNós retornaremos com o resultado o mais breve possível. Obrigado pela participação!`,
+      interview.clientId
     );
 
     // Remover entrevista ativa
@@ -674,7 +675,7 @@ class InteractiveInterviewService {
     console.log(`🗑️ Entrevista removida da memória`);
   }
 
-  private async stopInterview(phone: string): Promise<void> {
+  private async stopInterview(phone: string, clientId?: string): Promise<void> {
     const interview = this.activeInterviews.get(phone);
     if (interview) {
       // Atualizar status para cancelada
@@ -684,18 +685,19 @@ class InteractiveInterviewService {
             status: 'cancelled'
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.log(`❌ Erro ao cancelar entrevista:`, error.message);
       }
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
-        `⏹️ Entrevista interrompida. Obrigado pela participação até aqui!`
+        `⏹️ Entrevista interrompida. Obrigado pela participação até aqui!`,
+        interview.clientId
       );
       
       this.activeInterviews.delete(phone);
       console.log(`🗑️ Entrevista ${interview.candidateName} cancelada e removida`);
     } else {
-      await this.sendMessage(`${phone}@s.whatsapp.net`, "Nenhuma entrevista ativa encontrada.");
+      await this.sendMessage(`${phone}@s.whatsapp.net`, "Nenhuma entrevista ativa encontrada.", clientId);
     }
   }
 
@@ -740,7 +742,7 @@ class InteractiveInterviewService {
       if (clientId) {
         console.log(`📱 [INTERVIEW-SEND] Buscando conexões ativas para cliente ${clientId}`);
         
-        const allConnections = simpleMultiBaileyService.getClientConnections(clientId);
+        const allConnections = await simpleMultiBaileyService.getClientConnections(clientId);
         const activeConnections = allConnections.connections.filter((conn: any) => conn.isConnected);
         
         if (activeConnections.length > 0) {
@@ -776,7 +778,7 @@ class InteractiveInterviewService {
       
       for (const fallbackClientId of allClients) {
         try {
-          const clientConnections = simpleMultiBaileyService.getClientConnections(fallbackClientId);
+          const clientConnections = await simpleMultiBaileyService.getClientConnections(fallbackClientId);
           const activeConnections = clientConnections.connections.filter((conn: any) => conn.isConnected);
           
           if (activeConnections.length > 0) {
@@ -797,7 +799,7 @@ class InteractiveInterviewService {
               return;
             }
           }
-        } catch (fallbackError) {
+        } catch (fallbackError: any) {
           console.log(`❌ [INTERVIEW-SEND] Erro no fallback cliente ${fallbackClientId}:`, fallbackError.message);
         }
       }
