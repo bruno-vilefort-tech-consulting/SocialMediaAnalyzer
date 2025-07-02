@@ -193,10 +193,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                 QR Code expira em 90 segundos. Clique em "Atualizar QR" se não funcionar
               </p>
               
-              {/* Debug info - remover depois */}
-              <div className="mt-2 text-xs text-gray-500 font-mono">
-                Debug: {connection.qrCode?.substring(0, 50)}...
-              </div>
+
             </div>
           </div>
         )}
