@@ -269,6 +269,14 @@ class MultiWhatsAppBaileysService {
   }
 
   /**
+   * Enviar mensagem de teste (compatibilidade com API anterior)
+   */
+  async sendMessage(clientId: string, phoneNumber: string, message: string, preferredSlot?: number): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const slotToUse = preferredSlot || 1;
+    return this.sendTestMessage(clientId, slotToUse, phoneNumber, message);
+  }
+
+  /**
    * Limpar todas as conexões de um cliente
    */
   async clearClientConnections(clientId: string): Promise<void> {
