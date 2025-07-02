@@ -5324,13 +5324,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeConnections: connections.activeConnections
       });
       
-      res.json({
+      // 🔥 CORREÇÃO: Usar manual JSON stringify para evitar circular references
+      const cleanResponse = {
         success: true,
         clientId: connections.clientId,
         connections: connections.connections,
         totalConnections: connections.totalConnections,
         activeConnections: connections.activeConnections
-      });
+      };
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify(cleanResponse, (key, value) => {
+        // Remover qualquer referência que possa ser circular
+        if (typeof value === 'object' && value !== null) {
+          if (value.constructor && (value.constructor.name === 'Timeout' || value.constructor.name === 'Timer')) {
+            return undefined;
+          }
+          if (key === 'socket' || key === '_socket' || key === 'ws' || key === '_timers') {
+            return undefined;
+          }
+        }
+        return value;
+      }));
       
     } catch (error) {
       console.error('❌ [MULTI-WA] Erro ao obter conexões:', error);

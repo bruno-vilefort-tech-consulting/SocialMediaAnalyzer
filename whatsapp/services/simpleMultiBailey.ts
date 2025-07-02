@@ -42,6 +42,16 @@ class SimpleMultiBaileyService {
 
   constructor() {
     console.log(`🔧 [SIMPLE-BAILEYS] Serviço inicializado - Max ${this.MAX_CONNECTIONS_PER_CLIENT} conexões por cliente`);
+    // 🔥 CORREÇÃO: Limpar todas as conexões existentes para evitar problemas de circular reference
+    this.clearAllConnections();
+  }
+
+  /**
+   * 🔥 CORREÇÃO: Limpar todas as conexões e timers para evitar circular reference
+   */
+  private clearAllConnections(): void {
+    console.log(`🧹 [SIMPLE-BAILEYS] Limpando todas as conexões para evitar circular reference`);
+    this.connections.clear();
   }
 
   /**
@@ -104,21 +114,70 @@ class SimpleMultiBaileyService {
   async getClientConnections(clientId: string): Promise<SimpleConnectionStatus> {
     console.log(`🔍 [SIMPLE-BAILEYS] Verificando conexões para cliente ${clientId}`);
     
-    const connections: SimpleConnection[] = [];
-    
-    for (let slot = 1; slot <= this.MAX_CONNECTIONS_PER_CLIENT; slot++) {
-      const connection = await this.getConnectionStatus(clientId, slot);
-      connections.push(connection);
-    }
+    try {
+      const connections: SimpleConnection[] = [];
+      
+      for (let slot = 1; slot <= this.MAX_CONNECTIONS_PER_CLIENT; slot++) {
+        const connectionId = this.generateConnectionId(clientId, slot);
+        
+        // 🔥 CORREÇÃO: Criar conexão limpa sem objetos circulares
+        const cleanConnection: SimpleConnection = {
+          connectionId,
+          clientId,
+          slotNumber: slot,
+          isConnected: false,
+          qrCode: null,
+          phoneNumber: null,
+          lastConnection: null,
+          lastUpdate: new Date(),
+          service: 'baileys'
+        };
+        
+        // Verificar se existe na memória e copiar apenas dados básicos
+        const existingConnection = this.connections.get(connectionId);
+        if (existingConnection) {
+          cleanConnection.isConnected = Boolean(existingConnection.isConnected);
+          cleanConnection.qrCode = typeof existingConnection.qrCode === 'string' ? existingConnection.qrCode : null;
+          cleanConnection.phoneNumber = typeof existingConnection.phoneNumber === 'string' ? existingConnection.phoneNumber : null;
+          cleanConnection.lastConnection = existingConnection.lastConnection instanceof Date ? existingConnection.lastConnection : null;
+        }
+        
+        connections.push(cleanConnection);
+      }
 
-    const activeConnections = connections.filter(conn => conn.isConnected).length;
-    
-    return {
-      clientId,
-      connections,
-      totalConnections: this.MAX_CONNECTIONS_PER_CLIENT,
-      activeConnections
-    };
+      const activeConnections = connections.filter(conn => conn.isConnected).length;
+      
+      return {
+        clientId,
+        connections,
+        totalConnections: this.MAX_CONNECTIONS_PER_CLIENT,
+        activeConnections
+      };
+    } catch (error) {
+      console.error(`❌ [SIMPLE-BAILEYS] Erro ao obter conexões para ${clientId}:`, error);
+      
+      // Retornar estrutura mínima em caso de erro
+      const fallbackConnections: SimpleConnection[] = [];
+      for (let slot = 1; slot <= this.MAX_CONNECTIONS_PER_CLIENT; slot++) {
+        fallbackConnections.push({
+          connectionId: this.generateConnectionId(clientId, slot),
+          clientId,
+          slotNumber: slot,
+          isConnected: false,
+          qrCode: null,
+          phoneNumber: null,
+          lastConnection: null,
+          service: 'baileys'
+        });
+      }
+      
+      return {
+        clientId,
+        connections: fallbackConnections,
+        totalConnections: this.MAX_CONNECTIONS_PER_CLIENT,
+        activeConnections: 0
+      };
+    }
   }
 
   /**
