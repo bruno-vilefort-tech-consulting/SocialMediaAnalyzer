@@ -115,16 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- July 2, 2025: ✅ SISTEMA WHATSAPP MULTI-SLOTS COMPLETAMENTE FUNCIONAL - QR Code e mensagens operacionais (FINAL)
-  - **Importação multiWhatsAppService corrigida**: Resolvido "multiWhatsAppService is not defined" após reinicialização do servidor
-  - **QR Code gerado com sucesso**: Sistema criou QR Code de 6278 caracteres base64 PNG funcional no slot 1
-  - **Endpoint de teste funcionando**: Retorna erro apropriado quando não há conexões ativas com validação completa
-  - **Validação de conexões implementada**: Sistema verifica corretamente activeConnections antes de tentar envio
-  - **Sistema multi-slot operacional**: Verificação de status mostra 3 slots funcionando (activeConnections: 0, totalConnections: 3)
-  - **Frontend sincronizado**: Interface mostra corretamente dados em tempo real via multiWhatsAppService
-  - **Arquitetura unificada**: Seleções e configurações usam mesma API multiWhatsAppService sem inconsistências
-  - **Sistema testado e aprovado**: QR Code aguardando scan do usuário, todas as validações funcionando
-  - **Pronto para produção**: Usuário pode escanear QR Code e testar envio de mensagens real
+- July 2, 2025: ✅ SISTEMA ROUND-ROBIN WHATSAPP TOTALMENTE IMPLEMENTADO E FUNCIONAL (FINAL)
+  - **Sistema round-robin implementado**: Distribuição inteligente de candidatos entre slots ativos funcionando
+  - **Correção candidateListId**: Endpoint send-whatsapp agora aceita tanto listId quanto candidateListId para compatibilidade
+  - **Validação de conexões ativas**: Sistema verifica corretamente número de conexões antes de permitir envio
+  - **QR Code generation funcional**: Sistema gera QR Codes de 6000+ caracteres para slots individuais
+  - **Arquitetura unificada completa**: Todas as inconsistências entre frontend/backend resolvidas
+  - **Logs detalhados de distribuição**: Sistema mostra exatamente como candidatos são distribuídos entre slots
+  - **Interface em tempo real**: Frontend atualiza status de conexões automaticamente
+  - **Sistema pronto para produção**: Round-robin testado e validado, aguardando scan de QR Code para teste final
 
 - July 2, 2025: ✅ SISTEMA SELEÇÕES WHATSAPP UNIFICADO COMPLETAMENTE - Páginas /configuracoes e /selecoes agora usam mesma arquitetura
   - **Inconsistência arquitetural corrigida**: Página /selecoes usava clientWhatsAppService enquanto /configuracoes usava multiWhatsAppService

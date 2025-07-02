@@ -1897,14 +1897,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         candidateIds = searchCandidates.map(candidate => candidate.id);
         console.log(`🔍 Encontrados ${candidateIds.length} candidatos por busca`);
-      } else if (selection.listId) {
-        console.log(`📝 Seleção por lista: ${selection.listId}`);
-        const listMemberships = candidateListMemberships.filter(m => m.listId === selection.listId);
+      } else if (selection.listId || (selection as any).candidateListId) {
+        // 🔥 CORREÇÃO: Aceitar tanto listId quanto candidateListId para compatibilidade
+        const actualListId = selection.listId || (selection as any).candidateListId;
+        console.log(`📝 Seleção por lista: ${actualListId} (usando ${selection.listId ? 'listId' : 'candidateListId'})`);
+        const listMemberships = candidateListMemberships.filter(m => m.listId === actualListId);
         candidateIds = listMemberships.map(m => m.candidateId);
         console.log(`📝 Encontrados ${candidateIds.length} candidatos na lista`);
       } else {
         console.log('⚠️ Seleção sem lista nem busca especificada');
-        return res.status(400).json({ message: 'Selection must have either listId or searchQuery' });
+        console.log(`📊 Debug selection:`, { 
+          hasListId: !!selection.listId, 
+          hasCandidateListId: !!(selection as any).candidateListId,
+          hasSearchQuery: !!(selection.searchQuery && selection.searchQuery.trim())
+        });
+        return res.status(400).json({ message: 'Selection must have either listId, candidateListId or searchQuery' });
       }
 
       if (candidateIds.length === 0) {
