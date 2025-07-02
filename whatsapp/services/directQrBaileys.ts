@@ -34,12 +34,11 @@ export class DirectQrBaileys {
 
       console.log(`🚀 [DIRECT-QR] Criando socket Baileys minimalista...`);
 
-      // Configuração minimalista do socket
+      // Configuração moderna do Baileys compatível com versão atual
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        // Removido mobile: true (deprecated - causa erro "Mobile API is not supported anymore")
-        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        browser: ['Replit WhatsApp', 'Chrome', '1.0.0'],
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
@@ -52,7 +51,10 @@ export class DirectQrBaileys {
         generateHighQualityLinkPreview: false,
         emitOwnEvents: false,
         shouldSyncHistoryMessage: () => false,
-        logger: P({ level: 'silent' })
+        logger: P({ level: 'silent' }),
+        // Configurações modernas para compatibilidade
+        version: [2, 2419, 6], // Versão estável do WhatsApp Web
+        getMessage: async () => undefined
       });
 
       // Promise para aguardar apenas QR Code

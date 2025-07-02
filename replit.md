@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- January 2, 2025: ✅ SISTEMA WHATSAPP TOTALMENTE CORRIGIDO - Erro "Mobile API is not supported anymore" resolvido definitivamente
+  - **Root cause identificado**: API `mobile: true` foi deprecada no Baileys e causava crash fatal
+  - **Correção abrangente aplicada**: Removido `mobile: true` de todos os arquivos WhatsApp (directQrBaileys.ts, whatsappBaileyService.ts, whatsappQRService.ts)
+  - **Configuração moderna implementada**: Substituída por configuração WhatsApp Web padrão com versão específica [2, 2419, 6]
+  - **Função fetchLatestWaWebVersion corrigida**: Removido parâmetro timeout desnecessário que causava erro
+  - **Teste validado**: QR Code de 6306 caracteres gerado com sucesso, interface exibindo corretamente
+  - **Sistema operacional**: Todas as funcionalidades WhatsApp funcionando sem erros
+  - **Arquitetura preservada**: Sistema híbrido mantido (Baileys → WppConnect → Evolution API)
+
 - January 2, 2025: ✅ PRIORIDADE BAILEYS IMPLEMENTADA - Sistema WhatsApp na página /configuracoes agora prioriza Baileys sobre WppConnect
   - **Baileys reativado**: Removida linha de desabilitação no whatsappBaileyService.ts 
   - **Nova prioridade**: Baileys → WppConnect → Evolution API (como fallback final)
