@@ -261,15 +261,17 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Query para obter status das conexões
   const { data: connectionsData, isLoading, refetch } = useQuery<MultiConnectionStatus>({
     queryKey: ['/api/multi-whatsapp/connections'],
-    refetchInterval: 5000 // Atualizar a cada 5 segundos
+    refetchInterval: 5000, // Atualizar a cada 5 segundos
+    queryFn: async () => {
+      const response = await apiRequest('/api/multi-whatsapp/connections');
+      return response.json();
+    }
   });
 
   // Mutation para conectar slot
   const connectMutation = useMutation({
     mutationFn: async (slotNumber: number) => {
-      const response = await apiRequest(`/api/multi-whatsapp/connect/${slotNumber}`, {
-        method: 'POST'
-      });
+      const response = await apiRequest(`/api/multi-whatsapp/connect/${slotNumber}`, 'POST');
       return response.json();
     },
     onMutate: (slotNumber) => {
@@ -309,9 +311,7 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Mutation para desconectar slot
   const disconnectMutation = useMutation({
     mutationFn: async (slotNumber: number) => {
-      const response = await apiRequest(`/api/multi-whatsapp/disconnect/${slotNumber}`, {
-        method: 'POST'
-      });
+      const response = await apiRequest(`/api/multi-whatsapp/disconnect/${slotNumber}`, 'POST');
       return response.json();
     },
     onMutate: (slotNumber) => {
@@ -351,16 +351,10 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Mutation para teste de mensagem
   const testMutation = useMutation({
     mutationFn: async ({ slotNumber, phoneNumber, message }: { slotNumber: number; phoneNumber: string; message: string }) => {
-      const response = await apiRequest('/api/multi-whatsapp/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber,
-          message,
-          preferredSlot: slotNumber
-        })
+      const response = await apiRequest('/api/multi-whatsapp/test', 'POST', {
+        phoneNumber,
+        message,
+        preferredSlot: slotNumber
       });
       return response.json();
     },

@@ -768,6 +768,14 @@ export default function ApiConfigPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Múltiplas Conexões WhatsApp */}
+      {user?.role === 'client' && (
+        <>
+          <Separator className="my-6" />
+          <MultiWhatsAppConnections />
+        </>
+      )}
     </div>
   );
 }
