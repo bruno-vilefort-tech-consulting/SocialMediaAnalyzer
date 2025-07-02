@@ -38,9 +38,57 @@ interface SimpleConnectionStatus {
 class SimpleMultiBaileyService {
   private connections: Map<string, SimpleConnection> = new Map();
   private readonly MAX_CONNECTIONS_PER_CLIENT = 3;
+  private baileysLoaded = false;
 
   constructor() {
     console.log(`🔧 [SIMPLE-BAILEYS] Serviço inicializado - Max ${this.MAX_CONNECTIONS_PER_CLIENT} conexões por cliente`);
+  }
+
+  /**
+   * 🔥 CORREÇÃO: Carregamento dinâmico do Baileys para evitar erro "makeWASocket is not a function"
+   */
+  private async loadBaileys(): Promise<boolean> {
+    if (this.baileysLoaded && makeWASocket) {
+      return true;
+    }
+
+    try {
+      console.log(`📦 [BAILEYS-LOADER] Carregando Baileys dinamicamente...`);
+      
+      const baileys = await import('@whiskeysockets/baileys');
+      
+      // 🔥 CORREÇÃO: Baileys pode ter diferentes estruturas de export
+      console.log(`🔍 [BAILEYS-LOADER] Estrutura do Baileys:`, Object.keys(baileys));
+      
+      // Tentar diferentes formas de acessar as funções
+      makeWASocket = baileys.default || baileys.makeWASocket;
+      useMultiFileAuthState = baileys.useMultiFileAuthState;
+      DisconnectReason = baileys.DisconnectReason;
+      Browsers = baileys.Browsers;
+      fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
+      
+      // Se default não funcionou, tentar acesso direto
+      if (!makeWASocket && baileys.default) {
+        console.log(`🔍 [BAILEYS-LOADER] Tentando baileys.default:`, Object.keys(baileys.default));
+        makeWASocket = baileys.default.makeWASocket || baileys.default.default;
+        useMultiFileAuthState = baileys.default.useMultiFileAuthState;
+        DisconnectReason = baileys.default.DisconnectReason;
+        Browsers = baileys.default.Browsers;
+        fetchLatestBaileysVersion = baileys.default.fetchLatestBaileysVersion;
+      }
+      
+      this.baileysLoaded = true;
+      
+      console.log(`✅ [BAILEYS-LOADER] Baileys carregado com sucesso`);
+      console.log(`🔧 [BAILEYS-LOADER] makeWASocket:`, typeof makeWASocket);
+      console.log(`🔧 [BAILEYS-LOADER] useMultiFileAuthState:`, typeof useMultiFileAuthState);
+      console.log(`🔧 [BAILEYS-LOADER] DisconnectReason:`, typeof DisconnectReason);
+      
+      return true;
+    } catch (error) {
+      console.error(`❌ [BAILEYS-LOADER] Erro ao carregar Baileys:`, error);
+      return false;
+    }
   }
 
   /**
@@ -138,6 +186,24 @@ class SimpleMultiBaileyService {
   async connectToWhatsApp(connectionId: string, clientId: string, slotNumber: number): Promise<any> {
     try {
       console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão OTIMIZADA...`);
+      
+      // 🔥 CORREÇÃO: Carregar Baileys dinamicamente antes de usar
+      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Carregando Baileys dinamicamente...`);
+      console.log(`🔍 [BAILEYS-SLOT-${slotNumber}] Estado atual - baileysLoaded: ${this.baileysLoaded}, makeWASocket: ${typeof makeWASocket}`);
+      
+      const baileysLoaded = await this.loadBaileys();
+      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] loadBaileys retornou: ${baileysLoaded}`);
+      
+      if (!baileysLoaded) {
+        console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Falha ao carregar Baileys`);
+        return {
+          success: false,
+          message: 'Erro ao carregar biblioteca Baileys',
+          qrCode: null
+        };
+      }
+      
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Baileys carregado com sucesso, prosseguindo...`);
       
       // Validar ambiente
       const envInfo = BaileysConfig.validateEnvironment();
