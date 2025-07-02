@@ -1827,22 +1827,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
-      // Verificar se o cliente tem WhatsApp conectado ANTES de buscar candidatos
-      const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
+      // 🔥 CORREÇÃO: Verificar conexões ativas usando novo sistema multiWhatsApp
+      const { multiWhatsAppService } = await import('../whatsapp/services/multiWhatsAppService');
       const clientIdStr = selection.clientId.toString();
-      const clientStatus = await clientWhatsAppService.getConnectionStatus(clientIdStr);
+      const connectionsStatus = await multiWhatsAppService.getClientConnections(clientIdStr);
       
-      console.log(`📊 Verificando status WhatsApp cliente ${clientIdStr}:`, clientStatus);
+      console.log(`📊 [SELECOES] Verificando status WhatsApp cliente ${clientIdStr}:`, connectionsStatus);
       
-      if (!clientStatus.isConnected) {
-        console.log(`❌ Cliente ${clientIdStr} não tem WhatsApp conectado`);
+      if (!connectionsStatus || connectionsStatus.activeConnections === 0) {
+        console.log(`❌ [SELECOES] Cliente ${clientIdStr} não tem nenhuma conexão WhatsApp ativa`);
         return res.status(400).json({
           success: false,
           message: 'WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.',
           sentCount: 0,
+          errorCount: 0,
+          activeConnections: connectionsStatus?.activeConnections || 0,
+          totalConnections: connectionsStatus?.totalConnections || 3
+        });
+      }
+      
+      console.log(`✅ [SELECOES] Cliente tem ${connectionsStatus.activeConnections}/${connectionsStatus.totalConnections} conexões ativas`);
+      
+      // Para envio, usar o primeiro slot conectado através do novo sistema
+      const { simpleMultiBailey } = await import('../whatsapp/services/simpleMultiBailey');
+      const firstActiveConnection = connectionsStatus.connections?.find(conn => conn.isConnected);
+      if (!firstActiveConnection) {
+        console.log(`❌ [SELECOES] Nenhum slot ativo encontrado para cliente ${clientIdStr}`);
+        return res.status(400).json({
+          success: false,
+          message: 'Nenhuma conexão WhatsApp ativa encontrada.',
+          sentCount: 0,
           errorCount: 0
         });
       }
+      
+      console.log(`📱 [SELECOES] Usando slot ${firstActiveConnection.slotNumber} para envio`);
+      const slotNumber = firstActiveConnection.slotNumber;
 
       // Buscar candidatos da lista usando método que existe
       const allMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);
@@ -1911,30 +1931,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const confirmationText = `\n\nVocê gostaria de iniciar a entrevista?\n\nPara participar, responda:\n1 - Sim, começar agora\n2 - Não quero participar`;
             personalizedMessage = personalizedMessage + confirmationText;
 
-            // Enviar via WhatsApp usando serviço específico do cliente
-            const { clientWhatsAppService } = await import('../whatsapp/services/clientWhatsAppService');
-            const clientIdStr = selection.clientId.toString();
-            
-            // Verificar se o cliente tem WhatsApp conectado
-            const clientStatus = await clientWhatsAppService.getConnectionStatus(clientIdStr);
-            console.log(`📊 Status WhatsApp cliente ${clientIdStr}:`, clientStatus);
-            
-            if (!clientStatus.isConnected) {
-              console.log(`❌ Cliente ${clientIdStr} não tem WhatsApp conectado`);
-              messagesError++;
-              
-              await storage.createMessageLog({
-                interviewId: interview.id,
-                type: 'invitation',
-                channel: 'whatsapp',
-                status: 'failed'
-              });
-              continue;
-            }
-            
-            console.log(`📲 Enviando via clientWhatsAppService para cliente ${clientIdStr}`);
-            const sendResult = await clientWhatsAppService.sendMessage(
+            // 🔥 CORREÇÃO: Enviar via sistema multiWhatsApp usando slot ativo
+            console.log(`📲 [SELECOES] Enviando via slot ${slotNumber} para ${candidate.whatsapp}`);
+            const sendResult = await simpleMultiBailey.sendMessage(
               clientIdStr,
+              slotNumber,
               candidate.whatsapp,
               personalizedMessage
             );
