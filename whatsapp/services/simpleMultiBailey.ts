@@ -309,9 +309,7 @@ class SimpleMultiBaileyService {
       
       // 🔥 USAR CONFIGURAÇÃO COM VERSÃO DINÂMICA
       const socketConfig = await BaileysConfig.getSocketConfig(state);
-      if (latestVersion && latestVersion.length >= 3) {
-        socketConfig.version = [latestVersion[0], latestVersion[1], latestVersion[2]];
-      }
+      socketConfig.version = latestVersion;
       const socket = makeWASocket(socketConfig);
       
       console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket SUPER OTIMIZADO criado para v6.7.18`);
@@ -483,6 +481,9 @@ class SimpleMultiBaileyService {
         
         console.log(`✅ [MONITOR-${slotNumber}] Conexão salva: ${existingConnection.phoneNumber}`);
         
+        // 🔥 CORREÇÃO 6: Notificar frontend que conexão foi estabelecida APÓS 'open'
+        console.log(`🚀 [MONITOR-${slotNumber}] AUTENTICAÇÃO COMPLETA - Frontend será notificado`);
+        
         // 🔥 NOVO: Health check para manter conexão viva
         this.startHealthCheck(socket, connectionId, slotNumber);
       }
@@ -496,7 +497,17 @@ class SimpleMultiBaileyService {
         
         existingConnection.isConnected = false;
         if (statusCode === 401) {
-          // Logout - limpar sessão
+          // 🔥 CORREÇÃO 5: Logout (401) - limpar APENAS a sessão no disco, não forçar reconnect
+          console.log(`🧹 [MONITOR-${slotNumber}] Logout detectado (401) - limpando sessão do disco...`);
+          try {
+            const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
+            if (fs.existsSync(sessionPath)) {
+              fs.rmSync(sessionPath, { recursive: true, force: true });
+              console.log(`✅ [MONITOR-${slotNumber}] Sessão removida do disco: ${sessionPath}`);
+            }
+          } catch (cleanError) {
+            console.error(`❌ [MONITOR-${slotNumber}] Erro ao limpar sessão:`, cleanError);
+          }
           existingConnection.qrCode = null;
           existingConnection.phoneNumber = null;
         }
