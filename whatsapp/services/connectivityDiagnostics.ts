@@ -1,193 +1,244 @@
 /**
- * Serviço de Diagnóstico de Conectividade WhatsApp
- * Verifica problemas comuns e sugere soluções
+ * Sistema de diagnóstico de conectividade para WhatsApp
+ * Detecta problemas de rede e sugere soluções
+ * ATUALIZADO: Removido mobile: true depreciado do Baileys v6.7.18
  */
 
-export interface ConnectivityIssue {
-  type: 'dns_block' | 'firewall' | 'rate_limit' | 'infrastructure' | 'unknown';
+export interface ConnectivityDiagnostic {
+  issueType: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  message: string;
+  description: string;
   solution: string;
-  shouldUseMobile: boolean;
+  shouldUseBrowserOptimization: boolean;
 }
 
 export class ConnectivityDiagnostics {
   
-  /**
-   * Diagnóstica problemas baseados no erro
-   */
-  static diagnoseError(error: any): ConnectivityIssue {
-    const errorMsg = error?.message || error?.toString() || '';
+  static async diagnoseEnvironment(): Promise<ConnectivityDiagnostic[]> {
+    const diagnostics: ConnectivityDiagnostic[] = [];
     
-    // DNS/ENOTFOUND (mais comum)
-    if (errorMsg.includes('ENOTFOUND') || errorMsg.includes('getaddrinfo')) {
-      return {
-        type: 'dns_block',
-        severity: 'critical',
-        message: 'Bloqueio de DNS detectado para web.whatsapp.com',
-        solution: 'Usar protocolo mobile (mmg.whatsapp.net) para contornar bloqueio',
-        shouldUseMobile: true
-      };
-    }
+    // Verificar ambiente de execução
+    const envDiag = this.checkEnvironment();
+    if (envDiag) diagnostics.push(envDiag);
     
-    // WebSocket errors
-    if (errorMsg.includes('WebSocket') || errorMsg.includes('ws://') || errorMsg.includes('wss://')) {
-      return {
-        type: 'firewall',
-        severity: 'high',
-        message: 'Conexão WebSocket bloqueada',
-        solution: 'Firewall ou proxy está bloqueando WebSockets. Usar mobile: true',
-        shouldUseMobile: true
-      };
-    }
+    // Verificar conectividade DNS
+    const dnsDiag = await this.checkDNSConnectivity();
+    if (dnsDiag) diagnostics.push(dnsDiag);
     
-    // Rate limiting
-    if (errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('Too many')) {
-      return {
-        type: 'rate_limit',
-        severity: 'medium',
-        message: 'Limite de tentativas excedido',
-        solution: 'Aguardar antes de tentar novamente. Limpar sessão e reconectar',
-        shouldUseMobile: false
-      };
-    }
+    // Verificar portas
+    const portDiag = await this.checkPortAccess();
+    if (portDiag) diagnostics.push(portDiag);
     
-    // Hugging Face / Replit specific
-    if (errorMsg.includes('spaces') || errorMsg.includes('replit') || errorMsg.includes('railway')) {
-      return {
-        type: 'infrastructure',
-        severity: 'high',
-        message: 'Ambiente de hospedagem restritivo detectado',
-        solution: 'Usar configuração mobile otimizada para plataformas cloud',
-        shouldUseMobile: true
-      };
-    }
+    // Verificar WebSocket
+    const wsDiag = await this.checkWebSocketSupport();
+    if (wsDiag) diagnostics.push(wsDiag);
     
-    // Timeout
-    if (errorMsg.includes('timeout') || errorMsg.includes('ETIMEDOUT')) {
-      return {
-        type: 'infrastructure',
-        severity: 'medium',
-        message: 'Timeout de conexão',
-        solution: 'Aumentar timeouts e usar protocolo mobile',
-        shouldUseMobile: true
-      };
-    }
+    // Verificar limites de recursos
+    const resourceDiag = this.checkResourceLimits();
+    if (resourceDiag) diagnostics.push(resourceDiag);
     
-    return {
-      type: 'unknown',
-      severity: 'medium',
-      message: 'Erro desconhecido de conectividade',
-      solution: 'Tentar protocolo mobile como fallback',
-      shouldUseMobile: true
-    };
+    return diagnostics;
   }
   
-  /**
-   * Verifica se o ambiente é restritivo
-   */
-  static checkEnvironment(): {
-    isRestrictive: boolean;
-    platform: string;
-    recommendations: string[];
-  } {
-    const hostname = process.env.HOSTNAME || '';
-    const platform = process.env.REPL_SLUG ? 'replit' : 
-                     process.env.SPACE_ID ? 'huggingface' :
-                     hostname.includes('railway') ? 'railway' :
-                     hostname.includes('vercel') ? 'vercel' :
-                     hostname.includes('heroku') ? 'heroku' : 'unknown';
+  private static checkEnvironment(): ConnectivityDiagnostic | null {
+    const isReplit = process.env.REPL_ID !== undefined;
+    const isHuggingFace = process.env.SPACE_ID !== undefined;
+    const isContainer = process.env.CONTAINER !== undefined;
     
-    const restrictivePlatforms = ['replit', 'huggingface', 'railway', 'vercel'];
-    const isRestrictive = restrictivePlatforms.includes(platform);
+    if (isReplit) {
+      return {
+        issueType: 'environment_replit',
+        severity: 'high',
+        description: 'Ambiente Replit detectado com restrições de rede',
+        solution: 'Firewall ou proxy está bloqueando WebSockets. Usar browser: Browsers.ubuntu()',
+        shouldUseBrowserOptimization: true
+      };
+    }
     
+    if (isHuggingFace) {
+      return {
+        issueType: 'environment_huggingface',
+        severity: 'high',
+        description: 'Ambiente HuggingFace Spaces com limitações de conectividade',
+        solution: 'Usar timeouts estendidos e browser Ubuntu otimizado',
+        shouldUseBrowserOptimization: true
+      };
+    }
+    
+    if (isContainer) {
+      return {
+        issueType: 'environment_container',
+        severity: 'medium',
+        description: 'Ambiente containerizado pode ter restrições de rede',
+        solution: 'Verificar políticas de rede do container e usar configurações otimizadas',
+        shouldUseBrowserOptimization: true
+      };
+    }
+    
+    return null;
+  }
+  
+  private static async checkDNSConnectivity(): Promise<ConnectivityDiagnostic | null> {
+    try {
+      const dns = await import('dns');
+      const { promisify } = await import('util');
+      const lookup = promisify(dns.lookup);
+      
+      // Testar resolução de web.whatsapp.com
+      await lookup('web.whatsapp.com');
+      return null; // DNS OK
+      
+    } catch (error) {
+      return {
+        issueType: 'dns_blocked',
+        severity: 'critical',
+        description: 'web.whatsapp.com bloqueado ou inacessível via DNS',
+        solution: 'DNS está bloqueado. Usar browser Ubuntu otimizado para contornar',
+        shouldUseBrowserOptimization: true
+      };
+    }
+  }
+  
+  private static async checkPortAccess(): Promise<ConnectivityDiagnostic | null> {
+    try {
+      const net = await import('net');
+      
+      // Testar porta 443 (HTTPS)
+      const socket = new net.Socket();
+      
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          socket.destroy();
+          resolve({
+            issueType: 'port_blocked',
+            severity: 'high',
+            description: 'Porta 443 (HTTPS) pode estar bloqueada',
+            solution: 'Firewall bloqueando porta 443. Usar configurações de timeout estendido',
+            shouldUseBrowserOptimization: true
+          });
+        }, 5000);
+        
+        socket.on('connect', () => {
+          clearTimeout(timeout);
+          socket.destroy();
+          resolve(null); // Porta OK
+        });
+        
+        socket.on('error', () => {
+          clearTimeout(timeout);
+          resolve({
+            issueType: 'port_blocked',
+            severity: 'high',
+            description: 'Erro ao conectar na porta 443',
+            solution: 'Porta 443 bloqueada. Usar timeouts estendidos e browser Ubuntu',
+            shouldUseBrowserOptimization: true
+          });
+        });
+        
+        socket.connect(443, 'web.whatsapp.com');
+      });
+      
+    } catch (error) {
+      return {
+        issueType: 'network_error',
+        severity: 'critical',
+        description: 'Erro geral de conectividade de rede',
+        solution: 'Problemas de rede detectados. Usar configuração de emergência',
+        shouldUseBrowserOptimization: true
+      };
+    }
+  }
+  
+  private static async checkWebSocketSupport(): Promise<ConnectivityDiagnostic | null> {
+    // Para ambientes conhecidos que têm problemas com WebSocket
+    const isRestrictedEnv = process.env.REPL_ID || process.env.SPACE_ID || process.env.RAILWAY_ENVIRONMENT;
+    
+    if (isRestrictedEnv) {
+      return {
+        issueType: 'websocket_restricted',
+        severity: 'high',
+        description: 'Ambiente com restrições conhecidas para WebSocket',
+        solution: 'WebSocket pode estar limitado. Usar browser Ubuntu com timeouts estendidos',
+        shouldUseBrowserOptimization: true
+      };
+    }
+    
+    return null;
+  }
+  
+  private static checkResourceLimits(): ConnectivityDiagnostic | null {
+    const memUsage = process.memoryUsage();
+    const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+    
+    if (heapUsedMB > 400) { // Mais de 400MB usado
+      return {
+        issueType: 'memory_high',
+        severity: 'medium',
+        description: 'Alto uso de memória pode afetar conectividade',
+        solution: 'Memória alta detectada. Usar configurações minimalistas',
+        shouldUseBrowserOptimization: true
+      };
+    }
+    
+    return null;
+  }
+  
+  static generateRecommendations(diagnostics: ConnectivityDiagnostic[]): string[] {
     const recommendations: string[] = [];
     
-    if (isRestrictive) {
-      recommendations.push('Usar mobile: true obrigatoriamente');
-      recommendations.push('Usar mmg.whatsapp.net em vez de web.whatsapp.com');
-      recommendations.push('Timeouts mais conservadores');
-      recommendations.push('Reduzir tráfego WebSocket (syncFullHistory: false)');
+    const hasCritical = diagnostics.some(d => d.severity === 'critical');
+    const hasHigh = diagnostics.some(d => d.severity === 'high');
+    const needsBrowserOpt = diagnostics.some(d => d.shouldUseBrowserOptimization);
+    
+    if (hasCritical) {
+      recommendations.push('Usar configuração de emergência com timeouts máximos');
     }
     
-    if (platform === 'replit') {
-      recommendations.push('Verificar se Always On está ativo');
-      recommendations.push('Configurar REPL_SECRETS corretamente');
+    if (hasHigh) {
+      recommendations.push('Usar browser: Browsers.ubuntu() obrigatoriamente');
     }
     
-    if (platform === 'huggingface') {
-      recommendations.push('Verificar se Space tem CPU persistente');
-      recommendations.push('Considerar usar Space privado');
+    if (needsBrowserOpt) {
+      recommendations.push('Aplicar todas as otimizações de browser e timeout');
     }
     
-    return {
-      isRestrictive,
-      platform,
-      recommendations
-    };
+    // Sempre recomendar configuração moderna
+    recommendations.push('Usar Baileys v6.7.18 com configuração moderna (sem mobile: true)');
+    
+    return recommendations;
   }
   
   /**
-   * Gera configuração otimizada baseada no ambiente
+   * Gerar configuração otimizada baseada nos diagnósticos
    */
-  static getOptimizedConfig(): {
-    mobile: boolean;
-    browser: [string, string, string];
-    timeouts: Record<string, number>;
-    features: Record<string, boolean>;
-  } {
-    const env = this.checkEnvironment();
+  static generateOptimizedConfig(diagnostics: ConnectivityDiagnostic[]) {
+    const hasCriticalIssues = diagnostics.some(d => d.severity === 'critical');
+    const hasNetworkIssues = diagnostics.some(d => d.issueType.includes('dns') || d.issueType.includes('port'));
     
     return {
-      mobile: true, // Sempre usar mobile em ambientes cloud
-      browser: ['Ubuntu', 'Chrome', '20.0.04'], // Browser Linux confiável
-      timeouts: {
-        connectTimeoutMs: env.isRestrictive ? 90000 : 60000,
-        defaultQueryTimeoutMs: env.isRestrictive ? 90000 : 60000,
-        keepAliveIntervalMs: env.isRestrictive ? 30000 : 25000,
-        qrTimeout: env.isRestrictive ? 120000 : 90000,
-        retryRequestDelayMs: env.isRestrictive ? 3000 : 2000
-      },
-      features: {
-        syncFullHistory: false, // Reduzir tráfego
-        generateHighQualityLinkPreview: false,
-        markOnlineOnConnect: false,
-        emitOwnEvents: false,
-        fireInitQueries: true // Importante para handshake
-      }
+      // Configurações de browser modernas para v6.7.18
+      browser: ['Ubuntu', 'Chrome', '20.0.0'], // Substitui mobile: true depreciado
+      
+      // Timeouts baseados na severidade dos problemas
+      connectTimeoutMs: hasCriticalIssues ? 300000 : 180000, // 5min ou 3min
+      qrTimeout: hasCriticalIssues ? 240000 : 180000, // 4min ou 3min
+      defaultQueryTimeoutMs: 120000, // 2min padrão
+      
+      // Configurações de reconexão
+      retryRequestDelayMs: hasNetworkIssues ? 10000 : 5000,
+      maxMsgRetryCount: hasCriticalIssues ? 2 : 3,
+      
+      // Configurações de performance
+      markOnlineOnConnect: false, // Sempre false para evitar problemas
+      syncFullHistory: false, // Sempre false
+      generateHighQualityLinkPreview: false, // Sempre false
+      fireInitQueries: !hasCriticalIssues, // False se há problemas críticos
+      
+      // Logger baseado no ambiente
+      logger: { level: hasCriticalIssues ? 'error' : 'silent' },
+      
+      // Versão estável
+      version: [2, 2419, 6] // Versão testada
     };
   }
-  
-  /**
-   * Log diagnósticos no console
-   */
-  static logEnvironmentInfo(): void {
-    const env = this.checkEnvironment();
-    const config = this.getOptimizedConfig();
-    
-    console.log('\n🔍 === DIAGNÓSTICO DE CONECTIVIDADE WHATSAPP ===');
-    console.log(`🌐 Plataforma: ${env.platform}`);
-    console.log(`⚠️  Ambiente restritivo: ${env.isRestrictive ? 'SIM' : 'NÃO'}`);
-    console.log(`📱 Protocolo mobile: ${config.mobile ? 'ATIVADO' : 'DESATIVADO'}`);
-    console.log(`🔗 Servidor: ${config.mobile ? 'mmg.whatsapp.net' : 'web.whatsapp.com'}`);
-    
-    if (env.recommendations.length > 0) {
-      console.log('💡 Recomendações:');
-      env.recommendations.forEach(rec => console.log(`   - ${rec}`));
-    }
-    
-    console.log('⚙️  Timeouts otimizados:');
-    Object.entries(config.timeouts).forEach(([key, value]) => {
-      console.log(`   - ${key}: ${value}ms`);
-    });
-    
-    console.log('🔧 Features otimizadas:');
-    Object.entries(config.features).forEach(([key, value]) => {
-      console.log(`   - ${key}: ${value}`);
-    });
-    
-    console.log('=== FIM DO DIAGNÓSTICO ===\n');
-  }
-}
-
-export const connectivityDiagnostics = new ConnectivityDiagnostics(); 
+} 

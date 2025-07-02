@@ -38,12 +38,12 @@ export class DirectQrBaileys {
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['Replit WhatsApp', 'Chrome', '1.0.0'],
-        connectTimeoutMs: 60000,
+        browser: ['Ubuntu', 'Chrome', '20.0.0'], // Browser moderno para v6.7.18
+        connectTimeoutMs: 120000, // 2 minutos
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 25000,
-        qrTimeout: 90000,
-        retryRequestDelayMs: 2000,
+        qrTimeout: 120000, // QR válido por 2 minutos
+        retryRequestDelayMs: 3000,
         maxMsgRetryCount: 3,
         markOnlineOnConnect: false,
         fireInitQueries: true,
@@ -52,7 +52,6 @@ export class DirectQrBaileys {
         emitOwnEvents: false,
         shouldSyncHistoryMessage: () => false,
         logger: P({ level: 'silent' }),
-        // Configurações modernas para compatibilidade
         version: [2, 2419, 6], // Versão estável do WhatsApp Web
         getMessage: async () => undefined
       });

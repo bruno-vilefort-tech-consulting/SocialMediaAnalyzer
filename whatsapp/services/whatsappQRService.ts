@@ -1,5 +1,6 @@
 import qrcode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
+import P from 'pino';
 import { storage } from '../../server/storage';
 import { simpleInterviewService } from '../../server/simpleInterviewService';
 
@@ -326,20 +327,21 @@ export class WhatsAppQRService {
       this.socket = this.makeWASocket({
         auth: state,
         printQRInTerminal: false, // Desabilitar para evitar spam no console
-        connectTimeoutMs: 60000, // Aumentar timeout
+        connectTimeoutMs: 120000, // 2 minutos timeout
         defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 10000, // Keep-alive mais agressivo
         retryRequestDelayMs: 2000, // Delay menor para tentativas
         maxMsgRetryCount: 5, // Mais tentativas
         qrTimeout: 180000, // QR Code válido por 3 minutos
-        browser: ['Samsung', 'SM-G991B', '13'], // Browser Android para melhor estabilidade
+        browser: ['Ubuntu', 'Chrome', '20.0.0'], // Browser moderno para Baileys v6.7.18
         generateHighQualityLinkPreview: false,
         syncFullHistory: false,
-        markOnlineOnConnect: true,
+        markOnlineOnConnect: false, // Não marcar online imediatamente
         shouldSyncHistoryMessage: () => false,
         emitOwnEvents: false,
-        mobile: true, // Usar mmg.whatsapp.net (mais estável)
         fireInitQueries: true, // Iniciar queries imediatamente
+        version: [2, 2419, 6], // Versão estável do WhatsApp Web
+        logger: P({ level: 'silent' }), // Logger silencioso
         getMessage: async (key) => {
           return {
             conversation: 'placeholder'

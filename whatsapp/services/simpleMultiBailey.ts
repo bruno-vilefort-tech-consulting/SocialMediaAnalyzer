@@ -3,6 +3,19 @@
  * Versão simplificada sem dependências complexas
  */
 
+import makeWASocket, { 
+    ConnectionState, 
+    useMultiFileAuthState, 
+    DisconnectReason,
+    Browsers,
+    fetchLatestBaileysVersion
+} from '@whiskeysockets/baileys'
+import { Boom } from '@hapi/boom'
+import P from 'pino'
+import fs from 'fs'
+import path from 'path'
+import { BaileysConfig } from './baileys-config'
+
 interface SimpleConnection {
   connectionId: string;
   clientId: string;
@@ -117,16 +130,19 @@ class SimpleMultiBaileyService {
     
     console.log(`🔌 [SIMPLE-BAILEYS] Tentando conectar slot ${slotNumber} para cliente ${clientId}`);
 
+    return this.connectToWhatsApp(connectionId, clientId, slotNumber);
+  }
+
+  /**
+   * 🔥 MÉTODO PRINCIPAL: Conectar usando Baileys real com protocolo MOBILE
+   */
+  async connectToWhatsApp(connectionId: string, clientId: string, slotNumber: number): Promise<any> {
     try {
-      console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão...`);
+      console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão OTIMIZADA...`);
       
-      // Implementar conexão real do Baileys
-      const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = await import('@whiskeysockets/baileys');
-      const { Boom } = await import('@hapi/boom');
-      const path = await import('path');
-      const fs = await import('fs');
-      
-      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Dependências importadas com sucesso`);
+      // Validar ambiente
+      const envInfo = BaileysConfig.validateEnvironment();
+      console.log(`🌍 [BAILEYS-SLOT-${slotNumber}] Ambiente detectado:`, envInfo);
       
       // Criar diretório de sessão para este slot
       const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
@@ -147,30 +163,13 @@ class SimpleMultiBaileyService {
       
       let qrCodeData: string | null = null;
       
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações MOBILE otimizadas...`);
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações OTIMIZADAS v6.7.18...`);
       
-      // CONFIGURAÇÃO OTIMIZADA PARA CONTORNAR BLOQUEIOS
-      const socket = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        mobile: true, // 🔥 CRUCIAL: Usa mmg.whatsapp.net em vez de web.whatsapp.com
-        browser: ['Ubuntu', 'Chrome', '20.0.04'], // Simula browser Linux real
-        connectTimeoutMs: 120000, // 🔥 AUMENTADO: 2 minutos para autenticação
-        defaultQueryTimeoutMs: 120000, // 🔥 AUMENTADO: 2 minutos para queries
-        keepAliveIntervalMs: 30000, // Keep-alive mais conservador
-        qrTimeout: 120000, // 🔥 AUMENTADO: QR Code válido por 2 minutos
-        retryRequestDelayMs: 5000, // 🔥 AUMENTADO: Delay maior entre tentativas
-        maxMsgRetryCount: 5, // 🔥 AUMENTADO: Mais tentativas
-        markOnlineOnConnect: false,
-        fireInitQueries: true,
-        syncFullHistory: false,
-        generateHighQualityLinkPreview: false,
-        emitOwnEvents: false,
-        shouldSyncHistoryMessage: () => false, // Reduz tráfego
-        logger: { level: 'silent', child: () => ({ level: 'silent' } as any) } as any
-      });
+      // 🔥 USAR CONFIGURAÇÃO OTIMIZADA DA NOVA CLASSE
+      const socketConfig = await BaileysConfig.getSocketConfig(state);
+      const socket = makeWASocket(socketConfig);
       
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket MOBILE criado - usando mmg.whatsapp.net`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket SUPER OTIMIZADO criado para v6.7.18`);
       console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
       
       // 🔥 NOVA ESTRATÉGIA: Separar QR Code de autenticação completa
@@ -212,13 +211,13 @@ class SimpleMultiBaileyService {
           }
         });
         
-        // Timeout para QR Code
+        // Timeout aumentado para QR Code (3 minutos)
         setTimeout(() => {
           if (!qrResolved) {
             console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code`);
             resolve({ success: false });
           }
-        }, 60000); // 1 minuto para gerar QR
+        }, 180000); // 3 minutos para gerar QR
       });
       
       // 🔥 SISTEMA CONTÍNUO: Monitorar conexão após QR Code
@@ -241,18 +240,18 @@ class SimpleMultiBaileyService {
         };
 
         this.connections.set(connectionId, connection);
-        
-        console.log(`✅ [SIMPLE-BAILEYS] QR Code retornado para slot ${slotNumber}. Monitoramento contínuo ATIVO.`);
+       
+        console.log(`✅ [SIMPLE-BAILEYS] QR Code retornado para slot ${slotNumber}. Monitoramento SUPER OTIMIZADO ativo.`);
         
         return {
           success: true,
           qrCode: qrResult.qrCode,
-          message: `QR Code gerado para slot ${slotNumber}. Aguarde scan...`
+          message: `QR Code gerado para slot ${slotNumber} com configurações v6.7.18. Aguarde scan...`
         };
       } else {
         return {
           success: false,
-          message: `Timeout ao gerar QR Code para slot ${slotNumber}`
+          message: `Timeout ao gerar QR Code para slot ${slotNumber} - verifique conectividade`
         };
       }
       
@@ -261,7 +260,7 @@ class SimpleMultiBaileyService {
       
       return {
         success: false,
-        message: error.message
+        message: `Erro na configuração v6.7.18: ${error.message}`
       };
     }
   }
@@ -270,7 +269,7 @@ class SimpleMultiBaileyService {
    * 🔥 NOVO: Sistema de monitoramento contínuo da conexão
    */
   private setupContinuousMonitoring(socket: any, connectionId: string, clientId: string, slotNumber: number, saveCreds: any) {
-    console.log(`🔄 [BAILEYS-SLOT-${slotNumber}] Configurando monitoramento contínuo...`);
+    console.log(`🔄 [BAILEYS-SLOT-${slotNumber}] Configurando monitoramento contínuo OTIMIZADO...`);
     
     socket.ev.on('connection.update', async (update: any) => {
       const { connection, lastDisconnect, qr } = update;
@@ -304,6 +303,9 @@ class SimpleMultiBaileyService {
         this.connections.set(connectionId, existingConnection);
         
         console.log(`✅ [MONITOR-${slotNumber}] Conexão salva: ${existingConnection.phoneNumber}`);
+        
+        // 🔥 NOVO: Health check para manter conexão viva
+        this.startHealthCheck(socket, connectionId, slotNumber);
       }
       
       // 🔥 FASE 4: Conexão fechada
@@ -321,6 +323,14 @@ class SimpleMultiBaileyService {
         }
         
         this.connections.set(connectionId, existingConnection);
+        
+        // Auto-reconexão se necessário
+        if (shouldReconnect) {
+          console.log(`🔄 [MONITOR-${slotNumber}] Tentando reconectar em 10 segundos...`);
+          setTimeout(() => {
+            this.connectToWhatsApp(connectionId, clientId, slotNumber);
+          }, 10000);
+        }
       }
     });
     
@@ -340,7 +350,40 @@ class SimpleMultiBaileyService {
       }
     });
     
-    console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Monitoramento contínuo configurado e ATIVO`);
+    console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Monitoramento contínuo OTIMIZADO configurado e ATIVO`);
+  }
+
+  /**
+   * 🔥 NOVO: Health check para manter conexão viva
+   */
+  private startHealthCheck(socket: any, connectionId: string, slotNumber: number) {
+    const healthCheck = setInterval(async () => {
+      try {
+        const connection = this.connections.get(connectionId);
+        if (!connection || !connection.isConnected) {
+          clearInterval(healthCheck);
+          return;
+        }
+        
+        if (socket.ws.readyState === socket.ws.OPEN) {
+          // Enviar presence update para manter conexão viva
+          await socket.sendPresenceUpdate('available');
+          console.log(`💓 [HEALTH-${slotNumber}] Ping enviado - conexão ativa`);
+        } else {
+          console.log(`⚠️ [HEALTH-${slotNumber}] WebSocket não está aberto`);
+          clearInterval(healthCheck);
+        }
+      } catch (error) {
+        console.error(`❌ [HEALTH-${slotNumber}] Erro no health check:`, error);
+        clearInterval(healthCheck);
+      }
+    }, 60000); // A cada 1 minuto
+    
+    // Limpar health check após 2 horas
+    setTimeout(() => {
+      clearInterval(healthCheck);
+      console.log(`🧹 [HEALTH-${slotNumber}] Health check removido após 2 horas`);
+    }, 7200000);
   }
 
   /**
