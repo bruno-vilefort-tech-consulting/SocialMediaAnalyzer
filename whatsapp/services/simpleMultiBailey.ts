@@ -477,6 +477,16 @@ class SimpleMultiBaileyService {
         existingConnection.lastConnection = new Date();
         existingConnection.socket = socket;
         
+        // 🔥 LOG CRÍTICO: Verificar se socket está sendo salvo
+        console.log(`💾 [MONITOR-${slotNumber}] Salvando socket no Map:`, {
+          hasSocket: !!socket,
+          socketType: typeof socket,
+          hasWs: !!socket.ws,
+          wsReadyState: socket.ws?.readyState,
+          wsOPEN: socket.ws?.OPEN,
+          isWsOpen: socket.ws?.readyState === socket.ws?.OPEN
+        });
+        
         this.connections.set(connectionId, existingConnection);
         
         console.log(`✅ [MONITOR-${slotNumber}] Conexão salva: ${existingConnection.phoneNumber}`);
@@ -621,19 +631,65 @@ class SimpleMultiBaileyService {
     try {
       const connection = this.connections.get(connectionId);
       if (!connection || !connection.isConnected) {
+        console.log(`❌ [SIMPLE-BAILEYS] Slot ${slotNumber} não está conectado ou não encontrado`);
         return {
           success: false,
           error: `Slot ${slotNumber} não está conectado`
         };
       }
 
-      // Simular envio de mensagem
-      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // 🔥 CORREÇÃO CRÍTICA: Usar o socket real do Baileys
+      const socket = connection.socket;
       
-      console.log(`✅ [SIMPLE-BAILEYS] Mensagem enviada via slot ${slotNumber}`);
+      // 🔍 DEBUG DETALHADO: Verificar estado do socket
+      console.log(`🔍 [SIMPLE-BAILEYS] Debug socket slot ${slotNumber}:`, {
+        hasSocket: !!socket,
+        connectionId,
+        isConnected: connection.isConnected,
+        phoneNumber: connection.phoneNumber,
+        lastConnection: connection.lastConnection,
+        socketWsState: socket?.ws?.readyState,
+        socketWsOpen: socket?.ws?.OPEN
+      });
+      
+      // 🔍 DEBUG EXTRA: Listar todas as conexões disponíveis
+      console.log(`🔍 [SIMPLE-BAILEYS] Todas as conexões ativas:`, Array.from(this.connections.entries()).map(([id, conn]) => ({
+        id,
+        isConnected: conn.isConnected,
+        hasSocket: !!conn.socket,
+        phoneNumber: conn.phoneNumber
+      })));
+      
+      if (!socket) {
+        console.log(`❌ [SIMPLE-BAILEYS] Socket não encontrado para slot ${slotNumber}`);
+        return {
+          success: false,
+          error: `Socket não disponível para slot ${slotNumber}`
+        };
+      }
+
+      // Verificar se socket está conectado
+      if (socket.ws?.readyState !== socket.ws?.OPEN) {
+        console.log(`❌ [SIMPLE-BAILEYS] WebSocket não está aberto para slot ${slotNumber}`);
+        return {
+          success: false,
+          error: `WebSocket não está conectado para slot ${slotNumber}`
+        };
+      }
+
+      // 🔥 ENVIO REAL: Usar socket Baileys para enviar mensagem
+      const normalizedPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const jid = `${normalizedPhoneNumber}@s.whatsapp.net`;
+      
+      console.log(`📱 [SIMPLE-BAILEYS] Enviando mensagem real via Baileys para ${jid}`);
+      
+      const messageResult = await socket.sendMessage(jid, { text: message });
+      
+      console.log(`✅ [SIMPLE-BAILEYS] Mensagem REAL enviada via slot ${slotNumber} - ID: ${messageResult.key.id}`);
+      
       return {
         success: true,
-        messageId: messageId
+        messageId: messageResult.key.id
       };
       
     } catch (error: any) {
