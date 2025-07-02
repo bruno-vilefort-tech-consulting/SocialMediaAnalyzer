@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ CORREÇÕES CRÍTICAS DE ROUTING E ENVIO WHATSAPP FINALIZADAS - Sistema de entrevistas totalmente funcional
+  - **Fix critical getClientConnections**: Corrigida chamada síncrona para await getClientConnections() em sendMessage
+  - **Fix parâmetro clientId**: Todas as chamadas sendMessage agora incluem clientId obrigatório para routing correto
+  - **Fix stopInterview signature**: Método stopInterview aceita clientId opcional para compatibilidade
+  - **Fix message routing**: simpleMultiBailey.ts processa mensagens recebidas via handler messages.upsert
+  - **Sistema de entrevistas operacional**: Fluxo completo 1/2 → perguntas → áudio → transcrição → banco funcional
+  - **Correções de async**: Todas chamadas para getClientConnections e sendTestMessage usando await corretamente
+  - **Sistema híbrido estável**: MultiWA + Baileys + Whisper + Firebase integrados sem conflitos
+
 - July 2, 2025: ✅ BUG WHATSAPP TEMPLATE CORRIGIDO DEFINITIVAMENTE - Sistema agora usa mensagem personalizada do formulário
   - **Root cause identificado**: Endpoint send-whatsapp estava usando `selection.message` em vez de `selection.whatsappTemplate`
   - **Correção implementada**: Linha 1970 em server/routes.ts corrigida para usar `selection.whatsappTemplate`

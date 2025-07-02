@@ -312,7 +312,7 @@ class InteractiveInterviewService {
       
     } catch (error) {
       console.log(`❌ Erro ao buscar vaga:`, error);
-      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Erro ao carregar entrevista. Tente novamente.");
+      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Erro ao carregar entrevista. Tente novamente.", clientId);
     }
   }
 
@@ -580,7 +580,7 @@ class InteractiveInterviewService {
     console.log(`📊 [AUDIO] Status da entrevista atualizado: pergunta ${interview.currentQuestion + 1}/${interview.questions.length}`);
 
     // Enviar confirmação
-    await this.sendMessage(from, `✅ Resposta recebida! Preparando próxima pergunta...`);
+    await this.sendMessage(from, `✅ Resposta recebida! Preparando próxima pergunta...`, interview.clientId);
     
     setTimeout(async () => {
       await this.sendNextQuestion(phone, interview);
