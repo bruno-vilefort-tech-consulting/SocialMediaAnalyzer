@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- January 2, 2025: ✅ PRIORIDADE BAILEYS IMPLEMENTADA - Sistema WhatsApp na página /configuracoes agora prioriza Baileys sobre WppConnect
+  - **Baileys reativado**: Removida linha de desabilitação no whatsappBaileyService.ts 
+  - **Nova prioridade**: Baileys → WppConnect → Evolution API (como fallback final)
+  - **Método getConnectionStatus adicionado**: Compatibilidade com clientWhatsAppService implementada
+  - **Configuração otimizada**: Versão WhatsApp Web com fallback para [2, 2419, 6] conforme documentação
+  - **Sistema híbrido mantido**: Fallbacks preservados para garantir funcionamento robusto
+  - **Imports corrigidos**: whatsappBaileyService importado no clientWhatsAppService
+  - **Logs identificados**: Sistema mostra claramente quando usa Baileys vs outras APIs
+
 - June 27, 2025: ✅ SISTEMA ASSESSMENTS COMPLETO E TOTALMENTE FUNCIONAL - Envio de emails operacional com Resend integrado
   - **Envio de emails funcionando**: useMutation integrado ao endpoint /api/send-assessment-email com Resend
   - **Campo "Assunto E-mail" implementado**: Posicionado acima da mensagem com template padrão "Olá [nome do candidato] faça seus Assessments MaxcamRH"
