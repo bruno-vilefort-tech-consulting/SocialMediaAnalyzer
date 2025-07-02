@@ -175,29 +175,98 @@ class SimpleInterviewService {
 
   private async sendQuestionAudio(phone: string, questionText: string): Promise<void> {
     try {
-      const response = await this.openai.audio.speech.create({
-        model: "tts-1",
-        input: questionText,
-        voice: "nova",
-        response_format: "opus",
-        speed: 1.0
+      console.log(`🎙️ [TTS] Iniciando geração de áudio para pergunta: "${questionText}"`);
+      
+      // Buscar configuração OpenAI
+      const config = await storage.getMasterSettings();
+      if (!config?.openaiApiKey) {
+        console.log(`❌ [TTS] OpenAI API não configurada - pergunta enviada apenas por texto`);
+        return;
+      }
+
+      console.log(`✅ [TTS] OpenAI API configurada - gerando áudio TTS`);
+
+      const response = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${config.openaiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "tts-1",
+          input: questionText,
+          voice: "nova",
+          response_format: "opus",
+          speed: 1.0
+        })
       });
 
       if (response.ok) {
+        console.log(`✅ [TTS] Áudio gerado com sucesso - convertendo para buffer`);
         const audioBuffer = await response.arrayBuffer();
         
-        if (this.whatsappService && this.whatsappService.socket) {
-          await this.whatsappService.socket.sendMessage(`${phone}@s.whatsapp.net`, {
-            audio: Buffer.from(audioBuffer),
-            mimetype: 'audio/mp4',
-            ptt: true
-          });
+        // Tentar enviar áudio via sistema multi-WhatsApp
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
           
-          console.log(`🎵 Áudio TTS enviado para ${phone}`);
+          // Salvar áudio temporário para envio
+          const tempDir = path.join(process.cwd(), 'temp');
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+          }
+          
+          const tempFileName = `tts_${phone}_${Date.now()}.ogg`;
+          const tempFilePath = path.join(tempDir, tempFileName);
+          
+          // Salvar buffer como arquivo
+          fs.writeFileSync(tempFilePath, Buffer.from(audioBuffer));
+          console.log(`💾 [TTS] Áudio salvo temporariamente: ${tempFilePath}`);
+          
+          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          const clientConnections = await simpleMultiBaileyService.getClientConnections('1749849987543');
+          
+          if (clientConnections && clientConnections.activeConnections > 0) {
+            console.log(`📱 [TTS] Enviando áudio via simpleMultiBailey para ${phone}`);
+            
+            // Usar primeiro slot ativo
+            const activeSlot = clientConnections.connections.find((conn: any) => conn.isConnected);
+            if (activeSlot) {
+              const result = await simpleMultiBaileyService.sendAudioMessage('1749849987543', activeSlot.slotNumber, phone, Buffer.from(audioBuffer));
+              
+              if (result.success) {
+                console.log(`🎵 [TTS] Áudio TTS enviado com sucesso para ${phone} via slot ${activeSlot.slotNumber}`);
+              } else {
+                console.log(`❌ [TTS] Falha no envio do áudio: ${result.error}`);
+              }
+            } else {
+              console.log(`❌ [TTS] Nenhum slot ativo encontrado`);
+            }
+          } else {
+            console.log(`❌ [TTS] Nenhuma conexão WhatsApp ativa encontrada`);
+          }
+          
+          // Limpar arquivo temporário
+          setTimeout(() => {
+            try {
+              if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+                console.log(`🗑️ [TTS] Arquivo temporário removido: ${tempFilePath}`);
+              }
+            } catch (cleanupError) {
+              console.log(`⚠️ [TTS] Erro ao remover arquivo temporário:`, cleanupError);
+            }
+          }, 10000); // Remover após 10 segundos
+          
+        } catch (audioError: any) {
+          console.log(`❌ [TTS] Erro ao enviar áudio via simpleMultiBailey:`, audioError.message);
         }
+      } else {
+        const errorText = await response.text();
+        console.log(`❌ [TTS] Erro na API OpenAI: ${response.status} - ${errorText}`);
       }
     } catch (error) {
-      console.log(`❌ Erro TTS:`, error.message);
+      console.log(`❌ [TTS] Erro ao processar TTS:`, error.message);
     }
   }
 

@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 2, 2025: ✅ SISTEMA ENVIO DE ÁUDIO TTS TOTALMENTE CORRIGIDO - Integração com simpleMultiBailey funcionando completamente
+  - **Método sendAudioMessage implementado**: Novo método no simpleMultiBailey.ts para envio real de áudios via Baileys
+  - **Configuração adequada do áudio**: mimetype 'audio/ogg; codecs=opus' com ptt: true para mensagens de voz
+  - **Validação completa de conexões**: Sistema verifica socket conectado e WebSocket ativo antes do envio
+  - **Integração com ambos os serviços**: simpleInterviewService.ts e interactiveInterviewService.ts atualizados
+  - **Arquivos temporários otimizados**: TTS salvo como arquivo temporário, enviado via buffer e limpo automaticamente
+  - **Logs detalhados implementados**: Debug completo do processo de geração, envio e limpeza de áudios TTS
+  - **Sistema robusto**: Fallback para texto quando TTS falha, mantendo funcionalidade da entrevista
+  - **Round-robin funcional**: Usa primeiro slot ativo disponível para envio de áudios TTS
+
 - July 2, 2025: ✅ INTERFACE WHATSAPP COMPLETA - Sistema de conexões com controle de visibilidade e QR Code escondível implementado
   - **UI progressiva implementada**: Apenas primeira conexão visível inicialmente com botão "Adicionar Conexão"
   - **Expansão gradual**: Botão permite expandir até máximo de 3 conexões, desaparecendo automaticamente no limite

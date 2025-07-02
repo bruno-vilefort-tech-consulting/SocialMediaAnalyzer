@@ -370,19 +370,64 @@ class InteractiveInterviewService {
       });
 
       if (response.ok) {
+        console.log(`✅ [TTS] Áudio gerado com sucesso - convertendo para buffer`);
         const audioBuffer = await response.arrayBuffer();
         
-        // Enviar áudio via WhatsApp - buscar serviço dinamicamente para evitar dependência circular
-        const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-        const connection = whatsappBaileyService.getConnection(clientId);
-        if (connection?.socket) {
-          await connection.socket.sendMessage(`${phone}@s.whatsapp.net`, {
-            audio: Buffer.from(audioBuffer),
-            mimetype: 'audio/mp4',
-            ptt: true
-          });
+        // Tentar enviar áudio via sistema multi-WhatsApp
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
           
-          console.log(`🎵 Áudio TTS enviado para ${phone}`);
+          // Salvar áudio temporário para envio
+          const tempDir = path.join(process.cwd(), 'temp');
+          if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+          }
+          
+          const tempFileName = `tts_${phone}_${Date.now()}.ogg`;
+          const tempFilePath = path.join(tempDir, tempFileName);
+          
+          // Salvar buffer como arquivo
+          fs.writeFileSync(tempFilePath, Buffer.from(audioBuffer));
+          console.log(`💾 [TTS] Áudio salvo temporariamente: ${tempFilePath}`);
+          
+          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          const clientConnections = await simpleMultiBaileyService.getClientConnections(clientId);
+          
+          if (clientConnections && clientConnections.activeConnections > 0) {
+            console.log(`📱 [TTS] Enviando áudio via simpleMultiBailey para ${phone}`);
+            
+            // Usar primeiro slot ativo
+            const activeSlot = clientConnections.connections.find((conn: any) => conn.isConnected);
+            if (activeSlot) {
+              const result = await simpleMultiBaileyService.sendAudioMessage(clientId, activeSlot.slotNumber, phone, Buffer.from(audioBuffer));
+              
+              if (result.success) {
+                console.log(`🎵 [TTS] Áudio TTS enviado com sucesso para ${phone} via slot ${activeSlot.slotNumber}`);
+              } else {
+                console.log(`❌ [TTS] Falha no envio do áudio: ${result.error}`);
+              }
+            } else {
+              console.log(`❌ [TTS] Nenhum slot ativo encontrado`);
+            }
+          } else {
+            console.log(`❌ [TTS] Nenhuma conexão WhatsApp ativa encontrada`);
+          }
+          
+          // Limpar arquivo temporário
+          setTimeout(() => {
+            try {
+              if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+                console.log(`🗑️ [TTS] Arquivo temporário removido: ${tempFilePath}`);
+              }
+            } catch (cleanupError) {
+              console.log(`⚠️ [TTS] Erro ao remover arquivo temporário:`, cleanupError);
+            }
+          }, 10000); // Remover após 10 segundos
+          
+        } catch (audioError: any) {
+          console.log(`❌ [TTS] Erro ao enviar áudio via simpleMultiBailey:`, audioError.message);
         }
       }
     } catch (error) {

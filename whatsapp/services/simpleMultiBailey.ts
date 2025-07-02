@@ -778,6 +778,73 @@ class SimpleMultiBaileyService {
   }
 
   /**
+   * Enviar mensagem de áudio para WhatsApp
+   */
+  async sendAudioMessage(clientId: string, slotNumber: number, phoneNumber: string, audioBuffer: Buffer): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    const connectionId = this.generateConnectionId(clientId, slotNumber);
+    
+    console.log(`🎵 [SIMPLE-BAILEYS] Enviando áudio slot ${slotNumber} para ${phoneNumber}`);
+
+    try {
+      const connection = this.connections.get(connectionId);
+      if (!connection || !connection.isConnected) {
+        console.log(`❌ [SIMPLE-BAILEYS] Slot ${slotNumber} não está conectado ou não encontrado`);
+        return {
+          success: false,
+          error: `Slot ${slotNumber} não está conectado`
+        };
+      }
+
+      const socket = connection.socket;
+      
+      if (!socket) {
+        console.log(`❌ [SIMPLE-BAILEYS] Socket não encontrado para slot ${slotNumber}`);
+        return {
+          success: false,
+          error: `Socket não disponível para slot ${slotNumber}`
+        };
+      }
+
+      // Verificar se socket está conectado
+      if (socket.ws?.readyState !== socket.ws?.OPEN) {
+        console.log(`❌ [SIMPLE-BAILEYS] WebSocket não está aberto para slot ${slotNumber}`);
+        return {
+          success: false,
+          error: `WebSocket não está conectado para slot ${slotNumber}`
+        };
+      }
+
+      // Formatação do número para JID do WhatsApp
+      const normalizedPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const jid = `${normalizedPhoneNumber}@s.whatsapp.net`;
+      
+      console.log(`🎵 [SIMPLE-BAILEYS] Enviando áudio real via Baileys para ${jid}`);
+      
+      // Enviar áudio usando Baileys
+      const messageResult = await socket.sendMessage(jid, {
+        audio: audioBuffer,
+        mimetype: 'audio/ogg; codecs=opus',
+        ptt: true // Define como mensagem de voz (Push To Talk)
+      });
+      
+      console.log(`✅ [SIMPLE-BAILEYS] Áudio REAL enviado via slot ${slotNumber} - ID: ${messageResult.key.id}`);
+      
+      return {
+        success: true,
+        messageId: messageResult.key.id
+      };
+      
+    } catch (error: any) {
+      console.log(`❌ [SIMPLE-BAILEYS] Erro enviando áudio slot ${slotNumber}:`, error.message);
+      
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
    * Limpar todas as conexões de um cliente
    */
   async clearClientConnections(clientId: string): Promise<void> {
