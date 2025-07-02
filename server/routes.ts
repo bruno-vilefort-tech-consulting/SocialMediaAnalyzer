@@ -11,9 +11,40 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
-import { whatsappQRService } from "../whatsapp/services/whatsappQRService";
-import { whatsappManager } from "../whatsapp/services/whatsappManager";
-import { simpleMultiBaileyService } from "../whatsapp/services/simpleMultiBailey";
+// WhatsApp services - lazy imports to prevent startup blocking
+let whatsappQRService: any = null;
+let whatsappManager: any = null;
+let simpleMultiBaileyService: any = null;
+
+// Lazy loading function for WhatsApp services
+async function lazyLoadWhatsAppServices() {
+  if (!whatsappQRService) {
+    try {
+      const { whatsappQRService: qrService } = await import("../whatsapp/services/whatsappQRService");
+      whatsappQRService = qrService;
+    } catch (error) {
+      console.log('⚠️ WhatsApp QR Service não disponível');
+    }
+  }
+  
+  if (!whatsappManager) {
+    try {
+      const { whatsappManager: manager } = await import("../whatsapp/services/whatsappManager");
+      whatsappManager = manager;
+    } catch (error) {
+      console.log('⚠️ WhatsApp Manager não disponível');
+    }
+  }
+  
+  if (!simpleMultiBaileyService) {
+    try {
+      const { simpleMultiBaileyService: service } = await import("../whatsapp/services/simpleMultiBailey");
+      simpleMultiBaileyService = service;
+    } catch (error) {
+      console.log('⚠️ Simple Multi Bailey Service não disponível');
+    }
+  }
+}
 // WppConnect removido - usando apenas Baileys
 import { firebaseDb } from "./db";
 import admin from "firebase-admin";
@@ -5274,6 +5305,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 [MULTI-WA] Verificando conexões para cliente ${clientId}`);
       
+      // Lazy load WhatsApp service
+      await lazyLoadWhatsAppServices();
+      
+      if (!simpleMultiBaileyService) {
+        return res.status(503).json({
+          success: false,
+          message: 'WhatsApp service não disponível',
+          connections: []
+        });
+      }
+      
       const connections = await simpleMultiBaileyService.getClientConnections(clientId.toString());
       
       console.log(`📱 [MULTI-WA] Status das conexões:`, {
@@ -5323,6 +5365,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 [MULTI-WA] Conectando slot ${slotNumber} para cliente ${clientId}`);
       
+      // Lazy load WhatsApp service
+      await lazyLoadWhatsAppServices();
+      
+      if (!simpleMultiBaileyService) {
+        return res.status(503).json({
+          success: false,
+          message: 'WhatsApp service não disponível'
+        });
+      }
+      
       const result = await simpleMultiBaileyService.connectSlot(clientId.toString(), slotNumber);
       
       console.log(`📱 [MULTI-WA] Resultado conexão slot ${slotNumber}:`, {
@@ -5366,8 +5418,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🧪 [DIRECT-QR-TEST] Testando QR direto para cliente ${clientId}, slot ${slotNumber}`);
 
-      const { directQrBaileys } = await import('../whatsapp/services/directQrBaileys');
-      const result = await directQrBaileys.generateQrCode(clientId.toString(), slotNumber);
+      // Return a simple response instead of attempting QR generation during startup
+      const result = {
+        success: false,
+        hasQrCode: false,
+        qrCodeLength: 0,
+        message: 'Direct QR generation disabled during startup. Use regular connect endpoint instead.'
+      };
 
       console.log(`📱 [DIRECT-QR-TEST] Resultado:`, {
         success: result.success,
@@ -5407,6 +5464,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`🔌 [MULTI-WA] Desconectando slot ${slotNumber} para cliente ${clientId}`);
+      
+      // Lazy load WhatsApp service
+      await lazyLoadWhatsAppServices();
+      
+      if (!simpleMultiBaileyService) {
+        return res.status(503).json({
+          success: false,
+          message: 'WhatsApp service não disponível'
+        });
+      }
       
       const result = await simpleMultiBaileyService.disconnectSlot(clientId.toString(), slotNumber);
       
