@@ -198,23 +198,6 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
           </div>
         )}
 
-        {/* Estado de conectando (após scan) */}
-        {!connection.qrCode && !connection.isConnected && isConnecting && (
-          <div className="p-3 bg-yellow-100 border border-yellow-400 rounded">
-            <div className="flex items-center space-x-3">
-              <Loader2 className="h-5 w-5 animate-spin text-yellow-600" />
-              <div>
-                <p className="text-yellow-800 text-sm font-medium">
-                  🔄 Autenticando...
-                </p>
-                <p className="text-yellow-700 text-xs mt-1">
-                  QR Code foi escaneado. Aguardando confirmação do WhatsApp (até 2 minutos).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Banner de conexão */}
         {connection.isConnected && connection.phoneNumber && (
           <div className="p-3 bg-green-100 border border-green-400 rounded">

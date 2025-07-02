@@ -1843,10 +1843,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
-      // 🔥 CORREÇÃO: Verificar conexões ativas usando novo sistema multiWhatsApp
-      const { multiWhatsAppService } = await import('../whatsapp/services/multiWhatsAppService');
+      // 🔥 CORREÇÃO: Verificar conexões ativas usando sistema simpleMultiBailey
+      await initializeMultiBaileyService();
       const clientIdStr = selection.clientId.toString();
-      const connectionsStatus = await multiWhatsAppService.getClientConnections(clientIdStr);
+      const connectionsStatus = simpleMultiBaileyService.getConnectionsStatus(clientIdStr);
       
       console.log(`📊 [SELECOES] Verificando status WhatsApp cliente ${clientIdStr}:`, connectionsStatus);
       
@@ -1865,7 +1865,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`✅ [SELECOES] Cliente tem ${connectionsStatus.activeConnections}/${connectionsStatus.totalConnections} conexões ativas`);
       
       // 🎯 ROUND-ROBIN: Buscar todos os slots ativos para distribuição
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
       const activeConnections = connectionsStatus.connections?.filter(conn => conn.isConnected) || [];
       
       if (activeConnections.length === 0) {
