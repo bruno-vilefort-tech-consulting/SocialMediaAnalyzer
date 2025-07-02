@@ -5343,6 +5343,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint de teste para DirectQrBaileys
+  app.post("/api/multi-whatsapp/test-direct-qr/:slotNumber", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const user = req.user;
+      const clientId = user?.clientId || (user?.role === 'master' ? req.body.clientId : null);
+      const slotNumber = parseInt(req.params.slotNumber);
+
+      if (!clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Client ID required'
+        });
+      }
+
+      if (isNaN(slotNumber) || slotNumber < 1 || slotNumber > 3) {
+        return res.status(400).json({
+          success: false,
+          message: 'Slot number must be 1, 2, or 3'
+        });
+      }
+
+      console.log(`🧪 [DIRECT-QR-TEST] Testando QR direto para cliente ${clientId}, slot ${slotNumber}`);
+
+      const { directQrBaileys } = await import('../whatsapp/services/directQrBaileys');
+      const result = await directQrBaileys.generateQrCode(clientId.toString(), slotNumber);
+
+      console.log(`📱 [DIRECT-QR-TEST] Resultado:`, {
+        success: result.success,
+        hasQrCode: !!result.qrCode,
+        qrCodeLength: result.qrCode?.length || 0
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('❌ [DIRECT-QR-TEST] Erro ao gerar QR direto:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor'
+      });
+    }
+  });
+
   // Desconectar um slot específico
   app.post("/api/multi-whatsapp/disconnect/:slotNumber", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

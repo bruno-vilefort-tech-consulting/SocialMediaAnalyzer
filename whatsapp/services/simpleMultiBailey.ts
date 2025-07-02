@@ -11,6 +11,7 @@ interface SimpleConnection {
   qrCode: string | null;
   phoneNumber: string | null;
   lastConnection: Date | null;
+  lastUpdate?: Date;
   service: 'baileys';
   socket?: any; // Baileys socket instance
 }
@@ -110,58 +111,92 @@ class SimpleMultiBaileyService {
       // Criar diretório de sessão para este slot
       const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
       
-      if (!fs.existsSync(sessionPath)) {
-        fs.mkdirSync(sessionPath, { recursive: true });
-        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Diretório criado: ${sessionPath}`);
-      } else {
-        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Diretório já existe: ${sessionPath}`);
+      // NOVA ESTRATÉGIA: Sempre limpar sessão existente para forçar novo QR Code
+      if (fs.existsSync(sessionPath)) {
+        console.log(`🧹 [BAILEYS-SLOT-${slotNumber}] Limpando sessão antiga para forçar novo QR Code...`);
+        fs.rmSync(sessionPath, { recursive: true, force: true });
       }
       
-      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação...`);
+      fs.mkdirSync(sessionPath, { recursive: true });
+      console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Nova sessão criada: ${sessionPath}`);
+      
+      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação limpo...`);
       
       const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação limpo carregado`);
       
       let qrCodeData: string | null = null;
       
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys...`);
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações otimizadas...`);
       
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['Baileys Multi', 'Chrome', '1.0.0'],
+        browser: ['Maximus', 'Chrome', '4.0.0'],
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        markOnlineOnConnect: false,
+        fireInitQueries: true,
+        syncFullHistory: false,
+        generateHighQualityLinkPreview: false,
         logger: { level: 'silent', child: () => ({ level: 'silent' } as any) } as any
       });
       
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado com sucesso`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado com configurações otimizadas`);
       console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
       
       // Promise para aguardar QR Code ou conexão
       const connectionPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
         let resolved = false;
+        let qrReceived = false;
+        
+        console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Configurando listeners de eventos...`);
         
         socket.ev.on('connection.update', async (update) => {
+          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Evento connection.update:`, { 
+            connection: update.connection, 
+            hasQR: !!update.qr,
+            qrLength: update.qr?.length || 0 
+          });
+          
           const { connection, lastDisconnect, qr } = update;
           
-          if (qr && !resolved) {
-            // Converter QR Code para data URL
-            const QRCode = await import('qrcode');
-            qrCodeData = await QRCode.toDataURL(qr, {
-              width: 256,
-              margin: 2,
-              color: {
-                dark: '#000000',
-                light: '#FFFFFF'
+          if (qr && !resolved && !qrReceived) {
+            qrReceived = true;
+            console.log(`🎯 [BAILEYS-SLOT-${slotNumber}] QR Code recebido! Convertendo...`);
+            
+            try {
+              // Converter QR Code para data URL
+              const QRCode = await import('qrcode');
+              qrCodeData = await QRCode.toDataURL(qr, {
+                width: 256,
+                margin: 2,
+                color: {
+                  dark: '#000000',
+                  light: '#FFFFFF'
+                }
+              });
+              
+              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code convertido com sucesso (${qrCodeData.length} caracteres)`);
+              
+              // Salvar QR Code na conexão
+              const existingConnection = this.connections.get(connectionId);
+              if (existingConnection) {
+                existingConnection.qrCode = qrCodeData;
+                existingConnection.lastUpdate = new Date();
+                console.log(`💾 [BAILEYS-SLOT-${slotNumber}] QR Code salvo na conexão`);
               }
-            });
-            
-            console.log(`🔗 [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} caracteres)`);
-            
-            resolved = true;
-            resolve({ qrCode: qrCodeData, success: true });
+              
+              resolved = true;
+              resolve({ qrCode: qrCodeData, success: true });
+            } catch (qrError) {
+              console.error(`❌ [BAILEYS-SLOT-${slotNumber}] Erro ao converter QR Code:`, qrError);
+              resolved = true;
+              resolve({ success: false });
+            }
           }
           
-          if (connection === 'open') {
+          if (connection === 'open' && !resolved) {
             console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Conectado com sucesso`);
             // Atualizar conexão como conectada
             const existingConnection = this.connections.get(connectionId);
@@ -171,10 +206,15 @@ class SimpleMultiBaileyService {
               existingConnection.phoneNumber = socket.user?.id?.split('@')[0] || null;
               existingConnection.socket = socket;
             }
+            
+            if (!qrReceived) {
+              resolved = true;
+              resolve({ success: true });
+            }
           }
           
           if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
             console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Conexão fechada:`, lastDisconnect?.error, 'Reconectando:', shouldReconnect);
           }
         });
@@ -184,11 +224,13 @@ class SimpleMultiBaileyService {
         // Timeout de 60 segundos para gerar QR Code
         setTimeout(() => {
           if (!resolved) {
-            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code`);
+            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code (QR recebido: ${qrReceived})`);
             resolved = true;
             resolve({ success: false });
           }
         }, 60000);
+        
+        console.log(`⏳ [BAILEYS-SLOT-${slotNumber}] Aguardando eventos...`);
       });
       
       const result = await connectionPromise;
