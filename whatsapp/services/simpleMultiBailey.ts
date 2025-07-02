@@ -70,6 +70,26 @@ class SimpleMultiBaileyService {
     // Verificar se existe na memória
     const existingConnection = this.connections.get(connectionId);
     if (existingConnection) {
+      // 🔥 NOVO: Verificar se socket ainda está ativo
+      if (existingConnection.socket && existingConnection.isConnected) {
+        try {
+          // Ping no socket para verificar se ainda está conectado
+          const isActive = existingConnection.socket.user && 
+                           existingConnection.socket.authState && 
+                           existingConnection.socket.ws.readyState !== 3; // WebSocket não fechado
+          
+          if (!isActive) {
+            console.log(`⚠️ [STATUS-CHECK] Socket slot ${slotNumber} não responsivo - marcando como desconectado`);
+            existingConnection.isConnected = false;
+            this.connections.set(connectionId, existingConnection);
+          }
+        } catch (error) {
+          console.log(`❌ [STATUS-CHECK] Erro ao verificar socket slot ${slotNumber}:`, error);
+          existingConnection.isConnected = false;
+          this.connections.set(connectionId, existingConnection);
+        }
+      }
+      
       return existingConnection;
     }
 
@@ -127,46 +147,51 @@ class SimpleMultiBaileyService {
       
       let qrCodeData: string | null = null;
       
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações otimizadas...`);
+      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com configurações MOBILE otimizadas...`);
       
+      // CONFIGURAÇÃO OTIMIZADA PARA CONTORNAR BLOQUEIOS
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['Maximus', 'Chrome', '4.0.0'],
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
+        mobile: true, // 🔥 CRUCIAL: Usa mmg.whatsapp.net em vez de web.whatsapp.com
+        browser: ['Ubuntu', 'Chrome', '20.0.04'], // Simula browser Linux real
+        connectTimeoutMs: 120000, // 🔥 AUMENTADO: 2 minutos para autenticação
+        defaultQueryTimeoutMs: 120000, // 🔥 AUMENTADO: 2 minutos para queries
+        keepAliveIntervalMs: 30000, // Keep-alive mais conservador
+        qrTimeout: 120000, // 🔥 AUMENTADO: QR Code válido por 2 minutos
+        retryRequestDelayMs: 5000, // 🔥 AUMENTADO: Delay maior entre tentativas
+        maxMsgRetryCount: 5, // 🔥 AUMENTADO: Mais tentativas
         markOnlineOnConnect: false,
         fireInitQueries: true,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
+        emitOwnEvents: false,
+        shouldSyncHistoryMessage: () => false, // Reduz tráfego
         logger: { level: 'silent', child: () => ({ level: 'silent' } as any) } as any
       });
       
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado com configurações otimizadas`);
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket MOBILE criado - usando mmg.whatsapp.net`);
       console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
       
-      // Promise para aguardar QR Code ou conexão
-      const connectionPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
-        let resolved = false;
-        let qrReceived = false;
-        
-        console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Configurando listeners de eventos...`);
+      // 🔥 NOVA ESTRATÉGIA: Separar QR Code de autenticação completa
+      const qrPromise = new Promise<{ qrCode?: string; success: boolean }>((resolve) => {
+        let qrResolved = false;
         
         socket.ev.on('connection.update', async (update) => {
-          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Evento connection.update:`, { 
-            connection: update.connection, 
-            hasQR: !!update.qr,
-            qrLength: update.qr?.length || 0 
-          });
-          
           const { connection, lastDisconnect, qr } = update;
           
-          if (qr && !resolved && !qrReceived) {
-            qrReceived = true;
-            console.log(`🎯 [BAILEYS-SLOT-${slotNumber}] QR Code recebido! Convertendo...`);
+          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Update:`, { 
+            connection, 
+            hasQR: !!qr,
+            qrLength: qr?.length || 0,
+            hasLastDisconnect: !!lastDisconnect
+          });
+          
+          // 🔥 FASE 1: Capturar QR Code (retornar imediatamente)
+          if (qr && !qrResolved) {
+            qrResolved = true;
             
             try {
-              // Converter QR Code para data URL
               const QRCode = await import('qrcode');
               qrCodeData = await QRCode.toDataURL(qr, {
                 width: 256,
@@ -177,85 +202,52 @@ class SimpleMultiBaileyService {
                 }
               });
               
-              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code convertido com sucesso (${qrCodeData.length} caracteres)`);
-              
-              // Salvar QR Code na conexão
-              const existingConnection = this.connections.get(connectionId);
-              if (existingConnection) {
-                existingConnection.qrCode = qrCodeData;
-                existingConnection.lastUpdate = new Date();
-                console.log(`💾 [BAILEYS-SLOT-${slotNumber}] QR Code salvo na conexão`);
-              }
-              
-              resolved = true;
+              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} chars) - Retornando para usuário`);
               resolve({ qrCode: qrCodeData, success: true });
+              
             } catch (qrError) {
-              console.error(`❌ [BAILEYS-SLOT-${slotNumber}] Erro ao converter QR Code:`, qrError);
-              resolved = true;
+              console.error(`❌ [BAILEYS-SLOT-${slotNumber}] Erro ao converter QR:`, qrError);
               resolve({ success: false });
             }
           }
-          
-          if (connection === 'open' && !resolved) {
-            console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Conectado com sucesso`);
-            // Atualizar conexão como conectada
-            const existingConnection = this.connections.get(connectionId);
-            if (existingConnection) {
-              existingConnection.isConnected = true;
-              existingConnection.qrCode = null;
-              existingConnection.phoneNumber = socket.user?.id?.split('@')[0] || null;
-              existingConnection.socket = socket;
-            }
-            
-            if (!qrReceived) {
-              resolved = true;
-              resolve({ success: true });
-            }
-          }
-          
-          if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Conexão fechada:`, lastDisconnect?.error, 'Reconectando:', shouldReconnect);
-          }
         });
         
-        socket.ev.on('creds.update', saveCreds);
-        
-        // Timeout de 60 segundos para gerar QR Code
+        // Timeout para QR Code
         setTimeout(() => {
-          if (!resolved) {
-            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code (QR recebido: ${qrReceived})`);
-            resolved = true;
+          if (!qrResolved) {
+            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout ao gerar QR Code`);
             resolve({ success: false });
           }
-        }, 60000);
-        
-        console.log(`⏳ [BAILEYS-SLOT-${slotNumber}] Aguardando eventos...`);
+        }, 60000); // 1 minuto para gerar QR
       });
       
-      const result = await connectionPromise;
+      // 🔥 SISTEMA CONTÍNUO: Monitorar conexão após QR Code
+      this.setupContinuousMonitoring(socket, connectionId, clientId, slotNumber, saveCreds);
       
-      if (result.success && result.qrCode) {
+      const qrResult = await qrPromise;
+      
+      if (qrResult.success && qrResult.qrCode) {
+        // Salvar conexão com socket ativo para monitoramento contínuo
         const connection: SimpleConnection = {
           connectionId,
           clientId,
           slotNumber,
           isConnected: false,
-          qrCode: result.qrCode,
+          qrCode: qrResult.qrCode,
           phoneNumber: null,
           lastConnection: new Date(),
           service: 'baileys',
-          socket
+          socket // 🔥 CRUCIAL: Manter socket ativo
         };
 
         this.connections.set(connectionId, connection);
         
-        console.log(`✅ [SIMPLE-BAILEYS] QR Code Baileys real gerado para slot ${slotNumber} (${result.qrCode.length} caracteres)`);
+        console.log(`✅ [SIMPLE-BAILEYS] QR Code retornado para slot ${slotNumber}. Monitoramento contínuo ATIVO.`);
         
         return {
           success: true,
-          qrCode: result.qrCode,
-          message: `QR Code Baileys gerado para slot ${slotNumber}`
+          qrCode: qrResult.qrCode,
+          message: `QR Code gerado para slot ${slotNumber}. Aguarde scan...`
         };
       } else {
         return {
@@ -272,6 +264,83 @@ class SimpleMultiBaileyService {
         message: error.message
       };
     }
+  }
+
+  /**
+   * 🔥 NOVO: Sistema de monitoramento contínuo da conexão
+   */
+  private setupContinuousMonitoring(socket: any, connectionId: string, clientId: string, slotNumber: number, saveCreds: any) {
+    console.log(`🔄 [BAILEYS-SLOT-${slotNumber}] Configurando monitoramento contínuo...`);
+    
+    socket.ev.on('connection.update', async (update: any) => {
+      const { connection, lastDisconnect, qr } = update;
+      
+      console.log(`🔄 [MONITOR-${slotNumber}] Estado:`, { 
+        connection, 
+        hasQR: !!qr,
+        hasError: !!lastDisconnect?.error
+      });
+      
+      const existingConnection = this.connections.get(connectionId);
+      if (!existingConnection) return;
+      
+      // 🔥 FASE 2: Processo de autenticação (após scan)
+      if (connection === 'connecting') {
+        console.log(`🔄 [MONITOR-${slotNumber}] Conectando... (usuário escaneou QR Code)`);
+        existingConnection.qrCode = null; // Remove QR Code após scan
+        this.connections.set(connectionId, existingConnection);
+      }
+      
+      // 🔥 FASE 3: Conexão estabelecida
+      if (connection === 'open') {
+        console.log(`🎉 [MONITOR-${slotNumber}] CONEXÃO ESTABELECIDA COM SUCESSO!`);
+        
+        existingConnection.isConnected = true;
+        existingConnection.qrCode = null;
+        existingConnection.phoneNumber = socket.user?.id?.split('@')[0] || 'Connected';
+        existingConnection.lastConnection = new Date();
+        existingConnection.socket = socket;
+        
+        this.connections.set(connectionId, existingConnection);
+        
+        console.log(`✅ [MONITOR-${slotNumber}] Conexão salva: ${existingConnection.phoneNumber}`);
+      }
+      
+      // 🔥 FASE 4: Conexão fechada
+      if (connection === 'close') {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const shouldReconnect = statusCode !== 401; // Não reconectar se logout manual
+        
+        console.log(`❌ [MONITOR-${slotNumber}] Conexão fechada. Status: ${statusCode}, Reconectar: ${shouldReconnect}`);
+        
+        existingConnection.isConnected = false;
+        if (statusCode === 401) {
+          // Logout - limpar sessão
+          existingConnection.qrCode = null;
+          existingConnection.phoneNumber = null;
+        }
+        
+        this.connections.set(connectionId, existingConnection);
+      }
+    });
+    
+    // 🔥 CRUCIAL: Salvar credenciais quando atualizadas
+    socket.ev.on('creds.update', () => {
+      console.log(`🔐 [MONITOR-${slotNumber}] Credenciais atualizadas - salvando...`);
+      saveCreds();
+    });
+    
+    // 🔥 NOVO: Monitorar eventos de mensagem para detectar conexão ativa
+    socket.ev.on('messages.upsert', () => {
+      const existingConnection = this.connections.get(connectionId);
+      if (existingConnection && !existingConnection.isConnected) {
+        console.log(`📨 [MONITOR-${slotNumber}] Mensagens detectadas - confirmando conexão ativa`);
+        existingConnection.isConnected = true;
+        this.connections.set(connectionId, existingConnection);
+      }
+    });
+    
+    console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Monitoramento contínuo configurado e ATIVO`);
   }
 
   /**

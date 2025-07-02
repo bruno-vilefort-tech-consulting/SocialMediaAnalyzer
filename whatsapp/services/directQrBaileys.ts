@@ -38,9 +38,20 @@ export class DirectQrBaileys {
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        browser: ['DirectQR', 'Chrome', '1.0.0'],
-        connectTimeoutMs: 30000,
-        defaultQueryTimeoutMs: 30000,
+        mobile: true,
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000,
+        qrTimeout: 90000,
+        retryRequestDelayMs: 2000,
+        maxMsgRetryCount: 3,
+        markOnlineOnConnect: false,
+        fireInitQueries: true,
+        syncFullHistory: false,
+        generateHighQualityLinkPreview: false,
+        emitOwnEvents: false,
+        shouldSyncHistoryMessage: () => false,
         logger: P({ level: 'silent' })
       });
 

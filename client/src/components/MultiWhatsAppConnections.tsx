@@ -62,7 +62,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
       isConnected: connection.isConnected,
       showQR: showQR
     });
-    
+
     if (connection.qrCode && !connection.isConnected) {
       console.log(`✅ [SLOT ${connection.slotNumber}] Exibindo QR Code de ${connection.qrCode.length} caracteres`);
       setShowQR(true);
@@ -146,7 +146,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                 )}
                 Conectar
               </Button>
-              
+
               {showQR && connection.qrCode && (
                 <Button
                   onClick={handleConnect}
@@ -170,15 +170,15 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
               <p className="text-xs text-muted-foreground mb-3">
                 Abra o WhatsApp no celular, vá em "Dispositivos conectados" e escaneie este código
               </p>
-              
+
               <div className="flex justify-center">
                 <div className="p-3 bg-white rounded-lg shadow border">
-                  <img 
-                    src={connection.qrCode} 
+                  <img
+                    src={connection.qrCode}
                     alt={`QR Code Slot ${connection.slotNumber}`}
                     width={200}
                     height={200}
-                    style={{ 
+                    style={{
                       width: '200px',
                       height: '200px',
                       display: 'block'
@@ -188,12 +188,37 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                   />
                 </div>
               </div>
-              
-              <p className="text-xs text-muted-foreground mt-2">
-                QR Code expira em 90 segundos. Clique em "Atualizar QR" se não funcionar
-              </p>
-              
 
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  QR Code válido por 2 minutos. Monitoramento contínuo ATIVO.
+                </p>
+
+                <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                  💡 <strong>Protocolo Mobile Ativo:</strong> Usando mmg.whatsapp.net para contornar bloqueios
+                </div>
+
+                <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                  🔄 <strong>Processo:</strong> 1) Escaneie → 2) Aguarde autenticação → 3) Conexão estabelecida
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Estado de conectando (após scan) */}
+        {!connection.qrCode && !connection.isConnected && isConnecting && (
+          <div className="p-3 bg-yellow-100 border border-yellow-400 rounded">
+            <div className="flex items-center space-x-3">
+              <Loader2 className="h-5 w-5 animate-spin text-yellow-600" />
+              <div>
+                <p className="text-yellow-800 text-sm font-medium">
+                  🔄 Autenticando...
+                </p>
+                <p className="text-yellow-700 text-xs mt-1">
+                  QR Code foi escaneado. Aguardando confirmação do WhatsApp (até 2 minutos).
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -204,6 +229,37 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
             <p className="text-green-800 text-sm">
               ✅ Conectado com sucesso! ({connection.phoneNumber})
             </p>
+            <p className="text-green-700 text-xs mt-1">
+              🔒 Conexão segura via protocolo mobile
+            </p>
+          </div>
+        )}
+
+        {/* Banner de erro de conectividade */}
+        {!connection.isConnected && !connection.qrCode && (
+          <div className="p-3 bg-yellow-100 border border-yellow-400 rounded">
+            <p className="text-yellow-800 text-sm font-medium">
+              ⚠️ Aguardando Conexão
+            </p>
+            <p className="text-yellow-700 text-xs mt-1">
+              Sistema otimizado com protocolo mobile (mmg.whatsapp.net) para contornar bloqueios de rede.
+            </p>
+            <div className="mt-2">
+              <Button
+                onClick={() => handleConnect()}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                disabled={isConnecting}
+              >
+                {isConnecting ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                Conectar via Mobile
+              </Button>
+            </div>
           </div>
         )}
 
@@ -211,7 +267,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
         {connection.isConnected && (
           <div className="space-y-3 p-3 border rounded-lg bg-gray-50">
             <h4 className="font-medium text-sm">Teste de Conexão</h4>
-            
+
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1">
                 <Label htmlFor={`testPhone${connection.slotNumber}`} className="text-xs">
@@ -222,10 +278,10 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                   placeholder="5511999999999"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
-                  size="sm"
+                  className="h-8 text-sm"
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <Label htmlFor={`testMessage${connection.slotNumber}`} className="text-xs">
                   Mensagem
@@ -234,11 +290,11 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                   id={`testMessage${connection.slotNumber}`}
                   value={testMessage}
                   onChange={(e) => setTestMessage(e.target.value)}
-                  size="sm"
+                  className="h-8 text-sm"
                 />
               </div>
             </div>
-            
+
             <Button
               onClick={handleTest}
               disabled={isTesting || !testPhone.trim()}
@@ -259,7 +315,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
         <div className="text-xs text-muted-foreground space-y-1">
           <p><strong>Connection ID:</strong> {connection.connectionId}</p>
           <p><strong>Última Conexão:</strong> {
-            connection.lastConnection 
+            connection.lastConnection
               ? new Date(connection.lastConnection).toLocaleString('pt-BR')
               : 'Nunca'
           }</p>
@@ -273,27 +329,41 @@ const MultiWhatsAppConnections: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [connectingSlots, setConnectingSlots] = useState<Set<number>>(new Set());
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
-  
+
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
   // Query para obter status das conexões
-  const { data: connectionsData, isLoading, refetch } = useQuery<MultiConnectionStatus>({
+  const { data: connectionsData, isLoading, refetch, error } = useQuery<MultiConnectionStatus>({
     queryKey: ['/api/multi-whatsapp/connections'],
     refetchInterval: 5000, // Atualizar a cada 5 segundos
     queryFn: async () => {
-      const response = await apiRequest('/api/multi-whatsapp/connections');
-      return response.json();
+      const response = await apiRequest('/api/multi-whatsapp/connections', 'GET');
+      const data = await response.json();
+      console.log('🔍 [MULTI-WA] Dados recebidos da API:', data);
+      return data;
     }
   });
 
+  // Tratamento de erro da query
+  React.useEffect(() => {
+    if (error) {
+      console.error('❌ [MULTI-WA] Erro ao buscar conexões:', error);
+      toast({
+        title: "Erro de conexão",
+        description: "Falha ao carregar status das conexões WhatsApp",
+        variant: "destructive"
+      });
+    }
+  }, [error, toast]);
+
   // Sincronizar estado local com dados da API
   React.useEffect(() => {
-    if (connectionsData?.connections) {
+    if (connectionsData && connectionsData.connections) {
       setConnections(connectionsData.connections);
     }
   }, [connectionsData]);
@@ -310,17 +380,17 @@ const MultiWhatsAppConnections: React.FC = () => {
     onSuccess: (data, slotNumber) => {
       if (data.success && data.qrCode) {
         // Atualizar state local com o QR Code real do DirectQrBaileys
-        setConnections(prev => prev.map(conn => 
-          conn.slotNumber === slotNumber 
+        setConnections(prev => prev.map(conn =>
+          conn.slotNumber === slotNumber
             ? { ...conn, qrCode: data.qrCode, isConnected: false }
             : conn
         ));
-        
+
         toast({
           title: "QR Code Real Gerado!",
           description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
         });
-        
+
         refetch(); // Atualizar dados
       } else {
         toast({
@@ -468,9 +538,9 @@ const MultiWhatsAppConnections: React.FC = () => {
               <Badge variant="outline">
                 {connectionsData?.activeConnections || 0} / {connectionsData?.totalConnections || 3} Ativas
               </Badge>
-              <Button 
-                onClick={() => refetch()} 
-                variant="outline" 
+              <Button
+                onClick={() => refetch()}
+                variant="outline"
                 size="sm"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -482,6 +552,11 @@ const MultiWhatsAppConnections: React.FC = () => {
           <p className="text-sm text-muted-foreground">
             Gerencie até 3 conexões WhatsApp simultâneas. Cada slot pode usar uma conta diferente para aumentar a capacidade de envio.
           </p>
+          {error && (
+            <div className="mt-3 p-3 bg-red-100 border border-red-400 rounded text-red-800 text-sm">
+              ⚠️ Erro ao conectar com servidor WhatsApp. Verifique sua conexão.
+            </div>
+          )}
         </CardContent>
       </Card>
 
