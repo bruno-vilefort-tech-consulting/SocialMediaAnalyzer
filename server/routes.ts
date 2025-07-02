@@ -1844,9 +1844,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 Seleção encontrada: ${selection.name} (clientId: ${selection.clientId})`);
 
       // 🔥 CORREÇÃO: Verificar conexões ativas usando sistema simpleMultiBailey
-      await initializeMultiBaileyService();
+      await lazyLoadWhatsAppServices();
       const clientIdStr = selection.clientId.toString();
-      const connectionsStatus = simpleMultiBaileyService.getConnectionsStatus(clientIdStr);
+      const connectionsStatus = await simpleMultiBaileyService.getClientConnections(clientIdStr);
       
       console.log(`📊 [SELECOES] Verificando status WhatsApp cliente ${clientIdStr}:`, connectionsStatus);
       
