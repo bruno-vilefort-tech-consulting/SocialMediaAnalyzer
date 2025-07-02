@@ -5536,6 +5536,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 [MULTI-WA] Enviando teste para ${phoneNumber} via cliente ${clientId}`);
       
+      // Verificar se há conexões ativas antes de tentar enviar
+      const connections = await multiWhatsAppService.getClientConnections(clientId.toString());
+      
+      if (connections.activeConnections === 0) {
+        console.log(`⚠️ [MULTI-WA] Nenhuma conexão ativa para cliente ${clientId}`);
+        return res.status(400).json({
+          success: false,
+          message: "Nenhuma conexão WhatsApp ativa encontrada. Conecte pelo menos um slot antes de enviar mensagens.",
+          activeConnections: connections.activeConnections,
+          totalConnections: connections.totalConnections
+        });
+      }
+      
       const result = await simpleMultiBaileyService.sendMessage(
         clientId.toString(),
         phoneNumber,
