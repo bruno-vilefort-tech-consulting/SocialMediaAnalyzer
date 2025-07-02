@@ -288,26 +288,34 @@ const MultiWhatsAppConnections: React.FC = () => {
     }
   });
 
-  // Mutation para conectar slot
+  // Mutation para conectar slot usando DirectQrBaileys
   const connectMutation = useMutation({
     mutationFn: async (slotNumber: number) => {
-      const response = await apiRequest(`/api/multi-whatsapp/connect/${slotNumber}`, 'POST');
+      const response = await apiRequest(`/api/multi-whatsapp/test-direct-qr/${slotNumber}`, 'POST');
       return response.json();
     },
     onMutate: (slotNumber) => {
       setConnectingSlots(prev => new Set(prev).add(slotNumber));
     },
     onSuccess: (data, slotNumber) => {
-      if (data.success) {
+      if (data.success && data.qrCode) {
+        // Atualizar state local com o QR Code real do DirectQrBaileys
+        setConnections(prev => prev.map(conn => 
+          conn.slotNumber === slotNumber 
+            ? { ...conn, qrCode: data.qrCode, isConnected: false }
+            : conn
+        ));
+        
         toast({
-          title: "Conectando...",
-          description: `QR Code gerado para Slot ${slotNumber}. Escaneie com seu celular.`,
+          title: "QR Code Real Gerado!",
+          description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
         });
+        
         refetch(); // Atualizar dados
       } else {
         toast({
-          title: "Erro na conexão",
-          description: data.message,
+          title: "Erro na geração do QR",
+          description: data.message || "Falha ao gerar QR Code real",
           variant: "destructive"
         });
       }

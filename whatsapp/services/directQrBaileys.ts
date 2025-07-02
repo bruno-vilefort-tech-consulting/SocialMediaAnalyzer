@@ -2,6 +2,7 @@
  * Serviço simplificado para gerar QR Code real do Baileys
  * Foca exclusivamente na geração de QR Code funcional
  */
+import P from 'pino';
 
 export class DirectQrBaileys {
   private activeConnections: Map<string, any> = new Map();
@@ -40,29 +41,7 @@ export class DirectQrBaileys {
         browser: ['DirectQR', 'Chrome', '1.0.0'],
         connectTimeoutMs: 30000,
         defaultQueryTimeoutMs: 30000,
-        logger: {
-          level: 'silent',
-          silent: true,
-          trace: () => {},
-          debug: () => {},
-          info: () => {},
-          warn: () => {},
-          error: () => {},
-          fatal: () => {},
-          child: () => ({
-            level: 'silent',
-            silent: true,
-            trace: () => {},
-            debug: () => {},
-            info: () => {},
-            warn: () => {},
-            error: () => {},
-            fatal: () => {},
-            child: () => ({})
-          }),
-          // Adicionar propriedades extras que o Baileys pode usar
-          ...Object.fromEntries(['trace', 'debug', 'info', 'warn', 'error', 'fatal'].map(method => [method, () => {}]))
-        } as any
+        logger: P({ level: 'silent' })
       });
 
       // Promise para aguardar apenas QR Code
