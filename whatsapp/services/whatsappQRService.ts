@@ -59,14 +59,8 @@ export class WhatsAppQRService {
       console.error('Unhandled promise rejection:', reason);
     });
 
-    // Inicializar de forma completamente assíncrona em background
-    // Não deve bloquear a inicialização do servidor
-    setImmediate(() => {
-      this.safeInitialize().catch(error => {
-        console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
-        this.handleWhatsAppError(error);
-      });
-    });
+    // WhatsApp temporariamente desabilitado para resolver problema de Mobile API deprecated
+    console.log('⚠️ WhatsApp QR Service temporariamente desabilitado para estabilizar aplicação');
   }
 
   private handleWhatsAppError(error: any) {

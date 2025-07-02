@@ -43,24 +43,15 @@ class WhatsAppBaileyService {
       const authDir = `whatsapp-sessions/client_${clientId}`;
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
-      // Corrigindo configurações para ambiente Replit - CORREÇÃO ERRO 515
-      let latestVersion = [2, 2419, 6]; // Versão fixa como fallback
-      try {
-        const baileys = await import('@whiskeysockets/baileys');
-        if (baileys.fetchLatestWaWebVersion) {
-          latestVersion = await baileys.fetchLatestWaWebVersion().catch(() => [2, 2419, 6]);
-        }
-      } catch {
-        console.log('⚠️ [BAILEYS] Usando versão padrão do WhatsApp Web');
-      }
+      // Temporariamente desabilitado para estabilizar aplicação
+      console.log('⚠️ [BAILEYS] WhatsApp temporariamente desabilitado para resolver problema de Mobile API deprecated');
+      throw new Error('WhatsApp Baileys temporariamente desabilitado - Mobile API deprecated');
       
       const sock = makeWASocket({ 
         auth: state,
         version: latestVersion,
         printQRInTerminal: false,
-        mobile: true, // Força uso de mmg.whatsapp.net (porta 443, menos bloqueado)
-        browser: ['Samsung', 'SM-G991B', '13'], // Simula browser Android real
-        fireInitQueries: true, // Inicia handshake imediatamente após 'open'
+        browser: ['Chrome (Linux)', '', ''], // Browser padrão web
         logger: {
           level: 'silent',
           child: () => ({ level: 'silent' }),
@@ -72,15 +63,13 @@ class WhatsAppBaileyService {
           fatal: () => {}
         },
         // Timeouts ajustados para ambiente Replit
-        keepAliveIntervalMs: 10000,     // ping a cada 10s
-        networkIdleTimeoutMs: 45000,    // ocioso após 45s
+        keepAliveIntervalMs: 30000,     // ping a cada 30s
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,
         qrTimeout: 90000,
         retryRequestDelayMs: 5000,
         maxMsgRetryCount: 3,
         syncFullHistory: false, // Reduz frames WebSocket grandes
-        emitOwnEvents: false,
         getMessage: async () => undefined
       });
 
