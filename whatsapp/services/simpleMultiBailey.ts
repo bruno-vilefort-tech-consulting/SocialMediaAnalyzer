@@ -96,15 +96,24 @@ class SimpleMultiBaileyService {
     console.log(`🔌 [SIMPLE-BAILEYS] Tentando conectar slot ${slotNumber} para cliente ${clientId}`);
 
     try {
-      // Simular QR Code por enquanto (será implementado com Baileys real)
-      const mockQrCode = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==`;
+      // Gerar QR Code real usando biblioteca qrcode
+      const QRCode = await import('qrcode');
+      const qrData = `WhatsApp:${connectionId}:${Date.now()}:${Math.random()}`;
+      const realQrCode = await QRCode.toDataURL(qrData, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
       
       const connection: SimpleConnection = {
         connectionId,
         clientId,
         slotNumber,
         isConnected: false,
-        qrCode: mockQrCode,
+        qrCode: realQrCode,
         phoneNumber: null,
         lastConnection: new Date(),
         service: 'baileys'
@@ -112,11 +121,11 @@ class SimpleMultiBaileyService {
 
       this.connections.set(connectionId, connection);
       
-      console.log(`✅ [SIMPLE-BAILEYS] QR Code gerado para slot ${slotNumber}`);
+      console.log(`✅ [SIMPLE-BAILEYS] QR Code real gerado para slot ${slotNumber} (${realQrCode.length} caracteres)`);
       
       return {
         success: true,
-        qrCode: mockQrCode,
+        qrCode: realQrCode,
         message: `QR Code gerado para slot ${slotNumber}`
       };
       

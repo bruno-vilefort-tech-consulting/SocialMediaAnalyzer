@@ -56,7 +56,15 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
 
   // Atualizar showQR quando connection.qrCode mudar
   React.useEffect(() => {
+    console.log(`🔍 [SLOT ${connection.slotNumber}] QR Code Debug:`, {
+      hasQrCode: !!connection.qrCode,
+      qrCodeLength: connection.qrCode?.length || 0,
+      isConnected: connection.isConnected,
+      showQR: showQR
+    });
+    
     if (connection.qrCode && !connection.isConnected) {
+      console.log(`✅ [SLOT ${connection.slotNumber}] Exibindo QR Code de ${connection.qrCode.length} caracteres`);
       setShowQR(true);
     }
   }, [connection.qrCode, connection.isConnected]);
@@ -175,6 +183,8 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                       height: '200px',
                       display: 'block'
                     }}
+                    onLoad={() => console.log(`✅ [SLOT ${connection.slotNumber}] QR Code image carregada com sucesso`)}
+                    onError={(e) => console.error(`❌ [SLOT ${connection.slotNumber}] Erro ao carregar QR Code:`, e)}
                   />
                 </div>
               </div>
@@ -182,6 +192,11 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
               <p className="text-xs text-muted-foreground mt-2">
                 QR Code expira em 90 segundos. Clique em "Atualizar QR" se não funcionar
               </p>
+              
+              {/* Debug info - remover depois */}
+              <div className="mt-2 text-xs text-gray-500 font-mono">
+                Debug: {connection.qrCode?.substring(0, 50)}...
+              </div>
             </div>
           </div>
         )}
