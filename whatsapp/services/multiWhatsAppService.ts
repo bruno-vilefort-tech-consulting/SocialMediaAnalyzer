@@ -223,7 +223,12 @@ class MultiWhatsAppService {
           service: 'evolution'
         });
 
-        return evolutionResult;
+        return {
+          success: evolutionResult.success,
+          qrCode: evolutionResult.qrCode,
+          isConnected: false,
+          message: evolutionResult.error || 'QR Code gerado via Evolution API'
+        };
       }
 
       return {
