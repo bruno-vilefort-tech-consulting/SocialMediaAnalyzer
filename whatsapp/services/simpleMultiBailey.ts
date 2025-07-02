@@ -183,7 +183,7 @@ class SimpleMultiBaileyService {
   /**
    * Verificar status de conexão específica
    */
-  private async getConnectionStatus(clientId: string, slotNumber: number): Promise<SimpleConnection> {
+  async getConnectionStatus(clientId: string, slotNumber: number): Promise<SimpleConnection> {
     const connectionId = this.generateConnectionId(clientId, slotNumber);
     
     // Verificar se existe na memória

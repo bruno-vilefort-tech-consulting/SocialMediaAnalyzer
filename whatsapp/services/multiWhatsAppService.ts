@@ -67,7 +67,48 @@ class MultiWhatsAppService {
   async getConnectionStatus(clientId: string, slotNumber: number): Promise<WhatsAppConnection> {
     const connectionId = this.generateConnectionId(clientId, slotNumber);
     
-    // Verificar cache primeiro
+    // 🔥 CORREÇÃO: Consultar simpleMultiBaileyService primeiro (fonte da verdade)
+    try {
+      const { simpleMultiBaileyService } = await import('./simpleMultiBailey');
+      const realStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slotNumber);
+      
+      if (realStatus.isConnected) {
+        const connection: WhatsAppConnection = {
+          connectionId,
+          clientId,
+          slotNumber,
+          isConnected: true,
+          qrCode: realStatus.qrCode,
+          phoneNumber: realStatus.phoneNumber,
+          lastConnection: realStatus.lastConnection ? new Date(realStatus.lastConnection) : null,
+          service: 'baileys'
+        };
+        
+        // Atualizar cache com status real
+        this.connections.set(connectionId, connection);
+        console.log(`✅ [MULTI-WA] Status real para ${connectionId}: CONECTADO (${realStatus.phoneNumber || 'unknown'})`);
+        return connection;
+      } else if (realStatus.qrCode) {
+        const connection: WhatsAppConnection = {
+          connectionId,
+          clientId,
+          slotNumber,
+          isConnected: false,
+          qrCode: realStatus.qrCode,
+          phoneNumber: null,
+          lastConnection: null,
+          service: 'baileys'
+        };
+        
+        this.connections.set(connectionId, connection);
+        console.log(`📱 [MULTI-WA] QR Code disponível para ${connectionId}`);
+        return connection;
+      }
+    } catch (error) {
+      console.log(`⚠️ [MULTI-WA] Erro ao consultar SimpleMultiBailey para ${connectionId}:`, error);
+    }
+    
+    // Verificar cache apenas se simpleMultiBailey falhou
     if (this.connections.has(connectionId)) {
       const cached = this.connections.get(connectionId)!;
       console.log(`📋 [MULTI-WA] Status em cache para ${connectionId}: ${cached.isConnected ? 'conectado' : 'desconectado'}`);
