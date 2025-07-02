@@ -5274,7 +5274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 [MULTI-WA] Verificando conexões para cliente ${clientId}`);
       
-      const connections = await multiWhatsAppBaileysService.getClientConnections(clientId.toString());
+      const connections = await simpleMultiBaileyService.getClientConnections(clientId.toString());
       
       console.log(`📱 [MULTI-WA] Status das conexões:`, {
         clientId,
@@ -5323,7 +5323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔗 [MULTI-WA] Conectando slot ${slotNumber} para cliente ${clientId}`);
       
-      const result = await multiWhatsAppBaileysService.connectSlot(clientId.toString(), slotNumber);
+      const result = await simpleMultiBaileyService.connectSlot(clientId.toString(), slotNumber);
       
       console.log(`📱 [MULTI-WA] Resultado conexão slot ${slotNumber}:`, {
         success: result.success,
@@ -5366,7 +5366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔌 [MULTI-WA] Desconectando slot ${slotNumber} para cliente ${clientId}`);
       
-      const result = await multiWhatsAppBaileysService.disconnectSlot(clientId.toString(), slotNumber);
+      const result = await simpleMultiBaileyService.disconnectSlot(clientId.toString(), slotNumber);
       
       console.log(`📱 [MULTI-WA] Resultado desconexão slot ${slotNumber}:`, result);
       
@@ -5405,7 +5405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📤 [MULTI-WA] Enviando teste para ${phoneNumber} via cliente ${clientId}`);
       
-      const result = await multiWhatsAppBaileysService.sendMessage(
+      const result = await simpleMultiBaileyService.sendMessage(
         clientId.toString(),
         phoneNumber,
         message,
