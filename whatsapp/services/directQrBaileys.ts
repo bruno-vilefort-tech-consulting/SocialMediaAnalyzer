@@ -38,7 +38,7 @@ export class DirectQrBaileys {
       const socket = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        mobile: true,
+        // Removido mobile: true (deprecated - causa erro "Mobile API is not supported anymore")
         browser: ['Ubuntu', 'Chrome', '20.0.04'],
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 60000,

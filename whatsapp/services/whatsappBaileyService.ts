@@ -43,9 +43,19 @@ class WhatsAppBaileyService {
       const authDir = `whatsapp-sessions/client_${clientId}`;
       const { state, saveCreds } = await useMultiFileAuthState(authDir);
       
-      // Temporariamente desabilitado para estabilizar aplicação
-      console.log('⚠️ [BAILEYS] WhatsApp temporariamente desabilitado para resolver problema de Mobile API deprecated');
-      throw new Error('WhatsApp Baileys temporariamente desabilitado - Mobile API deprecated');
+      // Configuração de versão WhatsApp Web corrigida
+      let latestVersion: number[] = [2, 2419, 6]; // Versão fixa como fallback
+      try {
+        const baileys = await import('@whiskeysockets/baileys');
+        if (baileys.fetchLatestWaWebVersion) {
+          const versionInfo = await baileys.fetchLatestWaWebVersion();
+          if (versionInfo && typeof versionInfo === 'object' && 'version' in versionInfo) {
+            latestVersion = versionInfo.version as number[];
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ [BAILEYS] Usando versão padrão do WhatsApp Web:', (error as Error).message);
+      }
       
       const sock = makeWASocket({ 
         auth: state,
