@@ -198,7 +198,7 @@ class InteractiveInterviewService {
     // Buscar candidato
     const candidate = await this.findCandidate(phone, clientId);
     if (!candidate) {
-      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Candidato não encontrado.");
+      await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Candidato não encontrado.", clientId);
       return;
     }
     
@@ -237,7 +237,7 @@ class InteractiveInterviewService {
       }
 
       if (!selection) {
-        await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.");
+        await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.", clientId);
         return;
       }
 
@@ -248,7 +248,7 @@ class InteractiveInterviewService {
       // Buscar job da seleção
       const job = await storage.getJobById(selection.jobId);
       if (!job || !job.perguntas || job.perguntas.length === 0) {
-        await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Vaga não possui perguntas cadastradas.");
+        await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Vaga não possui perguntas cadastradas.", clientId);
         return;
       }
       
@@ -329,7 +329,7 @@ class InteractiveInterviewService {
     
     const message = `📝 Pergunta ${questionNum}/${total}:\n\n${question.pergunta}\n\n🎤 Responda somente por áudio`;
 
-    await this.sendMessage(`${phone}@s.whatsapp.net`, message);
+    await this.sendMessage(`${phone}@s.whatsapp.net`, message, interview.clientId);
 
     // Tentar enviar áudio TTS
     try {
