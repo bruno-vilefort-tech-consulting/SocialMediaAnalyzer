@@ -1131,21 +1131,7 @@ export class FirebaseStorage implements IStorage {
     return this.getSelectionCandidatesWithInterviews(selectionId);
   }
 
-  async getInterviewsBySelectionId(selectionId: number): Promise<any[]> {
-    try {
-      const interviewsRef = collection(firebaseDb, 'interviews');
-      const q = query(interviewsRef, where('selectionId', '==', selectionId));
-      const snapshot = await getDocs(q);
 
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.log('❌ Erro ao buscar entrevistas por seleção:', error.message);
-      return [];
-    }
-  }
 
   async getInterviewsByCandidateId(candidateId: number): Promise<any[]> {
     try {
@@ -1163,33 +1149,9 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async getInterviewById(interviewId: string): Promise<any | null> {
-    try {
-      const docRef = doc(firebaseDb, 'interviews', interviewId);
-      const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        return {
-          id: docSnap.id,
-          ...docSnap.data()
-        };
-      }
-      return null;
-    } catch (error) {
-      console.log('❌ Erro ao buscar entrevista por ID:', error.message);
-      return null;
-    }
-  }
 
-  async updateInterview(interviewId: string, updates: any): Promise<void> {
-    try {
-      const docRef = doc(firebaseDb, 'interviews', interviewId);
-      await updateDoc(docRef, updates);
-    } catch (error) {
-      console.log('❌ Erro ao atualizar entrevista:', error.message);
-      throw error;
-    }
-  }
+
 
   async getResponsesBySelectionAndCandidate(selectionId: string, candidateId: number, clientId: number): Promise<any[]> {
     try {
@@ -1411,21 +1373,7 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
-    try {
-      const responsesRef = collection(firebaseDb, 'responses');
-      const q = query(responsesRef, where('interviewId', '==', interviewId));
-      const snapshot = await getDocs(q);
 
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.log('❌ Erro ao buscar respostas por entrevista:', error.message);
-      return [];
-    }
-  }
 
   async updateResponse(responseId: string, updates: any): Promise<void> {
     try {
@@ -2103,87 +2051,7 @@ export class FirebaseStorage implements IStorage {
     }
   }
 
-  async getResponsesByInterviewId(interviewId: string): Promise<any[]> {
-    try {
-      console.log(`🔍 Buscando respostas para entrevista ${interviewId}`);
-      const candidateId = interviewId.replace('interview_', '');
 
-      // Buscar na coleção responses
-      const responsesQuery = query(
-        collection(firebaseDb, 'responses'),
-        where('interviewId', '==', interviewId)
-      );
-      const responsesSnapshot = await getDocs(responsesQuery);
-
-      const responses: any[] = [];
-      responsesSnapshot.forEach(doc => {
-        responses.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
-
-      // Se não encontrou na coleção responses, buscar na interview_responses por candidateId
-      if (responses.length === 0) {
-        const interviewResponsesQuery = query(
-          collection(firebaseDb, 'interview_responses'),
-          where('candidateId', '==', candidateId)
-        );
-        const interviewResponsesSnapshot = await getDocs(interviewResponsesQuery);
-
-        interviewResponsesSnapshot.forEach(doc => {
-          const data = doc.data();
-          responses.push({
-            id: doc.id,
-            questionId: data.questionNumber || 1,
-            questionText: data.pergunta || data.question,
-            transcription: data.respostaTexto || data.transcription,
-            audioUrl: data.respostaAudioUrl || data.audioFile,
-            score: data.score || 0,
-            recordingDuration: data.recordingDuration || 0,
-            aiAnalysis: data.aiAnalysis || ''
-          });
-        });
-      }
-
-      // Buscar também por telefone nas coleções de WhatsApp
-      if (responses.length === 0) {
-        console.log(`🔍 Buscando por telefone para candidato ${candidateId}`);
-
-        // Buscar candidato para pegar telefone
-        const candidate = await this.getCandidateById(parseInt(candidateId));
-        if (candidate?.whatsapp) {
-          const whatsappQuery = query(
-            collection(firebaseDb, 'interview_responses'),
-            where('numero', '==', candidate.whatsapp)
-          );
-          const whatsappSnapshot = await getDocs(whatsappQuery);
-
-          whatsappSnapshot.forEach(doc => {
-            const data = doc.data();
-            responses.push({
-              id: doc.id,
-              questionId: data.questionNumber || 1,
-              questionText: data.pergunta || data.question,
-              transcription: data.respostaTexto || data.transcription,
-              audioUrl: data.respostaAudioUrl || data.audioFile,
-              score: data.score || 0,
-              recordingDuration: data.recordingDuration || 0,
-              aiAnalysis: data.aiAnalysis || ''
-            });
-          });
-
-          console.log(`📱 Encontradas ${responses.length} respostas por telefone ${candidate.whatsapp}`);
-        }
-      }
-
-      console.log(`📋 Total de respostas encontradas para ${interviewId}: ${responses.length}`);
-      return responses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
-    } catch (error) {
-      console.error('Erro ao buscar respostas por entrevista:', error);
-      return [];
-    }
-  }
 
 
   // === MÉTODOS PARA RELATÓRIOS INDEPENDENTES ===

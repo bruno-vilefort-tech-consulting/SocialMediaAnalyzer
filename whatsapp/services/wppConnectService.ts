@@ -524,12 +524,7 @@ export class WppConnectService {
     return true;
   }
   
-  /**
-   * Lista todas as sessões ativas
-   */
-  getActiveSessions(): Map<string, WppSession> {
-    return this.sessions;
-  }
+
 
   /**
    * Obtém status de uma sessão específica

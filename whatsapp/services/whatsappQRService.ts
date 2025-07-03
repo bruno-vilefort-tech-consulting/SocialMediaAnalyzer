@@ -1153,12 +1153,12 @@ export class WhatsAppQRService {
       }
       
       // CRIAR ARQUIVO DEFINITIVO COM NOMENCLATURA CORRETA
-      const phoneClean = from.replace('@s.whatsapp.net', '').replace(/\D/g, '');
       const selectionId = (currentInterview as any).selectionId || 'unknown';
       const questionNumber = currentQuestionIndex + 1;
       
       // Nova nomenclatura: audio_[telefone]_[selectionId]_R[numero].ogg
-      const audioFileName = `audio_${phoneClean}_${selectionId}_R${questionNumber}.ogg`;
+      const phoneForFilename = from.replace('@s.whatsapp.net', '').replace(/\D/g, '');
+      const audioFileName = `audio_${phoneForFilename}_${selectionId}_R${questionNumber}.ogg`;
       const audioPath = path.join(uploadsDir, audioFileName);
       
       try {
