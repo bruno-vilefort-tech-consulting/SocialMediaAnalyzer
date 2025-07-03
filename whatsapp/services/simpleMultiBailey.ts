@@ -136,7 +136,29 @@ class SimpleMultiBaileyService {
         // Verificar se existe na memória e copiar apenas dados básicos
         const existingConnection = this.connections.get(connectionId);
         if (existingConnection) {
-          cleanConnection.isConnected = Boolean(existingConnection.isConnected);
+          // 🔥 CORREÇÃO: Verificar socket real para detectar conexões ativas
+          let realIsConnected = Boolean(existingConnection.isConnected);
+          
+          // Se há socket ativo, verificar status real
+          if (existingConnection.socket) {
+            try {
+              const hasUser = Boolean(existingConnection.socket.user);
+              const hasAuth = Boolean(existingConnection.socket.authState);
+              const wsNotClosed = existingConnection.socket.ws?.readyState !== 3;
+              
+              realIsConnected = hasUser && hasAuth && wsNotClosed;
+              
+              if (realIsConnected && !existingConnection.isConnected) {
+                console.log(`🔄 [SYNC-FIX] Corrigindo status slot ${slot}: socket ativo mas marcado como desconectado`);
+                existingConnection.isConnected = true;
+                this.connections.set(connectionId, existingConnection);
+              }
+            } catch (error) {
+              console.log(`⚠️ [SYNC-CHECK] Erro ao verificar socket slot ${slot}:`, error);
+            }
+          }
+          
+          cleanConnection.isConnected = realIsConnected;
           cleanConnection.qrCode = typeof existingConnection.qrCode === 'string' ? existingConnection.qrCode : null;
           cleanConnection.phoneNumber = typeof existingConnection.phoneNumber === 'string' ? existingConnection.phoneNumber : null;
           cleanConnection.lastConnection = existingConnection.lastConnection instanceof Date ? existingConnection.lastConnection : null;

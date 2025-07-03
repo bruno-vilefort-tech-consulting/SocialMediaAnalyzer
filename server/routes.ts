@@ -2283,7 +2283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 📊 Endpoint para estatísticas das filas
-  app.get("/api/queue/stats", authenticate, authorize(['master']), async (_req: AuthRequest, res) => {
+  app.get("/api/queue/stats", authenticate, authorize(['master', 'client']), async (_req: AuthRequest, res) => {
     try {
       console.log('📊 [QUEUE-STATS] Verificando estatísticas das filas');
       
