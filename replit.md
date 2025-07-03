@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ SIDEBAR WIDTH EXPANDIDA COMPLETAMENTE - Largura aumentada de 208px para 240px para melhor legibilidade
+  - **Problema resolvido**: Menu lateral com largura insuficiente causava quebra de texto em "Lista de Candidatos"
+  - **Sidebar.tsx atualizada**: Todas as classes w-52 (208px) substituídas por w-60 (240px)
+  - **Layout.tsx ajustado**: Main content margin atualizado de lg:ml-52 para lg:ml-60
+  - **Desktop sidebar**: lg:w-60 aplicado para versão desktop
+  - **Mobile sidebar**: w-60 aplicado para versão mobile
+  - **WhatsApp status**: Indicador WhatsApp ajustado para nova largura (w-60)
+  - **User profile**: Seções desktop e mobile atualizadas com nova largura
+  - **Responsividade preservada**: Sistema mantém funcionalidade em todas as telas
+  - **Melhor UX**: Nomes de menu agora exibidos sem quebra de linha
+
 - July 3, 2025: ✅ PERSISTÊNCIA WHATSAPP CONNECTIONS CORRIGIDA DEFINITIVAMENTE - Sistema mantém estado das conexões visíveis após navegação
   - **Root cause identificado**: Estado `visibleConnections` resetava para 1 sempre que componente re-renderizava
   - **LocalStorage implementado**: Chave única `whatsapp_visible_connections_${clientId}` para persistência por cliente
