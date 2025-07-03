@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ UI TESTE DE CONEXÃO CORRIGIDA - Botão "Teste de Conexão" agora desaparece imediatamente após desconectar WhatsApp
+  - **Problema identificado**: Seção "Teste de Conexão" permanecia visível após clicar "Desconectar" na página /configuracoes
+  - **Solução implementada**: Atualização imediata do estado local no onMutate da disconnectMutation
+  - **Comportamento corrigido**: Estado isConnected definido como false instantaneamente ao clicar "Desconectar"
+  - **UX melhorada**: Interface responde imediatamente sem aguardar resposta da API
+  - **Sistema reativo**: Componente ConnectionSlot oculta "Teste de Conexão" baseado em connection.isConnected
+
 - July 3, 2025: ✅ PROTEÇÃO DE RELATÓRIOS IMPLEMENTADA - Sistema preserva relatórios mesmo após deletar seleções
   - **Funcionalidade crítica**: Endpoint DELETE /api/selections/:id modificado para preservar relatórios
   - **Auto-geração de relatórios**: Se relatório não existir, é criado automaticamente antes da exclusão

@@ -454,6 +454,13 @@ const MultiWhatsAppConnections: React.FC = () => {
     },
     onMutate: (slotNumber) => {
       setDisconnectingSlots(prev => new Set(prev).add(slotNumber));
+      
+      // Atualizar estado local imediatamente para esconder "Teste de Conexão"
+      setConnections(prev => prev.map(conn =>
+        conn.slotNumber === slotNumber
+          ? { ...conn, isConnected: false, qrCode: null }
+          : conn
+      ));
     },
     onSuccess: (data, slotNumber) => {
       if (data.success) {
