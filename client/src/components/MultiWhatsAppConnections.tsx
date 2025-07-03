@@ -56,7 +56,11 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Teste de conexão WhatsApp');
   // QR deve aparecer se já existe um QR Code ou se o usuário clicou para conectar
-  const [showQR, setShowQR] = useState(!!connection.qrCode);
+  const [showQR, setShowQR] = useState(() => {
+    const hasQrCode = !!connection.qrCode;
+    console.log(`🔧 [SLOT ${connection.slotNumber}] Estado inicial showQR:`, hasQrCode);
+    return hasQrCode;
+  });
 
   // Atualizar showQR quando connection.qrCode mudar
   React.useEffect(() => {
@@ -70,8 +74,11 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
     if (connection.qrCode && !connection.isConnected) {
       console.log(`✅ [SLOT ${connection.slotNumber}] Exibindo QR Code de ${connection.qrCode.length} caracteres`);
       setShowQR(true);
+    } else if (!connection.qrCode) {
+      // Reset showQR se não há QR Code
+      setShowQR(false);
     }
-  }, [connection.qrCode, connection.isConnected]);
+  }, [connection.qrCode, connection.isConnected, showQR]);
 
   const getServiceBadgeColor = (service: string) => {
     switch (service) {
@@ -373,7 +380,9 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Salvar conexões escondidas no localStorage
   useEffect(() => {
     if (user?.clientId) {
-      localStorage.setItem(`whatsapp_hidden_connections_${user.clientId}`, JSON.stringify([...hiddenConnections]));
+      const hiddenArray: number[] = [];
+      hiddenConnections.forEach(id => hiddenArray.push(id));
+      localStorage.setItem(`whatsapp_hidden_connections_${user.clientId}`, JSON.stringify(hiddenArray));
     }
   }, [hiddenConnections, user?.clientId]);
 
