@@ -87,7 +87,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-50 lg:bg-white lg:shadow-xl">
+      <div className="hidden lg:flex lg:flex-col lg:w-52 lg:fixed lg:inset-y-0 lg:z-50 lg:bg-white lg:shadow-xl">
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
           <div className="flex items-center">
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
@@ -127,7 +127,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 w-64 p-4 border-t border-slate-200 bg-white">
+        <div className="absolute bottom-0 w-52 p-4 border-t border-slate-200 bg-white">
           <div className="flex items-center">
             <div className="h-10 w-10 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center">
               {user?.role === "master" ? (
@@ -153,7 +153,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Mobile Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:hidden",
+        "fixed inset-y-0 left-0 z-50 w-52 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:hidden",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
@@ -199,7 +199,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         
         {/* Mobile WhatsApp Status Indicator - Only for clients */}
         {user?.role === 'client' && (
-          <div className="absolute bottom-20 w-64 p-3">
+          <div className="absolute bottom-20 w-52 p-3">
             <div className={cn(
               "flex items-center justify-between p-3 rounded-lg border transition-all duration-300",
               whatsappStatus?.isConnected 
