@@ -210,7 +210,7 @@ export default function ApiConfigPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-8">
       <div className="flex items-center gap-3">
         <Settings className="h-6 w-6" />
         <h1 className="text-3xl font-bold">Configurações</h1>

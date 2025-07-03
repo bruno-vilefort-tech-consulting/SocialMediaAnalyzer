@@ -119,6 +119,7 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Página Relatórios**: Todos os containers principais da NewReportsPage.tsx receberam classe `p-6`
   - **Página Assessments**: Container principal aumentado de `p-6` para `p-8` removendo classes customizadas
   - **Página Estatísticas**: Container principal aumentado para `p-8` para maior conforto visual
+  - **Página Configurações**: ApiConfigPage.tsx atualizada com `p-8` para consistência visual
   - **Melhor espaçamento**: Todas as áreas de conteúdo agora têm mais respiro visual
   - **Consistência aplicada**: Padding uniforme em todas as seções das páginas
   - **Component CandidateDetailsInline**: Também recebeu padding para consistência visual
