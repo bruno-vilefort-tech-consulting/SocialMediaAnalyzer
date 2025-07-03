@@ -527,9 +527,15 @@ const MultiWhatsAppConnections: React.FC = () => {
     setHiddenConnections(prev => new Set(prev).add(slotNumber));
   };
 
-  // Função para mostrar todas as conexões escondidas
+  // Função para mostrar UMA conexão escondida por vez
   const handleShowHiddenConnections = () => {
-    setHiddenConnections(new Set());
+    if (hiddenConnections.size > 0) {
+      const hiddenArray = Array.from(hiddenConnections);
+      const firstHidden = hiddenArray[0]; // Pega o primeiro escondido
+      const newHiddenConnections = new Set(hiddenConnections);
+      newHiddenConnections.delete(firstHidden); // Remove apenas um
+      setHiddenConnections(newHiddenConnections);
+    }
   };
 
   const handleConnect = (slotNumber: number) => {
@@ -622,7 +628,7 @@ const MultiWhatsAppConnections: React.FC = () => {
             className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
           >
             <MessageCircle className="h-4 w-4" />
-            Mostrar {hiddenConnections.size} Conexão{hiddenConnections.size > 1 ? 'ões' : ''} Escondida{hiddenConnections.size > 1 ? 's' : ''}
+            Mostrar 1 Conexão ({hiddenConnections.size} Escondida{hiddenConnections.size > 1 ? 's' : ''})
           </Button>
         </div>
       )}
