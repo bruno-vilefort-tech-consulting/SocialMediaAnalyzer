@@ -1825,26 +1825,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return distribution;
   }
 
-  // Enviar entrevistas via WhatsApp Baileys com sistema anti-rate limit
+  // Enviar entrevistas via WhatsApp com sistema de filas em background
   app.post("/api/selections/:id/send-whatsapp", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const selectionId = parseInt(req.params.id);
-      const isBaileysDirect = req.query.baileys === 'direct';
+      const useQueue = req.query.queue !== 'false'; // Por padrão usar fila
       
       // 🛡️ CONFIGURAÇÃO ANTI-RATE LIMIT recebida do frontend
       const rateLimitConfig = req.body?.rateLimitConfig || {
         delayPerMessage: 1000, // Default: 1s entre mensagens
         batchSize: 10, // Default: lotes de 10
+        maxRetries: 3, // Máximo 3 tentativas
         estimatedTime: 60 // Default: 1 min estimado
       };
       
-      console.log(`🛡️ [RATE-LIMIT] Config recebida:`, rateLimitConfig);
-      
-      if (isBaileysDirect) {
-        console.log(`🟣 [BAILEYS-DIRETO] Iniciando envio BAILEYS PURO para seleção ${selectionId} com rate limit ${rateLimitConfig.delayPerMessage}ms`);
-      } else {
-        console.log(`🚀 Iniciando envio WhatsApp Baileys para seleção ${selectionId} com proteção anti-rate limit`);
-      }
+      console.log(`🚀 [SEND-WHATSAPP] Iniciando envio para seleção ${selectionId} ${useQueue ? 'COM FILA' : 'SÍNCRONO'}`);
+      console.log(`🛡️ [RATE-LIMIT] Config:`, rateLimitConfig);
       
       const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
@@ -1958,13 +1954,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Job not found' });
       }
 
+      // Se usar sistema de filas, processar em background
+      if (useQueue) {
+        console.log('🚀 [QUEUE] Iniciando processamento em background...');
+        
+        // Importar sistema de filas
+        const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+        
+        // Preparar dados do job
+        const dispatchJobData = {
+          selectionId: selection.id,
+          clientId: selection.clientId,
+          candidateIds,
+          rateLimitConfig,
+          template: selection.message || 'Template padrão',
+          whatsappTemplate: selection.whatsappTemplate || 'Template WhatsApp padrão',
+          priority: 'normal' as const,
+          createdBy: req.user!.email,
+          estimatedTime: candidateIds.length * (rateLimitConfig.delayPerMessage / 1000) // em segundos
+        };
+        
+        // Adicionar job à fila
+        const jobId = await simpleQueueManager.addDispatchJob(dispatchJobData);
+        
+        console.log(`✅ [QUEUE] Job ${jobId} criado para seleção ${selectionId}`);
+        
+        // Resposta imediata (não-bloqueante)
+        return res.json({
+          success: true,
+          jobId,
+          status: 'queued',
+          candidateCount: candidateIds.length,
+          estimatedTime: dispatchJobData.estimatedTime,
+          message: `Envio iniciado em background. ${candidateIds.length} candidatos na fila.`,
+          trackingUrl: `/api/selections/${selectionId}/send-status/${jobId}`
+        });
+      }
+
+      // Sistema síncrono original (fallback)
       let messagesSent = 0;
       let messagesError = 0;
       let rateLimitDetected = 0;
       let adaptiveDelayMultiplier = 1.0; // Multiplicador adaptativo para o delay
 
-      // 🛡️ BATCH PROCESSING: Dividir processamento em lotes para evitar rate limit
-      console.log(`🛡️ [RATE-LIMIT] Aplicando rate limiting: ${rateLimitConfig.delayPerMessage}ms entre mensagens`);
+      console.log(`🔄 [SYNC] Processamento síncrono - ${rateLimitConfig.delayPerMessage}ms entre mensagens`);
       
       // 🎯 ROUND-ROBIN: Processar cada slot com seus candidatos aplicando rate limit
       for (const { slotNumber, items: slotCandidates } of slotsDistribution) {
@@ -2140,6 +2173,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Erro interno no servidor ao enviar WhatsApp',
         sentCount: 0,
         errorCount: 0
+      });
+    }
+  });
+
+  // 📊 Endpoint para rastrear status de job de envio em background
+  app.get("/api/selections/:id/send-status/:jobId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = parseInt(req.params.id);
+      const jobId = req.params.jobId;
+      
+      console.log(`📊 [STATUS] Verificando status do job ${jobId} para seleção ${selectionId}`);
+      
+      // Verificar autorização da seleção
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+
+      if (req.user!.role === 'client' && selection.clientId !== req.user!.clientId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Importar sistema de filas
+      const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+      
+      // Obter status do job
+      const jobStatus = await simpleQueueManager.getJobStatus(jobId);
+      
+      if (jobStatus.status === 'not_found') {
+        return res.status(404).json({ 
+          message: 'Job not found',
+          jobId,
+          selectionId 
+        });
+      }
+      
+      res.json({
+        success: true,
+        jobId,
+        selectionId,
+        status: jobStatus.status,
+        progress: jobStatus.progress,
+        createdAt: jobStatus.createdAt,
+        processedAt: jobStatus.processedAt,
+        error: jobStatus.error,
+        isComplete: jobStatus.status === 'completed' || jobStatus.status === 'failed'
+      });
+      
+    } catch (error) {
+      console.error('❌ [STATUS] Erro ao verificar status do job:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Erro interno ao verificar status',
+        jobId: req.params.jobId,
+        selectionId: req.params.id
+      });
+    }
+  });
+
+  // 🗑️ Endpoint para cancelar job de envio em background
+  app.delete("/api/selections/:id/send-job/:jobId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const selectionId = parseInt(req.params.id);
+      const jobId = req.params.jobId;
+      
+      console.log(`🗑️ [CANCEL] Cancelando job ${jobId} para seleção ${selectionId}`);
+      
+      // Verificar autorização da seleção
+      const selection = await storage.getSelectionById(selectionId);
+      if (!selection) {
+        return res.status(404).json({ message: 'Selection not found' });
+      }
+
+      if (req.user!.role === 'client' && selection.clientId !== req.user!.clientId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      // Importar sistema de filas
+      const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+      
+      // Cancelar job
+      const cancelled = await simpleQueueManager.cancelJob(jobId);
+      
+      if (!cancelled) {
+        return res.status(404).json({ 
+          message: 'Job not found or already completed',
+          jobId,
+          selectionId 
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: `Job ${jobId} cancelado com sucesso`,
+        jobId,
+        selectionId
+      });
+      
+    } catch (error) {
+      console.error('❌ [CANCEL] Erro ao cancelar job:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Erro interno ao cancelar job',
+        jobId: req.params.jobId,
+        selectionId: req.params.id
+      });
+    }
+  });
+
+  // 📊 Endpoint para estatísticas das filas
+  app.get("/api/queue/stats", authenticate, authorize(['master']), async (_req: AuthRequest, res) => {
+    try {
+      console.log('📊 [QUEUE-STATS] Verificando estatísticas das filas');
+      
+      // Importar sistema de filas
+      const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+      
+      // Obter estatísticas
+      const stats = await simpleQueueManager.getQueueStats();
+      
+      res.json({
+        success: true,
+        stats,
+        timestamp: Date.now()
+      });
+      
+    } catch (error) {
+      console.error('❌ [QUEUE-STATS] Erro ao obter estatísticas:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Erro interno ao obter estatísticas das filas'
       });
     }
   });

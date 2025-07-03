@@ -366,6 +366,17 @@ app.delete('/instance/:instanceId', (req, res) => {
   });
 
   // importantly only setup vite in development and after
+  // 🚀 INICIALIZAR SISTEMA DE FILAS EM BACKGROUND
+  try {
+    console.log('🔄 [QUEUE] Inicializando sistema de filas...');
+    const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+    await simpleQueueManager.initialize();
+    console.log('✅ [QUEUE] Sistema de filas inicializado com sucesso');
+  } catch (error) {
+    console.error('⚠️ [QUEUE] Erro ao inicializar sistema de filas:', error);
+    console.log('📝 [QUEUE] Sistema continuará funcionando sem processamento em background');
+  }
+
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
