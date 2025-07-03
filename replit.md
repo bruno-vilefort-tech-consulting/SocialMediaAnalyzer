@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ PROTEÇÃO DE RELATÓRIOS IMPLEMENTADA - Sistema preserva relatórios mesmo após deletar seleções
+  - **Funcionalidade crítica**: Endpoint DELETE /api/selections/:id modificado para preservar relatórios
+  - **Auto-geração de relatórios**: Se relatório não existir, é criado automaticamente antes da exclusão
+  - **Dados preservados**: Relatórios independentes mantêm candidatos, respostas e metadados intactos
+  - **Sistema robusto**: Falhas na criação do relatório não impedem exclusão da seleção
+  - **Logs detalhados**: Processo completo de verificação e criação de relatórios documentado
+  - **Isolamento de dados**: Relatórios existem independentemente das seleções originais
+  - **UX melhorada**: Usuários podem deletar seleções sem perder histórico de entrevistas
+
 - July 3, 2025: ✅ SIDEBAR WIDTH EXPANDIDA COMPLETAMENTE - Largura aumentada de 208px para 240px para melhor legibilidade
   - **Problema resolvido**: Menu lateral com largura insuficiente causava quebra de texto em "Lista de Candidatos"
   - **Sidebar.tsx atualizada**: Todas as classes w-52 (208px) substituídas por w-60 (240px)
