@@ -7,7 +7,7 @@ channel = "stable-24_05"
 packages = ["chromium", "glib", "nss", "atk", "cups", "gtk3", "xdg-utils", "libdrm", "mesa", "zip", "ffmpeg", "unzip", "docker", "docker-compose"]
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "cloudrun"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 

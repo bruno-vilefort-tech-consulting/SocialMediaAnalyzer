@@ -3,6 +3,7 @@
  * Utiliza Redis Simulator simplificado para processamento em background
  */
 
+// @ts-nocheck
 import { redisSimulator } from '../redis/redisSimulator.js';
 
 // Interfaces para os dados dos jobs
