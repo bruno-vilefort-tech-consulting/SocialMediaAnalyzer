@@ -45,7 +45,7 @@ export default function ClientDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-8">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Dashboard Cliente</h2>
       </div>

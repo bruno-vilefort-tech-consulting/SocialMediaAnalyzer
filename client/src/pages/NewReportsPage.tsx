@@ -67,12 +67,14 @@ export default function NewReportsPage() {
   const [activeTab, setActiveTab] = useState('analise');
   const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
   const [candidateCategories, setCandidateCategories] = useState<{ [key: string]: string }>({});
-  const [audioStates, setAudioStates] = useState<{ [key: string]: { 
-    isPlaying: boolean;
-    currentTime: number;
-    duration: number;
-    progress: number;
-  } }>({});
+  const [audioStates, setAudioStates] = useState<{
+    [key: string]: {
+      isPlaying: boolean;
+      currentTime: number;
+      duration: number;
+      progress: number;
+    }
+  }>({});
   const [expandedPerfectAnswers, setExpandedPerfectAnswers] = useState<{ [key: string]: boolean }>({});
 
   // Estados para o botão Nova Pasta
@@ -111,7 +113,7 @@ export default function NewReportsPage() {
   // Função para criar pasta
   const handleCreateFolder = () => {
     if (!newFolderName.trim() || !selectedClientId) return;
-    
+
     createFolderMutation.mutate({
       name: newFolderName.trim(),
       color: newFolderColor,
@@ -146,7 +148,7 @@ export default function NewReportsPage() {
     if (specificReport && reportId) {
       // Extrair dados do relatório para configurar a visualização
       const reportData = specificReport;
-      
+
       // Se for um relatório de seleção, configurar a seleção
       if (reportData.selectionId) {
         // Criar objeto de seleção mock baseado nos dados do relatório
@@ -158,15 +160,15 @@ export default function NewReportsPage() {
           jobName: reportData.jobData?.nomeVaga,
           clientId: reportData.jobData?.clientId || (user?.role === 'client' ? user.clientId : 0)
         };
-        
+
         // Se o usuário é master, configurar o clientId
         if (user?.role === 'master' && reportData.jobData?.clientId) {
           setSelectedClientId(reportData.jobData.clientId.toString());
         }
-        
+
         // Configurar a seleção selecionada
         setSelectedSelection(mockSelection);
-        
+
         // Navegar para a aba de candidatos
         setActiveTab('candidatos');
       }
@@ -191,10 +193,10 @@ export default function NewReportsPage() {
         if (user?.role === 'master') {
           setSelectedClientId(targetSelection.clientId.toString());
         }
-        
+
         // Selecionar a seleção
         setSelectedSelection(targetSelection);
-        
+
         // Navegar para a aba de candidatos
         setActiveTab('candidatos');
       }
@@ -206,7 +208,7 @@ export default function NewReportsPage() {
     queryKey: ['/api/interview-stats', selectedClientId],
     queryFn: async () => {
       if (!selectedClientId) return {};
-      
+
       try {
         const res = await apiRequest(`/api/interview-stats?clientId=${selectedClientId}`, 'GET');
         const data = await res.json();
@@ -244,7 +246,7 @@ export default function NewReportsPage() {
 
     try {
       const response = await apiRequest(`/api/selections/${selectionId}/interview-candidates`, 'GET');
-      
+
       const candidates = await response.json();
       setSelectionCandidatesCache(prev => ({
         ...prev,
@@ -254,7 +256,7 @@ export default function NewReportsPage() {
     } catch (error) {
       console.error('Erro ao carregar candidatos da seleção:', error);
     }
-    
+
     return [];
   };
 
@@ -270,11 +272,11 @@ export default function NewReportsPage() {
     queryKey: ['selection-interview-candidates', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) return [];
-      
+
       try {
         const res = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`, 'GET');
         const response = await res.json();
-        
+
         // Garantir que sempre retornamos um array
         if (Array.isArray(response)) {
           return response;
@@ -298,18 +300,18 @@ export default function NewReportsPage() {
     queryKey: ['selection-all-candidates', selectedSelection?.id],
     queryFn: async () => {
       if (!selectedSelection) return [];
-      
+
       try {
         // Buscar dados da seleção para obter o listId
         const selectionRes = await apiRequest(`/api/selections/${selectedSelection.id}`, 'GET');
         const selectionData = await selectionRes.json();
-        
+
         if (!selectionData.listId) return [];
-        
+
         // Buscar todos os candidatos da lista
         const candidatesRes = await apiRequest(`/api/candidate-lists/${selectionData.listId}/candidates`, 'GET');
         const candidatesData = await candidatesRes.json();
-        
+
         return Array.isArray(candidatesData) ? candidatesData : [];
       } catch (error) {
         console.error('Error fetching all candidates in list:', error);
@@ -332,7 +334,7 @@ export default function NewReportsPage() {
     // Combinar todos os candidatos da lista
     return allCandidatesInList.map(candidate => {
       const existingInterview = interviewMap.get(candidate.id);
-      
+
       if (existingInterview) {
         // Candidato já tem entrevista registrada
         return existingInterview;
@@ -387,25 +389,25 @@ export default function NewReportsPage() {
   // Função para obter categoria do candidato diretamente dos dados carregados
   const getCandidateCategory = (candidateId: number): string | null => {
     if (!selectedSelection) return null;
-    
+
     // Verificar primeiro no estado local (para resposta imediata após clique)
     const localKey = `selection_${selectedSelection.id}_${candidateId}`;
     const localCategory = candidateCategories[localKey];
-    
+
     // Verificar nos dados carregados do Firebase (se disponível e é array)
     if (Array.isArray(categories) && categories.length > 0) {
       const reportId = `selection_${selectedSelection.id}`;
-      
+
       const categoryData = categories.find((cat: any) => {
         const match = cat.candidateId === candidateId.toString() && cat.reportId === reportId;
         return match;
       });
-      
+
       if (categoryData?.category) {
         return categoryData.category;
       }
     }
-    
+
     // Se há categoria local, retornar ela
     if (localCategory) {
       return localCategory;
@@ -422,11 +424,11 @@ export default function NewReportsPage() {
   // Mutation para salvar categoria do candidato
   const setCategoryMutation = useMutation({
     mutationFn: async ({ reportId, candidateId, category }: { reportId: string; candidateId: string; category: string }) => {
-      const response = await apiRequest('/api/candidate-categories', 'POST', { 
-        reportId, 
-        candidateId, 
-        category, 
-        clientId: user?.clientId 
+      const response = await apiRequest('/api/candidate-categories', 'POST', {
+        reportId,
+        candidateId,
+        category,
+        clientId: user?.clientId
       });
       return response.json();
     },
@@ -437,7 +439,7 @@ export default function NewReportsPage() {
         ...prev,
         [key]: variables.category
       }));
-      
+
       // Invalidar consulta para recarregar dados do banco
       queryClient.invalidateQueries({
         queryKey: ['/api/candidate-categories', selectedSelection?.id]
@@ -451,11 +453,11 @@ export default function NewReportsPage() {
   // Função para definir categoria do candidato
   const setCategory = (candidateId: number, category: string) => {
     const reportId = `selection_${selectedSelection?.id}`;
-    
-    setCategoryMutation.mutate({ 
-      reportId, 
-      candidateId: candidateId.toString(), 
-      category 
+
+    setCategoryMutation.mutate({
+      reportId,
+      candidateId: candidateId.toString(),
+      category
     });
   };
 
@@ -480,10 +482,10 @@ export default function NewReportsPage() {
     Object.entries(categorias).forEach(([nomeCategoria, candidatos]) => {
       // Ordenar candidatos por pontuação (maior para menor)
       const candidatosOrdenados = candidatos.sort((a, b) => {
-        const scoreA = a.responses.filter(r => r.score !== null && r.score !== undefined).length > 0 
+        const scoreA = a.responses.filter(r => r.score !== null && r.score !== undefined).length > 0
           ? a.responses.filter(r => r.score !== null && r.score !== undefined).reduce((sum, r) => sum + (r.score || 0), 0) / a.responses.filter(r => r.score !== null && r.score !== undefined).length
           : 0;
-        const scoreB = b.responses.filter(r => r.score !== null && r.score !== undefined).length > 0 
+        const scoreB = b.responses.filter(r => r.score !== null && r.score !== undefined).length > 0
           ? b.responses.filter(r => r.score !== null && r.score !== undefined).reduce((sum, r) => sum + (r.score || 0), 0) / b.responses.filter(r => r.score !== null && r.score !== undefined).length
           : 0;
         return scoreB - scoreA; // Ordem decrescente
@@ -521,7 +523,7 @@ export default function NewReportsPage() {
   };
 
   // Ordenar candidatos alfabeticamente
-  const sortedCandidates = [...(interviewCandidates || [])].sort((a, b) => 
+  const sortedCandidates = [...(interviewCandidates || [])].sort((a, b) =>
     a.candidate.name.localeCompare(b.candidate.name)
   );
 
@@ -531,12 +533,12 @@ export default function NewReportsPage() {
     const reportData = specificReport;
     const candidates = reportData.candidatesData || [];
     const responses = reportData.responseData || [];
-    
+
     return (
-      <div className="space-y-6 p-8">
+      <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => window.history.back()}
             className="flex items-center gap-2"
           >
@@ -565,7 +567,7 @@ export default function NewReportsPage() {
                 const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
                 const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
                 const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
-                
+
                 return (
                   <Card key={candidate.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
@@ -625,11 +627,11 @@ export default function NewReportsPage() {
               {CANDIDATE_CATEGORIES.map((category) => {
                 const categoryColor = {
                   'Melhor': 'bg-green-50 border-green-200',
-                  'Mediano': 'bg-yellow-50 border-yellow-200', 
+                  'Mediano': 'bg-yellow-50 border-yellow-200',
                   'Em dúvida': 'bg-orange-50 border-orange-200',
                   'Não': 'bg-red-50 border-red-200'
                 };
-                
+
                 return (
                   <Card key={category} className={`${categoryColor[category as keyof typeof categoryColor]} border-2`}>
                     <CardHeader className="pb-3">
@@ -645,7 +647,7 @@ export default function NewReportsPage() {
                           const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
                           const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
                           const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
-                          
+
                           return (
                             <div key={candidate.id} className="p-3 bg-white rounded-lg border shadow-sm">
                               <div className="font-medium">{candidate.name}</div>
@@ -681,7 +683,7 @@ export default function NewReportsPage() {
                   const candidateResponses = responses.filter((r: any) => r.candidateId === candidate.id);
                   const totalScore = candidateResponses.reduce((sum: number, r: any) => sum + (r.score || 0), 0);
                   const avgScore = candidateResponses.length > 0 ? Math.round(totalScore / candidateResponses.length) : 0;
-                  
+
                   return (
                     <Card key={candidate.id}>
                       <CardContent className="p-4">
@@ -710,7 +712,7 @@ export default function NewReportsPage() {
   // Se nenhuma seleção foi escolhida, mostrar lista de seleções com sistema de pastas
   if (!selectedSelection) {
     return (
-      <div className="space-y-6 p-8">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
           {selectedClientId && (
@@ -742,9 +744,8 @@ export default function NewReportsPage() {
                         <button
                           key={color.value}
                           onClick={() => setNewFolderColor(color.value)}
-                          className={`w-12 h-12 rounded-lg border-2 transition-all ${
-                            newFolderColor === color.value ? 'border-gray-900 scale-110' : 'border-gray-300'
-                          }`}
+                          className={`w-12 h-12 rounded-lg border-2 transition-all ${newFolderColor === color.value ? 'border-gray-900 scale-110' : 'border-gray-300'
+                            }`}
                           style={{ backgroundColor: color.value }}
                           title={color.name}
                         />
@@ -752,15 +753,15 @@ export default function NewReportsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <Button 
+                    <Button
                       onClick={handleCreateFolder}
                       disabled={!newFolderName.trim() || createFolderMutation.isPending}
                       className="flex-1"
                     >
                       Criar Pasta
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setIsCreateDialogOpen(false)}
                       className="flex-1"
                     >
@@ -796,7 +797,7 @@ export default function NewReportsPage() {
         {selectedClientId && (
           <div className="space-y-6">
             {/* Sistema de Pastas de Trabalho */}
-            <ReportFoldersManager 
+            <ReportFoldersManager
               selectedClientId={selectedClientId}
               reports={selections.map(s => ({
                 id: `selection_${s.id}`,
@@ -818,9 +819,9 @@ export default function NewReportsPage() {
               }}
               onFilterChange={setFilteredReports}
             />
-            
+
             <h2 className="text-xl font-semibold">Seleções Disponíveis</h2>
-            
+
             {loadingSelections ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
@@ -846,7 +847,7 @@ export default function NewReportsPage() {
                   .map((selection: Selection) => {
                     const createdDate = new Date(selection.createdAt?.seconds * 1000 || selection.createdAt);
                     return (
-                      <Card 
+                      <Card
                         key={selection.id}
                         className="group cursor-move hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50"
                         draggable
@@ -875,7 +876,7 @@ export default function NewReportsPage() {
                                 {selection.name}
                               </h3>
                             </div>
-                            
+
                             {/* Conteúdo */}
                             <div className="p-4 space-y-3">
                               {/* Estatísticas de candidatos com layout em grid */}
@@ -892,15 +893,15 @@ export default function NewReportsPage() {
                                           const cachedCandidates = selectionCandidatesCache[1750476614396];
                                           console.log('🔍 DEBUG Comercial 5 - cachedCandidates:', cachedCandidates);
                                           console.log('🔍 DEBUG Comercial 5 - cachedCandidates length:', cachedCandidates?.length);
-                                          
+
                                           if (!cachedCandidates || cachedCandidates.length === 0) {
                                             console.log('🔍 DEBUG Comercial 5 - Usando completedInterviews como fallback:', selection.completedInterviews);
                                             return selection.completedInterviews || 0;
                                           }
-                                          
+
                                           const completed = cachedCandidates.filter(candidate => {
                                             const totalQuestions = candidate.responses?.length || 0;
-                                            const completedResponses = candidate.responses?.filter(r => 
+                                            const completedResponses = candidate.responses?.filter(r =>
                                               r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                             ).length || 0;
                                             const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
@@ -911,7 +912,7 @@ export default function NewReportsPage() {
                                             });
                                             return isCompleted;
                                           }).length;
-                                          
+
                                           console.log('🔍 DEBUG Comercial 5 - Finalizaram:', completed);
                                           return completed;
                                         }
@@ -934,7 +935,7 @@ export default function NewReportsPage() {
                                             }
                                             const completed = cachedCandidates.filter(candidate => {
                                               const totalQuestions = candidate.responses?.length || 0;
-                                              const completedResponses = candidate.responses?.filter(r => 
+                                              const completedResponses = candidate.responses?.filter(r =>
                                                 r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                               ).length || 0;
                                               return totalQuestions > 0 && completedResponses === totalQuestions;
@@ -946,9 +947,9 @@ export default function NewReportsPage() {
                                       </span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
-                                      <div 
-                                        className="bg-green-500 h-2 rounded-full transition-all" 
-                                        style={{ 
+                                      <div
+                                        className="bg-green-500 h-2 rounded-full transition-all"
+                                        style={{
                                           width: `${(() => {
                                             if (selection.id === 1750476614396) {
                                               const cachedCandidates = selectionCandidatesCache[1750476614396];
@@ -957,7 +958,7 @@ export default function NewReportsPage() {
                                               }
                                               const completed = cachedCandidates.filter(candidate => {
                                                 const totalQuestions = candidate.responses?.length || 0;
-                                                const completedResponses = candidate.responses?.filter(r => 
+                                                const completedResponses = candidate.responses?.filter(r =>
                                                   r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                                 ).length || 0;
                                                 return totalQuestions > 0 && completedResponses === totalQuestions;
@@ -965,21 +966,21 @@ export default function NewReportsPage() {
                                               return (completed / selection.totalCandidates) * 100;
                                             }
                                             return ((selection.completedInterviews || 0) / selection.totalCandidates) * 100;
-                                          })()}%` 
+                                          })()}%`
                                         }}
                                       ></div>
                                     </div>
                                   </div>
                                 )}
                               </div>
-                              
+
                               {/* Data e horário numa linha só */}
                               <div className="flex items-center justify-between text-xs text-gray-500 bg-white rounded-lg p-2 border border-gray-100">
                                 <div className="flex items-center gap-2">
                                   <Calendar className="h-3 w-3" />
                                   <span>{createdDate.toLocaleDateString('pt-BR', {
                                     day: '2-digit',
-                                    month: '2-digit', 
+                                    month: '2-digit',
                                     year: 'numeric'
                                   })}</span>
                                 </div>
@@ -992,10 +993,10 @@ export default function NewReportsPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Footer com botão */}
                             <div className="px-4 pb-4">
-                              <Button 
+                              <Button
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm group-hover:shadow-md transition-all"
                                 size="sm"
                                 onMouseDown={(e) => e.stopPropagation()} // Previne conflito com drag
@@ -1012,7 +1013,7 @@ export default function NewReportsPage() {
                                 Arraste para organizar em pastas
                               </div>
                             </div>
-                            
+
                             {/* Overlay de hover */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                           </div>
@@ -1030,10 +1031,10 @@ export default function NewReportsPage() {
 
   // Mostrar relatório da seleção com abas
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="ghost"
           onClick={() => setSelectedSelection(null)}
           className="flex items-center space-x-2"
         >
@@ -1093,16 +1094,16 @@ export default function NewReportsPage() {
                     <div className="text-center">Avaliação</div>
                     <div className="text-center">Pontuação Final</div>
                   </div>
-                  
+
                   {/* Lista de candidatos ordenada por pontuação */}
                   {interviewCandidates
                     .map(candidate => {
                       // Calcular pontuação média baseada nas respostas
                       const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
-                      const averageScore = responsesWithScore.length > 0 
+                      const averageScore = responsesWithScore.length > 0
                         ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
                         : 0;
-                      
+
                       return {
                         ...candidate,
                         calculatedScore: averageScore
@@ -1111,15 +1112,15 @@ export default function NewReportsPage() {
                     .sort((a, b) => b.calculatedScore - a.calculatedScore) // Ordenar do maior para menor
                     .map((candidate) => {
                       const totalQuestions = candidate.responses.length;
-                      const completedResponses = candidate.responses.filter(r => 
+                      const completedResponses = candidate.responses.filter(r =>
                         r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                       ).length;
                       const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
-                      
+
                       return (
                         <Card key={candidate.candidate.id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-0">
-                            <div 
+                            <div
                               className="grid grid-cols-5 gap-4 p-4 cursor-pointer hover:bg-gray-50 transition-colors pl-[16px] pr-[16px] pt-[6px] pb-[6px]"
                               onClick={() => setExpandedCandidate(expandedCandidate === candidate.candidate.id ? null : candidate.candidate.id)}
                             >
@@ -1128,7 +1129,7 @@ export default function NewReportsPage() {
                                 <p className="font-medium">{candidate.candidate.name}</p>
                                 <p className="text-sm text-muted-foreground">{candidate.candidate.phone}</p>
                               </div>
-                              
+
                               {/* Coluna 2: Status da Entrevista */}
                               <div className="col-span-1 flex items-center gap-2">
                                 {isCompleted ? (
@@ -1148,20 +1149,20 @@ export default function NewReportsPage() {
                                   </Badge>
                                 )}
                               </div>
-                              
+
                               {/* Coluna 3: Respostas Completas */}
                               <div className="col-span-1 flex items-center gap-2">
                                 <span className="text-sm font-medium">
                                   {completedResponses}/{totalQuestions}
                                 </span>
                                 {totalQuestions > 0 && (
-                                  <Progress 
-                                    value={(completedResponses / totalQuestions) * 100} 
+                                  <Progress
+                                    value={(completedResponses / totalQuestions) * 100}
                                     className="w-16 h-2"
                                   />
                                 )}
                               </div>
-                              
+
                               {/* Coluna 4: Avaliação (4 Botões de Categorização) */}
                               <div className="col-span-1 flex justify-center">
                                 {getCandidateCategory(candidate.candidate.id) === null ? (
@@ -1257,12 +1258,11 @@ export default function NewReportsPage() {
                               <div className="col-span-1 text-center">
                                 <div>
                                   {candidate.calculatedScore > 0 ? (
-                                    <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${
-                                      candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
-                                      candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                      candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}>
+                                    <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
+                                        candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                          candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
+                                            'bg-red-100 text-red-800'
+                                      }`}>
                                       {candidate.calculatedScore.toFixed(1)}
                                     </div>
                                   ) : (
@@ -1273,13 +1273,13 @@ export default function NewReportsPage() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             {/* Detalhes expandidos inline */}
                             {expandedCandidate === candidate.candidate.id && (
-                              <div className="border-t bg-gray-50 p-8">
-                                <CandidateDetailsInline 
-                                  candidate={candidate} 
-                                  audioStates={audioStates} 
+                              <div className="border-t bg-gray-50 p-6">
+                                <CandidateDetailsInline
+                                  candidate={candidate}
+                                  audioStates={audioStates}
                                   setAudioStates={setAudioStates}
                                   reportData={specificReport}
                                   isSpecificReport={!!reportId}
@@ -1351,10 +1351,10 @@ export default function NewReportsPage() {
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Melhor')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
-                          const averageScore = responsesWithScore.length > 0 
+                          const averageScore = responsesWithScore.length > 0
                             ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
                             : 0;
-                          
+
                           return (
                             <Card key={candidate.candidate.id} className="bg-green-50 border-green-200">
                               <CardContent className="p-3 pt-[4px] pb-[4px]">
@@ -1402,10 +1402,10 @@ export default function NewReportsPage() {
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Mediano')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
-                          const averageScore = responsesWithScore.length > 0 
+                          const averageScore = responsesWithScore.length > 0
                             ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
                             : 0;
-                          
+
                           return (
                             <Card key={candidate.candidate.id} className="bg-yellow-50 border-yellow-200">
                               <CardContent className="p-3 pt-[4px] pb-[4px]">
@@ -1453,10 +1453,10 @@ export default function NewReportsPage() {
                         .filter(candidate => getCandidateCategory(candidate.candidate.id) === 'Em dúvida')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
-                          const averageScore = responsesWithScore.length > 0 
+                          const averageScore = responsesWithScore.length > 0
                             ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
                             : 0;
-                          
+
                           return (
                             <Card key={candidate.candidate.id} className="bg-orange-50 border-orange-200">
                               <CardContent className="p-3 pt-[4px] pb-[4px]">
@@ -1504,10 +1504,10 @@ export default function NewReportsPage() {
                         .filter(candidate => getCandidateCategoryWithFallback(candidate.candidate.id) === 'Não')
                         .map(candidate => {
                           const responsesWithScore = candidate.responses.filter(r => r.score !== null && r.score !== undefined);
-                          const averageScore = responsesWithScore.length > 0 
+                          const averageScore = responsesWithScore.length > 0
                             ? responsesWithScore.reduce((sum, r) => sum + (r.score || 0), 0) / responsesWithScore.length
                             : 0;
-                          
+
                           return (
                             <Card key={candidate.candidate.id} className="bg-red-50 border-red-200">
                               <CardContent className="p-3 pt-[4px] pb-[4px]">
@@ -1551,18 +1551,22 @@ export default function NewReportsPage() {
 // Componente de Detalhes Inline do Candidato
 interface CandidateDetailsInlineProps {
   candidate: InterviewCandidate;
-  audioStates: { [key: string]: { 
-    isPlaying: boolean;
-    currentTime: number;
-    duration: number;
-    progress: number;
-  } };
-  setAudioStates: React.Dispatch<React.SetStateAction<{ [key: string]: { 
-    isPlaying: boolean;
-    currentTime: number;
-    duration: number;
-    progress: number;
-  } }>>;
+  audioStates: {
+    [key: string]: {
+      isPlaying: boolean;
+      currentTime: number;
+      duration: number;
+      progress: number;
+    }
+  };
+  setAudioStates: React.Dispatch<React.SetStateAction<{
+    [key: string]: {
+      isPlaying: boolean;
+      currentTime: number;
+      duration: number;
+      progress: number;
+    }
+  }>>;
   reportData?: any;
   isSpecificReport?: boolean;
   expandedPerfectAnswers: { [key: string]: boolean };
@@ -1585,7 +1589,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   const toggleAudio = (audioUrl: string, responseId: string) => {
     try {
       const currentState = audioStates[responseId];
-      
+
       // Parar todos os outros áudios
       Object.keys(audioRefs.current).forEach(id => {
         if (id !== responseId && audioRefs.current[id]) {
@@ -1597,14 +1601,14 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       // Criar novo player se não existir
       if (!audioRefs.current[responseId]) {
         const audio = new Audio();
-        
+
         // Configurações importantes para compatibilidade
         audio.crossOrigin = 'anonymous';
         audio.preload = 'auto';
-        
+
         // Tentar múltiplos formatos se necessário
         audio.volume = 1.0;
-        
+
         audioRefs.current[responseId] = audio;
 
         audio.addEventListener('loadstart', () => {
@@ -1612,11 +1616,11 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
         });
 
         audio.addEventListener('loadedmetadata', () => {
-          updateAudioState(responseId, { 
+          updateAudioState(responseId, {
             duration: audio.duration,
             currentTime: 0,
             progress: 0,
-            isPlaying: false 
+            isPlaying: false
           });
         });
 
@@ -1626,17 +1630,17 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
         audio.addEventListener('timeupdate', () => {
           const progress = (audio.currentTime / audio.duration) * 100;
-          updateAudioState(responseId, { 
+          updateAudioState(responseId, {
             currentTime: audio.currentTime,
-            progress: progress 
+            progress: progress
           });
         });
 
         audio.addEventListener('ended', () => {
-          updateAudioState(responseId, { 
+          updateAudioState(responseId, {
             isPlaying: false,
             currentTime: 0,
-            progress: 0 
+            progress: 0
           });
         });
 
@@ -1646,7 +1650,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
             const directUrl = audioUrl.replace('/uploads/', '/uploads/');
             audio.src = directUrl;
           }
-          
+
           updateAudioState(responseId, { isPlaying: false });
         });
 
@@ -1655,13 +1659,13 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       }
 
       const audio = audioRefs.current[responseId];
-      
+
       if (currentState?.isPlaying) {
         audio.pause();
         updateAudioState(responseId, { isPlaying: false });
       } else {
         const playPromise = audio.play();
-        
+
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
@@ -1685,9 +1689,9 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
     if (audio && audio.duration) {
       const newTime = (percentage / 100) * audio.duration;
       audio.currentTime = newTime;
-      updateAudioState(responseId, { 
+      updateAudioState(responseId, {
         currentTime: newTime,
-        progress: percentage 
+        progress: percentage
       });
     }
   };
@@ -1726,26 +1730,26 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       const question = reportData.jobData.perguntas.find((q: any) => q.numeroPergunta === questionId);
       return question?.respostaPerfeita || null;
     }
-    
+
     // Para seleções regulares, buscar da vaga real
     if (jobData?.perguntas) {
       // Testar diferentes estruturas de campo possíveis
-      const question = jobData.perguntas.find((q: any) => 
-        q.numero === questionId || 
-        q.numeroPergunta === questionId || 
+      const question = jobData.perguntas.find((q: any) =>
+        q.numero === questionId ||
+        q.numeroPergunta === questionId ||
         q.id === questionId ||
         q.questionId === questionId
       );
       return question?.respostaPerfeita || null;
     }
-    
+
     return null;
   };
 
   const handleExportHTML = async () => {
     try {
       console.log('📄 Iniciando exportação de pacote ZIP...');
-      
+
       // Preparar dados do candidato para o PDF
       const candidateData = {
         name: candidate.candidate.name,
@@ -1761,12 +1765,12 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
           perfectAnswer: getPerfectAnswer(response.questionId)
         }))
       };
-      
+
       console.log('📋 Dados preparados:', candidateData);
-      
+
       // Obter token de autenticação
       const token = localStorage.getItem('auth_token') || '';
-      
+
       // Fazer requisição para gerar HTML com fetch direto para receber arquivo
       const response = await fetch('/api/export-candidate-html', {
         method: 'POST',
@@ -1776,11 +1780,11 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
         },
         body: JSON.stringify(candidateData)
       });
-      
+
       if (!response.ok) {
         throw new Error(`Erro HTTP: ${response.status}`);
       }
-      
+
       // Download do arquivo
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -1791,10 +1795,10 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       // ZIP exportado com sucesso - mostrar feedback visual
       console.log('✅ Pacote ZIP exportado com sucesso!');
-      
+
     } catch (error) {
       console.error('❌ Erro ao exportar ZIP:', error);
       // Erro na exportação - mostrar no console por enquanto
@@ -1803,7 +1807,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   };
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6">
       {/* Informações do Candidato */}
       <div className="grid grid-cols-4 gap-4 p-4 bg-white rounded-lg border relative">
         <div>
@@ -1824,7 +1828,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
             {candidate.interview.status}
           </Badge>
         </div>
-        
+
         {/* Botão Exportar */}
         <div className="absolute top-4 right-4">
           <Button
@@ -1842,14 +1846,14 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       {/* Respostas da Entrevista */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Respostas da Entrevista</h3>
-        
+
         {candidate.responses.map((response, index) => {
           const responseId = response.id.toString();
-          const audioState = audioStates[responseId] || { 
-            isPlaying: false, 
-            currentTime: 0, 
-            duration: 0, 
-            progress: 0 
+          const audioState = audioStates[responseId] || {
+            isPlaying: false,
+            currentTime: 0,
+            duration: 0,
+            progress: 0
           };
 
           return (
@@ -1867,12 +1871,11 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                     {/* Pontuação 0-100 no topo direito */}
                     {response.score !== null && response.score !== undefined && response.score >= 0 ? (
                       <div className="ml-4 flex-shrink-0">
-                        <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-                          response.score >= 80 ? 'bg-green-100 text-green-800' :
-                          response.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                          response.score >= 40 ? 'bg-orange-100 text-orange-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
+                        <div className={`px-3 py-1 rounded-full text-sm font-bold ${response.score >= 80 ? 'bg-green-100 text-green-800' :
+                            response.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                              response.score >= 40 ? 'bg-orange-100 text-orange-800' :
+                                'bg-red-100 text-red-800'
+                          }`}>
                           {response.score}/100
                         </div>
                       </div>
@@ -1892,8 +1895,8 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                     </h4>
                     <div className="bg-muted/50 p-3 rounded-md">
                       <p className="text-sm leading-relaxed">
-                        {response.transcription && response.transcription !== 'Aguardando resposta via WhatsApp' 
-                          ? response.transcription 
+                        {response.transcription && response.transcription !== 'Aguardando resposta via WhatsApp'
+                          ? response.transcription
                           : 'Aguardando resposta via WhatsApp'}
                       </p>
                     </div>
@@ -1901,8 +1904,8 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
                   {/* Dropdown da Resposta Perfeita */}
                   {!jobDataLoading && getPerfectAnswer(response.questionId) && (
-                    <Collapsible 
-                      open={expandedPerfectAnswers[responseId]} 
+                    <Collapsible
+                      open={expandedPerfectAnswers[responseId]}
                       onOpenChange={() => togglePerfectAnswer(responseId)}
                     >
                       <CollapsibleTrigger asChild>
@@ -1954,7 +1957,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                       <h4 className="font-medium text-sm text-muted-foreground">
                         Áudio da Resposta
                       </h4>
-                      
+
                       {/* Controles do Player */}
                       <div className="bg-blue-50 p-4 rounded-lg space-y-3">
                         <div className="flex items-center gap-4">
@@ -1971,18 +1974,18 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                             )}
                             {audioState.isPlaying ? 'Pausar' : 'Reproduzir'}
                           </Button>
-                          
+
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Volume2 className="h-4 w-4" />
                             <span>{formatTime(audioState.currentTime)} / {formatTime(audioState.duration)}</span>
                           </div>
-                          
-                          
+
+
                         </div>
-                        
+
                         {/* Timeline */}
                         <div className="space-y-2">
-                          <div 
+                          <div
                             className="w-full h-2 bg-gray-200 rounded-full cursor-pointer relative"
                             onClick={(e) => {
                               const rect = e.currentTarget.getBoundingClientRect();
@@ -1990,7 +1993,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                               seekAudio(responseId, percentage);
                             }}
                           >
-                            <div 
+                            <div
                               className="h-full bg-blue-500 rounded-full transition-all duration-100"
                               style={{ width: `${audioState.progress || 0}%` }}
                             />
@@ -2007,7 +2010,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                     </div>
                   )}
 
-                  
+
                 </div>
               </CardContent>
             </Card>

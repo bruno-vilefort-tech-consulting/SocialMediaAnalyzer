@@ -53,6 +53,8 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   const [testMessage, setTestMessage] = useState('Teste de conexão WhatsApp');
   // QR deve aparecer se já existe um QR Code ou se o usuário clicou para conectar
   const [showQR, setShowQR] = useState(!!connection.qrCode);
+  // Estado para controlar se o card inteiro deve ser oculto
+  const [isCardHidden, setIsCardHidden] = useState(false);
 
   // Atualizar showQR quando connection.qrCode mudar
   React.useEffect(() => {
@@ -87,11 +89,20 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
     setShowQR(false);
   };
 
+  const handleHideCard = () => {
+    setIsCardHidden(true);
+  };
+
   const handleTest = () => {
     if (testPhone.trim() && testMessage.trim()) {
       onTest(connection.slotNumber, testPhone, testMessage);
     }
   };
+
+  // Se o card está escondido, não renderizar nada
+  if (isCardHidden) {
+    return null;
+  }
 
   return (
     <Card className="w-full">
@@ -166,10 +177,19 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                     variant="outline"
                     size="sm"
                   >
-                    Esconder
+                    Esconder QR
                   </Button>
                 </>
               )}
+              
+              {/* Botão Esconder quando desconectado */}
+              <Button
+                onClick={handleHideCard}
+                variant="outline"
+                size="sm"
+              >
+                Esconder
+              </Button>
             </>
           )}
         </div>
