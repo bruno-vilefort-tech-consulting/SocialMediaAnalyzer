@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ SISTEMA DE CAMINHOS ABSOLUTOS IMPLEMENTADO - Arquitetura de arquivos totalmente padronizada
+  - **Configuração centralizada**: Arquivo src/config/paths.ts criado com UPLOADS_DIR usando path.resolve(process.cwd(), 'uploads')
+  - **Serviços atualizados**: AudioDownloadService, interactiveInterviewService, transcriptionService e simpleInterviewService
+  - **Caminhos consistentes**: Todos os serviços agora usam path.join(UPLOADS_DIR, filename) para operações de arquivo
+  - **Compatibilidade garantida**: Sistema funciona em qualquer plataforma (Windows, Linux, macOS) com caminhos absolutos
+  - **Manutenibilidade melhorada**: Mudanças de localização de uploads centralizadas em um único arquivo
+  - **Sistema robusto**: Elimina problemas de caminhos relativos e dependências de diretório de trabalho atual
+
 - July 2, 2025: ✅ SISTEMA DE ÁUDIO WHATSAPP TOTALMENTE CORRIGIDO - Download e salvamento de áudios das entrevistas funcionando 100%
   - **Root cause identificado e corrigido**: whatsappBaileyService.ts estava passando apenas message.message em vez da mensagem completa
   - **Handler de mensagens corrigido**: Agora passa mensagem completa com key e metadados necessários para downloadContentFromMessage

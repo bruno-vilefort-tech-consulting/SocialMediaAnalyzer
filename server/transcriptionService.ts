@@ -2,6 +2,7 @@ import { OpenAI } from 'openai';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { storage } from './storage.js';
+import { UPLOADS_DIR } from '../src/config/paths';
 
 export class TranscriptionService {
   private openai: OpenAI;
@@ -85,7 +86,7 @@ export class TranscriptionService {
     
     try {
       // Processar R1
-      const audioPath1 = path.join('uploads', `audio_${phone}_${selectionId}_R1.ogg`);
+      const audioPath1 = path.join(UPLOADS_DIR, `audio_${phone}_${selectionId}_R1.ogg`);
       console.log(`🎵 Processando áudio 1: ${audioPath1}`);
       
       const transcription1 = await this.transcribeAudioFile(audioPath1);
@@ -117,7 +118,7 @@ export class TranscriptionService {
       }
       
       // Processar R2
-      const audioPath2 = path.join('uploads', `audio_${phone}_${selectionId}_R2.ogg`);
+      const audioPath2 = path.join(UPLOADS_DIR, `audio_${phone}_${selectionId}_R2.ogg`);
       console.log(`🎵 Processando áudio 2: ${audioPath2}`);
       
       const transcription2 = await this.transcribeAudioFile(audioPath2);

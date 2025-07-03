@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import FormData from 'form-data';
 import { AudioDownloadService } from './audioDownloadService';
+import { UPLOADS_DIR } from '../src/config/paths';
 
 // Estado em memória das entrevistas ativas
 interface ActiveInterview {
@@ -22,6 +23,8 @@ interface ActiveInterview {
     timestamp: string;
   }>;
   startTime: string;
+  selectionId?: string;  // ADICIONADO: para nomenclatura consistente dos arquivos de áudio
+  clientId?: number;     // ADICIONADO: para contexto adicional
 }
 
 class SimpleInterviewService {
@@ -308,7 +311,10 @@ class SimpleInterviewService {
           if (audioBuffer) {
             try {
               console.log(`💾 [AUDIO] Salvando áudio no sistema...`);
-              audioFile = await this.audioDownloadService.saveAudioFile(audioBuffer, phone);
+              // CORRIGIDO: Incluir selectionId e questionNumber para nomenclatura consistente
+              const selectionId = interview.selectionId || 'unknown';
+              const questionNumber = interview.currentQuestion + 1;
+              audioFile = await this.audioDownloadService.saveAudioFile(audioBuffer, phone, selectionId, questionNumber);
               
               audioSavedToDB = true;
               console.log(`✅ [AUDIO] Áudio salvo com sucesso: ${audioFile}`);
@@ -432,7 +438,7 @@ class SimpleInterviewService {
         // Salvar áudio temporariamente para OpenAI Whisper
         const fs = await import('fs');
         const path = await import('path');
-        const tempAudioPath = path.join('uploads', `temp_audio_${phone}_${Date.now()}.webm`);
+        const tempAudioPath = path.join(UPLOADS_DIR, `temp_audio_${phone}_${Date.now()}.webm`);
         
         await fs.promises.writeFile(tempAudioPath, audioBuffer);
         console.log(`💾 [WHISPER] Áudio salvo temporariamente: ${tempAudioPath}`);

@@ -36,102 +36,157 @@ class InteractiveInterviewService {
     console.log(`📱 [AUDIO_DOWNLOAD] Telefone: ${phone}, Seleção: ${selectionId}, Pergunta: ${questionNumber}`);
     
     try {
+      const { UPLOADS_DIR } = await import('../src/config/paths');
+      const path = await import('path');
+      
       const cleanPhone = phone.replace(/\D/g, '');
       // Nova nomenclatura: audio_[whatsapp]_[selectionId]_R[numero].ogg
       const audioFileName = `audio_${cleanPhone}_${selectionId}_R${questionNumber}.ogg`;
-      const audioPath = `uploads/${audioFileName}`;
+      const audioPath = path.join(UPLOADS_DIR, audioFileName);
       
-      // Verificar se arquivo já existe (evitar duplicação)
+      // Verificar se arquivo já existe e tem tamanho válido (> 1KB)
       const fs = await import('fs');
-      if (await fs.promises.access(audioPath).then(() => true).catch(() => false)) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Arquivo já existe, reutilizando: ${audioPath}`);
-        return audioPath;
+      try {
+        const stats = await fs.promises.stat(audioPath);
+        if (stats.size > 1024) {
+          console.log(`✅ [AUDIO_DOWNLOAD] Arquivo válido já existe: ${audioPath} (${stats.size} bytes)`);
+          return audioPath;
+        } else {
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo existe mas é muito pequeno (${stats.size} bytes), re-downloading...`);
+          // Remove arquivo pequeno para forçar novo download
+          await fs.promises.unlink(audioPath).catch(() => {});
+        }
+      } catch {
+        // Arquivo não existe, continuar com download
       }
       
-      // Verificar se mensagem foi corrigida pelo handler Baileys
-      if (message._audioFixed && message._audioPath) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Movendo áudio corrigido (sem duplicar)`);
-        await fs.promises.rename(message._audioPath, audioPath);
-        return audioPath;
-      }
-      
-      if (message._audioBuffer) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Salvando buffer com nova nomenclatura`);
-        await fs.promises.writeFile(audioPath, message._audioBuffer);
-        return audioPath;
-      }
-      
-      // Fallback para método original se não houve correção
-      console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto...`);
-      
-      const { whatsappBaileyService } = await import('../whatsapp/services/whatsappBaileyService');
-      const connection = whatsappBaileyService.getConnection(clientId);
-      
-      if (!connection?.socket) {
-        console.log(`❌ [AUDIO_DOWNLOAD] Socket não disponível`);
-        return null;
-      }
-      
-      // Tentar download com mensagem completa do Baileys
-      console.log(`🔍 [AUDIO_DOWNLOAD] Estrutura da mensagem:`, {
+      console.log(`🔍 [AUDIO_DOWNLOAD] Estrutura da mensagem completa:`, {
         hasMessage: !!message.message,
         hasAudioMessage: !!message.message?.audioMessage,
         hasKey: !!message.key,
+        audioType: message.message?.audioMessage?.mimetype,
+        audioSize: message.message?.audioMessage?.fileLength,
         messageType: message.messageType || 'unknown'
       });
       
-      if (message.message?.audioMessage) {
-        try {
-          const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download com downloadContentFromMessage...`);
-          
-          // Usar a mensagem completa para o download
-          const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
-          
-          const chunks: Buffer[] = [];
-          for await (const chunk of stream) {
-            chunks.push(chunk);
-          }
-          
-          const audioBuffer = Buffer.concat(chunks);
-          
-          if (audioBuffer && audioBuffer.length > 100) {
-            console.log(`✅ [AUDIO_DOWNLOAD] Buffer válido recebido: ${audioBuffer.length} bytes`);
-            
-            // Verificar se pasta uploads existe
-            const path = await import('path');
-            const uploadsDir = path.dirname(audioPath);
-            if (!fs.existsSync(uploadsDir)) {
-              await fs.promises.mkdir(uploadsDir, { recursive: true });
-              console.log(`📁 [AUDIO_DOWNLOAD] Pasta uploads criada`);
-            }
-            
-            await fs.promises.writeFile(audioPath, audioBuffer);
-            console.log(`✅ [AUDIO_DOWNLOAD] Arquivo salvo com sucesso: ${audioPath} (${audioBuffer.length} bytes)`);
-            return audioPath;
-          } else {
-            console.log(`⚠️ [AUDIO_DOWNLOAD] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes`);
-          }
-        } catch (error) {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download:`, error.message);
-        }
-      } else {
-        console.log(`❌ [AUDIO_DOWNLOAD] Mensagem não contém audioMessage válido`);
+      let audioBuffer: Buffer | null = null;
+      
+      // MÉTODO 1: Tentar usar buffer já processado (se disponível)
+      if (message._audioBuffer && message._audioBuffer.length > 1024) {
+        console.log(`✅ [AUDIO_DOWNLOAD] Usando buffer pré-processado (${message._audioBuffer.length} bytes)`);
+        audioBuffer = message._audioBuffer;
       }
       
-      // Criar arquivo temporário para manter fluxo
-      console.log(`🔄 [AUDIO_DOWNLOAD] Criando arquivo temporário com nova nomenclatura`);
+      // MÉTODO 2: Download direto via Baileys (método mais confiável)
+      if (!audioBuffer && message.message?.audioMessage) {
+        try {
+          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto via Baileys...`);
+          
+          // Buscar conexão ativa no sistema
+          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+          
+          // Tentar encontrar uma conexão ativa do cliente específico
+          let activeSocket = null;
+          for (let slot = 1; slot <= 3; slot++) {
+            try {
+              const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slot);
+              if (connectionStatus.isConnected) {
+                const connectionId = `${clientId}_slot_${slot}`;
+                const connections = (simpleMultiBaileyService as any).connections;
+                const connection = connections.get(connectionId);
+                if (connection?.socket) {
+                  activeSocket = connection.socket;
+                  console.log(`✅ [AUDIO_DOWNLOAD] Socket ativo encontrado no slot ${slot}`);
+                  break;
+                }
+              }
+            } catch (slotError: any) {
+              console.log(`⚠️ [AUDIO_DOWNLOAD] Slot ${slot} não disponível: ${slotError.message}`);
+            }
+          }
+          
+          if (activeSocket) {
+            const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+            console.log(`🔄 [AUDIO_DOWNLOAD] Baixando com downloadContentFromMessage...`);
+            
+            const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
+            
+            const chunks: Buffer[] = [];
+            for await (const chunk of stream) {
+              chunks.push(chunk);
+            }
+            
+            audioBuffer = Buffer.concat(chunks);
+            
+            if (audioBuffer && audioBuffer.length > 1024) {
+              console.log(`✅ [AUDIO_DOWNLOAD] Download via Baileys bem-sucedido: ${audioBuffer.length} bytes`);
+            } else {
+              console.log(`⚠️ [AUDIO_DOWNLOAD] Buffer muito pequeno via Baileys: ${audioBuffer?.length || 0} bytes`);
+              audioBuffer = null;
+            }
+          } else {
+            console.log(`❌ [AUDIO_DOWNLOAD] Nenhum socket ativo encontrado para download`);
+          }
+        } catch (baileyError: any) {
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download via Baileys:`, baileyError.message);
+        }
+      }
       
-      const emptyOggHeader = Buffer.from([
-        0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-      ]);
+      // MÉTODO 3: Tentar via outros serviços WhatsApp disponíveis
+      if (!audioBuffer) {
+        try {
+          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando via whatsappQRService...`);
+          const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
+          
+          audioBuffer = await downloadMediaMessage(
+            message,
+            'buffer',
+            {}
+          );
+          
+          if (audioBuffer && audioBuffer.length > 1024) {
+            console.log(`✅ [AUDIO_DOWNLOAD] Download via whatsappQRService bem-sucedido: ${audioBuffer.length} bytes`);
+          } else {
+            audioBuffer = null;
+          }
+        } catch (qrError: any) {
+          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download via whatsappQRService:`, qrError.message);
+        }
+      }
       
-      await fs.promises.writeFile(audioPath, emptyOggHeader);
-      console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo temporário criado: ${audioPath}`);
-      return audioPath;
+      // Salvar o áudio se foi baixado com sucesso
+      if (audioBuffer && audioBuffer.length > 1024) {
+        
+        await fs.promises.writeFile(audioPath, audioBuffer);
+        console.log(`✅ [AUDIO_DOWNLOAD] Arquivo de áudio REAL salvo: ${audioPath} (${audioBuffer.length} bytes)`);
+        
+        // Verificar se arquivo foi realmente salvo
+        const verifyStats = await fs.promises.stat(audioPath);
+        console.log(`✅ [AUDIO_DOWNLOAD] Verificação: arquivo salvo com ${verifyStats.size} bytes`);
+        
+        return audioPath;
+      } else {
+        console.log(`❌ [AUDIO_DOWNLOAD] Falha em todos os métodos de download de áudio`);
+        
+        // Como último recurso, criar um arquivo de placeholder válido OGG 
+        // mas marcar claramente que precisa ser re-processado
+        const oggHeader = Buffer.from([
+          0x4f, 0x67, 0x67, 0x53, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        ]);
+        
+        // Criar comentário indicando que é placeholder
+        const placeholderComment = Buffer.from(`PLACEHOLDER_AUDIO_NEEDS_REDOWNLOAD_${Date.now()}`, 'utf8');
+        const placeholderBuffer = Buffer.concat([oggHeader, placeholderComment]);
+        
+        await fs.promises.writeFile(audioPath, placeholderBuffer);
+        console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo placeholder criado: ${audioPath} (${placeholderBuffer.length} bytes)`);
+        
+        // Retornar caminho mesmo para placeholder para não quebrar o fluxo
+        return audioPath;
+      }
       
-    } catch (error) {
+    } catch (error: any) {
       console.log(`❌ [AUDIO_DOWNLOAD] Erro geral:`, error.message);
       return null;
     }

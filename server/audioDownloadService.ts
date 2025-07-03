@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { UPLOADS_DIR } from '../src/config/paths';
 
 export class AudioDownloadService {
   private whatsappService: any;
@@ -136,21 +137,26 @@ export class AudioDownloadService {
     }
   }
 
-  async saveAudioFile(audioBuffer: Buffer, phone: string): Promise<string> {
+  async saveAudioFile(audioBuffer: Buffer, phone: string, selectionId?: string, questionNumber?: number): Promise<string> {
     try {
-      // Garantir que a pasta uploads existe
-      const uploadsDir = './uploads';
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      // CORRIGIDO: Usar nomenclatura consistente baseada no padrão existente
+      const phoneClean = phone.replace(/\D/g, '');
+      let fileName: string;
+      
+      if (selectionId && questionNumber) {
+        // Nova nomenclatura: audio_[telefone]_[selectionId]_R[numero].ogg
+        fileName = `audio_${phoneClean}_${selectionId}_R${questionNumber}.ogg`;
+      } else {
+        // Fallback para nomenclatura antiga caso parâmetros não sejam fornecidos
+        fileName = `audio_${phoneClean}_${Date.now()}.ogg`;
       }
-
-      const fileName = `audio_${phone}_${Date.now()}.ogg`;
-      const filePath = path.join(uploadsDir, fileName);
       
-      fs.writeFileSync(filePath, audioBuffer);
+      const filePath = path.join(UPLOADS_DIR, fileName);
       
-      console.log(`💾 [AUDIO_SAVE] Arquivo salvo: ${fileName} (${audioBuffer.length} bytes)`);
-      return fileName;
+      await fs.promises.writeFile(filePath, audioBuffer);
+      
+      console.log(`💾 [AUDIO_SAVE] Arquivo salvo DEFINITIVAMENTE: ${filePath} (${audioBuffer.length} bytes)`);
+      return filePath; // Retorna path completo
       
     } catch (error: any) {
       console.log(`❌ [AUDIO_SAVE] Erro ao salvar:`, error?.message || error);

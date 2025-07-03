@@ -3,6 +3,7 @@ import qrcodeTerminal from 'qrcode-terminal';
 import P from 'pino';
 import { storage } from '../../server/storage';
 import { simpleInterviewService } from '../../server/simpleInterviewService';
+import console from 'console';
 
 interface WhatsAppQRConfig {
   isConnected: boolean;
@@ -970,12 +971,12 @@ export class WhatsAppQRService {
       
       console.log(`✅ [DEBUG] Seleção encontrada: ID ${selection.id}, JobId: ${selection.jobId}`);
       
-      // Baixar arquivo de áudio usando downloadMediaMessage do Baileys
+      // Baixar arquivo de áudio usando método robusto
       console.log(`📱 [DEBUG] Baixando áudio do WhatsApp...`);
       let audioBuffer: Buffer;
       
       try {
-        // Baixar mídia usando a função correta do Baileys
+        // MÉTODO 1: Tentar downloadMediaMessage do Baileys (método principal)
         const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
         
         console.log(`🔄 [DEBUG] Iniciando download com downloadMediaMessage...`);
@@ -989,17 +990,38 @@ export class WhatsAppQRService {
           }
         );
         
-        if (!audioBuffer || audioBuffer.length === 0) {
-          console.log(`❌ [DEBUG] Erro ao baixar áudio - buffer vazio ou inválido`);
-          await this.sendTextMessage(from, "Erro ao processar áudio. Tente enviar novamente.");
-          return;
+        if (!audioBuffer || audioBuffer.length < 1024) {
+          console.log(`⚠️ [DEBUG] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes - tentando método alternativo...`);
+          
+          // MÉTODO 2: Tentar downloadContentFromMessage
+          try {
+            const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+            console.log(`🔄 [DEBUG] Tentando downloadContentFromMessage...`);
+            
+            const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
+            const chunks: Buffer[] = [];
+            for await (const chunk of stream) {
+              chunks.push(chunk);
+            }
+            audioBuffer = Buffer.concat(chunks);
+            
+            if (audioBuffer && audioBuffer.length > 1024) {
+              console.log(`✅ [DEBUG] Download alternativo bem-sucedido: ${audioBuffer.length} bytes`);
+            } else {
+              throw new Error('Buffer ainda muito pequeno');
+            }
+          } catch (altError) {
+            console.log(`❌ [DEBUG] Método alternativo também falhou:`, altError.message);
+            throw new Error('Todos os métodos de download falharam');
+          }
+        } else {
+          console.log(`✅ [DEBUG] Áudio baixado com sucesso - Tamanho: ${audioBuffer.length} bytes`);
         }
         
-        console.log(`✅ [DEBUG] Áudio baixado com sucesso - Tamanho: ${audioBuffer.length} bytes`);
         console.log(`🔍 [DEBUG] Primeiros bytes do áudio:`, audioBuffer.subarray(0, 16).toString('hex'));
         
       } catch (downloadError) {
-        console.log(`❌ [DEBUG] Erro no downloadMediaMessage:`, downloadError);
+        console.log(`❌ [DEBUG] Erro no download de áudio:`, downloadError.message);
         await this.sendTextMessage(from, "Erro ao baixar áudio. Tente enviar novamente.");
         return;
       }
@@ -1011,15 +1033,15 @@ export class WhatsAppQRService {
         console.log(`📁 [DEBUG] Diretório uploads criado`);
       }
       
-      // Salvar arquivo temporário com timestamp único
+      // Salvar arquivo temporário primeiro para processamento
       const timestamp = Date.now();
-      const audioFileName = `whatsapp_audio_${timestamp}.ogg`;
-      const audioPath = path.join(uploadsDir, audioFileName);
+      const tempAudioFileName = `whatsapp_audio_${timestamp}.ogg`;
+      const tempAudioPath = path.join(uploadsDir, tempAudioFileName);
       
       try {
-        fs.writeFileSync(audioPath, audioBuffer);
-        console.log(`💾 [DEBUG] Áudio salvo temporariamente em: ${audioPath}`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo salvo: ${fs.statSync(audioPath).size} bytes`);
+        fs.writeFileSync(tempAudioPath, audioBuffer);
+        console.log(`💾 [DEBUG] Áudio salvo temporariamente em: ${tempAudioPath}`);
+        console.log(`📊 [DEBUG] Tamanho do arquivo salvo: ${fs.statSync(tempAudioPath).size} bytes`);
       } catch (saveError) {
         console.log(`❌ [DEBUG] Erro ao salvar arquivo temporário:`, saveError);
         await this.sendTextMessage(from, "Erro ao processar áudio. Tente novamente.");
@@ -1104,14 +1126,14 @@ export class WhatsAppQRService {
       let transcription = '';
       try {
         console.log(`🌐 [DEBUG] Iniciando transcrição via OpenAI SDK...`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo: ${fs.statSync(audioPath).size} bytes`);
+        console.log(`📊 [DEBUG] Tamanho do arquivo: ${fs.statSync(tempAudioPath).size} bytes`);
         
         // Usar OpenAI SDK em vez de FormData
         const OpenAI = (await import('openai')).default;
         const openai = new OpenAI({ apiKey: config.openaiApiKey });
         
         const transcriptionResult = await openai.audio.transcriptions.create({
-          file: fs.createReadStream(audioPath),
+          file: fs.createReadStream(tempAudioPath), 
           model: 'whisper-1',
           language: 'pt',
           response_format: 'text'
@@ -1128,6 +1150,30 @@ export class WhatsAppQRService {
       } catch (transcriptionError) {
         console.log(`❌ [DEBUG] Erro na transcrição SDK:`, transcriptionError.message);
         transcription = '[Erro na transcrição]';
+      }
+      
+      // CRIAR ARQUIVO DEFINITIVO COM NOMENCLATURA CORRETA
+      const phoneClean = from.replace('@s.whatsapp.net', '').replace(/\D/g, '');
+      const selectionId = (currentInterview as any).selectionId || 'unknown';
+      const questionNumber = currentQuestionIndex + 1;
+      
+      // Nova nomenclatura: audio_[telefone]_[selectionId]_R[numero].ogg
+      const audioFileName = `audio_${phoneClean}_${selectionId}_R${questionNumber}.ogg`;
+      const audioPath = path.join(uploadsDir, audioFileName);
+      
+      try {
+        // Copiar arquivo temporário para arquivo definitivo
+        fs.copyFileSync(tempAudioPath, audioPath);
+        console.log(`✅ [DEBUG] Áudio DEFINITIVO salvo: ${audioFileName}`);
+        
+        // Remover arquivo temporário
+        fs.unlinkSync(tempAudioPath);
+        console.log(`🗑️ [DEBUG] Arquivo temporário removido`);
+        
+      } catch (renameError) {
+        console.log(`⚠️ [DEBUG] Erro ao criar arquivo definitivo:`, renameError);
+        // Se der erro, manter o arquivo temporário como definitivo
+        console.log(`📝 [DEBUG] Usando arquivo temporário como definitivo: ${tempAudioFileName}`);
       }
       
       console.log(`💾 [DEBUG] Preparando para salvar resposta no banco...`);
@@ -1257,10 +1303,8 @@ export class WhatsAppQRService {
         console.log(`📈 [DEBUG] Total de respostas coletadas: ${job.perguntas.length}`);
       }
       
-      // Limpar arquivo temporário
-      if (fs.existsSync(audioPath)) {
-        fs.unlinkSync(audioPath);
-      }
+      // CORRIGIDO: NÃO DELETAR mais o arquivos de áudio para mantê-los salvos na pasta uploads
+      console.log(`✅ [DEBUG] Áudio mantido permanentemente em: ${audioFileName}`);
       
     } catch (error) {
       console.error(`❌ Erro ao processar áudio:`, error);

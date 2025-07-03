@@ -1029,69 +1029,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           )}
         </CardContent>
       </Card>
-
-      {/* Background Send Status */}
-      {backgroundSends.size > 0 && (
-        <Card className="mb-6 border-blue-200 bg-blue-50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              Envios em Andamento
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Array.from(backgroundSends.entries()).map(([selectionId, sendData]) => (
-                <div key={selectionId} className="bg-white p-4 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-gray-900">
-                      {sendData.selectionName}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {sendData.isComplete ? (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <CheckCircle className="w-4 h-4" />
-                          Concluído
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Enviando...
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {sendData.progress.total > 0 && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>Progresso: {sendData.progress.sent} / {sendData.progress.total}</span>
-                        <span>
-                          {Math.round((sendData.progress.sent / sendData.progress.total) * 100)}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full transition-all duration-300 ${
-                            sendData.isComplete ? 'bg-green-500' : 'bg-blue-500'
-                          }`}
-                          style={{ 
-                            width: `${Math.round((sendData.progress.sent / sendData.progress.total) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="text-xs text-gray-500 mt-2">
-                    Iniciado há {Math.round((Date.now() - sendData.startTime.getTime()) / 1000)}s
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
