@@ -97,7 +97,7 @@ export default function AssessmentsPage() {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-8 pl-[9px] pr-[9px] pt-[0px] pb-[0px]">
+    <div className="container mx-auto p-8 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
