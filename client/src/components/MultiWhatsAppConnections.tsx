@@ -419,9 +419,18 @@ const MultiWhatsAppConnections: React.FC = () => {
           description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
         });
 
-        // Invalidar cache e forçar refetch
-        queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        refetch();
+        // Invalidar cache com força total
+        queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/multi-whatsapp/connections'],
+          exact: true,
+          refetchType: 'all'
+        });
+        
+        // Forçar refetch imediato com delay para garantir
+        setTimeout(() => {
+          refetch();
+        }, 100);
       } else {
         toast({
           title: "Erro na geração do QR",
@@ -469,9 +478,25 @@ const MultiWhatsAppConnections: React.FC = () => {
           description: `Slot ${slotNumber} desconectado com sucesso.`,
         });
         
-        // Invalidar cache e forçar refetch
-        queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        refetch();
+        // Atualizar estado local permanentemente
+        setConnections(prev => prev.map(conn =>
+          conn.slotNumber === slotNumber
+            ? { ...conn, isConnected: false, qrCode: null, phoneNumber: null }
+            : conn
+        ));
+        
+        // Invalidar cache com força total
+        queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        queryClient.invalidateQueries({ 
+          queryKey: ['/api/multi-whatsapp/connections'],
+          exact: true,
+          refetchType: 'all'
+        });
+        
+        // Forçar refetch imediato com delay para garantir
+        setTimeout(() => {
+          refetch();
+        }, 100);
       } else {
         toast({
           title: "Erro na desconexão",
@@ -481,6 +506,13 @@ const MultiWhatsAppConnections: React.FC = () => {
       }
     },
     onError: (error, slotNumber) => {
+      // Reverter estado local em caso de erro
+      setConnections(prev => prev.map(conn =>
+        conn.slotNumber === slotNumber && connectionsData?.connections
+          ? connectionsData.connections.find(c => c.slotNumber === slotNumber) || conn
+          : conn
+      ));
+
       toast({
         title: "Erro na desconexão",
         description: `Falha ao desconectar Slot ${slotNumber}`,

@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ PROBLEMA DE CACHE WHATSAPP RESOLVIDO DEFINITIVAMENTE - Sistema invalidação forçada para reconhecer desconexões e novas conexões
+  - **Problema crítico identificado**: Cache do TanStack Query não reconhecia mudanças de estado de conexão WhatsApp na página /configuracoes
+  - **Invalidação robusta implementada**: Sistema agora remove queries e força refetch total com queryClient.removeQueries()
+  - **Dupla estratégia aplicada**: Estado local atualizado imediatamente + cache invalidado com força total
+  - **Connect e Disconnect corrigidos**: Ambas operações agora usam invalidação robusta com refetchType: 'all'
+  - **Delay de sincronização**: setTimeout de 100ms garantia que refetch aconteça após limpeza do cache
+  - **Problema resolvido**: Página /configuracoes agora reconhece imediatamente desconexões e novas conexões WhatsApp
+  - **Reversão de erro**: Sistema reverte estado local automaticamente se operação falhar
+
 - July 3, 2025: ✅ UI TESTE DE CONEXÃO CORRIGIDA - Botão "Teste de Conexão" agora desaparece imediatamente após desconectar WhatsApp
   - **Problema identificado**: Seção "Teste de Conexão" permanecia visível após clicar "Desconectar" na página /configuracoes
   - **Solução implementada**: Atualização imediata do estado local no onMutate da disconnectMutation
