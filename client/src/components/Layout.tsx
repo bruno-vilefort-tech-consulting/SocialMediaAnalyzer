@@ -32,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main Content Container */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-52">
         <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
-        <main className="flex-1 px-6 py-8 bg-slate-50 overflow-auto">
+        <main className="flex-1 px-10 py-12 bg-slate-50 overflow-auto">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>
