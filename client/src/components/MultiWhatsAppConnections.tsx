@@ -467,9 +467,12 @@ const MultiWhatsAppConnections: React.FC = () => {
       // Atualizar estado local imediatamente para esconder "Teste de Conexão"
       setConnections(prev => prev.map(conn =>
         conn.slotNumber === slotNumber
-          ? { ...conn, isConnected: false, qrCode: null }
+          ? { ...conn, isConnected: false, qrCode: null, phoneNumber: null }
           : conn
       ));
+
+      // Parar polling temporariamente para evitar sobrescrever o estado
+      queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
     },
     onSuccess: (data, slotNumber) => {
       if (data.success) {
@@ -485,6 +488,9 @@ const MultiWhatsAppConnections: React.FC = () => {
             : conn
         ));
         
+        // Cancelar todas as queries ativas para evitar interferência
+        queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        
         // Invalidar cache com força total
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
         queryClient.invalidateQueries({ 
@@ -493,10 +499,10 @@ const MultiWhatsAppConnections: React.FC = () => {
           refetchType: 'all'
         });
         
-        // Forçar refetch imediato com delay para garantir
+        // Delay maior para permitir que backend processe desconexão completamente
         setTimeout(() => {
           refetch();
-        }, 100);
+        }, 1500);
       } else {
         toast({
           title: "Erro na desconexão",
