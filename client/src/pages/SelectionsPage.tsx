@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X, Loader2, CheckCircle } from "lucide-react";
+import { Plus, Users, Edit, Trash2, Send, Calendar, Search, Copy, MessageCircle, Mail, QrCode, AlertTriangle, X, Loader2, CheckCircle, Activity } from "lucide-react";
+import { QueueStatusMonitor } from "@/components/QueueStatusMonitor";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
@@ -69,9 +70,9 @@ export default function SelectionsPage() {
   const [tipoEnvio, setTipoEnvio] = useState<"agora" | "agendar">("agora");
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-  
+
   // Estados para envio em background
-  const [backgroundSends, setBackgroundSends] = useState<Map<number, { 
+  const [backgroundSends, setBackgroundSends] = useState<Map<number, {
     selectionName: string;
     progress: { sent: number; total: number };
     isComplete: boolean;
@@ -223,7 +224,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     },
     onSuccess: (data, selectionId) => {
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
-      
+
       // Marca o envio como completo
       setBackgroundSends(prev => {
         const newMap = new Map(prev);
@@ -556,16 +557,16 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       // Nova implementação: Salvar primeiro, depois enviar em background
       if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
         console.log('🚀 Salvando seleção e enviando em background');
-        
+
         // Fecha o formulário IMEDIATAMENTE antes de qualquer operação
         resetForm();
-        
+
         // Toast de confirmação imediato
         toast({
           title: "Processamento iniciado",
           description: "Salvando seleção e iniciando envios em background..."
         });
-        
+
         // Primeiro salva a seleção
         saveOnlyMutation.mutate(selectionData, {
           onSuccess: (savedSelection) => {
@@ -580,7 +581,7 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
               });
               return newMap;
             });
-            
+
             // Inicia o envio em background (não bloqueia)
             setTimeout(() => {
               backgroundSendMutation.mutate(savedSelection.id);

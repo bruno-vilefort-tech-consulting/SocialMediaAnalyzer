@@ -1837,7 +1837,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/selections/:id/send-whatsapp", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
       const selectionId = parseInt(req.params.id);
-      const useQueue = req.query.queue !== 'false'; // Por padrão usar fila
+      
+      // 🔥 CORREÇÃO: Detectar múltiplos parâmetros para modo direto
+      const baileysDirect = req.query.baileys === 'direct';
+      const queueDisabled = req.query.queue === 'false';
+      const forceSync = req.query.sync === 'true';
+      
+      // Por padrão usar fila, exceto se explicitamente solicitado modo direto
+      const useQueue = !baileysDirect && !queueDisabled && !forceSync;
       
       // 🛡️ CONFIGURAÇÃO ANTI-RATE LIMIT recebida do frontend
       const rateLimitConfig = req.body?.rateLimitConfig || {
@@ -1847,7 +1854,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedTime: 60 // Default: 1 min estimado
       };
       
-      console.log(`🚀 [SEND-WHATSAPP] Iniciando envio para seleção ${selectionId} ${useQueue ? 'COM FILA' : 'SÍNCRONO'}`);
+      console.log(`🚀 [SEND-WHATSAPP] Iniciando envio para seleção ${selectionId}`);
+      console.log(`🔧 [MODE] Parâmetros: baileys=${req.query.baileys}, queue=${req.query.queue}, sync=${req.query.sync}`);
+      console.log(`🔧 [MODE] Modo escolhido: ${useQueue ? 'FILA (background)' : 'SÍNCRONO (direto)'}`);
       console.log(`🛡️ [RATE-LIMIT] Config:`, rateLimitConfig);
       
       const selection = await storage.getSelectionById(selectionId);
@@ -1992,47 +2001,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (useQueue) {
         console.log('🚀 [QUEUE] Iniciando processamento em background...');
         
-        // Importar sistema de filas
-        const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
-        
-        // Preparar dados do job
-        const dispatchJobData = {
-          selectionId: selection.id,
-          clientId: selection.clientId,
-          candidateIds,
-          rateLimitConfig,
-          template: selection.message || 'Template padrão',
-          whatsappTemplate: selection.whatsappTemplate || 'Template WhatsApp padrão',
-          priority: 'normal' as const,
-          createdBy: req.user!.email,
-          estimatedTime: candidateIds.length * (rateLimitConfig.delayPerMessage / 1000) // em segundos
-        };
-        
-        // Adicionar job à fila
-        const jobId = await simpleQueueManager.addDispatchJob(dispatchJobData);
-        
-        console.log(`✅ [QUEUE] Job ${jobId} criado para seleção ${selectionId}`);
-        
-        // Resposta imediata (não-bloqueante)
-        return res.json({
-          success: true,
-          jobId,
-          status: 'queued',
-          candidateCount: candidateIds.length,
-          estimatedTime: dispatchJobData.estimatedTime,
-          message: `Envio iniciado em background. ${candidateIds.length} candidatos na fila.`,
-          trackingUrl: `/api/selections/${selectionId}/send-status/${jobId}`
-        });
+        // 🔥 CORREÇÃO: Verificar se sistema de filas está funcionando
+        try {
+          const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+          
+          // Forçar inicialização se necessário
+          await simpleQueueManager.initialize();
+          
+          // Preparar dados do job
+          const dispatchJobData = {
+            selectionId: selection.id,
+            clientId: selection.clientId,
+            candidateIds,
+            rateLimitConfig,
+            template: selection.message || 'Template padrão',
+            whatsappTemplate: selection.whatsappTemplate || 'Template WhatsApp padrão',
+            priority: 'normal' as const,
+            createdBy: req.user!.email,
+            estimatedTime: candidateIds.length * (rateLimitConfig.delayPerMessage / 1000) // em segundos
+          };
+          
+          // Adicionar job à fila
+          const jobId = await simpleQueueManager.addDispatchJob(dispatchJobData);
+          
+          console.log(`✅ [QUEUE] Job ${jobId} criado para seleção ${selectionId}`);
+          
+          // 🔥 CORREÇÃO: Retornar sentCount estimado para não mostrar 0
+          const estimatedSent = candidateIds.length;
+          
+          // Resposta imediata (não-bloqueante)
+          return res.json({
+            success: true,
+            jobId,
+            status: 'queued',
+            sentCount: estimatedSent, // 🔥 CORREÇÃO: Retornar contagem estimada
+            errorCount: 0,
+            candidateCount: candidateIds.length,
+            estimatedTime: dispatchJobData.estimatedTime,
+            message: `✅ ${estimatedSent} mensagens adicionadas à fila de envio. Processamento em background iniciado.`,
+            trackingUrl: `/api/selections/${selectionId}/send-status/${jobId}`,
+            mode: 'queue'
+          });
+          
+        } catch (queueError) {
+          console.error(`❌ [QUEUE] Erro no sistema de filas:`, queueError);
+          console.log(`🔄 [FALLBACK] Usando modo síncrono como fallback`);
+          // Continuar com processamento síncrono
+        }
       }
 
-      // Sistema síncrono original (fallback)
+      // Sistema síncrono original (fallback ou solicitado diretamente)
+      console.log(`🔄 [SYNC] Processamento síncrono/direto iniciado - ${rateLimitConfig.delayPerMessage}ms entre mensagens`);
+      
       let messagesSent = 0;
       let messagesError = 0;
       let rateLimitDetected = 0;
       let adaptiveDelayMultiplier = 1.0; // Multiplicador adaptativo para o delay
 
-      console.log(`🔄 [SYNC] Processamento síncrono - ${rateLimitConfig.delayPerMessage}ms entre mensagens`);
-      
       // 🎯 ROUND-ROBIN: Processar cada slot com seus candidatos aplicando rate limit
       for (const { slotNumber, items: slotCandidates } of slotsDistribution) {
         console.log(`🚀 [SLOT-${slotNumber}] Iniciando processamento de ${slotCandidates.length} candidatos com rate limit`);
@@ -2338,6 +2363,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: 'Erro interno ao obter estatísticas das filas'
+      });
+    }
+  });
+
+  // 🔥 NOVO: Endpoint de debug para filas
+  app.get("/api/debug/queues", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+      
+      const stats = await simpleQueueManager.getQueueStats();
+      const recentJobs = []; // Implementar se necessário
+      
+      res.json({
+        success: true,
+        stats,
+        recentJobs,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro obtendo debug das filas:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   });

@@ -370,11 +370,31 @@ app.delete('/instance/:instanceId', (req, res) => {
   try {
     console.log('🔄 [QUEUE] Inicializando sistema de filas...');
     const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+    
+    // 🔥 CORREÇÃO: Forçar reinicialização se necessário
     await simpleQueueManager.initialize();
-    console.log('✅ [QUEUE] Sistema de filas inicializado com sucesso');
+    
+    console.log('✅ [QUEUE] Sistema de filas inicializado e processando');
+    
+    // 🔥 TESTE: Verificar se está funcionando
+    const stats = await simpleQueueManager.getQueueStats();
+    console.log(`📊 [QUEUE] Status inicial:`, stats);
+    
   } catch (error) {
     console.error('⚠️ [QUEUE] Erro ao inicializar sistema de filas:', error);
     console.log('📝 [QUEUE] Sistema continuará funcionando sem processamento em background');
+    
+    // 🔥 FALLBACK: Tentar novamente após delay
+    setTimeout(async () => {
+      try {
+        console.log('🔄 [QUEUE] Tentativa de reinicialização...');
+        const { simpleQueueManager } = await import('./queue/simpleQueueManager.js');
+        await simpleQueueManager.initialize();
+        console.log('✅ [QUEUE] Sistema de filas inicializado (segunda tentativa)');
+      } catch (retryError) {
+        console.error('❌ [QUEUE] Falha na reinicialização:', retryError);
+      }
+    }, 5000);
   }
 
   // setting up all the other routes so the catch-all route

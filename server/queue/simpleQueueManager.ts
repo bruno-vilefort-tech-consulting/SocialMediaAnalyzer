@@ -76,15 +76,21 @@ export class SimpleQueueManager {
     }
 
     try {
-      // Conectar ao Redis Simulator
+      // 🔥 CORREÇÃO: Verificar se Redis Simulator está funcionando
       await redisSimulator.connect();
       console.log('✅ [SIMPLE-QUEUE] Redis Simulator conectado');
+
+      // 🔥 CORREÇÃO: Verificar filas existentes
+      const dispatchQueueLength = await redisSimulator.llen('dispatch-queue');
+      const messageQueueLength = await redisSimulator.llen('message-queue');
+      
+      console.log(`📊 [SIMPLE-QUEUE] Filas encontradas: dispatch=${dispatchQueueLength}, messages=${messageQueueLength}`);
 
       // Iniciar processamento contínuo
       this.startProcessing();
       
       this.isInitialized = true;
-      console.log('🚀 [SIMPLE-QUEUE] Sistema de filas simplificado inicializado');
+      console.log('🚀 [SIMPLE-QUEUE] Sistema de filas simplificado inicializado com sucesso');
       
     } catch (error) {
       console.error('❌ [SIMPLE-QUEUE] Erro ao inicializar:', error);
@@ -96,78 +102,99 @@ export class SimpleQueueManager {
     if (this.isProcessing) return;
     
     this.isProcessing = true;
+    
+    // 🔥 CORREÇÃO: Usar intervalo mais frequente e adicionar logs
     this.processingInterval = setInterval(async () => {
-      await this.processJobs();
-    }, 1000); // Verificar a cada 1 segundo
+      try {
+        await this.processJobs();
+      } catch (error) {
+        console.error('❌ [SIMPLE-QUEUE] Erro no loop de processamento:', error);
+      }
+    }, 500); // 🔥 CORREÇÃO: Reduzido de 1000ms para 500ms
 
-    console.log('⚡ [SIMPLE-QUEUE] Processamento iniciado');
+    console.log('⚡ [SIMPLE-QUEUE] Processamento iniciado com intervalo de 500ms');
   }
 
   private async processJobs(): Promise<void> {
     try {
-      // Processar jobs de dispatch (prioridade alta)
-      await this.processJobQueue('dispatch-queue');
+      // 🔥 CORREÇÃO: Processar mais jobs por ciclo
+      const dispatchProcessed = await this.processMultipleJobs('dispatch-queue', 2);
+      const messageProcessed = await this.processMultipleJobs('message-queue', 5);
       
-      // Processar jobs de mensagem (prioridade normal)
-      await this.processJobQueue('message-queue');
+      if (dispatchProcessed > 0 || messageProcessed > 0) {
+        console.log(`🔄 [SIMPLE-QUEUE] Ciclo: ${dispatchProcessed} dispatch, ${messageProcessed} mensagens processadas`);
+      }
       
     } catch (error) {
       console.error('❌ [SIMPLE-QUEUE] Erro processando jobs:', error);
     }
   }
 
-  private async processJobQueue(queueName: string): Promise<void> {
-    const jobData = await redisSimulator.rpop(queueName);
-    if (!jobData) return; // Nenhum job na fila
-
-    try {
-      const job: SimpleJob = JSON.parse(jobData);
+  // 🔥 NOVO: Processar múltiplos jobs por ciclo
+  private async processMultipleJobs(queueName: string, maxJobs: number): Promise<number> {
+    let processed = 0;
+    
+    for (let i = 0; i < maxJobs; i++) {
+      const jobData = await redisSimulator.rpop(queueName);
+      if (!jobData) break; // Nenhum job na fila
       
-      if (job.status !== 'pending') return;
-      
-      console.log(`🔄 [SIMPLE-QUEUE] Processando job ${job.id} tipo ${job.type}`);
-      
-      // Marcar como processando
-      job.status = 'processing';
-      job.processedAt = Date.now();
-      await this.updateJobStatus(job);
-      
-      // Processar baseado no tipo
-      if (job.type === 'dispatch') {
-        await this.processDispatchJob(job);
-      } else if (job.type === 'message') {
-        await this.processMessageJob(job);
-      }
-      
-      // Marcar como completado
-      job.status = 'completed';
-      await this.updateJobStatus(job);
-      
-      console.log(`✅ [SIMPLE-QUEUE] Job ${job.id} completado`);
-      
-    } catch (error) {
-      console.error(`❌ [SIMPLE-QUEUE] Erro processando job:`, error);
-      
-      // Marcar como falhou e tentar retry
       try {
         const job: SimpleJob = JSON.parse(jobData);
-        job.attempts++;
-        job.error = error instanceof Error ? error.message : 'Erro desconhecido';
         
-        if (job.attempts < job.maxAttempts) {
-          console.log(`🔄 [SIMPLE-QUEUE] Retry ${job.attempts}/${job.maxAttempts} para job ${job.id}`);
-          job.status = 'pending';
-          await redisSimulator.lpush(queueName, JSON.stringify(job));
-        } else {
-          job.status = 'failed';
-          console.error(`💀 [SIMPLE-QUEUE] Job ${job.id} falhou definitivamente após ${job.attempts} tentativas`);
+        if (job.status !== 'pending') continue;
+        
+        console.log(`🔄 [SIMPLE-QUEUE] Processando job ${job.id} tipo ${job.type}`);
+        
+        // Marcar como processando
+        job.status = 'processing';
+        job.processedAt = Date.now();
+        await this.updateJobStatus(job);
+        
+        // Processar baseado no tipo
+        if (job.type === 'dispatch') {
+          await this.processDispatchJob(job);
+        } else if (job.type === 'message') {
+          await this.processMessageJob(job);
         }
         
+        // Marcar como completado
+        job.status = 'completed';
         await this.updateJobStatus(job);
-      } catch (updateError) {
-        console.error('❌ [SIMPLE-QUEUE] Erro atualizando status do job falhou:', updateError);
+        
+        console.log(`✅ [SIMPLE-QUEUE] Job ${job.id} completado`);
+        processed++;
+        
+      } catch (error) {
+        console.error(`❌ [SIMPLE-QUEUE] Erro processando job:`, error);
+        
+        // Marcar como falhou e tentar retry
+        try {
+          const job: SimpleJob = JSON.parse(jobData);
+          job.attempts++;
+          job.error = error instanceof Error ? error.message : 'Erro desconhecido';
+          
+          if (job.attempts < job.maxAttempts) {
+            console.log(`🔄 [SIMPLE-QUEUE] Retry ${job.attempts}/${job.maxAttempts} para job ${job.id}`);
+            job.status = 'pending';
+            await redisSimulator.lpush(queueName, JSON.stringify(job));
+          } else {
+            job.status = 'failed';
+            console.error(`💀 [SIMPLE-QUEUE] Job ${job.id} falhou definitivamente após ${job.attempts} tentativas`);
+          }
+          
+          await this.updateJobStatus(job);
+        } catch (updateError) {
+          console.error('❌ [SIMPLE-QUEUE] Erro atualizando status do job falhou:', updateError);
+        }
       }
     }
+    
+    return processed;
+  }
+
+  private async processJobQueue(queueName: string): Promise<void> {
+    // 🔥 CORREÇÃO: Método agora delegado para processMultipleJobs
+    await this.processMultipleJobs(queueName, 1);
   }
 
   private async processDispatchJob(job: SimpleJob): Promise<void> {
@@ -199,7 +226,7 @@ export class SimpleQueueManager {
     // Buscar slots ativos WhatsApp - Usar simpleMultiBaileyService dinamicamente
     let activeSlots: any[] = [];
     try {
-      const simpleMultiBaileyPath = '../whatsapp/services/simpleMultiBailey';
+      const simpleMultiBaileyPath = '../../whatsapp/services/simpleMultiBailey';
       const { simpleMultiBaileyService } = await import(simpleMultiBaileyPath);
       const connectionsStatus = await simpleMultiBaileyService.getClientConnections(clientId.toString());
       
@@ -306,7 +333,7 @@ export class SimpleQueueManager {
       
       // Tentar usar serviço real WhatsApp se disponível
       try {
-        const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+        const { simpleMultiBaileyService } = await import('../../whatsapp/services/simpleMultiBailey');
         const result = await simpleMultiBaileyService.sendMessage(
           clientId.toString(),
           phone,

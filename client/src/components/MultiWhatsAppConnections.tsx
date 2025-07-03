@@ -122,9 +122,6 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
             Conexão {connection.slotNumber}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge className={getServiceBadgeColor(connection.service)}>
-              {connection.service.toUpperCase()}
-            </Badge>
             <Badge variant={connection.isConnected ? "default" : "secondary"}>
               {connection.isConnected ? (
                 <Wifi className="h-3 w-3 mr-1" />
@@ -346,12 +343,18 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
-  // Query para obter status das conexões
+  // Query para obter status das conexões com cache control robusto
   const { data: connectionsData, isLoading, refetch, error } = useQuery<MultiConnectionStatus>({
     queryKey: ['/api/multi-whatsapp/connections'],
     refetchInterval: 5000, // Atualizar a cada 5 segundos
+    staleTime: 0, // Sempre considera dados como obsoletos
+    gcTime: 0, // Não mantem cache (substitui cacheTime no TanStack Query v5)
+    refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
+    refetchOnMount: true, // Sempre refetch ao montar o componente
     queryFn: async () => {
-      const response = await apiRequest('/api/multi-whatsapp/connections', 'GET');
+      // Adicionar timestamp para evitar cache do browser
+      const timestamp = Date.now();
+      const response = await apiRequest(`/api/multi-whatsapp/connections?_t=${timestamp}`, 'GET');
       const data = await response.json();
       console.log('🔍 [MULTI-WA] Dados recebidos da API:', data);
       return data;
@@ -388,7 +391,7 @@ const MultiWhatsAppConnections: React.FC = () => {
 
   // Sincronizar estado local com dados da API
   React.useEffect(() => {
-    if (connectionsData && connectionsData.connections) {
+    if (connectionsData?.connections) {
       setConnections(connectionsData.connections);
     }
   }, [connectionsData]);
@@ -416,7 +419,9 @@ const MultiWhatsAppConnections: React.FC = () => {
           description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
         });
 
-        refetch(); // Atualizar dados
+        // Invalidar cache e forçar refetch
+        queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        refetch();
       } else {
         toast({
           title: "Erro na geração do QR",
@@ -456,7 +461,10 @@ const MultiWhatsAppConnections: React.FC = () => {
           title: "Desconectado",
           description: `Slot ${slotNumber} desconectado com sucesso.`,
         });
-        refetch(); // Atualizar dados
+        
+        // Invalidar cache e forçar refetch
+        queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        refetch();
       } else {
         toast({
           title: "Erro na desconexão",
@@ -586,13 +594,6 @@ const MultiWhatsAppConnections: React.FC = () => {
               <Badge variant="outline">
                 {connectionsData?.activeConnections || 0} / {connectionsData?.totalConnections || 3} Ativas
               </Badge>
-              <Button
-                onClick={() => refetch()}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
             </div>
           </CardTitle>
         </CardHeader>
