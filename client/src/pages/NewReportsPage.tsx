@@ -533,7 +533,7 @@ export default function NewReportsPage() {
     const responses = reportData.responseData || [];
     
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
           <Button 
             variant="outline" 
@@ -710,7 +710,7 @@ export default function NewReportsPage() {
   // Se nenhuma seleção foi escolhida, mostrar lista de seleções com sistema de pastas
   if (!selectedSelection) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
           {selectedClientId && (
@@ -1030,7 +1030,7 @@ export default function NewReportsPage() {
 
   // Mostrar relatório da seleção com abas
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center space-x-4">
         <Button 
           variant="outline" 
@@ -1803,7 +1803,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Informações do Candidato */}
       <div className="grid grid-cols-4 gap-4 p-4 bg-white rounded-lg border relative">
         <div>

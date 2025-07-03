@@ -332,7 +332,7 @@ export default function IndependentReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
         <Button 
-          variant="outline" 
+          variant="ghost" 
           onClick={() => setSelectedReport(null)}
           className="flex items-center space-x-2"
         >

@@ -115,6 +115,13 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ UI MELHORADA NA PÁGINA RELATÓRIOS - Padding aumentado em todos os containers principais
+  - **Padding aumentado**: Todos os containers principais da NewReportsPage.tsx receberam classe `p-6`
+  - **Melhor espaçamento**: Área de conteúdo agora tem mais respiro visual com espaçamento adequado
+  - **Consistência aplicada**: Todos os returns (relatório específico, lista de seleções, abas) usam mesmo padding
+  - **Component CandidateDetailsInline**: Também recebeu padding para consistência visual
+  - **UX aprimorada**: Interface mais limpa e agradável com melhor aproveitamento do espaço
+
 - July 3, 2025: ✅ SISTEMA DE CAMINHOS ABSOLUTOS IMPLEMENTADO - Arquitetura de arquivos totalmente padronizada
   - **Configuração centralizada**: Arquivo src/config/paths.ts criado com UPLOADS_DIR usando path.resolve(process.cwd(), 'uploads')
   - **Serviços atualizados**: AudioDownloadService, interactiveInterviewService, transcriptionService e simpleInterviewService
