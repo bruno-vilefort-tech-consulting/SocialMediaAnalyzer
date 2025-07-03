@@ -535,7 +535,7 @@ export default function NewReportsPage() {
     const responses = reportData.responseData || [];
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-8">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -712,7 +712,7 @@ export default function NewReportsPage() {
   // Se nenhuma seleção foi escolhida, mostrar lista de seleções com sistema de pastas
   if (!selectedSelection) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
           {selectedClientId && (
@@ -1031,7 +1031,7 @@ export default function NewReportsPage() {
 
   // Mostrar relatório da seleção com abas
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-8">
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
