@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logo from "../../../nobilivo_logo_small.png"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -44,11 +45,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-slate-100 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-primary rounded-xl flex items-center justify-center mb-6">
-            <Mic className="text-white text-2xl" />
-          </div>
-          <h2 className="text-3xl font-bold text-slate-900">Sistema de Entrevista IA</h2>
-          <p className="mt-2 text-sm text-slate-600">Plataforma automatizada para seleção de candidatos</p>
+          <img src={logo} alt="Nobilivo Logo" className="h-10 mx-auto mb-6" />
         </div>
         
         <Card className="shadow-xl border border-slate-200">
@@ -64,7 +61,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="master@maximus.com"
+                  placeholder="email@exemplo.com"
                   required
                   className="mt-2"
                 />

@@ -22,6 +22,7 @@ import {
   TrendingUp,
   CheckSquare
 } from "lucide-react";
+import logo from "../../../nobilivo_logo_small.png"
 
 interface SidebarProps {
   isOpen: boolean;
@@ -89,11 +90,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 lg:z-50 lg:bg-white lg:shadow-xl">
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
-          <div className="flex items-center">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <Mic className="text-white text-sm" />
-            </div>
-            <span className="ml-3 font-semibold text-slate-900">Maximus IA</span>
+          <div className="flex items-center justify-center">
+            <img src={logo} alt="Nobilivo Logo" className="h-8 ml-5" />
           </div>
         </div>
         

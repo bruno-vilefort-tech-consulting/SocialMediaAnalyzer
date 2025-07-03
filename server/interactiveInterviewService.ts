@@ -83,7 +83,7 @@ class InteractiveInterviewService {
           console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto via Baileys...`);
           
           // Buscar conexão ativa no sistema
-          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
           
           // Tentar encontrar uma conexão ativa do cliente específico
           let activeSocket = null;
@@ -911,7 +911,7 @@ class InteractiveInterviewService {
     
     try {
       // 🔥 CORREÇÃO: Usar o novo sistema multiBailey em vez do antigo whatsappBaileyService
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
       
       // Se temos clientId específico, usar suas conexões
       if (clientId) {

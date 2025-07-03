@@ -1812,6 +1812,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Função auxiliar para distribuir candidatos entre slots (round-robin)
   function distributeToSlots<T>(items: T[], slots: any[]): { slotNumber: number; items: T[] }[] {
+    console.log(`🔧 [distributeToSlots] items: ${items.length}, slots: ${slots.length}`);
+    console.log(`🔧 [distributeToSlots] slots details:`, slots);
+    
+    if (!slots || slots.length === 0) {
+      console.log(`❌ [distributeToSlots] Nenhum slot disponível`);
+      return [];
+    }
+    
     const distribution: { slotNumber: number; items: T[] }[] = slots.map(slot => ({
       slotNumber: slot.slotNumber,
       items: []
@@ -1862,35 +1870,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`📊 [SELECOES] Verificando status WhatsApp cliente ${clientIdStr}:`, connectionsStatus);
       
+      const forceMode = req.query.force === 'true';
+      console.log(`🔧 [DEBUG] Force mode: ${forceMode}, activeConnections: ${connectionsStatus?.activeConnections}`);
+      console.log(`🔧 [DEBUG] Force mode query parameter:`, req.query.force);
+      console.log(`🔧 [DEBUG] ConnectionsStatus object:`, connectionsStatus);
+      
       if (!connectionsStatus || connectionsStatus.activeConnections === 0) {
-        console.log(`❌ [SELECOES] Cliente ${clientIdStr} não tem nenhuma conexão WhatsApp ativa`);
-        return res.status(400).json({
-          success: false,
-          message: 'WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.',
-          sentCount: 0,
-          errorCount: 0,
-          activeConnections: connectionsStatus?.activeConnections || 0,
-          totalConnections: connectionsStatus?.totalConnections || 3
-        });
+        if (!forceMode) {
+          console.log(`❌ [SELECOES] Cliente ${clientIdStr} não tem nenhuma conexão WhatsApp ativa`);
+          return res.status(400).json({
+            success: false,
+            message: 'WhatsApp não está conectado. Acesse Configurações → WhatsApp para conectar primeiro.',
+            sentCount: 0,
+            errorCount: 0,
+            activeConnections: connectionsStatus?.activeConnections || 0,
+            totalConnections: connectionsStatus?.totalConnections || 3
+          });
+        } else {
+          console.log(`⚠️ [SELECOES] Modo FORCE ativado - prosseguindo sem WhatsApp conectado`);
+        }
       }
       
       console.log(`✅ [SELECOES] Cliente tem ${connectionsStatus.activeConnections}/${connectionsStatus.totalConnections} conexões ativas`);
       
       // 🎯 ROUND-ROBIN: Buscar todos os slots ativos para distribuição
-      const activeConnections = connectionsStatus.connections?.filter(conn => conn.isConnected) || [];
+      let activeConnections = connectionsStatus.connections?.filter(conn => conn.isConnected) || [];
       
       if (activeConnections.length === 0) {
-        console.log(`❌ [SELECOES] Nenhum slot ativo encontrado para cliente ${clientIdStr}`);
-        return res.status(400).json({
-          success: false,
-          message: 'Nenhuma conexão WhatsApp ativa encontrada.',
-          sentCount: 0,
-          errorCount: 0
-        });
+        if (!forceMode) {
+          console.log(`❌ [SELECOES] Nenhum slot ativo encontrado para cliente ${clientIdStr}`);
+          return res.status(400).json({
+            success: false,
+            message: 'Nenhuma conexão WhatsApp ativa encontrada.',
+            sentCount: 0,
+            errorCount: 0
+          });
+        } else {
+          // Criar conexão simulada para force mode
+          console.log(`⚠️ [FORCE] Criando conexão simulada para processamento`);
+          activeConnections = [{
+            connectionId: `${clientIdStr}_1`,
+            clientId: clientIdStr,
+            slotNumber: 1,
+            isConnected: true,
+            qrCode: null,
+            phoneNumber: 'simulation',
+            lastConnection: new Date(),
+            lastUpdate: new Date(),
+            service: 'simulation'
+          }];
+        }
       }
       
       console.log(`📱 [ROUND-ROBIN] Slots ativos encontrados: [${activeConnections.map(c => c.slotNumber).join(', ')}]`);
       console.log(`📊 [ROUND-ROBIN] Distribuição será feita entre ${activeConnections.length} slots`);
+      console.log(`🔧 [DEBUG] activeConnections object:`, activeConnections);
       
       // Buscar candidatos para envio
       const candidateListMemberships = await storage.getCandidateListMembershipsByClientId(selection.clientId);

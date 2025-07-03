@@ -213,11 +213,11 @@ export class QueueManager {
     this.setJobProgress(job.id!, progress);
 
     // Importar storage para buscar dados dos candidatos
-    const { storage } = await import('../storage.js');
+    const { storage } = await import('../storage');
     
     try {
       // Buscar slots ativos WhatsApp para round-robin
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
       const connectionsStatus = await simpleMultiBaileyService.getClientConnections(clientId.toString());
       
       if (!connectionsStatus || connectionsStatus.activeConnections === 0) {
@@ -301,7 +301,7 @@ export class QueueManager {
 
     try {
       // Importar serviço WhatsApp
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
       
       // Enviar mensagem
       const result = await simpleMultiBaileyService.sendMessage(

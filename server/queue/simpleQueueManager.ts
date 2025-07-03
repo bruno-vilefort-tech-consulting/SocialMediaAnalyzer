@@ -3,7 +3,7 @@
  * Utiliza apenas JavaScript nativo + Redis Simulator para processamento em background
  */
 
-import { redisSimulator } from '../redis/redisSimulator.js';
+import { redisSimulator } from '../redis/redisSimulator';
 
 // Interfaces para os dados dos jobs
 export interface WhatsAppDispatchJobData {
@@ -190,7 +190,7 @@ export class SimpleQueueManager {
     this.setJobProgress(job.id, progress);
 
     // Importar storage dinamicamente
-    const { storage } = await import('../storage.js');
+    const { storage } = await import('../storage');
     
     // Buscar dados dos candidatos
     const candidates = await storage.getCandidatesByClientId(clientId);
@@ -199,7 +199,7 @@ export class SimpleQueueManager {
     // Buscar slots ativos WhatsApp - Usar simpleMultiBaileyService dinamicamente
     let activeSlots: any[] = [];
     try {
-      const simpleMultiBaileyPath = '../whatsapp/services/simpleMultiBailey.js';
+      const simpleMultiBaileyPath = '../whatsapp/services/simpleMultiBailey';
       const { simpleMultiBaileyService } = await import(simpleMultiBaileyPath);
       const connectionsStatus = await simpleMultiBaileyService.getClientConnections(clientId.toString());
       
@@ -282,6 +282,15 @@ export class SimpleQueueManager {
     progress.status = 'completed';
     this.setJobProgress(job.id, progress);
     
+    // Atualizar status da seleção para 'enviado' após processamento completo
+    try {
+      const { storage } = await import('../storage');
+      await storage.updateSelection(selectionId, { status: 'enviado' });
+      console.log(`✅ [DISPATCH] Status da seleção ${selectionId} atualizado para "enviado"`);
+    } catch (updateError) {
+      console.error(`❌ [DISPATCH] Erro ao atualizar status da seleção ${selectionId}:`, updateError);
+    }
+    
     console.log(`✅ [DISPATCH] Seleção ${selectionId} dividida em ${candidateIds.length} mensagens`);
   }
 
@@ -297,7 +306,7 @@ export class SimpleQueueManager {
       
       // Tentar usar serviço real WhatsApp se disponível
       try {
-        const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey.js');
+        const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
         const result = await simpleMultiBaileyService.sendMessage(
           clientId.toString(),
           phone,
