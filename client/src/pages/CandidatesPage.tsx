@@ -1195,11 +1195,11 @@ export default function CandidatesPage() {
   };
 
   if (listsLoading) {
-    return <div className="p-6">Carregando listas de candidatos...</div>;
+    return <div className="p-8">Carregando listas de candidatos...</div>;
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-6">
 
       {viewMode === 'all' ? (
         // Visualização de todas as listas (horizontal)
