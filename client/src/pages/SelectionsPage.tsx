@@ -615,11 +615,11 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
     );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-8 space-y-6">
       {/* Barra de Progresso de Envio */}
       {sendingProgress.isVisible && (
         <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-6">
+          <CardContent className="p-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-blue-800">

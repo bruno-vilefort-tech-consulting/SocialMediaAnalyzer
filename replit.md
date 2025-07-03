@@ -115,15 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- July 3, 2025: ✅ PADRONIZAÇÃO UI FINALMENTE COMPLETA - NewReportsPage.tsx totalmente unificada com p-8
+- July 3, 2025: ✅ PADRONIZAÇÃO UI SISTEMA COMPLETO - Todas as páginas principais agora usam p-8 uniformemente
+  - **Página Seleções padronizada**: SelectionsPage.tsx container principal `p-6` → `p-8` + card progresso de envio
   - **Página Relatórios 100% padronizada**: TODOS os 4 containers principais da NewReportsPage.tsx agora usam `p-8`
-  - **Container lista de seleções**: `p-6` → `p-8` na visualização principal das seleções
-  - **Container relatório específico**: `p-6` → `p-8` na visualização direta de relatórios via URL
-  - **Container abas de relatório**: `p-6` → `p-8` na interface de abas internas
-  - **Detalhes expandidos candidatos**: `p-6` → `p-8` no componente CandidateDetailsInline
-  - **Sistema 100% consistente**: Todas as páginas principais (Relatórios, Assessments, Estatísticas, Configurações) usam `p-8`
-  - **Visual profissional unificado**: Interface limpa com respiro visual adequado em toda plataforma
-  - **Manutenibilidade garantida**: Padrão único facilita futuras atualizações de design
+  - **Página Assessments**: Container principal `p-6` → `p-8` removendo classes customizadas
+  - **Página Estatísticas**: Container principal aumentado para `p-8` para conforto visual
+  - **Página Configurações**: ApiConfigPage.tsx atualizada com `p-8` para consistência
+  - **SISTEMA 100% UNIFORME**: Todas as 5 páginas principais (Seleções, Relatórios, Assessments, Estatísticas, Configurações) usam `p-8`
+  - **Visual profissional consistente**: Interface limpa com respiro visual adequado em toda plataforma
+  - **Manutenibilidade garantida**: Padrão único p-8 facilita futuras atualizações de design
+  - **UX otimizada**: Espaçamento uniforme melhora navegação e experiência do usuário
 
 - July 3, 2025: ✅ UI MELHORADA EM MÚLTIPLAS PÁGINAS - Padding aumentado para melhor experiência visual
   - **Página Assessments**: Container principal aumentado de `p-6` para `p-8` removendo classes customizadas
