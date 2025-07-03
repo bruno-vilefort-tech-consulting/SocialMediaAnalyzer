@@ -115,16 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
-- July 3, 2025: ✅ PADRONIZAÇÃO UI EXPANDIDA PARA 7 PÁGINAS - Sistema estendido além das páginas principais originais
-  - **Página Candidatos adicionada**: CandidatesPage.tsx container principal `p-6` → `p-8` completando expansão
+- July 3, 2025: ✅ PADRONIZAÇÃO UI EXPANDIDA PARA 8 PÁGINAS - Sistema estendido com máxima cobertura de interface
+  - **Página Candidatos Management adicionada**: CandidatesManagementPage.tsx container principal `p-6` → `p-8` expandindo cobertura
+  - **Página Candidatos Lists completada**: CandidatesPage.tsx container principal `p-6` → `p-8` completando expansão
   - **Página Vagas completada**: CadastroVagasPage.tsx container principal `p-6` → `p-8` finalizando padronização
   - **Página Seleções padronizada**: SelectionsPage.tsx container principal `p-6` → `p-8` + card progresso de envio
   - **Página Relatórios 100% padronizada**: TODOS os 4 containers principais da NewReportsPage.tsx agora usam `p-8`
   - **Página Assessments**: Container principal `p-6` → `p-8` removendo classes customizadas
   - **Página Estatísticas**: Container principal aumentado para `p-8` para conforto visual
   - **Página Configurações**: ApiConfigPage.tsx atualizada com `p-8` para consistência
-  - **EXPANSÃO SISTEMÁTICA**: Sistema agora cobre 7 páginas (Candidatos, Vagas, Seleções, Relatórios, Assessments, Estatísticas, Configurações) com p-8
-  - **Abordagem abrangente**: Padronização estendida além do escopo original para máxima consistência
+  - **MÁXIMA COBERTURA ALCANÇADA**: Sistema agora cobre 8 páginas com p-8 uniforme
+  - **Diferenciação de rotas**: /candidates (listas) e /candidatos (management) ambas padronizadas
   - **Manutenibilidade garantida**: Padrão único p-8 facilita futuras atualizações de design
   - **UX otimizada**: Navegação fluida com respiro visual adequado em toda aplicação
 

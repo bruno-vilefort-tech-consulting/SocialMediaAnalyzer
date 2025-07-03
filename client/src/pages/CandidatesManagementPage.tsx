@@ -590,11 +590,11 @@ export default function CandidatesManagementPage() {
   const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex);
 
   if (candidatesLoading) {
-    return <div className="p-6">Carregando candidatos...</div>;
+    return <div className="p-8">Carregando candidatos...</div>;
   }
 
   return (
-    <div className="p-6 space-y-6 pt-[0px] pb-[0px]">
+    <div className="p-8 space-y-6 pt-[0px] pb-[0px]">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Users className="h-6 w-6" />
