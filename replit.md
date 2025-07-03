@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 3, 2025: ✅ PERSISTÊNCIA WHATSAPP CONNECTIONS CORRIGIDA DEFINITIVAMENTE - Sistema mantém estado das conexões visíveis após navegação
+  - **Root cause identificado**: Estado `visibleConnections` resetava para 1 sempre que componente re-renderizava
+  - **LocalStorage implementado**: Chave única `whatsapp_visible_connections_${clientId}` para persistência por cliente
+  - **Estado inicializado**: useState com função inicializadora carrega valor do localStorage
+  - **Auto-salvamento**: useEffect salva automaticamente toda mudança de visibleConnections
+  - **Isolamento por cliente**: Cada cliente mantém estado independente baseado no clientId
+  - **UX melhorada**: Usuário pode clicar "Adicionar Conexão", navegar entre páginas e manter configuração
+  - **Sistema robusto**: Try/catch protege contra erros de localStorage, fallback para valor padrão 1
+
 - July 3, 2025: ✅ OTIMIZAÇÃO FINAL DE PADDING IMPLEMENTADA - Layout global aprimorado para máximo conforto visual
   - **Layout otimizado**: Layout.tsx `main` container alterado para `px-6 py-8` (horizontal: p-6, vertical: p-8)
   - **Espaçamento equilibrado**: Padding horizontal menor preserva largura útil, vertical maior oferece respiro visual

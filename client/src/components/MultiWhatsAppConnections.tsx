@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -294,8 +294,15 @@ const MultiWhatsAppConnections: React.FC = () => {
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
   
-  // Estado para controlar quantas conexões estão visíveis
-  const [visibleConnections, setVisibleConnections] = useState<number>(1);
+  // Estado para controlar quantas conexões estão visíveis com persistência
+  const [visibleConnections, setVisibleConnections] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(`whatsapp_visible_connections_${user?.clientId}`);
+      return stored ? parseInt(stored, 10) : 1;
+    } catch {
+      return 1;
+    }
+  });
 
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
@@ -323,6 +330,13 @@ const MultiWhatsAppConnections: React.FC = () => {
       });
     }
   }, [error, toast]);
+
+  // Salvar estado de conexões visíveis no localStorage
+  useEffect(() => {
+    if (user?.clientId) {
+      localStorage.setItem(`whatsapp_visible_connections_${user.clientId}`, visibleConnections.toString());
+    }
+  }, [visibleConnections, user?.clientId]);
 
   // Sincronizar estado local com dados da API
   React.useEffect(() => {
