@@ -35,9 +35,11 @@ interface ConnectionSlotProps {
   onConnect: (slotNumber: number) => void;
   onDisconnect: (slotNumber: number) => void;
   onTest: (slotNumber: number, phoneNumber: string, message: string) => void;
+  onHideConnection: (slotNumber: number) => void;
   isConnecting: boolean;
   isDisconnecting: boolean;
   isTesting: boolean;
+  isHidden: boolean;
 }
 
 const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
@@ -45,16 +47,16 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   onConnect,
   onDisconnect,
   onTest,
+  onHideConnection,
   isConnecting,
   isDisconnecting,
-  isTesting
+  isTesting,
+  isHidden
 }) => {
   const [testPhone, setTestPhone] = useState('');
   const [testMessage, setTestMessage] = useState('Teste de conexão WhatsApp');
   // QR deve aparecer se já existe um QR Code ou se o usuário clicou para conectar
   const [showQR, setShowQR] = useState(!!connection.qrCode);
-  // Estado para controlar se o card inteiro deve ser oculto
-  const [isCardHidden, setIsCardHidden] = useState(false);
 
   // Atualizar showQR quando connection.qrCode mudar
   React.useEffect(() => {
@@ -90,7 +92,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   };
 
   const handleHideCard = () => {
-    setIsCardHidden(true);
+    onHideConnection(connection.slotNumber);
   };
 
   const handleTest = () => {
@@ -100,7 +102,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   };
 
   // Se o card está escondido, não renderizar nada
-  if (isCardHidden) {
+  if (isHidden) {
     return null;
   }
 
@@ -324,6 +326,16 @@ const MultiWhatsAppConnections: React.FC = () => {
     }
   });
 
+  // Estado para rastrear conexões escondidas com persistência
+  const [hiddenConnections, setHiddenConnections] = useState<Set<number>>(() => {
+    try {
+      const stored = localStorage.getItem(`whatsapp_hidden_connections_${user?.clientId}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
@@ -357,6 +369,13 @@ const MultiWhatsAppConnections: React.FC = () => {
       localStorage.setItem(`whatsapp_visible_connections_${user.clientId}`, visibleConnections.toString());
     }
   }, [visibleConnections, user?.clientId]);
+
+  // Salvar conexões escondidas no localStorage
+  useEffect(() => {
+    if (user?.clientId) {
+      localStorage.setItem(`whatsapp_hidden_connections_${user.clientId}`, JSON.stringify([...hiddenConnections]));
+    }
+  }, [hiddenConnections, user?.clientId]);
 
   // Sincronizar estado local com dados da API
   React.useEffect(() => {
@@ -503,6 +522,16 @@ const MultiWhatsAppConnections: React.FC = () => {
     }
   };
 
+  // Função para esconder uma conexão
+  const handleHideConnection = (slotNumber: number) => {
+    setHiddenConnections(prev => new Set(prev).add(slotNumber));
+  };
+
+  // Função para mostrar todas as conexões escondidas
+  const handleShowHiddenConnections = () => {
+    setHiddenConnections(new Set());
+  };
+
   const handleConnect = (slotNumber: number) => {
     connectMutation.mutate(slotNumber);
   };
@@ -575,12 +604,28 @@ const MultiWhatsAppConnections: React.FC = () => {
               onConnect={handleConnect}
               onDisconnect={handleDisconnect}
               onTest={handleTest}
+              onHideConnection={handleHideConnection}
               isConnecting={connectingSlots.has(connection.slotNumber)}
               isDisconnecting={disconnectingSlots.has(connection.slotNumber)}
               isTesting={testingSlots.has(connection.slotNumber)}
+              isHidden={hiddenConnections.has(connection.slotNumber)}
             />
           ))}
       </div>
+
+      {/* Botão para mostrar conexões escondidas */}
+      {hiddenConnections.size > 0 && (
+        <div className="flex justify-center mb-4">
+          <Button
+            onClick={handleShowHiddenConnections}
+            variant="outline"
+            className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Mostrar {hiddenConnections.size} Conexão{hiddenConnections.size > 1 ? 'ões' : ''} Escondida{hiddenConnections.size > 1 ? 's' : ''}
+          </Button>
+        </div>
+      )}
 
       {/* Botão Adicionar Conexão */}
       {visibleConnections < 3 && (
