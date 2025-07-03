@@ -23,7 +23,10 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      setLocation("/"); // Redirect to root, which will use RedirectToDashboard logic
+      // Small delay to ensure auth context is updated before redirect
+      setTimeout(() => {
+        setLocation("/dashboard");
+      }, 100);
     } catch (error) {
       toast({
         title: "Erro no login",

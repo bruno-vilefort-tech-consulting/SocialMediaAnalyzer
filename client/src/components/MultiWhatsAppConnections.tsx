@@ -628,7 +628,7 @@ const MultiWhatsAppConnections: React.FC = () => {
             className="flex items-center gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
           >
             <MessageCircle className="h-4 w-4" />
-            Mostrar 1 Conexão ({hiddenConnections.size} Escondida{hiddenConnections.size > 1 ? 's' : ''})
+            Adicionar Conexão
           </Button>
         </div>
       )}
