@@ -67,24 +67,19 @@ class SimpleMultiBaileyService {
       
       const baileys = await import('@whiskeysockets/baileys');
       
-      // 🔥 CORREÇÃO: Baileys pode ter diferentes estruturas de export
+      // 🔥 CORREÇÃO: Verificar estrutura do Baileys
       console.log(`🔍 [BAILEYS-LOADER] Estrutura do Baileys:`, Object.keys(baileys));
       
-      // Tentar diferentes formas de acessar as funções
-      makeWASocket = baileys.default || baileys.makeWASocket;
+      // 🔥 CORREÇÃO CRÍTICA: Importação usando destructuring direto
+      makeWASocket = baileys.makeWASocket;
       useMultiFileAuthState = baileys.useMultiFileAuthState;
       DisconnectReason = baileys.DisconnectReason;
       Browsers = baileys.Browsers;
       fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
       
-      // Se default não funcionou, tentar acesso direto
-      if (!makeWASocket && baileys.default) {
-        console.log(`🔍 [BAILEYS-LOADER] Tentando baileys.default:`, Object.keys(baileys.default));
-        makeWASocket = baileys.default.makeWASocket || baileys.default.default;
-        useMultiFileAuthState = baileys.default.useMultiFileAuthState;
-        DisconnectReason = baileys.default.DisconnectReason;
-        Browsers = baileys.default.Browsers;
-        fetchLatestBaileysVersion = baileys.default.fetchLatestBaileysVersion;
+      // Validar se as funções foram carregadas corretamente
+      if (!makeWASocket) {
+        throw new Error('makeWASocket não foi carregado corretamente');
       }
       
       this.baileysLoaded = true;

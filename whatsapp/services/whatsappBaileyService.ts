@@ -10,7 +10,7 @@ async function initializeDependencies() {
   if (!makeWASocket) {
     console.log('📦 Carregando dependências Baileys...');
     const baileys = await import('@whiskeysockets/baileys');
-    makeWASocket = baileys.default;
+    makeWASocket = baileys.makeWASocket;
     useMultiFileAuthState = baileys.useMultiFileAuthState;
     const qrCodeModule = await import('qrcode');
     QRCode = qrCodeModule.default || qrCodeModule;
@@ -60,8 +60,8 @@ class WhatsAppBaileyService {
         let latestVersion: number[] = [2, 2419, 6]; // Versão fixa como fallback
         try {
           const baileys = await import('@whiskeysockets/baileys');
-          if (baileys.fetchLatestWaWebVersion) {
-            const versionInfo = await baileys.fetchLatestWaWebVersion();
+          if (baileys.fetchLatestBaileysVersion) {
+            const versionInfo = await baileys.fetchLatestBaileysVersion();
             if (versionInfo && typeof versionInfo === 'object' && 'version' in versionInfo) {
               latestVersion = versionInfo.version as number[];
             }

@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 4, 2025: ✅ ERRO DEPLOY BAILEYS v6.7.18 CORRIGIDO DEFINITIVAMENTE - "makeWASocket is not a function" resolvido completamente
+  - **Root cause identificado**: Import incorreto `baileys.default` em vez de `baileys.makeWASocket` em whatsappBaileyService.ts e simpleMultiBailey.ts
+  - **Correção aplicada**: Substituído `makeWASocket = baileys.default` por `makeWASocket = baileys.makeWASocket` nos arquivos de serviço WhatsApp
+  - **Função fetchLatestBaileysVersion corrigida**: Renomeada de `fetchLatestWaWebVersion` para o nome correto da API
+  - **Import structure validada**: Baileys 6.7.18 usa named exports, não default export para makeWASocket
+  - **Deploy funcionando**: Servidor inicia corretamente sem erro "makeWASocket is not a function"
+  - **Sistema operacional**: Página /configuracoes agora acessível sem crashes de import
+  - **Arquitetura preservada**: Todas as funcionalidades WhatsApp mantidas sem alterações na lógica de negócio
+
 - July 3, 2025: ✅ DEPLOYMENT BUILD ERRORS CORRIGIDOS DEFINITIVAMENTE - Todas as declarações duplicadas removidas com sucesso
   - **Duplicate variable 'phoneClean' eliminada**: whatsapp/services/whatsappQRService.ts linha 1156 removida, usando variável única da linha 888
   - **Duplicate method 'getActiveSessions' removida**: whatsapp/services/wppConnectService.ts segunda ocorrência (linha 530) eliminada
