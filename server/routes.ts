@@ -53,6 +53,7 @@ async function lazyLoadWhatsAppServices() {
 import { firebaseDb } from "./db";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, Timestamp } from "firebase/firestore";
 import admin, { app } from "firebase-admin";
+import { cacheBustingService } from "./cacheBustingService";
 import { createTestCandidates, checkTestCandidatesExist } from "./createTestCandidates";
 import { htmlExportService } from "./htmlExportService";
 import client from "openai";
@@ -167,6 +168,25 @@ const authorize = (roles: string[]) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  
+  // 🚀 Cache Busting API - Fornece informações de versão para o frontend
+  app.get('/api/cache-version', (req, res) => {
+    res.json({
+      version: cacheBustingService.getDeployVersion(),
+      startTime: cacheBustingService.getStartTime(),
+      timestamp: Date.now()
+    });
+  });
+
+  // 🔄 Endpoint para forçar invalidação de cache (apenas para desenvolvimento)
+  app.post('/api/cache-bust', (req, res) => {
+    cacheBustingService.triggerCacheReload();
+    res.json({
+      success: true,
+      newVersion: cacheBustingService.getDeployVersion(),
+      message: 'Cache invalidado com sucesso'
+    });
+  });
   
   // Authentication routes
   // === SISTEMA DE RELATÓRIOS INDEPENDENTES ===

@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useCacheBusting } from "@/hooks/useCacheBusting";
+import { CacheBustingNotification } from "@/components/CacheBustingNotification";
 import Layout from "@/components/Layout";
 import LoginPage from "@/pages/LoginPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
@@ -227,6 +229,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
+          <CacheBustingNotification />
           <Router />
         </AuthProvider>
       </TooltipProvider>

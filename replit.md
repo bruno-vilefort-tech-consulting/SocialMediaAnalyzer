@@ -115,6 +115,19 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 16, 2025: ✅ SISTEMA GLOBAL CACHE BUSTING IMPLEMENTADO COMPLETAMENTE - Fresh deploys garantidos para todos os usuários
+  - **Versioning único**: Sistema gera versões únicas baseadas em timestamp + random ID (formato: 1752685489519_2570_dp456c)
+  - **Serviço backend**: cacheBustingService.ts com geração automática de versões no startup e manual via API
+  - **Middleware integrado**: Cache busting ativado automaticamente em server/index.ts no startup
+  - **Endpoints funcionais**: GET /api/cache-version para verificar versão atual, POST /api/cache-bust para invalidar cache
+  - **Hook React**: useCacheBusting.ts monitora versões a cada 30s e força reload quando detecta mudanças
+  - **Componente notificação**: CacheBustingNotification.tsx exibe alerts de nova versão e controles de desenvolvimento
+  - **Utilitários completos**: cacheBusting.ts com funções para limpar cache, monitorar versões e detectar atualizações
+  - **Integração App.tsx**: Sistema integrado globalmente na aplicação principal
+  - **Controles dev**: Botão manual para invalidar cache em modo desenvolvimento
+  - **Reload automático**: Usuários recebem notificação e página recarrega automaticamente com nova versão
+  - **Sistema robusto**: Funciona em produção e desenvolvimento, garantindo fresh deploys consistentes
+
 - July 4, 2025: ✅ ERRO DEPLOY BAILEYS v6.7.18 CORRIGIDO DEFINITIVAMENTE - "makeWASocket is not a function" resolvido completamente
   - **Root cause identificado**: Import incorreto `baileys.default` em vez de `baileys.makeWASocket` em whatsappBaileyService.ts e simpleMultiBailey.ts
   - **Correção aplicada**: Substituído `makeWASocket = baileys.default` por `makeWASocket = baileys.makeWASocket` nos arquivos de serviço WhatsApp

@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { cacheBustingService } from "./cacheBustingService";
 
 const app = express();
 
@@ -27,12 +28,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Desabilitar cache para Evolution API
+// 🚀 Global Cache Busting para Fresh Deploys
 app.disable('etag');
-app.use((req, res, next) => {
-  res.set('Cache-Control', 'no-store');
-  next();
-});
+app.use(cacheBustingService.cacheBustingMiddleware());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
