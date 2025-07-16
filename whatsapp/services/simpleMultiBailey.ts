@@ -680,14 +680,58 @@ class SimpleMultiBaileyService {
 
     try {
       const connection = this.connections.get(connectionId);
-      if (connection) {
-        connection.isConnected = false;
-        connection.qrCode = null;
-        connection.phoneNumber = null;
-        this.connections.set(connectionId, connection);
+      if (!connection) {
+        console.log(`⚠️ [SIMPLE-BAILEYS] Slot ${slotNumber} não encontrado para cliente ${clientId}`);
+        return {
+          success: true,
+          message: `Slot ${slotNumber} não estava conectado`
+        };
       }
+
+      // 🔥 CORREÇÃO CRÍTICA: Fechar o socket do Baileys efetivamente
+      if (connection.socket) {
+        try {
+          console.log(`🔌 [SIMPLE-BAILEYS] Fechando socket do Baileys para slot ${slotNumber}`);
+          
+          // Fechar o WebSocket do Baileys
+          if (connection.socket.ws && connection.socket.ws.readyState === connection.socket.ws.OPEN) {
+            connection.socket.ws.close();
+            console.log(`✅ [SIMPLE-BAILEYS] WebSocket fechado para slot ${slotNumber}`);
+          }
+          
+          // Chamar método de desconexão do socket se existir
+          if (typeof connection.socket.end === 'function') {
+            await connection.socket.end();
+            console.log(`✅ [SIMPLE-BAILEYS] Socket.end() chamado para slot ${slotNumber}`);
+          }
+
+          // Limpar event listeners
+          if (typeof connection.socket.removeAllListeners === 'function') {
+            connection.socket.removeAllListeners();
+            console.log(`✅ [SIMPLE-BAILEYS] Event listeners removidos para slot ${slotNumber}`);
+          }
+
+        } catch (socketError) {
+          console.log(`⚠️ [SIMPLE-BAILEYS] Erro ao fechar socket slot ${slotNumber}:`, socketError);
+        }
+      }
+
+      // 🔥 CORREÇÃO CRÍTICA: Limpar credenciais de autenticação
+      const authDir = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_${slotNumber}`);
+      try {
+        if (fs.existsSync(authDir)) {
+          fs.rmSync(authDir, { recursive: true, force: true });
+          console.log(`✅ [SIMPLE-BAILEYS] Credenciais removidas: ${authDir}`);
+        }
+      } catch (authError) {
+        console.log(`⚠️ [SIMPLE-BAILEYS] Erro ao remover credenciais:`, authError);
+      }
+
+      // 🔥 CORREÇÃO CRÍTICA: Remover completamente a conexão do Map
+      this.connections.delete(connectionId);
+      console.log(`✅ [SIMPLE-BAILEYS] Conexão ${connectionId} removida do Map`);
       
-      console.log(`✅ [SIMPLE-BAILEYS] Slot ${slotNumber} desconectado`);
+      console.log(`✅ [SIMPLE-BAILEYS] Slot ${slotNumber} desconectado COMPLETAMENTE`);
       
       return {
         success: true,
