@@ -26,6 +26,7 @@ interface SimpleConnection {
   lastUpdate?: Date;
   service: 'baileys';
   socket?: any; // Baileys socket instance
+  manuallyDisconnected?: boolean; // Flag para indicar desconexão manual
 }
 
 interface SimpleConnectionStatus {
@@ -125,7 +126,8 @@ class SimpleMultiBaileyService {
           phoneNumber: null,
           lastConnection: null,
           lastUpdate: new Date(),
-          service: 'baileys'
+          service: 'baileys',
+          manuallyDisconnected: false
         };
         
         // Verificar se existe na memória e copiar apenas dados básicos
@@ -184,7 +186,8 @@ class SimpleMultiBaileyService {
           qrCode: null,
           phoneNumber: null,
           lastConnection: null,
-          service: 'baileys'
+          service: 'baileys',
+          manuallyDisconnected: false
         });
       }
       
@@ -238,7 +241,8 @@ class SimpleMultiBaileyService {
       qrCode: null,
       phoneNumber: null,
       lastConnection: null,
-      service: 'baileys'
+      service: 'baileys',
+      manuallyDisconnected: false
     };
 
     this.connections.set(connectionId, connection);
@@ -405,7 +409,8 @@ class SimpleMultiBaileyService {
           phoneNumber: null, // Será atualizado no monitoramento
           lastConnection: new Date(),
           service: 'baileys',
-          socket // 🔥 CRUCIAL: Manter socket ativo
+          socket, // 🔥 CRUCIAL: Manter socket ativo
+          manuallyDisconnected: false
         };
 
         this.connections.set(connectionId, connection);
@@ -430,7 +435,8 @@ class SimpleMultiBaileyService {
           phoneNumber: null,
           lastConnection: new Date(),
           service: 'baileys',
-          socket // 🔥 CRUCIAL: Manter socket ativo
+          socket, // 🔥 CRUCIAL: Manter socket ativo
+          manuallyDisconnected: false
         };
 
         this.connections.set(connectionId, connection);
@@ -518,9 +524,14 @@ class SimpleMultiBaileyService {
       // 🔥 FASE 4: Conexão fechada
       if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
-        const shouldReconnect = statusCode !== 401; // Não reconectar se logout manual
         
-        console.log(`❌ [MONITOR-${slotNumber}] Conexão fechada. Status: ${statusCode}, Reconectar: ${shouldReconnect}`);
+        // 🔥 CORREÇÃO CRÍTICA: Verificar se desconexão foi manual
+        const wasManuallyDisconnected = existingConnection.manuallyDisconnected || false;
+        
+        // Não reconectar se for logout (401) ou se foi desconectado manualmente
+        const shouldReconnect = statusCode !== 401 && !wasManuallyDisconnected;
+        
+        console.log(`❌ [MONITOR-${slotNumber}] Conexão fechada. Status: ${statusCode}, Manual: ${wasManuallyDisconnected}, Reconectar: ${shouldReconnect}`);
         
         existingConnection.isConnected = false;
         if (statusCode === 401) {
@@ -539,14 +550,22 @@ class SimpleMultiBaileyService {
           existingConnection.phoneNumber = null;
         }
         
+        // 🔥 CORREÇÃO CRÍTICA: Se foi desconectado manualmente, manter o flag
+        if (wasManuallyDisconnected) {
+          console.log(`🚫 [MONITOR-${slotNumber}] Desconexão manual detectada - NÃO reconectar automaticamente`);
+          existingConnection.manuallyDisconnected = true;
+        }
+        
         this.connections.set(connectionId, existingConnection);
         
-        // Auto-reconexão se necessário
+        // Auto-reconexão APENAS se não foi desconectado manualmente
         if (shouldReconnect) {
           console.log(`🔄 [MONITOR-${slotNumber}] Tentando reconectar em 10 segundos...`);
           setTimeout(() => {
             this.connectToWhatsApp(connectionId, clientId, slotNumber);
           }, 10000);
+        } else if (wasManuallyDisconnected) {
+          console.log(`✅ [MONITOR-${slotNumber}] Sessão permanece desconectada até novo escaneamento manual`);
         }
       }
     });
@@ -688,6 +707,11 @@ class SimpleMultiBaileyService {
         };
       }
 
+      // 🔥 CORREÇÃO CRÍTICA: Marcar como manualmente desconectado ANTES de fechar
+      connection.manuallyDisconnected = true;
+      this.connections.set(connectionId, connection);
+      console.log(`🚫 [SIMPLE-BAILEYS] Slot ${slotNumber} marcado como manualmente desconectado`);
+
       // 🔥 CORREÇÃO CRÍTICA: Fechar o socket do Baileys efetivamente
       if (connection.socket) {
         try {
@@ -731,7 +755,7 @@ class SimpleMultiBaileyService {
       this.connections.delete(connectionId);
       console.log(`✅ [SIMPLE-BAILEYS] Conexão ${connectionId} removida do Map`);
       
-      console.log(`✅ [SIMPLE-BAILEYS] Slot ${slotNumber} desconectado COMPLETAMENTE`);
+      console.log(`✅ [SIMPLE-BAILEYS] Slot ${slotNumber} desconectado COMPLETAMENTE e marcado como manual`);
       
       return {
         success: true,

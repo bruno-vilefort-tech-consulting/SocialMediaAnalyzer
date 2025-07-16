@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 16, 2025: ✅ SISTEMA PREVENÇÃO AUTO-RECONEXÃO COMPLETAMENTE APRIMORADO - Todas as criações de conexões agora incluem field `manuallyDisconnected`
+  - **Correção getConnectionStatus**: Conexões desconectadas criadas com `manuallyDisconnected: false` inicializado corretamente
+  - **Correção connectToWhatsApp**: Duas instâncias de criação de conexão (usuário já conectado e QR Code) incluem `manuallyDisconnected: false`
+  - **Correção cleanConnection**: Template de conexão limpa em getClientConnections inclui `manuallyDisconnected: false`
+  - **Correção fallbackConnections**: Conexões de fallback em casos de erro incluem `manuallyDisconnected: false`
+  - **Sistema completo**: Todas as 5 instâncias de criação de `SimpleConnection` agora possuem field `manuallyDisconnected` inicializado
+  - **Prevenção robusta**: Sistema agora impede auto-reconexões em todas as situações, mantendo desconexões manuais persistentes
+  - **Interface preparada**: Botão "Desconectar" marca `manuallyDisconnected: true` impedindo reconexões automáticas permanentemente
+
 - July 16, 2025: ✅ SISTEMA GLOBAL CACHE BUSTING IMPLEMENTADO COMPLETAMENTE - Fresh deploys garantidos para todos os usuários
   - **Versioning único**: Sistema gera versões únicas baseadas em timestamp + random ID (formato: 1752685489519_2570_dp456c)
   - **Serviço backend**: cacheBustingService.ts com geração automática de versões no startup e manual via API
