@@ -257,6 +257,16 @@ class SimpleMultiBaileyService {
     
     console.log(`🔌 [SIMPLE-BAILEYS] Tentando conectar slot ${slotNumber} para cliente ${clientId}`);
 
+    // 🔥 PROTEÇÃO CRÍTICA: Verificar se a conexão foi desconectada manualmente
+    const existingConnection = this.connections.get(connectionId);
+    if (existingConnection && existingConnection.manuallyDisconnected) {
+      console.log(`🚫 [SIMPLE-BAILEYS] SLOT ${slotNumber} DESCONECTADO MANUALMENTE - BLOQUEANDO RECONEXÃO`);
+      return {
+        success: false,
+        message: 'Conexão desconectada manualmente. Escaneie o QR Code novamente para reconectar.'
+      };
+    }
+
     return this.connectToWhatsApp(connectionId, clientId, slotNumber);
   }
 
@@ -266,6 +276,18 @@ class SimpleMultiBaileyService {
   async connectToWhatsApp(connectionId: string, clientId: string, slotNumber: number): Promise<any> {
     try {
       console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão OTIMIZADA...`);
+      
+      // 🔥 PROTEÇÃO CRÍTICA: Verificar se a conexão foi desconectada manualmente
+      const existingConnection = this.connections.get(connectionId);
+      if (existingConnection && existingConnection.manuallyDisconnected) {
+        console.log(`🚫 [BAILEYS-SLOT-${slotNumber}] CONEXÃO DESCONECTADA MANUALMENTE - BLOQUEANDO RECONEXÃO`);
+        return {
+          success: false,
+          message: 'Conexão desconectada manualmente. Escaneie o QR Code novamente para reconectar.',
+          qrCode: null,
+          isConnected: false
+        };
+      }
       
       // 🔥 CORREÇÃO: Carregar Baileys dinamicamente antes de usar
       console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Carregando Baileys dinamicamente...`);
@@ -562,6 +584,12 @@ class SimpleMultiBaileyService {
         if (shouldReconnect) {
           console.log(`🔄 [MONITOR-${slotNumber}] Tentando reconectar em 10 segundos...`);
           setTimeout(() => {
+            // 🔥 PROTEÇÃO DUPLA: Verificar novamente se não foi desconectado manualmente antes de reconectar
+            const latestConnection = this.connections.get(connectionId);
+            if (latestConnection && latestConnection.manuallyDisconnected) {
+              console.log(`🚫 [MONITOR-${slotNumber}] RECONEXÃO CANCELADA - Conexão foi desconectada manualmente`);
+              return;
+            }
             this.connectToWhatsApp(connectionId, clientId, slotNumber);
           }, 10000);
         } else if (wasManuallyDisconnected) {
@@ -751,9 +779,17 @@ class SimpleMultiBaileyService {
         console.log(`⚠️ [SIMPLE-BAILEYS] Erro ao remover credenciais:`, authError);
       }
 
-      // 🔥 CORREÇÃO CRÍTICA: Remover completamente a conexão do Map
-      this.connections.delete(connectionId);
-      console.log(`✅ [SIMPLE-BAILEYS] Conexão ${connectionId} removida do Map`);
+      // 🔥 CORREÇÃO CRÍTICA: NÃO remover a conexão do Map - manter como desconectada manualmente
+      connection.isConnected = false;
+      connection.qrCode = null;
+      connection.phoneNumber = null;
+      connection.socket = null;
+      connection.lastConnection = null;
+      connection.lastUpdate = new Date();
+      connection.manuallyDisconnected = true; // Garantir que continua marcado como manual
+      
+      this.connections.set(connectionId, connection);
+      console.log(`✅ [SIMPLE-BAILEYS] Conexão ${connectionId} mantida no Map como desconectada manualmente`);
       
       console.log(`✅ [SIMPLE-BAILEYS] Slot ${slotNumber} desconectado COMPLETAMENTE e marcado como manual`);
       
