@@ -257,14 +257,12 @@ class SimpleMultiBaileyService {
     
     console.log(`🔌 [SIMPLE-BAILEYS] Tentando conectar slot ${slotNumber} para cliente ${clientId}`);
 
-    // 🔥 PROTEÇÃO CRÍTICA: Verificar se a conexão foi desconectada manualmente
+    // 🔥 RECONEXÃO MANUAL EXPLÍCITA: Resetar flag manuallyDisconnected quando usuário clica conectar
     const existingConnection = this.connections.get(connectionId);
     if (existingConnection && existingConnection.manuallyDisconnected) {
-      console.log(`🚫 [SIMPLE-BAILEYS] SLOT ${slotNumber} DESCONECTADO MANUALMENTE - BLOQUEANDO RECONEXÃO`);
-      return {
-        success: false,
-        message: 'Conexão desconectada manualmente. Escaneie o QR Code novamente para reconectar.'
-      };
+      console.log(`🔄 [SIMPLE-BAILEYS] RECONEXÃO MANUAL EXPLÍCITA - Resetando flag manuallyDisconnected para slot ${slotNumber}`);
+      existingConnection.manuallyDisconnected = false;
+      this.connections.set(connectionId, existingConnection);
     }
 
     return this.connectToWhatsApp(connectionId, clientId, slotNumber);
@@ -276,18 +274,6 @@ class SimpleMultiBaileyService {
   async connectToWhatsApp(connectionId: string, clientId: string, slotNumber: number): Promise<any> {
     try {
       console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão OTIMIZADA...`);
-      
-      // 🔥 PROTEÇÃO CRÍTICA: Verificar se a conexão foi desconectada manualmente
-      const existingConnection = this.connections.get(connectionId);
-      if (existingConnection && existingConnection.manuallyDisconnected) {
-        console.log(`🚫 [BAILEYS-SLOT-${slotNumber}] CONEXÃO DESCONECTADA MANUALMENTE - BLOQUEANDO RECONEXÃO`);
-        return {
-          success: false,
-          message: 'Conexão desconectada manualmente. Escaneie o QR Code novamente para reconectar.',
-          qrCode: null,
-          isConnected: false
-        };
-      }
       
       // 🔥 CORREÇÃO: Carregar Baileys dinamicamente antes de usar
       console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Carregando Baileys dinamicamente...`);
