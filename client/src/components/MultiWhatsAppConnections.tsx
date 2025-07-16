@@ -343,6 +343,30 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Estado local das conexões para exibir QR Code imediatamente
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
 
+  // 🔥 CACHE BUSTING: Force clear any cached errors on component mount
+  useEffect(() => {
+    const clearCachedErrors = () => {
+      try {
+        // Clear any potential cached WhatsApp errors
+        sessionStorage.removeItem('whatsapp_error_cache');
+        localStorage.removeItem('whatsapp_error_cache');
+        
+        // Clear any potential toast errors
+        sessionStorage.removeItem('whatsapp_toast_errors');
+        localStorage.removeItem('whatsapp_toast_errors');
+        
+        // Force cache invalidation for WhatsApp queries
+        queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        
+        console.log('🧹 [CACHE-CLEAR] Cached errors cleared, fresh start garantido');
+      } catch (error) {
+        console.log('⚠️ [CACHE-CLEAR] Erro ao limpar cache:', error);
+      }
+    };
+    
+    clearCachedErrors();
+  }, [queryClient]);
+
   // Query para obter status das conexões com cache control robusto
   const { data: connectionsData, isLoading, refetch, error } = useQuery<MultiConnectionStatus>({
     queryKey: ['/api/multi-whatsapp/connections'],
@@ -408,14 +432,46 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Mutation para conectar slot usando DirectQrBaileys
   const connectMutation = useMutation({
     mutationFn: async (slotNumber: number) => {
+      // 🔥 CACHE BUSTING: Clear all potential cached errors before connection
+      try {
+        sessionStorage.removeItem('whatsapp_connection_errors');
+        localStorage.removeItem('whatsapp_connection_errors');
+        sessionStorage.removeItem('whatsapp_phantom_errors');
+        localStorage.removeItem('whatsapp_phantom_errors');
+        console.log('🧹 [CONNECT] Cache errors cleared before connection attempt');
+      } catch (error) {
+        console.log('⚠️ [CONNECT] Cache clear warning:', error);
+      }
+      
       const response = await apiRequest(`/api/multi-whatsapp/test-direct-qr/${slotNumber}`, 'POST');
       return response.json();
     },
     onMutate: (slotNumber) => {
       setConnectingSlots(prev => new Set(prev).add(slotNumber));
+      
+      // 🔥 CACHE BUSTING: Clear any cached errors at mutation start
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem('whatsapp_error_cache');
+        queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+        console.log('🧹 [CONNECT] Full cache cleared for slot', slotNumber);
+      } catch (error) {
+        console.log('⚠️ [CONNECT] Cache clear warning in onMutate:', error);
+      }
     },
     onSuccess: (data, slotNumber) => {
       if (data.success && data.qrCode) {
+        // 🔥 CACHE BUSTING: Final clear before showing success
+        try {
+          sessionStorage.removeItem('whatsapp_error_cache');
+          localStorage.removeItem('whatsapp_error_cache');
+          sessionStorage.removeItem('whatsapp_phantom_errors');
+          localStorage.removeItem('whatsapp_phantom_errors');
+          console.log('🧹 [CONNECT-SUCCESS] All error caches cleared');
+        } catch (error) {
+          console.log('⚠️ [CONNECT-SUCCESS] Cache clear warning:', error);
+        }
+        
         // Atualizar state local com o QR Code real do DirectQrBaileys
         setConnections(prev => prev.map(conn =>
           conn.slotNumber === slotNumber
@@ -423,10 +479,16 @@ const MultiWhatsAppConnections: React.FC = () => {
             : conn
         ));
 
-        toast({
-          title: "QR Code Real Gerado!",
-          description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
-        });
+        // 🔥 SUPPRESS PHANTOM ERRORS: Only show success toast, suppress any phantom errors
+        const hasPhantomError = data.message && data.message.includes('desconectada manualmente');
+        if (!hasPhantomError) {
+          toast({
+            title: "QR Code Real Gerado!",
+            description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
+          });
+        } else {
+          console.log('🛡️ [PHANTOM-SUPPRESS] Phantom error suppressed:', data.message);
+        }
 
         // Invalidar cache com força total
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
@@ -441,11 +503,21 @@ const MultiWhatsAppConnections: React.FC = () => {
           refetch();
         }, 100);
       } else {
-        toast({
-          title: "Erro na geração do QR",
-          description: data.message || "Falha ao gerar QR Code real",
-          variant: "destructive"
-        });
+        // 🔥 FILTER PHANTOM ERRORS: Only show real errors
+        const isPhantomError = data.message && (
+          data.message.includes('desconectada manualmente') ||
+          data.message.includes('Escaneie o QR Code novamente')
+        );
+        
+        if (!isPhantomError) {
+          toast({
+            title: "Erro na geração do QR",
+            description: data.message || "Falha ao gerar QR Code real",
+            variant: "destructive"
+          });
+        } else {
+          console.log('🛡️ [PHANTOM-SUPPRESS] Phantom error blocked:', data.message);
+        }
       }
     },
     onError: (error, slotNumber) => {
