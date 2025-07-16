@@ -346,15 +346,18 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Query para obter status das conexões com cache control robusto
   const { data: connectionsData, isLoading, refetch, error } = useQuery<MultiConnectionStatus>({
     queryKey: ['/api/multi-whatsapp/connections'],
-    refetchInterval: 5000, // Atualizar a cada 5 segundos
+    refetchInterval: 3000, // ✅ TEMPO REAL: Atualizar a cada 3 segundos (mais frequente)
     staleTime: 0, // Sempre considera dados como obsoletos
     gcTime: 0, // Não mantem cache (substitui cacheTime no TanStack Query v5)
     refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
     refetchOnMount: true, // Sempre refetch ao montar o componente
+    refetchOnReconnect: true, // ✅ TEMPO REAL: Refetch quando reconecta à internet
+    refetchIntervalInBackground: true, // ✅ TEMPO REAL: Continua refetch mesmo em background
     queryFn: async () => {
-      // Adicionar timestamp para evitar cache do browser
+      // ✅ CACHE BUSTING: Adicionar timestamp duplo para evitar cache do browser
       const timestamp = Date.now();
-      const response = await apiRequest(`/api/multi-whatsapp/connections?_t=${timestamp}`, 'GET');
+      const random = Math.random().toString(36).substring(7);
+      const response = await apiRequest(`/api/multi-whatsapp/connections?_t=${timestamp}&_r=${random}`, 'GET');
       const data = await response.json();
       console.log('🔍 [MULTI-WA] Dados recebidos da API:', data);
       return data;
@@ -393,6 +396,12 @@ const MultiWhatsAppConnections: React.FC = () => {
   React.useEffect(() => {
     if (connectionsData?.connections) {
       setConnections(connectionsData.connections);
+      
+      // ✅ TEMPO REAL: Log das mudanças de status para debug
+      const connectedCount = connectionsData.connections.filter(c => c.isConnected).length;
+      const disconnectedCount = connectionsData.connections.filter(c => !c.isConnected).length;
+      
+      console.log(`📊 [MULTI-WA] Status atualizado: ${connectedCount} conectadas, ${disconnectedCount} desconectadas`);
     }
   }, [connectionsData]);
 
@@ -464,15 +473,24 @@ const MultiWhatsAppConnections: React.FC = () => {
     onMutate: (slotNumber) => {
       setDisconnectingSlots(prev => new Set(prev).add(slotNumber));
       
-      // Atualizar estado local imediatamente para esconder "Teste de Conexão"
+      // ✅ TEMPO REAL: Atualizar estado local IMEDIATAMENTE
       setConnections(prev => prev.map(conn =>
         conn.slotNumber === slotNumber
-          ? { ...conn, isConnected: false, qrCode: null, phoneNumber: null }
+          ? { 
+              ...conn, 
+              isConnected: false, 
+              qrCode: null, 
+              phoneNumber: null,
+              lastConnection: null,
+              lastUpdate: new Date().toISOString()
+            }
           : conn
       ));
 
-      // Parar polling temporariamente para evitar sobrescrever o estado
+      // ✅ CACHE BUSTING: Cancelar todas as queries para evitar sobrescrever estado
       queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
+      
+      console.log(`🔄 [DISCONNECT] Slot ${slotNumber} - Estado local atualizado IMEDIATAMENTE`);
     },
     onSuccess: (data, slotNumber) => {
       if (data.success) {
@@ -481,17 +499,11 @@ const MultiWhatsAppConnections: React.FC = () => {
           description: `Slot ${slotNumber} desconectado com sucesso.`,
         });
         
-        // Atualizar estado local permanentemente
-        setConnections(prev => prev.map(conn =>
-          conn.slotNumber === slotNumber
-            ? { ...conn, isConnected: false, qrCode: null, phoneNumber: null }
-            : conn
-        ));
+        // ✅ TEMPO REAL: Manter estado local já atualizado no onMutate
+        // Não fazer nada aqui - o estado já foi atualizado instantaneamente
         
-        // Cancelar todas as queries ativas para evitar interferência
+        // ✅ CACHE BUSTING: Invalidação robusta com múltiplas estratégias
         queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        
-        // Invalidar cache com força total
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
         queryClient.invalidateQueries({ 
           queryKey: ['/api/multi-whatsapp/connections'],
@@ -499,16 +511,30 @@ const MultiWhatsAppConnections: React.FC = () => {
           refetchType: 'all'
         });
         
-        // Delay maior para permitir que backend processe desconexão completamente
+        // ✅ SINCRONIZAÇÃO: Refetch imediato com delay mínimo
         setTimeout(() => {
           refetch();
-        }, 1500);
+        }, 200);
+        
+        console.log(`✅ [DISCONNECT] Slot ${slotNumber} - Desconectado com sucesso, cache invalidado`);
       } else {
+        // ✅ ERRO: Reverter estado local em caso de falha
+        if (connectionsData?.connections) {
+          const originalConnection = connectionsData.connections.find(c => c.slotNumber === slotNumber);
+          if (originalConnection) {
+            setConnections(prev => prev.map(conn =>
+              conn.slotNumber === slotNumber ? originalConnection : conn
+            ));
+          }
+        }
+        
         toast({
           title: "Erro na desconexão",
-          description: data.message,
+          description: data.message || "Falha ao desconectar",
           variant: "destructive"
         });
+        
+        console.log(`❌ [DISCONNECT] Slot ${slotNumber} - Erro: ${data.message}`);
       }
     },
     onError: (error, slotNumber) => {
@@ -636,9 +662,14 @@ const MultiWhatsAppConnections: React.FC = () => {
               Múltiplas Conexões WhatsApp
             </span>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">
+              <Badge variant={connectionsData?.activeConnections > 0 ? "default" : "secondary"}>
                 {connectionsData?.activeConnections || 0} / {connectionsData?.totalConnections || 3} Ativas
               </Badge>
+              {connectionsData?.activeConnections === 0 && (
+                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                  Nenhuma Conectada
+                </Badge>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
