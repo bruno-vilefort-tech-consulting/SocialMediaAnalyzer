@@ -19,6 +19,7 @@ import { nanoid } from "nanoid";
 let whatsappQRService: any = null;
 let whatsappManager: any = null;
 let simpleMultiBaileyService: any = null;
+let userIsolatedRoundRobin: any = null;
 
 // Lazy loading function for WhatsApp services
 async function lazyLoadWhatsAppServices() {
@@ -46,6 +47,15 @@ async function lazyLoadWhatsAppServices() {
       simpleMultiBaileyService = service;
     } catch (error) {
       console.log('⚠️ Simple Multi Bailey Service não disponível');
+    }
+  }
+
+  if (!userIsolatedRoundRobin) {
+    try {
+      const { userIsolatedRoundRobin: service } = await import("../whatsapp/services/userIsolatedRoundRobin");
+      userIsolatedRoundRobin = service;
+    } catch (error) {
+      console.log('⚠️ User Isolated Round Robin Service não disponível');
     }
   }
 }
@@ -6260,6 +6270,352 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Erro interno no servidor ao enviar emails'
+      });
+    }
+  });
+
+  // 🔥 User Isolated Round Robin System - Endpoints para sistema isolado por usuário
+  console.log('🔧 Configurando endpoints do sistema de Round Robin isolado por usuário...');
+
+  // Endpoint para inicializar slots de usuário
+  app.post("/api/user-round-robin/init-slots", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      const clientId = req.user?.clientId?.toString();
+      
+      if (!userId || !clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário ou cliente não encontrado'
+        });
+      }
+
+      console.log(`🔧 [USER-RR-API] Inicializando slots para usuário ${userId} (cliente ${clientId})`);
+
+      await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+      
+      const stats = userIsolatedRoundRobin.getUserStats(userId);
+      
+      res.json({
+        success: true,
+        message: `Slots inicializados para usuário ${userId}`,
+        stats
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao inicializar slots do usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para configurar cadência de usuário
+  app.post("/api/user-round-robin/configure-cadence", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      const { baseDelay, batchSize, maxRetries, adaptiveMode, immediateMode } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário não encontrado'
+        });
+      }
+
+      console.log(`⚙️ [USER-RR-API] Configurando cadência para usuário ${userId}`);
+
+      userIsolatedRoundRobin.setUserCadenceConfig(userId, {
+        userId,
+        baseDelay,
+        batchSize,
+        maxRetries,
+        adaptiveMode,
+        immediateMode
+      });
+      
+      res.json({
+        success: true,
+        message: `Cadência configurada para usuário ${userId}`,
+        config: { userId, baseDelay, batchSize, maxRetries, adaptiveMode, immediateMode }
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao configurar cadência do usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para distribuir candidatos usando Round Robin isolado
+  app.post("/api/user-round-robin/distribute-candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      const clientId = req.user?.clientId?.toString();
+      const { candidates, priority } = req.body;
+      
+      if (!userId || !clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário ou cliente não encontrado'
+        });
+      }
+
+      if (!candidates || !Array.isArray(candidates)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lista de candidatos inválida'
+        });
+      }
+
+      console.log(`🔄 [USER-RR-API] Distribuindo ${candidates.length} candidatos para usuário ${userId}`);
+
+      const distributions = await userIsolatedRoundRobin.distributeUserCandidates(
+        userId, 
+        clientId, 
+        candidates, 
+        priority || 'normal'
+      );
+      
+      res.json({
+        success: true,
+        message: `${candidates.length} candidatos distribuídos entre slots`,
+        distributions
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao distribuir candidatos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para processar cadência de usuário
+  app.post("/api/user-round-robin/process-cadence", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      const clientId = req.user?.clientId?.toString();
+      
+      if (!userId || !clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário ou cliente não encontrado'
+        });
+      }
+
+      console.log(`🚀 [USER-RR-API] Processando cadência para usuário ${userId}`);
+
+      // Processar cadência de forma assíncrona
+      userIsolatedRoundRobin.processUserCadence(userId, clientId).catch((error: any) => {
+        console.error(`❌ Erro no processamento da cadência do usuário ${userId}:`, error);
+      });
+      
+      res.json({
+        success: true,
+        message: `Cadência iniciada para usuário ${userId}`,
+        processing: true
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao processar cadência do usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para ativar cadência imediata (para resposta "1")
+  app.post("/api/user-round-robin/activate-immediate", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      const clientId = req.user?.clientId?.toString();
+      const { candidatePhone } = req.body;
+      
+      if (!userId || !clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário ou cliente não encontrado'
+        });
+      }
+
+      if (!candidatePhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'Telefone do candidato é obrigatório'
+        });
+      }
+
+      console.log(`🚀 [USER-RR-API] Ativando cadência imediata para usuário ${userId} - telefone ${candidatePhone}`);
+
+      await userIsolatedRoundRobin.activateImmediateCadence(userId, clientId, candidatePhone);
+      
+      res.json({
+        success: true,
+        message: `Cadência imediata ativada para usuário ${userId}`,
+        candidatePhone
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao ativar cadência imediata:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para obter estatísticas do usuário
+  app.get("/api/user-round-robin/stats", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário não encontrado'
+        });
+      }
+
+      const stats = userIsolatedRoundRobin.getUserStats(userId);
+      
+      res.json({
+        success: true,
+        stats
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao obter estatísticas do usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para validar isolamento entre usuários
+  app.get("/api/user-round-robin/validate-isolation", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
+      
+      res.json({
+        success: true,
+        isIsolated,
+        message: isIsolated ? 'Isolamento validado' : 'VIOLAÇÃO DE ISOLAMENTO DETECTADA'
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao validar isolamento:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
+      });
+    }
+  });
+
+  // Endpoint para parar cadência de usuário
+  app.post("/api/user-round-robin/stop-cadence", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      await lazyLoadWhatsAppServices();
+      
+      if (!userIsolatedRoundRobin) {
+        return res.status(503).json({
+          success: false,
+          message: 'Sistema de Round Robin não disponível'
+        });
+      }
+
+      const userId = req.user?.id.toString();
+      
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID do usuário não encontrado'
+        });
+      }
+
+      console.log(`🛑 [USER-RR-API] Parando cadência para usuário ${userId}`);
+
+      userIsolatedRoundRobin.stopUserCadence(userId);
+      
+      res.json({
+        success: true,
+        message: `Cadência parada para usuário ${userId}`
+      });
+
+    } catch (error) {
+      console.error('❌ Erro ao parar cadência do usuário:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno no servidor'
       });
     }
   });

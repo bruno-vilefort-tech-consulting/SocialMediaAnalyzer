@@ -1,5 +1,6 @@
 import { AudioDownloadService } from './audioDownloadService.js';
 import { storage } from './storage';
+import { userIsolatedRoundRobin } from '../whatsapp/services/userIsolatedRoundRobin';
 
 // Estado em memória das entrevistas ativas
 interface ActiveInterview {
@@ -29,6 +30,48 @@ class InteractiveInterviewService {
 
   constructor() {
     // Inicializar AudioDownloadService com null, será configurado quando necessário
+  }
+
+  /**
+   * 🔥 NOVO: Ativar cadência imediata com isolamento por usuário
+   * Esta função é chamada quando um contato responde "1"
+   */
+  private async activateUserImmediateCadence(phone: string, clientId?: string): Promise<void> {
+    if (!clientId) {
+      console.log(`⚠️ [USER-CADENCE] ClientId não informado para telefone ${phone}`);
+      return;
+    }
+
+    try {
+      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata para telefone ${phone} (cliente ${clientId})`);
+      
+      // Mapear clientId para userId (neste sistema, clientId é o userId)
+      const userId = clientId;
+      
+      // Configurar cadência imediata para o usuário
+      userIsolatedRoundRobin.setUserCadenceConfig(userId, {
+        userId,
+        baseDelay: 500, // Delay reduzido para resposta "1"
+        batchSize: 1, // Envios individuais
+        maxRetries: 3,
+        adaptiveMode: false, // Modo fixo para resposta imediata
+        immediateMode: true // Modo imediato ativado
+      });
+      
+      // Ativar cadência imediata específica do usuário
+      await userIsolatedRoundRobin.activateImmediateCadence(userId, clientId, phone);
+      
+      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - telefone ${phone}`);
+      
+      // Validar isolamento entre usuários
+      const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
+      if (!isIsolated) {
+        console.error(`❌ [USER-CADENCE] FALHA NO ISOLAMENTO DETECTADA!`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ [USER-CADENCE] Erro ao ativar cadência imediata para ${phone}:`, error);
+    }
   }
 
   private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
@@ -221,6 +264,10 @@ class InteractiveInterviewService {
 
     if (text === '1' && !activeInterview) {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      
+      // 🔥 NOVO: Ativar cadência imediata com isolamento por usuário
+      await this.activateUserImmediateCadence(phone, clientId);
+      
       // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
       this.activeInterviews.clear();
       console.log(`🧹 [INTERVIEW] Cache de entrevistas ativas completamente limpo`);

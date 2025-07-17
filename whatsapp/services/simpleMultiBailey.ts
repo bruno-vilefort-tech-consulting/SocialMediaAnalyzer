@@ -568,7 +568,6 @@ class SimpleMultiBaileyService {
         
         // Auto-reconexão APENAS se não foi desconectado manualmente
         if (shouldReconnect) {
-          console.log(`🔄 [MONITOR-${slotNumber}] Tentando reconectar em 10 segundos...`);
           setTimeout(() => {
             // 🔥 PROTEÇÃO DUPLA: Verificar novamente se não foi desconectado manualmente antes de reconectar
             const latestConnection = this.connections.get(connectionId);

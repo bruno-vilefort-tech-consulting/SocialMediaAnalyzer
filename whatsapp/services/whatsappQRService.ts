@@ -520,7 +520,6 @@ export class WhatsAppQRService {
                 );
               }, 5000);
             } else if (shouldReconnect) {
-              console.log('🔄 Tentando reconectar em 5 segundos...');
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
                   console.error('Erro na reconexão:', err.message)
@@ -1487,7 +1486,6 @@ Ou use os botões se disponíveis.`);
     try {
       // Verificações robustas de conectividade
       if (!this.socket) {
-        console.log(`❌ Socket WhatsApp não inicializado - tentando reconectar`);
         await this.ensureInitialized();
         if (!this.socket) {
           console.log(`❌ Falha na reconexão do socket`);
@@ -1496,7 +1494,6 @@ Ou use os botões se disponíveis.`);
       }
 
       if (!this.socket.user) {
-        console.log(`❌ WhatsApp sem usuário autenticado - tentando reconectar`);
         await this.ensureInitialized();
         if (!this.socket || !this.socket.user) {
           console.log(`❌ Falha na reautenticação`);
@@ -1506,7 +1503,6 @@ Ou use os botões se disponíveis.`);
 
       // Verificar estado do WebSocket de forma mais robusta
       if (!this.socket.ws || this.socket.ws.readyState !== 1) {
-        console.log(`❌ WebSocket não conectado - estado: ${this.socket.ws?.readyState || 'undefined'} - tentando reconectar`);
         
         // Força reconexão completa
         try {

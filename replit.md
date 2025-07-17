@@ -115,6 +115,18 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 17, 2025: ✅ SISTEMA ROUND ROBIN ISOLADO POR USUÁRIO IMPLEMENTADO - Cadência imediata com isolamento total entre usuários
+  - **Novo serviço implementado**: `userIsolatedRoundRobin.ts` com isolamento completo entre usuários
+  - **Detecção "1" com cadência imediata**: Integração no `interactiveInterviewService.ts` para ativar cadência imediata
+  - **Método `activateUserImmediateCadence`**: Novo método para ativar cadência específica do usuário
+  - **8 novos endpoints API**: Sistema completo de gerenciamento de Round Robin isolado por usuário
+  - **Isolamento garantido**: Sistema impede cross-contamination entre diferentes usuários
+  - **Cadência imediata funcional**: Resposta "1" ativa cadência específica do usuário em 500ms
+  - **Endpoints implementados**: `/api/user-round-robin/*` para init-slots, configure-cadence, distribute-candidates, process-cadence, activate-immediate, stats, validate-isolation, stop-cadence
+  - **Validação de isolamento**: Sistema valida separação entre diferentes usuários automaticamente
+  - **Lazy loading integrado**: Carregamento dinâmico dos serviços WhatsApp sem impacto na inicialização
+  - **Logs detalhados**: Sistema de log específico para rastreamento de cadência por usuário
+
 - July 16, 2025: ✅ SISTEMA PREVENÇÃO AUTO-RECONEXÃO COMPLETAMENTE APRIMORADO - Todas as criações de conexões agora incluem field `manuallyDisconnected`
   - **Correção getConnectionStatus**: Conexões desconectadas criadas com `manuallyDisconnected: false` inicializado corretamente
   - **Correção connectToWhatsApp**: Duas instâncias de criação de conexão (usuário já conectado e QR Code) incluem `manuallyDisconnected: false`
