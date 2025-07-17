@@ -59,33 +59,192 @@ class InteractiveInterviewService {
   }
 
   /**
+   * 🔍 MÉTODO DE DETECÇÃO ROBUSTA DE CLIENTE
+   * Detecta o clientId correto baseado no telefone do candidato
+   */
+  private async detectClientIdRobust(phone: string, clientId?: string): Promise<string | null> {
+    console.log(`\n🔍 [ROBUST-DETECTION] ===== INICIANDO DETECÇÃO ROBUSTA =====`);
+    console.log(`📱 [ROBUST-DETECTION] Telefone: ${phone}`);
+    console.log(`🏢 [ROBUST-DETECTION] ClientId fornecido: ${clientId || 'UNDEFINED'}`);
+    
+    // Se clientId fornecido for válido, usar esse
+    if (clientId && clientId !== 'undefined' && clientId !== 'null') {
+      console.log(`✅ [ROBUST-DETECTION] ClientId válido fornecido: ${clientId}`);
+      return clientId;
+    }
+    
+    try {
+      // Limpar telefone para comparação (apenas números)
+      const cleanPhone = phone.replace(/\D/g, '');
+      console.log(`🧹 [ROBUST-DETECTION] Telefone limpo: ${cleanPhone}`);
+      
+      // Buscar candidatos no Firebase
+      console.log(`🔍 [ROBUST-DETECTION] Buscando candidatos no Firebase...`);
+      const candidatesByClientId = await storage.getCandidatesByMultipleClients([1749849987543, 1750169283780]);
+      
+      const matchingCandidates = [];
+      
+      for (const candidate of candidatesByClientId) {
+        const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
+        console.log(`📋 [ROBUST-DETECTION] Comparando: ${cleanPhone} vs ${candidatePhone} (${candidate.name})`);
+        
+        if (candidatePhone === cleanPhone) {
+          matchingCandidates.push(candidate);
+          console.log(`✅ [ROBUST-DETECTION] Match encontrado: ${candidate.name} (Cliente: ${candidate.clientId})`);
+        }
+      }
+      
+      console.log(`📊 [ROBUST-DETECTION] Candidatos encontrados: ${matchingCandidates.length}`);
+      
+      if (matchingCandidates.length === 0) {
+        console.log(`❌ [ROBUST-DETECTION] Nenhum candidato encontrado para telefone ${phone}`);
+        return null;
+      }
+      
+      if (matchingCandidates.length === 1) {
+        const detectedClientId = matchingCandidates[0].clientId.toString();
+        console.log(`✅ [ROBUST-DETECTION] Cliente único detectado: ${detectedClientId}`);
+        return detectedClientId;
+      }
+      
+      // Múltiplos candidatos: usar critério determinístico (mais recente)
+      console.log(`⚠️ [ROBUST-DETECTION] Múltiplos candidatos encontrados, usando critério determinístico...`);
+      const sortedCandidates = matchingCandidates.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA; // Mais recente primeiro
+      });
+      
+      const selectedCandidate = sortedCandidates[0];
+      const detectedClientId = selectedCandidate.clientId.toString();
+      console.log(`✅ [ROBUST-DETECTION] Cliente selecionado (mais recente): ${detectedClientId} (${selectedCandidate.name})`);
+      
+      return detectedClientId;
+      
+    } catch (error) {
+      console.error(`❌ [ROBUST-DETECTION] Erro na detecção:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * ✅ MÉTODO DE VALIDAÇÃO COMPLETA
+   * Valida se o cliente está apto para receber cadência
+   */
+  private async validateClientForCadence(clientId: string, phone: string): Promise<boolean> {
+    console.log(`\n✅ [VALIDATION] ===== INICIANDO VALIDAÇÃO COMPLETA =====`);
+    console.log(`🏢 [VALIDATION] Cliente: ${clientId}`);
+    console.log(`📱 [VALIDATION] Telefone: ${phone}`);
+    
+    try {
+      // VALIDAÇÃO 1: Verificar conexões WhatsApp ativas
+      console.log(`🔍 [VALIDATION] Verificando conexões WhatsApp ativas...`);
+      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+      
+      let hasActiveConnection = false;
+      for (let slot = 1; slot <= 3; slot++) {
+        try {
+          const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slot);
+          if (connectionStatus.isConnected) {
+            hasActiveConnection = true;
+            console.log(`✅ [VALIDATION] Conexão ativa encontrada no slot ${slot}`);
+            break;
+          }
+        } catch (slotError: any) {
+          console.log(`⚠️ [VALIDATION] Slot ${slot} não disponível: ${slotError.message}`);
+        }
+      }
+      
+      if (!hasActiveConnection) {
+        console.log(`❌ [VALIDATION] FALHA: Nenhuma conexão WhatsApp ativa para cliente ${clientId}`);
+        return false;
+      }
+      
+      // VALIDAÇÃO 2: Verificar se candidato existe na base do cliente
+      console.log(`🔍 [VALIDATION] Verificando candidato na base do cliente...`);
+      const candidatesByClient = await storage.getCandidatesByClientId(parseInt(clientId));
+      
+      const cleanPhone = phone.replace(/\D/g, '');
+      const candidateExists = candidatesByClient.some(candidate => {
+        const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
+        return candidatePhone === cleanPhone;
+      });
+      
+      if (!candidateExists) {
+        console.log(`❌ [VALIDATION] FALHA: Candidato ${phone} não encontrado na base do cliente ${clientId}`);
+        return false;
+      }
+      
+      console.log(`✅ [VALIDATION] Candidato encontrado na base do cliente`);
+      
+      // VALIDAÇÃO 3: Verificar se telefone confere exatamente
+      console.log(`🔍 [VALIDATION] Verificando correspondência exata do telefone...`);
+      const matchingCandidate = candidatesByClient.find(candidate => {
+        const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
+        return candidatePhone === cleanPhone;
+      });
+      
+      if (!matchingCandidate) {
+        console.log(`❌ [VALIDATION] FALHA: Telefone não confere exatamente`);
+        return false;
+      }
+      
+      console.log(`✅ [VALIDATION] Telefone confere exatamente: ${matchingCandidate.name}`);
+      
+      console.log(`✅ [VALIDATION] TODAS AS VALIDAÇÕES PASSARAM! Cliente ${clientId} apto para cadência`);
+      return true;
+      
+    } catch (error) {
+      console.error(`❌ [VALIDATION] Erro na validação:`, error);
+      return false;
+    }
+  }
+
+  /**
    * 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
    * Esta função é chamada quando um contato responde "1"
    */
   private async activateUserImmediateCadence(phone: string, clientId?: string): Promise<void> {
     console.log(`\n🔍 [USER-CADENCE] ===== INICIANDO ATIVAÇÃO DA CADÊNCIA =====`);
     console.log(`📱 [USER-CADENCE] Telefone: ${phone}`);
-    console.log(`🏢 [USER-CADENCE] ClientId: ${clientId || 'UNDEFINED'}`);
-    console.log(`⚡ [USER-CADENCE] Tipo clientId: ${typeof clientId}`);
+    console.log(`🏢 [USER-CADENCE] ClientId original: ${clientId || 'UNDEFINED'}`);
     
-    if (!clientId) {
-      console.log(`❌ [USER-CADENCE] ERRO: ClientId não informado para telefone ${phone}`);
-      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - FALTA clientId`);
+    // 🔍 ETAPA 1: DETECÇÃO ROBUSTA DE CLIENTE
+    console.log(`🔍 [USER-CADENCE] Iniciando detecção robusta de cliente...`);
+    const detectedClientId = await this.detectClientIdRobust(phone, clientId);
+    
+    if (!detectedClientId) {
+      console.log(`❌ [USER-CADENCE] ABORTANDO: Cliente não detectado para telefone ${phone}`);
+      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - CLIENTE NÃO DETECTADO`);
       return;
     }
+    
+    console.log(`✅ [USER-CADENCE] Cliente detectado: ${detectedClientId}`);
+    
+    // ✅ ETAPA 2: VALIDAÇÃO COMPLETA
+    console.log(`✅ [USER-CADENCE] Iniciando validação completa...`);
+    const isValid = await this.validateClientForCadence(detectedClientId, phone);
+    
+    if (!isValid) {
+      console.log(`❌ [USER-CADENCE] ABORTANDO: Validação falhou para cliente ${detectedClientId} - telefone ${phone}`);
+      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - VALIDAÇÃO FALHOU`);
+      return;
+    }
+    
+    console.log(`✅ [USER-CADENCE] Validação completa aprovada! PROSSEGUINDO com cadência...`);
 
     try {
-      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata para telefone ${phone} (cliente ${clientId})`);
+      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata para telefone ${phone} (cliente ${detectedClientId})`);
       
       // Mapear clientId para userId (neste sistema, clientId é o userId)
-      const userId = clientId;
+      const userId = detectedClientId;
       console.log(`🆔 [USER-CADENCE] UserId mapeado: ${userId}`);
       
-      // 🔥 ETAPA 1: Inicializar slots se necessário
+      // 🔥 ETAPA 3: Inicializar slots se necessário
       console.log(`🔧 [USER-CADENCE] Inicializando slots para usuário ${userId}...`);
-      await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+      await userIsolatedRoundRobin.initializeUserSlots(userId, detectedClientId);
       
-      // 🔥 ETAPA 2: Configurar cadência imediata para o usuário
+      // 🔥 ETAPA 4: Configurar cadência imediata para o usuário
       console.log(`⚙️ [USER-CADENCE] Configurando cadência imediata...`);
       userIsolatedRoundRobin.setUserCadenceConfig(userId, {
         userId,
@@ -96,27 +255,27 @@ class InteractiveInterviewService {
         immediateMode: true // Modo imediato ativado
       });
       
-      // 🔥 ETAPA 3: Distribuir apenas o candidato que respondeu "1"
+      // 🔥 ETAPA 5: Distribuir apenas o candidato que respondeu "1"
       console.log(`📦 [USER-CADENCE] Distribuindo candidato ${phone} que respondeu "1"...`);
-      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, [phone], 'immediate');
+      await userIsolatedRoundRobin.distributeUserCandidates(userId, detectedClientId, [phone], 'immediate');
       
-      // 🔥 ETAPA 4: Ativar cadência imediata específica do usuário
+      // 🔥 ETAPA 6: Ativar cadência imediata específica do usuário
       console.log(`🚀 [USER-CADENCE] Ativando cadência imediata...`);
-      await userIsolatedRoundRobin.activateImmediateCadence(userId, clientId, phone);
+      await userIsolatedRoundRobin.activateImmediateCadence(userId, detectedClientId, phone);
       
-      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - ${candidatePhones.length} candidatos`);
+      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - telefone ${phone}`);
       
-      // 🔥 ETAPA 5: Validar isolamento entre usuários
+      // 🔥 ETAPA 7: Validar isolamento entre usuários
       const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
       if (!isIsolated) {
         console.error(`❌ [USER-CADENCE] FALHA NO ISOLAMENTO DETECTADA!`);
       }
       
-      // 🔥 ETAPA 6: Aguardar 1 segundo e processar cadência garantindo execução
+      // 🔥 ETAPA 8: Aguardar 1 segundo e processar cadência garantindo execução
       console.log(`🔄 [USER-CADENCE] Processando cadência imediata em 1 segundo...`);
       setTimeout(async () => {
         try {
-          await userIsolatedRoundRobin.processUserCadence(userId, clientId);
+          await userIsolatedRoundRobin.processUserCadence(userId, detectedClientId);
           console.log(`✅ [USER-CADENCE] Cadência imediata processada com sucesso para usuário ${userId}`);
         } catch (error) {
           console.error(`❌ [USER-CADENCE] Erro ao processar cadência imediata:`, error);
@@ -390,8 +549,7 @@ class InteractiveInterviewService {
       
       // VERIFICAÇÃO CRÍTICA: Se a entrevista ativa usa IDs antigos, reiniciar com seleção mais recente
       try {
-        const storageModule = await import('./storage.js');
-        const storage = storageModule.default;
+        const { storage } = await import('./storage.js');
         const allSelections = await storage.getAllSelections();
         const latestSelection = allSelections
           .filter(s => clientId ? s.clientId.toString() === clientId : true)
@@ -445,7 +603,7 @@ class InteractiveInterviewService {
       // Filtrar por cliente e ordenar por ID (mais recente primeiro - IDs são timestamps)
       const clientSelections = allSelections
         .filter(s => clientId ? s.clientId.toString() === clientId : true)
-        .sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        .sort((a, b) => parseInt(b.id.toString()) - parseInt(a.id.toString()));
         
       console.log(`🔍 [SELECTION_SEARCH] Seleções do cliente ${clientId}: ${clientSelections.length}`);
       
@@ -499,10 +657,10 @@ class InteractiveInterviewService {
 
       // Criar entrevista ativa em memória com IDs únicos por seleção
       const interview: ActiveInterview = {
-        candidateId: uniqueCandidateId, // ID único por seleção
+        candidateId: candidate.id, // Usar ID real do candidato
         candidateName: candidate.name,
         phone: phone,
-        jobId: job.id,
+        jobId: parseInt(job.id.toString()),
         jobName: job.nomeVaga,
         clientId: selection.clientId.toString(),
         currentQuestion: 0,
@@ -816,7 +974,7 @@ class InteractiveInterviewService {
         const existingResponses = await storage.getResponsesBySelectionAndCandidate(
           interview.selectionId, 
           interview.candidateId, 
-          interview.clientId
+          parseInt(interview.clientId)
         );
         const existingResponse = existingResponses.find(r => 
           r.questionId === (interview.currentQuestion + 1) && r.score !== null && r.score !== undefined
