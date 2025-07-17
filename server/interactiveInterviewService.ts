@@ -543,9 +543,16 @@ class InteractiveInterviewService {
     } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
       console.log(`⏹️ [INTERVIEW] Comando "parar/sair" detectado`);
       await this.stopInterview(phone, clientId);
-    } else if (activeInterview) {
+    } else if (activeInterview && text !== '1') {
       console.log(`📝 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}`);
       console.log(`🔍 [INTERVIEW] Entrevista ativa - seleção: ${activeInterview.selectionId}, candidato: ${activeInterview.candidateId}`);
+      
+      // 🔥 CORREÇÃO CRÍTICA: Verificar se entrevista está em estado válido
+      if (activeInterview.currentQuestion >= activeInterview.questions.length) {
+        console.log(`[DEBUG] Estado inválido detectado - entrevista completa, reiniciando`);
+        this.activeInterviews.delete(phone);
+        return;
+      }
       
       // VERIFICAÇÃO CRÍTICA: Se a entrevista ativa usa IDs antigos, reiniciar com seleção mais recente
       try {
@@ -555,7 +562,11 @@ class InteractiveInterviewService {
           .filter(s => clientId ? s.clientId.toString() === clientId : true)
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
           
-        if (latestSelection && activeInterview.selectionId !== latestSelection.id) {
+        // 🔥 CORREÇÃO CRÍTICA: Tornar mais restritiva - apenas se entrevista for de mais de 1 hora atrás
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const interviewStartTime = new Date(activeInterview.startTime).getTime();
+        
+        if (latestSelection && activeInterview.selectionId !== latestSelection.id && interviewStartTime < oneHourAgo) {
           console.log(`🔄 [INTERVIEW] CORREÇÃO: Entrevista ativa usa seleção antiga ${activeInterview.selectionId}, mudando para mais recente ${latestSelection.id}`);
           this.activeInterviews.delete(phone);
           await this.startInterview(phone, clientId);

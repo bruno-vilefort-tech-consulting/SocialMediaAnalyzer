@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 17, 2025: ✅ PROBLEMA CRÍTICO DE LOOP INFINITO NA ENTREVISTA RESOLVIDO DEFINITIVAMENTE - Três correções específicas aplicadas com sucesso
+  - **Problema 1 - Incremento da pergunta**: Confirmado que `interview.currentQuestion++` já estava funcionando corretamente no processResponse()
+  - **Problema 2 - Validação de seleções antigas**: Implementada validação temporal de 1 hora para evitar reinicializações desnecessárias
+    - **Código aplicado**: `const oneHourAgo = Date.now() - (60 * 60 * 1000); const interviewStartTime = new Date(activeInterview.startTime).getTime();`
+    - **Condição corrigida**: `if (latestSelection && activeInterview.selectionId !== latestSelection.id && interviewStartTime < oneHourAgo)`
+  - **Problema 3 - Validação de estado inválido**: Adicionada verificação no handleMessage() para detectar estados inválidos
+    - **Código aplicado**: `if (activeInterview.currentQuestion >= activeInterview.questions.length) { this.activeInterviews.delete(phone); return; }`
+    - **Condição melhorada**: `} else if (activeInterview && text !== '1') {` para evitar processamento indevido
+  - **Teste validado**: Script test_infinite_loop_fix.js executado com sucesso confirmando todas as correções
+  - **Status**: LOOP INFINITO CORRIGIDO 100% - Sistema de entrevistas agora avança corretamente sem repetição
+
 - July 17, 2025: ✅ SISTEMA DE DETECÇÃO ROBUSTA E VALIDAÇÃO COMPLETA IMPLEMENTADO - Métodos escaláveis para TODOS os usuários criados com sucesso
   - **Método detectClientIdRobust criado**: Detecta automaticamente o clientId correto baseado no telefone do candidato
   - **Busca no Firebase**: Sistema busca candidatos usando getCandidatesByMultipleClients com múltiplos clientes
