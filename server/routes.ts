@@ -6620,6 +6620,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🔥 NOVO: Endpoint para testar detecção de "1" manualmente
+  app.post("/api/user-round-robin/test-trigger", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      const clientId = req.user?.clientId?.toString();
+      
+      if (!phoneNumber || !clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'phoneNumber e clientId são obrigatórios'
+        });
+      }
+      
+      console.log(`🎯 [TEST-TRIGGER] Simulando resposta "1" para ${phoneNumber} (cliente ${clientId})`);
+      
+      // Simular chamada do handler com "1"
+      const { interactiveInterviewService } = await import('./interactiveInterviewService.js');
+      const from = `${phoneNumber}@s.whatsapp.net`;
+      
+      await interactiveInterviewService.handleMessage(from, '1', null, clientId);
+      
+      console.log(`✅ [TEST-TRIGGER] Teste de trigger "1" concluído`);
+      
+      res.json({ 
+        success: true, 
+        message: `Trigger "1" testado para ${phoneNumber}`,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`❌ [TEST-TRIGGER] Erro no teste:`, error);
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

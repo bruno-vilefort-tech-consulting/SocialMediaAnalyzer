@@ -33,7 +33,7 @@ class InteractiveInterviewService {
   }
 
   /**
-   * 🔥 NOVO: Ativar cadência imediata com isolamento por usuário
+   * 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
    * Esta função é chamada quando um contato responde "1"
    */
   private async activateUserImmediateCadence(phone: string, clientId?: string): Promise<void> {
@@ -48,7 +48,12 @@ class InteractiveInterviewService {
       // Mapear clientId para userId (neste sistema, clientId é o userId)
       const userId = clientId;
       
-      // Configurar cadência imediata para o usuário
+      // 🔥 ETAPA 1: Inicializar slots se necessário
+      console.log(`🔧 [USER-CADENCE] Inicializando slots para usuário ${userId}...`);
+      await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+      
+      // 🔥 ETAPA 2: Configurar cadência imediata para o usuário
+      console.log(`⚙️ [USER-CADENCE] Configurando cadência imediata...`);
       userIsolatedRoundRobin.setUserCadenceConfig(userId, {
         userId,
         baseDelay: 500, // Delay reduzido para resposta "1"
@@ -58,25 +63,32 @@ class InteractiveInterviewService {
         immediateMode: true // Modo imediato ativado
       });
       
-      // Ativar cadência imediata específica do usuário
+      // 🔥 ETAPA 3: Distribuir candidato antes da ativação
+      console.log(`📦 [USER-CADENCE] Distribuindo candidato ${phone} nos slots...`);
+      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, [phone], 'immediate');
+      
+      // 🔥 ETAPA 4: Ativar cadência imediata específica do usuário
+      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata...`);
       await userIsolatedRoundRobin.activateImmediateCadence(userId, clientId, phone);
       
       console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - telefone ${phone}`);
       
-      // Validar isolamento entre usuários
+      // 🔥 ETAPA 5: Validar isolamento entre usuários
       const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
       if (!isIsolated) {
         console.error(`❌ [USER-CADENCE] FALHA NO ISOLAMENTO DETECTADA!`);
       }
       
-      // ✅ PROCESSAR cadência imediatamente após ativação
-      console.log(`🔄 [USER-CADENCE] Processando cadência imediata adicional para garantir execução...`);
-      try {
-        await userIsolatedRoundRobin.processUserCadence(userId, clientId);
-        console.log(`✅ [USER-CADENCE] Cadência imediata processada com sucesso para usuário ${userId}`);
-      } catch (error) {
-        console.error(`❌ [USER-CADENCE] Erro ao processar cadência imediata:`, error);
-      }
+      // 🔥 ETAPA 6: Aguardar 1 segundo e processar cadência garantindo execução
+      console.log(`🔄 [USER-CADENCE] Processando cadência imediata em 1 segundo...`);
+      setTimeout(async () => {
+        try {
+          await userIsolatedRoundRobin.processUserCadence(userId, clientId);
+          console.log(`✅ [USER-CADENCE] Cadência imediata processada com sucesso para usuário ${userId}`);
+        } catch (error) {
+          console.error(`❌ [USER-CADENCE] Erro ao processar cadência imediata:`, error);
+        }
+      }, 1000);
       
     } catch (error) {
       console.error(`❌ [USER-CADENCE] Erro ao ativar cadência imediata para ${phone}:`, error);
@@ -274,7 +286,8 @@ class InteractiveInterviewService {
     if (text === '1' && !activeInterview) {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
       
-      // 🔥 NOVO: Ativar cadência imediata com isolamento por usuário
+      // 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
+      console.log(`🎯 [CADENCE-TRIGGER] Detectado "1" - Disparando cadência imediata para ${phone}`);
       await this.activateUserImmediateCadence(phone, clientId);
       
       // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
