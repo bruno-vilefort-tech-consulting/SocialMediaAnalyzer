@@ -336,31 +336,25 @@ class UserIsolatedRoundRobin {
           console.log(`📤 [USER-ISOLATED-RR] Enviando mensagem para ${candidatePhone} via slot ${distribution.slotNumber}`);
           console.log(`📝 [USER-ISOLATED-RR] Mensagem: "${message}"`);
           
-          // Enviar mensagem usando slot específico do usuário
+          // 🔥 CORREÇÃO: Usar envio REAL do WhatsApp via simpleMultiBailey
           let result: any;
           
           try {
-            result = await simpleMultiBaileyService.sendMessage(
+            // Usar método sendTestMessage que é o envio real via Baileys
+            result = await simpleMultiBaileyService.sendTestMessage(
               clientId, 
+              distribution.slotNumber,
               candidatePhone, 
-              message,
-              distribution.slotNumber
+              message
             );
+            
+            console.log(`📱 [USER-ISOLATED-RR] Resultado do envio REAL:`, result);
+            
           } catch (error) {
-            console.log(`⚠️ [USER-ISOLATED-RR] Erro no simpleMultiBaileyService, usando mock:`, error);
-            // Mock de sucesso para teste
+            console.log(`❌ [USER-ISOLATED-RR] Erro no envio real via simpleMultiBailey:`, error);
             result = { 
-              success: true, 
-              message: `Mensagem enviada com sucesso via slot ${distribution.slotNumber} (mock)` 
-            };
-          }
-          
-          // Se o serviço retornar erro, usar mock para teste
-          if (!result || !result.success) {
-            console.log(`⚠️ [USER-ISOLATED-RR] Serviço WhatsApp indisponível, usando mock para teste`);
-            result = { 
-              success: true, 
-              message: `Mensagem enviada com sucesso via slot ${distribution.slotNumber} (mock)` 
+              success: false, 
+              error: error.message || 'Erro desconhecido no envio'
             };
           }
           
