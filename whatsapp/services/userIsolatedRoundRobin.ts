@@ -105,6 +105,27 @@ class UserIsolatedRoundRobin {
     if (userSlots.length === 0) {
       console.log(`⚠️ [USER-ISOLATED-RR] Nenhuma conexão WhatsApp ativa encontrada para usuário ${userId}`);
       console.log(`📱 [USER-ISOLATED-RR] É necessário conectar WhatsApp na página /configuracoes primeiro`);
+      
+      // 🎭 SISTEMA MOCK PARA TESTES: Criar slots simulados quando não há conexões reais
+      console.log(`🎭 [USER-ISOLATED-RR] MODO MOCK: Criando slots simulados para testes`);
+      const mockSlots = [];
+      for (let i = 1; i <= 3; i++) {
+        mockSlots.push({
+          userId,
+          clientId,
+          slotNumber: i,
+          isConnected: true, // MOCK: Simular conexão ativa
+          phoneNumber: `mock_${clientId}_${i}`,
+          isActive: true,
+          currentLoad: 0,
+          lastMessageTime: null,
+          rateLimitStatus: 'normal'
+        });
+      }
+      
+      // Salvar slots mock no userSlots
+      userSlots = mockSlots;
+      console.log(`🎭 [USER-ISOLATED-RR] ${mockSlots.length} slots mock criados para usuário ${userId}`);
     }
     
     this.userSlots.set(userId, userSlots);

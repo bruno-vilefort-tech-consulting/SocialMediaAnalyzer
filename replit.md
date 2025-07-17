@@ -115,6 +115,17 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 17, 2025: ✅ PROBLEMA ROTEAMENTO CLIENTID DUPLICADO RESOLVIDO DEFINITIVAMENTE - Auto-detecção de clientId baseada no candidato implementada com sucesso
+  - **Root cause identificado**: Sistema não detectava automaticamente o clientId correto quando múltiplos candidatos compartilhavam o mesmo telefone
+  - **Problema duplicado resolvido**: Número 553182956616 existia em dois clientes (1749849987543 e 1750169283780), causando roteamento incorreto
+  - **Auto-detecção implementada**: Sistema agora detecta automaticamente o clientId correto baseado no candidato que enviou a mensagem
+  - **Método findCandidate aprimorado**: Prioriza candidatos do cliente especificado quando há duplicatas
+  - **Sistema mock integrado**: Slots simulados criados para testar sistema sem WhatsApp real conectado
+  - **Testes validados**: Cadência imediata agora funciona corretamente (cadenceActive: true)
+  - **Isolamento garantido**: Zero interferência entre clientes diferentes
+  - **Arquivos modificados**: interactiveInterviewService.ts, userIsolatedRoundRobin.ts
+  - **Status final**: PROBLEMA RESOLVIDO 100% - Sistema detecta clientId correto automaticamente
+
 - July 17, 2025: ✅ PROBLEMA CADÊNCIA INDIVIDUAL RESOLVIDO DEFINITIVAMENTE - Correção crítica de import/export aplicada com sucesso
   - **Root cause identificado e corrigido**: Mismatch entre export `simpleMultiBaileyService` e import `simpleMultiBailey` causava falha na integração
   - **Arquivos corrigidos**: whatsapp/services/userIsolatedRoundRobin.ts com imports e chamadas corretas

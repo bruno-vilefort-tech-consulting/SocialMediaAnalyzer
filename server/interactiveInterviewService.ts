@@ -297,8 +297,39 @@ class InteractiveInterviewService {
     console.log(`📱 [INTERVIEW] Telefone: ${phone}`);
     console.log(`💬 [INTERVIEW] Texto: "${text}"`);
     console.log(`🎵 [INTERVIEW] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
-    console.log(`🏢 [INTERVIEW] Cliente ID: ${clientId || 'não informado'}`);
+    console.log(`🏢 [INTERVIEW] Cliente ID fornecido: ${clientId || 'não informado'}`);
     console.log(`🔍 [INTERVIEW] From completo: ${from}`);
+    
+    // 🔥 CORREÇÃO CRÍTICA: Detectar o clientId correto automaticamente baseado no candidato
+    if (!clientId) {
+      console.log(`🔍 [AUTO-DETECT] ClientId não fornecido, detectando automaticamente...`);
+      
+      // Buscar candidato em todos os clientes para detectar o correto
+      const allCandidates = await storage.getAllCandidates();
+      const matchingCandidates = allCandidates.filter(c => {
+        if (!c.whatsapp) return false;
+        const candidatePhone = c.whatsapp.replace(/\D/g, '');
+        const searchPhone = phone.replace(/\D/g, '');
+        return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
+      });
+      
+      if (matchingCandidates.length > 0) {
+        // Usar o cliente do primeiro candidato encontrado
+        clientId = matchingCandidates[0].clientId.toString();
+        console.log(`✅ [AUTO-DETECT] ClientId detectado automaticamente: ${clientId} (candidato: ${matchingCandidates[0].name})`);
+        
+        // Se há múltiplos candidatos, mostrar todos
+        if (matchingCandidates.length > 1) {
+          console.log(`⚠️ [AUTO-DETECT] Múltiplos candidatos encontrados:`)
+          matchingCandidates.forEach((c, index) => {
+            console.log(`  ${index + 1}. ${c.name} (ID: ${c.id}) - Cliente: ${c.clientId} - WhatsApp: ${c.whatsapp}`);
+          });
+          console.log(`🎯 [AUTO-DETECT] Usando primeiro candidato: ${matchingCandidates[0].name} (Cliente: ${clientId})`);
+        }
+      } else {
+        console.log(`❌ [AUTO-DETECT] Nenhum candidato encontrado para telefone ${phone}`);
+      }
+    }
     
     if (audioMessage) {
       // Verificar se é mensagem completa do Baileys ou apenas audioMessage
@@ -323,7 +354,7 @@ class InteractiveInterviewService {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
       console.log(`🔍 [CADENCE-DEBUG] Validando pré-condições para cadência:`);
       console.log(`   📱 Telefone normalizado: ${phone}`);
-      console.log(`   🏢 ClientId fornecido: ${clientId || 'UNDEFINED'}`);
+      console.log(`   🏢 ClientId final: ${clientId || 'UNDEFINED'}`);
       console.log(`   ⚡ Tipo do clientId: ${typeof clientId}`);
       console.log(`   📋 Entrevista ativa: ${activeInterview ? 'SIM' : 'NÃO'}`);
       
@@ -1004,32 +1035,54 @@ class InteractiveInterviewService {
   }
 
   private async findCandidate(phone: string, clientId?: string) {
-    console.log(`🔍 Buscando candidato para telefone: ${phone}, cliente: ${clientId}`);
+    console.log(`🔍 [FIND-CANDIDATE] Buscando candidato para telefone: ${phone}, cliente: ${clientId}`);
     
     let candidates;
     if (clientId) {
       candidates = await storage.getCandidatesByClientId(parseInt(clientId));
+      console.log(`👥 [FIND-CANDIDATE] Candidatos do cliente ${clientId}: ${candidates.length}`);
     } else {
       candidates = await storage.getAllCandidates();
+      console.log(`👥 [FIND-CANDIDATE] Todos os candidatos: ${candidates.length}`);
     }
     
-    console.log(`👥 Total de candidatos encontrados: ${candidates.length}`);
-    
-    const candidate = candidates.find(c => {
+    // 🔥 CORREÇÃO CRÍTICA: Priorizar candidatos do cliente especificado quando há duplicatas
+    const matchingCandidates = candidates.filter(c => {
       if (!c.whatsapp) return false;
       const candidatePhone = c.whatsapp.replace(/\D/g, '');
       const searchPhone = phone.replace(/\D/g, '');
-      const match = candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
-      if (match) {
-        console.log(`✅ Candidato encontrado: ${c.name} (${c.whatsapp})`);
-      }
-      return match;
+      return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
     });
     
-    if (!candidate) {
-      console.log(`❌ Candidato não encontrado para telefone ${phone}`);
+    console.log(`🎯 [FIND-CANDIDATE] Candidatos encontrados com telefone ${phone}: ${matchingCandidates.length}`);
+    
+    // Listar todos os candidatos encontrados
+    matchingCandidates.forEach((c, index) => {
+      console.log(`  ${index + 1}. ${c.name} (ID: ${c.id}) - Cliente: ${c.clientId} - WhatsApp: ${c.whatsapp}`);
+    });
+    
+    if (matchingCandidates.length === 0) {
+      console.log(`❌ [FIND-CANDIDATE] Nenhum candidato encontrado para telefone ${phone}`);
+      return null;
     }
     
+    // Se temos clientId específico, retornar apenas candidatos desse cliente
+    if (clientId) {
+      const clientCandidates = matchingCandidates.filter(c => c.clientId.toString() === clientId);
+      
+      if (clientCandidates.length > 0) {
+        const candidate = clientCandidates[0];
+        console.log(`✅ [FIND-CANDIDATE] Candidato do cliente ${clientId}: ${candidate.name} (ID: ${candidate.id})`);
+        return candidate;
+      } else {
+        console.log(`❌ [FIND-CANDIDATE] Nenhum candidato do cliente ${clientId} encontrado com telefone ${phone}`);
+        return null;
+      }
+    }
+    
+    // Fallback: retornar primeiro candidato encontrado
+    const candidate = matchingCandidates[0];
+    console.log(`✅ [FIND-CANDIDATE] Candidato encontrado (fallback): ${candidate.name} (ID: ${candidate.id}) - Cliente: ${candidate.clientId}`);
     return candidate;
   }
 
