@@ -11,36 +11,91 @@ export class BaileysConfig {
   /**
    * Configuração principal do socket para ambientes restritivos
    */
-  static async getSocketConfig(sessionState: any) {
+  static async getSocketConfig(sessionState: any, retryCount: number = 0) {
     // Buscar versão mais recente do WhatsApp Web
-    const { version, isLatest } = await fetchLatestBaileysVersion()
-    console.log(`🔧 [BAILEYS-CONFIG] WhatsApp v${version.join('.')}, é a versão mais recente: ${isLatest}`)
+    let version: [number, number, number] = [2, 2419, 6]; // Fallback seguro
+    
+    try {
+      if (retryCount === 0) {
+        // Primeira tentativa: versão dinâmica
+        const { version: dynamicVersion } = await fetchLatestBaileysVersion()
+        version = dynamicVersion as [number, number, number];
+        console.log(`🔧 [BAILEYS-CONFIG] Usando versão dinâmica: ${version.join('.')}`);
+      } else {
+        // Tentativas subsequentes: versão fixa
+        console.log(`🔧 [BAILEYS-CONFIG] Usando versão fixa: ${version.join('.')}`);
+      }
+    } catch (error) {
+      console.log(`⚠️ [BAILEYS-CONFIG] Erro ao buscar versão, usando fallback: ${version.join('.')}`);
+    }
+    
+    // 🔥 CONFIGURAÇÕES PROGRESSIVAS BASEADAS NO NÚMERO DE TENTATIVAS
+    const configs = [
+      // Tentativa 1: Configuração padrão
+      {
+        browser: Browsers.macOS('Chrome'),
+        connectTimeoutMs: 45000,
+        defaultQueryTimeoutMs: 45000,
+        qrTimeout: 45000,
+        keepAliveIntervalMs: 25000,
+        retryRequestDelayMs: 3000,
+        maxMsgRetryCount: 3,
+        markOnlineOnConnect: true,
+        fireInitQueries: true,
+      },
+      // Tentativa 2: Configuração mais conservadora
+      {
+        browser: Browsers.ubuntu('WhatsApp'),
+        connectTimeoutMs: 30000,
+        defaultQueryTimeoutMs: 30000,
+        qrTimeout: 30000,
+        keepAliveIntervalMs: 15000,
+        retryRequestDelayMs: 2000,
+        maxMsgRetryCount: 2,
+        markOnlineOnConnect: false,
+        fireInitQueries: false,
+      },
+      // Tentativa 3: Configuração minimalista
+      {
+        browser: ['WhatsApp', 'Chrome', '4.0.0'],
+        connectTimeoutMs: 20000,
+        defaultQueryTimeoutMs: 20000,
+        qrTimeout: 20000,
+        keepAliveIntervalMs: 10000,
+        retryRequestDelayMs: 1000,
+        maxMsgRetryCount: 1,
+        markOnlineOnConnect: false,
+        fireInitQueries: false,
+      }
+    ];
+    
+    const currentConfig = configs[Math.min(retryCount, configs.length - 1)];
     
     return {
       version,
       auth: sessionState,
       
-      // 🔥 CONFIGURAÇÃO DE BROWSER OTIMIZADA PARA V6.7.18
-      browser: Browsers.ubuntu('MultiWhatsApp'),
+      // 🔥 CONFIGURAÇÃO DE BROWSER PROGRESSIVA
+      browser: currentConfig.browser,
       
       // 🔥 LOGGER SILENCIOSO
       logger: P({ level: 'silent' }),
       printQRInTerminal: false,
       
-      // 🔥 TIMEOUTS AUMENTADOS PARA AMBIENTES LENTOS
-      connectTimeoutMs: 180000, // 3 minutos para conectar
-      defaultQueryTimeoutMs: 90000, // 1.5 minutos para queries
-      qrTimeout: 180000, // QR válido por 3 minutos
-      keepAliveIntervalMs: 45000, // Keep alive a cada 45s
-      retryRequestDelayMs: 8000, // 8 segundos entre tentativas
-      maxMsgRetryCount: 3, // Máximo 3 tentativas para evitar loops
+      // 🔥 TIMEOUTS PROGRESSIVOS
+      connectTimeoutMs: currentConfig.connectTimeoutMs,
+      defaultQueryTimeoutMs: currentConfig.defaultQueryTimeoutMs,
+      qrTimeout: currentConfig.qrTimeout,
+      keepAliveIntervalMs: currentConfig.keepAliveIntervalMs,
+      retryRequestDelayMs: currentConfig.retryRequestDelayMs,
+      maxMsgRetryCount: currentConfig.maxMsgRetryCount,
       
-      // 🔥 CONFIGURAÇÕES DE PERFORMANCE PARA AMBIENTES RESTRITIVOS
-      markOnlineOnConnect: false, // Não marcar online automaticamente
-      syncFullHistory: false, // Nunca sincronizar histórico completo
-      generateHighQualityLinkPreview: false, // Sem previews de alta qualidade
-      emitOwnEvents: false, // Não emitir eventos próprios
-      fireInitQueries: false, // Não executar queries de inicialização
+      // 🔥 CONFIGURAÇÕES DE PERFORMANCE PROGRESSIVAS
+      markOnlineOnConnect: currentConfig.markOnlineOnConnect,
+      syncFullHistory: false,
+      generateHighQualityLinkPreview: false,
+      emitOwnEvents: false,
+      fireInitQueries: currentConfig.fireInitQueries,
       
       // 🔥 CONFIGURAÇÕES PARA REDUZIR TRÁFEGO
       shouldSyncHistoryMessage: () => false, // Nunca sincronizar mensagens

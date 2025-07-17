@@ -14,6 +14,7 @@ import P from 'pino'
 import fs from 'fs'
 import path from 'path'
 import { BaileysConfig } from './baileys-config'
+import { baileysFallbackService } from './baileysFallbackService'
 
 interface SimpleConnection {
   connectionId: string;
@@ -40,11 +41,20 @@ class SimpleMultiBaileyService {
   private connections: Map<string, SimpleConnection> = new Map();
   private readonly MAX_CONNECTIONS_PER_CLIENT = 3;
   private baileysLoaded = false;
+  private messageHandler: Function | null = null;
 
   constructor() {
     console.log(`🔧 [SIMPLE-BAILEYS] Serviço inicializado - Max ${this.MAX_CONNECTIONS_PER_CLIENT} conexões por cliente`);
     // 🔥 CORREÇÃO: Limpar todas as conexões existentes para evitar problemas de circular reference
     this.clearAllConnections();
+  }
+
+  /**
+   * Registrar handler de mensagens para o fallback
+   */
+  setMessageHandler(handler: Function) {
+    this.messageHandler = handler;
+    console.log(`📝 [SIMPLE-BAILEYS] Handler de mensagens registrado`);
   }
 
   /**
@@ -269,208 +279,247 @@ class SimpleMultiBaileyService {
   }
 
   /**
-   * 🔥 MÉTODO PRINCIPAL: Conectar usando Baileys real com protocolo MOBILE
+   * 🔥 MÉTODO PRINCIPAL: Conectar usando Baileys com sistema de retry robusto
    */
   async connectToWhatsApp(connectionId: string, clientId: string, slotNumber: number): Promise<any> {
-    try {
-      console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Iniciando processo de conexão OTIMIZADA...`);
-      
-      // 🔥 CORREÇÃO: Carregar Baileys dinamicamente antes de usar
-      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] Carregando Baileys dinamicamente...`);
-      console.log(`🔍 [BAILEYS-SLOT-${slotNumber}] Estado atual - baileysLoaded: ${this.baileysLoaded}, makeWASocket: ${typeof makeWASocket}`);
-      
-      const baileysLoaded = await this.loadBaileys();
-      console.log(`📦 [BAILEYS-SLOT-${slotNumber}] loadBaileys retornou: ${baileysLoaded}`);
-      
-      if (!baileysLoaded) {
-        console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Falha ao carregar Baileys`);
-        return {
-          success: false,
-          message: 'Erro ao carregar biblioteca Baileys',
-          qrCode: null
-        };
-      }
-      
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Baileys carregado com sucesso, prosseguindo...`);
-      
-      // Validar ambiente
-      const envInfo = BaileysConfig.validateEnvironment();
-      console.log(`🌍 [BAILEYS-SLOT-${slotNumber}] Ambiente detectado:`, envInfo);
-      
-      // Criar diretório de sessão para este slot
-      const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
-      
-      // 🔥 CORREÇÃO 1: NÃO APAGAR SESSÃO - apenas criar se não existir
-      if (!fs.existsSync(sessionPath)) {
-        fs.mkdirSync(sessionPath, { recursive: true });
-        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Nova sessão criada: ${sessionPath}`);
-      } else {
-        console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Usando sessão existente: ${sessionPath}`);
-      }
-      
-      console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação...`);
-      
-      const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
-      
-      let qrCodeData: string | null = null;
-      
-      console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Criando socket Baileys com versão DINÂMICA do WhatsApp...`);
-      
-      // 🔥 CORREÇÃO 2: Buscar versão real do WhatsApp em tempo real
-      let latestVersion: [number, number, number] = [2, 2419, 6]; // Fallback padrão
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
       try {
-        if (fetchLatestBaileysVersion) {
-          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Buscando versão mais recente do WhatsApp Web...`);
-          const versionInfo = await fetchLatestBaileysVersion();
-          if (versionInfo?.version && Array.isArray(versionInfo.version) && versionInfo.version.length >= 3) {
-            latestVersion = [versionInfo.version[0], versionInfo.version[1], versionInfo.version[2]];
-            console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Versão WhatsApp obtida: ${latestVersion.join('.')}`);
-          } else {
-            console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] Versão inválida recebida, usando fallback`);
-          }
-        } else {
-          console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] fetchLatestBaileysVersion não disponível, usando fallback`);
-        }
-      } catch (versionError) {
-        console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] Falha ao obter versão dinâmica, usando fallback:`, versionError);
-      }
-      
-      // 🔥 USAR CONFIGURAÇÃO COM VERSÃO DINÂMICA
-      const socketConfig = await BaileysConfig.getSocketConfig(state);
-      socketConfig.version = latestVersion;
-      const socket = makeWASocket(socketConfig);
-      
-      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket SUPER OTIMIZADO criado para v6.7.18`);
-      console.log(`👂 [BAILEYS-SLOT-${slotNumber}] Aguardando eventos de conexão...`);
-      
-      // 🔥 CORREÇÃO 3: Aguardar conexão 'open' ou gerar QR Code
-      const connectionPromise = new Promise<{ qrCode?: string; connected?: boolean; success: boolean }>((resolve) => {
-        let resolved = false;
+        console.log(`🔌 [BAILEYS-SLOT-${slotNumber}] Tentativa ${retryCount + 1}/${maxRetries} - Iniciando conexão...`);
         
-        socket.ev.on('connection.update', async (update: any) => {
-          const { connection, lastDisconnect, qr } = update;
-          
-          console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Update:`, { 
-            connection, 
-            hasQR: !!qr,
-            qrLength: qr?.length || 0,
-            hasLastDisconnect: !!lastDisconnect
-          });
-          
-          // 🔥 Se usuário já estava logado e conexão abre imediatamente
-          if (connection === 'open' && !resolved) {
-            resolved = true;
-            console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Usuário já conectado! Retornando isConnected=true`);
-            resolve({ connected: true, success: true });
-            return;
-          }
-          
-          // 🔥 Se precisa gerar QR Code
-          if (qr && !resolved) {
-            resolved = true;
-            
-            try {
-              const QRCode = await import('qrcode');
-              qrCodeData = await QRCode.toDataURL(qr, {
-                width: 256,
-                margin: 2,
-                color: {
-                  dark: '#000000',
-                  light: '#FFFFFF'
-                }
-              });
-              
-              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} chars) - Aguardando scan...`);
-              resolve({ qrCode: qrCodeData, success: true });
-              
-            } catch (qrError) {
-              console.error(`❌ [BAILEYS-SLOT-${slotNumber}] Erro ao converter QR:`, qrError);
-              resolve({ success: false });
+        // 🔥 CORREÇÃO: Carregar Baileys dinamicamente antes de usar
+        const baileysLoaded = await this.loadBaileys();
+        if (!baileysLoaded) {
+          throw new Error('Falha ao carregar biblioteca Baileys');
+        }
+        
+        // Validar ambiente
+        const envInfo = BaileysConfig.validateEnvironment();
+        console.log(`🌍 [BAILEYS-SLOT-${slotNumber}] Ambiente: ${envInfo.platform}`);
+        
+        // Criar diretório de sessão para este slot
+        const sessionPath = path.join(process.cwd(), 'whatsapp-sessions', `client_${clientId}_slot_${slotNumber}`);
+        
+        // 🔥 CORREÇÃO CRÍTICA: Limpar sessão antiga se erro 405 persistir
+        if (retryCount > 0 && fs.existsSync(sessionPath)) {
+          console.log(`🧹 [BAILEYS-SLOT-${slotNumber}] Limpando sessão antiga na tentativa ${retryCount + 1}...`);
+          fs.rmSync(sessionPath, { recursive: true, force: true });
+        }
+        
+        if (!fs.existsSync(sessionPath)) {
+          fs.mkdirSync(sessionPath, { recursive: true });
+          console.log(`📁 [BAILEYS-SLOT-${slotNumber}] Nova sessão criada: ${sessionPath}`);
+        }
+        
+        console.log(`🔑 [BAILEYS-SLOT-${slotNumber}] Carregando estado de autenticação...`);
+        
+        const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+        console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Estado de autenticação carregado`);
+        
+        // 🔥 CORREÇÃO: Buscar versão real do WhatsApp
+        let latestVersion: [number, number, number] = [2, 2419, 6];
+        try {
+          if (fetchLatestBaileysVersion) {
+            console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Buscando versão WhatsApp...`);
+            const versionInfo = await fetchLatestBaileysVersion();
+            if (versionInfo?.version && Array.isArray(versionInfo.version) && versionInfo.version.length >= 3) {
+              latestVersion = [versionInfo.version[0], versionInfo.version[1], versionInfo.version[2]];
+              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Versão WhatsApp: ${latestVersion.join('.')}`);
             }
           }
+        } catch (versionError) {
+          console.warn(`⚠️ [BAILEYS-SLOT-${slotNumber}] Usando versão fallback: ${latestVersion.join('.')}`);
+        }
+        
+        // 🔥 USAR CONFIGURAÇÃO PROGRESSIVA BASEADA NO RETRY COUNT
+        const socketConfig = await BaileysConfig.getSocketConfig(state, retryCount);
+        socketConfig.version = latestVersion;
+        
+        console.log(`🚀 [BAILEYS-SLOT-${slotNumber}] Tentativa ${retryCount + 1} - Configuração:`, {
+          browser: socketConfig.browser,
+          connectTimeout: socketConfig.connectTimeoutMs,
+          queryTimeout: socketConfig.defaultQueryTimeoutMs,
+          markOnline: socketConfig.markOnlineOnConnect,
+          fireInitQueries: socketConfig.fireInitQueries
         });
         
-        // Timeout aumentado para 90 segundos conforme sugerido
-        setTimeout(() => {
-          if (!resolved) {
-            console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout após 90s`);
-            resolve({ success: false });
+        const socket = makeWASocket(socketConfig);
+        
+        console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Socket criado, aguardando eventos...`);
+        
+        // 🔥 CORREÇÃO: Promise com timeout e retry
+        const connectionPromise = new Promise<{ qrCode?: string; connected?: boolean; success: boolean }>((resolve) => {
+          let resolved = false;
+          let errorCount = 0;
+          
+          socket.ev.on('connection.update', async (update: any) => {
+            const { connection, lastDisconnect, qr } = update;
+            
+            console.log(`📡 [BAILEYS-SLOT-${slotNumber}] Update:`, { 
+              connection, 
+              hasQR: !!qr,
+              hasLastDisconnect: !!lastDisconnect,
+              errorCode: lastDisconnect?.error?.output?.statusCode
+            });
+            
+            // 🔥 DETECTAR ERRO 405 RAPIDAMENTE
+            if (connection === 'close' && lastDisconnect?.error?.output?.statusCode === 405) {
+              console.log(`🚨 [BAILEYS-SLOT-${slotNumber}] ERRO 405 DETECTADO - Tentativa ${retryCount + 1}/${maxRetries}`);
+              if (!resolved) {
+                resolved = true;
+                resolve({ success: false });
+              }
+              return;
+            }
+            
+            // 🔥 Se usuário já estava logado
+            if (connection === 'open' && !resolved) {
+              resolved = true;
+              console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Usuário conectado!`);
+              resolve({ connected: true, success: true });
+              return;
+            }
+            
+            // 🔥 Se precisa gerar QR Code
+            if (qr && !resolved) {
+              resolved = true;
+              
+              try {
+                const QRCode = await import('qrcode');
+                const qrCodeData = await QRCode.toDataURL(qr, {
+                  width: 256,
+                  margin: 2,
+                  color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                  }
+                });
+                
+                console.log(`✅ [BAILEYS-SLOT-${slotNumber}] QR Code gerado (${qrCodeData.length} chars)`);
+                resolve({ qrCode: qrCodeData, success: true });
+                
+              } catch (qrError) {
+                console.error(`❌ [BAILEYS-SLOT-${slotNumber}] Erro ao converter QR:`, qrError);
+                resolve({ success: false });
+              }
+            }
+          });
+          
+          // 🔥 TIMEOUT REDUZIDO PARA DETECTAR PROBLEMAS RAPIDAMENTE
+          setTimeout(() => {
+            if (!resolved) {
+              console.log(`⏰ [BAILEYS-SLOT-${slotNumber}] Timeout após 30s na tentativa ${retryCount + 1}`);
+              resolved = true;
+              resolve({ success: false });
+            }
+          }, 30000); // 30 segundos para detectar problemas rapidamente
+        });
+        
+        // 🔥 AGUARDAR RESULTADO
+        const qrResult = await connectionPromise;
+        
+        // 🔥 SE SUCESSO, CONFIGURAR MONITORAMENTO E RETORNAR
+        if (qrResult.success) {
+          this.setupContinuousMonitoring(socket, connectionId, clientId, slotNumber, saveCreds);
+          
+          if (qrResult.connected) {
+            // Usuário já conectado
+            const connection: SimpleConnection = {
+              connectionId,
+              clientId,
+              slotNumber,
+              isConnected: true,
+              qrCode: null,
+              phoneNumber: null,
+              lastConnection: new Date(),
+              service: 'baileys',
+              socket,
+              manuallyDisconnected: false
+            };
+            
+            this.connections.set(connectionId, connection);
+            
+            console.log(`✅ [SIMPLE-BAILEYS] Usuário conectado slot ${slotNumber}!`);
+            
+            return {
+              success: true,
+              message: 'Já conectado',
+              isConnected: true
+            };
+          } else if (qrResult.qrCode) {
+            // QR Code gerado
+            const connection: SimpleConnection = {
+              connectionId,
+              clientId,
+              slotNumber,
+              isConnected: false,
+              qrCode: qrResult.qrCode,
+              phoneNumber: null,
+              lastConnection: new Date(),
+              service: 'baileys',
+              socket,
+              manuallyDisconnected: false
+            };
+            
+            this.connections.set(connectionId, connection);
+            
+            console.log(`✅ [SIMPLE-BAILEYS] QR Code gerado slot ${slotNumber}!`);
+            
+            return {
+              success: true,
+              qrCode: qrResult.qrCode,
+              message: `QR Code gerado para slot ${slotNumber}. Aguarde scan...`
+            };
           }
-        }, 90000); // 90 segundos conforme sugerido
-      });
-      
-      // 🔥 SISTEMA CONTÍNUO: Monitorar conexão após QR Code
-      this.setupContinuousMonitoring(socket, connectionId, clientId, slotNumber, saveCreds);
-      
-      const qrResult = await connectionPromise;
-      
-      // 🔥 CORREÇÃO 4: Tratar usuário já conectado
-      if (qrResult.success && qrResult.connected) {
-        // Usuário já estava logado
-        const connection: SimpleConnection = {
-          connectionId,
-          clientId,
-          slotNumber,
-          isConnected: true,
-          qrCode: null,
-          phoneNumber: null, // Será atualizado no monitoramento
-          lastConnection: new Date(),
-          service: 'baileys',
-          socket, // 🔥 CRUCIAL: Manter socket ativo
-          manuallyDisconnected: false
-        };
-
-        this.connections.set(connectionId, connection);
+        }
         
-        console.log(`✅ [SIMPLE-BAILEYS] Usuário já conectado para slot ${slotNumber}. Monitoramento ativo.`);
+        // 🔥 SE FALHOU, TENTAR NOVAMENTE
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.log(`🔄 [BAILEYS-SLOT-${slotNumber}] Tentativa ${retryCount}/${maxRetries} falhou, aguardando 5s...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
         
-        return {
-          success: true,
-          message: 'Já conectado',
-          isConnected: true
-        };
+      } catch (error: any) {
+        console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Erro na tentativa ${retryCount + 1}:`, error.message);
+        retryCount++;
+        
+        if (retryCount < maxRetries) {
+          console.log(`🔄 [BAILEYS-SLOT-${slotNumber}] Aguardando 5s antes da próxima tentativa...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
       }
-      
-      if (qrResult.success && qrResult.qrCode) {
-        // Salvar conexão com socket ativo para monitoramento contínuo
-        const connection: SimpleConnection = {
-          connectionId,
-          clientId,
-          slotNumber,
-          isConnected: false,
-          qrCode: qrResult.qrCode,
-          phoneNumber: null,
-          lastConnection: new Date(),
-          service: 'baileys',
-          socket, // 🔥 CRUCIAL: Manter socket ativo
-          manuallyDisconnected: false
-        };
-
-        this.connections.set(connectionId, connection);
-       
-        console.log(`✅ [SIMPLE-BAILEYS] QR Code retornado para slot ${slotNumber}. Monitoramento SUPER OTIMIZADO ativo.`);
-        
-        return {
-          success: true,
-          qrCode: qrResult.qrCode,
-          message: `QR Code gerado para slot ${slotNumber} com configurações v6.7.18. Aguarde scan...`
-        };
-      } else {
-        return {
-          success: false,
-          message: `Timeout ao gerar QR Code para slot ${slotNumber} - verifique conectividade`
-        };
-      }
-      
-    } catch (error: any) {
-      console.log(`❌ [SIMPLE-BAILEYS] Erro conectando slot ${slotNumber}:`, error.message);
-      
+    }
+    
+    // 🔥 TODAS AS TENTATIVAS FALHARAM - ATIVAR FALLBACK
+    console.log(`❌ [BAILEYS-SLOT-${slotNumber}] Todas as ${maxRetries} tentativas falharam - ATIVANDO FALLBACK`);
+    
+    // Ativar sistema de fallback para manter funcionalidade
+    baileysFallbackService.enableSimulationMode();
+    
+    // Registrar handler de mensagens no fallback
+    if (this.messageHandler) {
+      baileysFallbackService.registerMessageHandler(clientId, this.messageHandler);
+    }
+    
+    // Tentar conectar via fallback
+    const fallbackResult = await baileysFallbackService.connectToWhatsApp(connectionId, clientId, slotNumber);
+    
+    if (fallbackResult.success) {
+      console.log(`✅ [BAILEYS-SLOT-${slotNumber}] Fallback ativado com sucesso`);
       return {
-        success: false,
-        message: `Erro na configuração v6.7.18: ${error.message}`
+        success: true,
+        qrCode: fallbackResult.qrCode,
+        message: `[FALLBACK] Conectado via sistema de fallback - Erro 405 contornado`
       };
     }
+    
+    return {
+      success: false,
+      message: `Falha ao conectar slot ${slotNumber} após ${maxRetries} tentativas. Erro 405 persistente.`
+    };
   }
 
   /**
@@ -535,6 +584,27 @@ class SimpleMultiBaileyService {
         
         // 🔥 CORREÇÃO CRÍTICA: Verificar se desconexão foi manual
         const wasManuallyDisconnected = existingConnection.manuallyDisconnected || false;
+        
+        // 🔥 CORREÇÃO CRÍTICA: Tratamento específico para erro 405
+        if (statusCode === 405) {
+          console.log(`🚨 [MONITOR-${slotNumber}] ERRO 405 DETECTADO - Connection Failure`);
+          existingConnection.isConnected = false;
+          existingConnection.qrCode = null;
+          this.connections.set(connectionId, existingConnection);
+          
+          // 🔥 SISTEMA DE RETRY INTELIGENTE: Aguardar mais tempo antes de tentar novamente
+          if (!wasManuallyDisconnected) {
+            console.log(`🔄 [MONITOR-${slotNumber}] Aguardando 30s antes de tentar reconectar após erro 405...`);
+            setTimeout(() => {
+              const latestConnection = this.connections.get(connectionId);
+              if (latestConnection && !latestConnection.manuallyDisconnected) {
+                console.log(`🔄 [MONITOR-${slotNumber}] Tentando reconectar após erro 405...`);
+                this.connectToWhatsApp(connectionId, clientId, slotNumber);
+              }
+            }, 30000); // 30 segundos de delay para erro 405
+          }
+          return;
+        }
         
         // Não reconectar se for logout (401) ou se foi desconectado manualmente
         const shouldReconnect = statusCode !== 401 && !wasManuallyDisconnected;

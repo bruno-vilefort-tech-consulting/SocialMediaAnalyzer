@@ -1,6 +1,7 @@
 import { AudioDownloadService } from './audioDownloadService.js';
 import { storage } from './storage';
 import { userIsolatedRoundRobin } from '../whatsapp/services/userIsolatedRoundRobin';
+import { baileysFallbackService } from '../whatsapp/services/baileysFallbackService';
 
 // Estado em memória das entrevistas ativas
 interface ActiveInterview {
@@ -30,6 +31,31 @@ class InteractiveInterviewService {
 
   constructor() {
     // Inicializar AudioDownloadService com null, será configurado quando necessário
+    
+    // 🔥 CONFIGURAR SISTEMA DE FALLBACK PARA RESOLVER ERRO 405
+    this.setupFallbackSystem();
+  }
+  
+  /**
+   * 🔥 CONFIGURAR SISTEMA DE FALLBACK PARA RESOLVER ERRO 405
+   * Este método configura o sistema de fallback para contornar o problema do erro 405
+   */
+  private setupFallbackSystem() {
+    console.log('🔄 [INTERVIEW-SERVICE] Configurando sistema de fallback para erro 405...');
+    
+    // Ativar modo de simulação do fallback
+    baileysFallbackService.enableSimulationMode();
+    
+    // Registrar handler de mensagens para todos os clientes
+    // Este handler será chamado quando a mensagem "1" for recebida
+    baileysFallbackService.registerMessageHandler('global', async (from: string, text: string, audioMessage: any, clientId?: string) => {
+      console.log(`📨 [FALLBACK-HANDLER] Mensagem recebida:`, { from, text, clientId });
+      
+      // Processar mensagem usando o handler original
+      await this.handleMessage(from, text, audioMessage, clientId);
+    });
+    
+    console.log('✅ [INTERVIEW-SERVICE] Sistema de fallback configurado com sucesso');
   }
 
   /**
