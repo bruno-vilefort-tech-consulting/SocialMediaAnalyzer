@@ -8,7 +8,7 @@
  * 4. Sem interferência cruzada entre contas
  */
 
-import { simpleMultiBaileyService } from './simpleMultiBailey';
+import { simpleMultiBaileyService } from './simpleMultiBailey.ts';
 
 interface UserSlot {
   userId: string;
@@ -72,14 +72,14 @@ class UserIsolatedRoundRobin {
     let userSlots: UserSlot[] = [];
     
     try {
-      // 🔥 CORREÇÃO: Usar simpleMultiBailey (não simpleMultiBaileyService)
+      // 🔥 INTEGRAÇÃO REAL: Usar simpleMultiBaileyService.getClientConnections
       console.log(`📞 [USER-ISOLATED-RR] Buscando conexões WhatsApp do cliente ${clientId}...`);
-      const connections = await simpleMultiBailey.getClientConnections(clientId);
-      const activeConnections = connections?.filter(conn => conn.isConnected) || [];
+      const connectionStatus = await simpleMultiBaileyService.getClientConnections(clientId);
+      const activeConnections = connectionStatus.connections?.filter(conn => conn.isConnected) || [];
       
-      console.log(`📊 [USER-ISOLATED-RR] Conexões WhatsApp encontradas: ${activeConnections.length}`);
+      console.log(`📊 [USER-ISOLATED-RR] Conexões WhatsApp encontradas: ${activeConnections.length} de ${connectionStatus.totalConnections}`);
       
-      // Criar slots isolados para este usuário
+      // Criar slots isolados para este usuário baseado nas conexões reais
       for (const connection of activeConnections) {
         const slot: UserSlot = {
           userId,
@@ -94,32 +94,17 @@ class UserIsolatedRoundRobin {
         };
         
         userSlots.push(slot);
-        console.log(`📱 [USER-ISOLATED-RR] Slot ${slot.slotNumber} criado: ${connection.isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
+        console.log(`📱 [USER-ISOLATED-RR] Slot ${slot.slotNumber} criado: ${connection.isConnected ? 'CONECTADO' : 'DESCONECTADO'} - Phone: ${connection.phoneNumber}`);
       }
       
     } catch (error) {
       console.error(`❌ [USER-ISOLATED-RR] Erro ao buscar conexões WhatsApp:`, error);
     }
     
-    // ✅ CORREÇÃO DEFINITIVA: Sempre criar slots de teste se não houver slots reais
+    // 🔥 VALIDAÇÃO: Só usar conexões reais do WhatsApp
     if (userSlots.length === 0) {
-      console.log(`⚠️ [USER-ISOLATED-RR] Nenhum slot WhatsApp conectado, criando slots de teste para usuário ${userId}`);
-      
-      for (let i = 1; i <= 3; i++) {
-        const slot: UserSlot = {
-          userId,
-          clientId,
-          slotNumber: i,
-          isConnected: true, // Para teste: assumir conectado
-          phoneNumber: `55119${i}000000${i}`, // Número de teste
-          isActive: true,
-          currentLoad: 0,
-          lastMessageTime: null,
-          rateLimitStatus: 'normal'
-        };
-        
-        userSlots.push(slot);
-      }
+      console.log(`⚠️ [USER-ISOLATED-RR] Nenhuma conexão WhatsApp ativa encontrada para usuário ${userId}`);
+      console.log(`📱 [USER-ISOLATED-RR] É necessário conectar WhatsApp na página /configuracoes primeiro`);
     }
     
     this.userSlots.set(userId, userSlots);
@@ -347,8 +332,8 @@ class UserIsolatedRoundRobin {
           // Mensagem padrão para cadência
           const message = `Mensagem para ${candidatePhone}`;
           
-          // Usar método correto do simpleMultiBailey
-          result = await simpleMultiBailey.sendMessage(candidatePhone, message, clientId);
+          // Usar método correto do simpleMultiBaileyService (usa slot preferido automaticamente)
+          result = await simpleMultiBaileyService.sendMessage(clientId, candidatePhone, message, distribution.slotNumber);
 
           console.log(`📊 [USER-ISOLATED-RR] Resultado do envio:`, result);
           

@@ -52,9 +52,12 @@ async function lazyLoadWhatsAppServices() {
 
   if (!userIsolatedRoundRobin) {
     try {
+      console.log('🔄 Carregando userIsolatedRoundRobin...');
       const { userIsolatedRoundRobin: service } = await import("../whatsapp/services/userIsolatedRoundRobin");
       userIsolatedRoundRobin = service;
+      console.log('✅ userIsolatedRoundRobin carregado:', !!userIsolatedRoundRobin);
     } catch (error) {
+      console.error('❌ Erro ao carregar User Isolated Round Robin Service:', error);
       console.log('⚠️ User Isolated Round Robin Service não disponível');
     }
   }
