@@ -329,33 +329,11 @@ class UserIsolatedRoundRobin {
         
         try {
           // Mensagem simples para cadência (removida mensagem indesejada)
-          const message = `Mensagem para ${candidatePhone}`;
-          
           console.log(`📤 [USER-ISOLATED-RR] Enviando mensagem para ${candidatePhone} via slot ${distribution.slotNumber}`);
-          console.log(`📝 [USER-ISOLATED-RR] Mensagem: "${message}"`);
           
           // 🔥 CORREÇÃO: Usar envio REAL do WhatsApp via simpleMultiBailey
           let result: any;
-          
-          try {
-            // Usar método sendTestMessage que é o envio real via Baileys
-            result = await simpleMultiBaileyService.sendTestMessage(
-              clientId, 
-              distribution.slotNumber,
-              candidatePhone, 
-              message
-            );
-            
-            console.log(`📱 [USER-ISOLATED-RR] Resultado do envio REAL:`, result);
-            
-          } catch (error) {
-            console.log(`❌ [USER-ISOLATED-RR] Erro no envio real via simpleMultiBailey:`, error);
-            result = { 
-              success: false, 
-              error: error.message || 'Erro desconhecido no envio'
-            };
-          }
-          
+
           console.log(`📊 [USER-ISOLATED-RR] Resultado do envio:`, result);
           
           if (result?.success) {

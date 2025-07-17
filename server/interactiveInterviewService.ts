@@ -483,15 +483,25 @@ class InteractiveInterviewService {
   }
 
   private async sendNextQuestion(phone: string, interview: ActiveInterview): Promise<void> {
+    // 🔥 CORREÇÃO CRÍTICA: Verificar se já respondeu todas as perguntas
+    if (interview.currentQuestion >= interview.questions.length) {
+      console.log(`🏁 [SENDNEXT] Entrevista completa - todas as ${interview.questions.length} perguntas respondidas`);
+      await this.finishInterview(phone, interview);
+      return;
+    }
+    
     const question = interview.questions[interview.currentQuestion];
     
     if (!question) {
+      console.log(`❌ [SENDNEXT] Pergunta ${interview.currentQuestion + 1} não encontrada, finalizando entrevista`);
       await this.finishInterview(phone, interview);
       return;
     }
 
     const questionNum = interview.currentQuestion + 1;
     const total = interview.questions.length;
+    
+    console.log(`📝 [SENDNEXT] Enviando pergunta ${questionNum}/${total} para ${phone}`);
     
     const message = `📝 Pergunta ${questionNum}/${total}:\n\n${question.pergunta}\n\n🎤 Responda somente por áudio`;
 
