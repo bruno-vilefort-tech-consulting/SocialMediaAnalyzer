@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 17, 2025: 🚨 PROBLEMA CRÍTICO IDENTIFICADO - Handler de mensagens WhatsApp não funciona devido a desconexões constantes
+  - **Investigação completa realizada**: INVESTIGACAO_HANDLER_MENSAGENS_WHATSAPP.md documentando problema completo
+  - **Root cause identificado**: WhatsApp desconecta constantemente com erro 405 Connection Failure
+  - **Handler mensagens EXISTE**: socket.ev.on('messages.upsert') implementado corretamente em simpleMultiBailey.ts
+  - **Problema real**: Handler nunca é configurado pois conexão nunca se estabelece (connection: 'open')
+  - **Impacto crítico**: interactiveInterviewService.handleMessage() nunca é chamado quando usuário responde "1"
+  - **Fluxo quebrado**: Mensagens enviadas ✅ → Conexão desconecta ❌ → Handler não configurado ❌ → Resposta "1" não processada ❌
+  - **Solução necessária**: Corrigir problema de conexão 405 no Baileys, não problema de handler
+  - **Status**: PROBLEMA IDENTIFICADO - Sistema envio real funciona, sistema recepção quebrado por desconexões
+
 - July 17, 2025: ✅ SISTEMA ENVIO REAL WHATSAPP IMPLEMENTADO - Mock system removido, integração real com Baileys funcional
   - **Correção crítica aplicada**: userIsolatedRoundRobin.ts agora usa simpleMultiBailey.sendTestMessage() para envio real
   - **Mock system removido**: Sistema não mais simula sucesso, retorna status real de conexão WhatsApp
