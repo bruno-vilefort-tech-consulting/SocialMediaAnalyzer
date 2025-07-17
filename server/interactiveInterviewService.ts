@@ -89,15 +89,23 @@ class InteractiveInterviewService {
         immediateMode: true // Modo imediato ativado
       });
       
-      // 🔥 ETAPA 3: Distribuir candidato antes da ativação
-      console.log(`📦 [USER-CADENCE] Distribuindo candidato ${phone} nos slots...`);
-      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, [phone], 'immediate');
+      // 🔥 ETAPA 3: BUSCAR TODOS OS CANDIDATOS DA LISTA DINAMICAMENTE
+      console.log(`🔍 [USER-CADENCE] Buscando todos os candidatos da lista para ${phone}...`);
+      const candidatePhones = await this.findCandidatesFromSameList(phone, clientId);
+      
+      if (candidatePhones.length === 0) {
+        console.log(`⚠️ [USER-CADENCE] Nenhum candidato encontrado para cadência, usando apenas ${phone}`);
+        candidatePhones.push(phone);
+      }
+      
+      console.log(`📦 [USER-CADENCE] Distribuindo ${candidatePhones.length} candidatos da lista: ${candidatePhones.join(', ')}`);
+      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, candidatePhones, 'immediate');
       
       // 🔥 ETAPA 4: Ativar cadência imediata específica do usuário
       console.log(`🚀 [USER-CADENCE] Ativando cadência imediata...`);
       await userIsolatedRoundRobin.activateImmediateCadence(userId, clientId, phone);
       
-      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - telefone ${phone}`);
+      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - ${candidatePhones.length} candidatos`);
       
       // 🔥 ETAPA 5: Validar isolamento entre usuários
       const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
@@ -118,6 +126,79 @@ class InteractiveInterviewService {
       
     } catch (error) {
       console.error(`❌ [USER-CADENCE] Erro ao ativar cadência imediata para ${phone}:`, error);
+    }
+  }
+
+  /**
+   * 🔥 NOVA FUNÇÃO: Buscar todos os candidatos da mesma lista/seleção
+   * Esta função identifica qual lista o candidato pertence e retorna todos os candidatos dessa lista
+   */
+  private async findCandidatesFromSameList(phone: string, clientId: string): Promise<string[]> {
+    try {
+      console.log(`🔍 [FIND-CANDIDATES] Buscando candidatos da mesma lista para ${phone} (cliente ${clientId})`);
+      
+      // Buscar candidato que respondeu "1"
+      const candidate = await this.findCandidate(phone, clientId);
+      if (!candidate) {
+        console.log(`❌ [FIND-CANDIDATES] Candidato não encontrado para ${phone}`);
+        return [];
+      }
+      
+      console.log(`✅ [FIND-CANDIDATES] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
+      
+      // Buscar todas as seleções do cliente
+      const allSelections = await storage.getAllSelections();
+      const clientSelections = allSelections.filter(s => 
+        s.clientId === parseInt(clientId) && s.status === 'enviado'
+      );
+      
+      console.log(`📋 [FIND-CANDIDATES] ${clientSelections.length} seleções encontradas para cliente ${clientId}`);
+      
+      if (clientSelections.length === 0) {
+        console.log(`⚠️ [FIND-CANDIDATES] Nenhuma seleção encontrada`);
+        return [];
+      }
+      
+      // Encontrar seleção mais recente que inclui esse candidato
+      const recentSelection = clientSelections.sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )[0];
+      
+      console.log(`📋 [FIND-CANDIDATES] Seleção mais recente: ${recentSelection.name} (ID: ${recentSelection.id})`);
+      
+      // Buscar todos os candidatos da lista dessa seleção
+      let candidatePhones: string[] = [];
+      
+      if (recentSelection.candidateListId) {
+        console.log(`📋 [FIND-CANDIDATES] Buscando candidatos da lista ${recentSelection.candidateListId}`);
+        const listCandidates = await storage.getCandidatesByListId(recentSelection.candidateListId);
+        candidatePhones = listCandidates
+          .filter(c => c.whatsapp) // Apenas candidatos com WhatsApp
+          .map(c => c.whatsapp.replace(/\D/g, '')); // Limpar números
+          
+        console.log(`📞 [FIND-CANDIDATES] ${candidatePhones.length} candidatos encontrados na lista`);
+      } else if (recentSelection.searchQuery) {
+        console.log(`🔍 [FIND-CANDIDATES] Seleção por busca: "${recentSelection.searchQuery}"`);
+        const allCandidates = await storage.getCandidatesByClientId(parseInt(clientId));
+        const searchCandidates = allCandidates.filter(candidate => 
+          candidate.name.toLowerCase().includes(recentSelection.searchQuery.toLowerCase()) ||
+          candidate.email.toLowerCase().includes(recentSelection.searchQuery.toLowerCase())
+        );
+        candidatePhones = searchCandidates
+          .filter(c => c.whatsapp)
+          .map(c => c.whatsapp.replace(/\D/g, ''));
+          
+        console.log(`🔍 [FIND-CANDIDATES] ${candidatePhones.length} candidatos encontrados por busca`);
+      }
+      
+      console.log(`✅ [FIND-CANDIDATES] Total de candidatos para cadência: ${candidatePhones.length}`);
+      console.log(`📱 [FIND-CANDIDATES] Números: ${candidatePhones.join(', ')}`);
+      
+      return candidatePhones;
+      
+    } catch (error) {
+      console.error(`❌ [FIND-CANDIDATES] Erro ao buscar candidatos da lista:`, error);
+      return [];
     }
   }
 
