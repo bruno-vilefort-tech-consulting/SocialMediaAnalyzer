@@ -69,6 +69,15 @@ class InteractiveInterviewService {
         console.error(`❌ [USER-CADENCE] FALHA NO ISOLAMENTO DETECTADA!`);
       }
       
+      // ✅ PROCESSAR cadência imediatamente após ativação
+      console.log(`🔄 [USER-CADENCE] Processando cadência imediata adicional para garantir execução...`);
+      try {
+        await userIsolatedRoundRobin.processUserCadence(userId, clientId);
+        console.log(`✅ [USER-CADENCE] Cadência imediata processada com sucesso para usuário ${userId}`);
+      } catch (error) {
+        console.error(`❌ [USER-CADENCE] Erro ao processar cadência imediata:`, error);
+      }
+      
     } catch (error) {
       console.error(`❌ [USER-CADENCE] Erro ao ativar cadência imediata para ${phone}:`, error);
     }
