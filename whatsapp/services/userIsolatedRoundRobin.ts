@@ -328,10 +328,8 @@ class UserIsolatedRoundRobin {
         console.log(`🔄 [USER-ISOLATED-RR] Processando candidato ${i+1}/${distribution.candidates.length}: ${candidatePhone}`);
         
         try {
-          // Mensagem personalizada para cadência imediata
-          const message = userConfig?.immediateMode 
-            ? `🎯 CADÊNCIA IMEDIATA: Olá! Você respondeu "1" e sua cadência foi ativada em 500ms. Esta é uma mensagem do sistema de Round Robin isolado por usuário.`
-            : `Mensagem para ${candidatePhone}`;
+          // Mensagem simples para cadência (removida mensagem indesejada)
+          const message = `Mensagem para ${candidatePhone}`;
           
           console.log(`📤 [USER-ISOLATED-RR] Enviando mensagem para ${candidatePhone} via slot ${distribution.slotNumber}`);
           console.log(`📝 [USER-ISOLATED-RR] Mensagem: "${message}"`);
