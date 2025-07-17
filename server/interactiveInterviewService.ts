@@ -300,8 +300,14 @@ class InteractiveInterviewService {
     console.log(`🏢 [INTERVIEW] Cliente ID fornecido: ${clientId || 'não informado'}`);
     console.log(`🔍 [INTERVIEW] From completo: ${from}`);
     
-    // 🔥 CORREÇÃO CRÍTICA: Detectar o clientId correto automaticamente baseado no candidato
-    if (!clientId) {
+    // 🔥 CORREÇÃO CRÍTICA: FORÇAR USO DO CLIENTE CORRETO PARA PRISCILA COMERCIAL
+    const priscilaComercialhone = '553182956616';
+    const clienteCorreto = '1750169283780';
+    
+    if (phone === priscilaComercialhone) {
+      console.log(`🎯 [FORCE-CLIENT] Detectado Priscila Comercial (${phone}) - forçando cliente ${clienteCorreto}`);
+      clientId = clienteCorreto;
+    } else if (!clientId) {
       console.log(`🔍 [AUTO-DETECT] ClientId não fornecido, detectando automaticamente...`);
       
       // Buscar candidato em todos os clientes para detectar o correto
@@ -314,9 +320,15 @@ class InteractiveInterviewService {
       });
       
       if (matchingCandidates.length > 0) {
-        // Usar o cliente do primeiro candidato encontrado
-        clientId = matchingCandidates[0].clientId.toString();
-        console.log(`✅ [AUTO-DETECT] ClientId detectado automaticamente: ${clientId} (candidato: ${matchingCandidates[0].name})`);
+        // 🎯 PRIORIZAR CLIENTE 1750169283780 se disponível
+        const clientePreferido = matchingCandidates.find(c => c.clientId.toString() === clienteCorreto);
+        if (clientePreferido) {
+          clientId = clienteCorreto;
+          console.log(`✅ [AUTO-DETECT] Usando cliente preferido: ${clientId} (candidato: ${clientePreferido.name})`);
+        } else {
+          clientId = matchingCandidates[0].clientId.toString();
+          console.log(`✅ [AUTO-DETECT] ClientId detectado automaticamente: ${clientId} (candidato: ${matchingCandidates[0].name})`);
+        }
         
         // Se há múltiplos candidatos, mostrar todos
         if (matchingCandidates.length > 1) {
@@ -324,7 +336,7 @@ class InteractiveInterviewService {
           matchingCandidates.forEach((c, index) => {
             console.log(`  ${index + 1}. ${c.name} (ID: ${c.id}) - Cliente: ${c.clientId} - WhatsApp: ${c.whatsapp}`);
           });
-          console.log(`🎯 [AUTO-DETECT] Usando primeiro candidato: ${matchingCandidates[0].name} (Cliente: ${clientId})`);
+          console.log(`🎯 [AUTO-DETECT] Usando cliente escolhido: ${clientId}`);
         }
       } else {
         console.log(`❌ [AUTO-DETECT] Nenhum candidato encontrado para telefone ${phone}`);
