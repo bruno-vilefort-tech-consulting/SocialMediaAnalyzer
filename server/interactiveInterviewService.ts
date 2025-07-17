@@ -849,7 +849,14 @@ class InteractiveInterviewService {
 
     console.log(`📊 [AUDIO] Status da entrevista atualizado: pergunta ${interview.currentQuestion + 1}/${interview.questions.length}`);
 
-    // Enviar confirmação
+    // 🔥 CORREÇÃO CRÍTICA: Verificar se ainda há perguntas antes de enviar confirmação
+    if (interview.currentQuestion >= interview.questions.length) {
+      console.log(`🎉 [AUDIO] Todas as perguntas foram respondidas! Finalizando entrevista...`);
+      await this.finishInterview(phone, interview);
+      return;
+    }
+
+    // Enviar confirmação apenas se houver mais perguntas
     await this.sendMessage(from, `✅ Resposta recebida! Preparando próxima pergunta...`, interview.clientId);
     
     setTimeout(async () => {
