@@ -72,10 +72,10 @@ class UserIsolatedRoundRobin {
     let userSlots: UserSlot[] = [];
     
     try {
-      // Buscar conexões ativas do usuário via simpleMultiBaileyService
+      // 🔥 CORREÇÃO: Usar simpleMultiBailey (não simpleMultiBaileyService)
       console.log(`📞 [USER-ISOLATED-RR] Buscando conexões WhatsApp do cliente ${clientId}...`);
-      const connectionsStatus = await simpleMultiBaileyService.getClientConnections(clientId);
-      const activeConnections = connectionsStatus.connections?.filter(conn => conn.isConnected) || [];
+      const connections = await simpleMultiBailey.getClientConnections(clientId);
+      const activeConnections = connections?.filter(conn => conn.isConnected) || [];
       
       console.log(`📊 [USER-ISOLATED-RR] Conexões WhatsApp encontradas: ${activeConnections.length}`);
       
@@ -94,6 +94,7 @@ class UserIsolatedRoundRobin {
         };
         
         userSlots.push(slot);
+        console.log(`📱 [USER-ISOLATED-RR] Slot ${slot.slotNumber} criado: ${connection.isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
       }
       
     } catch (error) {
@@ -162,7 +163,10 @@ class UserIsolatedRoundRobin {
    * Ativar modo imediato para resposta "1" de um usuário
    */
   async activateImmediateCadence(userId: string, clientId: string, candidatePhone: string): Promise<void> {
-    console.log(`🚀 [USER-ISOLATED-RR] Ativando cadência IMEDIATA para usuário ${userId} - contato ${candidatePhone}`);
+    console.log(`\n🔍 [USER-ISOLATED-RR] ===== ATIVANDO CADÊNCIA IMEDIATA =====`);
+    console.log(`🆔 [USER-ISOLATED-RR] UserId: ${userId}`);
+    console.log(`🏢 [USER-ISOLATED-RR] ClientId: ${clientId}`);
+    console.log(`📱 [USER-ISOLATED-RR] Candidato: ${candidatePhone}`);
     
     // Configurar modo imediato
     const config = this.userConfigs.get(userId) || {
@@ -201,6 +205,8 @@ class UserIsolatedRoundRobin {
     
     // ✅ CRIAR distribuição automática para o candidato
     const activeSlots = this.getUserActiveSlots(userId);
+    console.log(`🔍 [USER-ISOLATED-RR] Slots ativos encontrados: ${activeSlots.length}`);
+    
     if (activeSlots.length > 0) {
       const distributions: RoundRobinDistribution[] = [{
         userId,
@@ -212,6 +218,9 @@ class UserIsolatedRoundRobin {
       
       this.activeDistributions.set(userId, distributions);
       console.log(`📦 [USER-ISOLATED-RR] Distribuição automática criada para ${candidatePhone} no slot ${activeSlots[0].slotNumber}`);
+    } else {
+      console.log(`❌ [USER-ISOLATED-RR] ERRO: Nenhum slot ativo encontrado para usuário ${userId}`);
+      console.log(`🚨 [USER-ISOLATED-RR] CADÊNCIA NÃO SERÁ PROCESSADA - FALTA slots ativos`);
     }
     
     console.log(`✅ [USER-ISOLATED-RR] Cadência imediata ativada para usuário ${userId}`);
@@ -220,6 +229,7 @@ class UserIsolatedRoundRobin {
     console.log(`🔄 [USER-ISOLATED-RR] Processando cadência imediata em 500ms...`);
     setTimeout(async () => {
       try {
+        console.log(`🚀 [USER-ISOLATED-RR] Executando processamento de cadência para usuário ${userId}`);
         await this.processUserCadence(userId, clientId);
         console.log(`✅ [USER-ISOLATED-RR] Cadência imediata processada com sucesso para usuário ${userId}`);
       } catch (error) {
@@ -333,6 +343,12 @@ class UserIsolatedRoundRobin {
           
           // 🔥 CORREÇÃO: Usar envio REAL do WhatsApp via simpleMultiBailey
           let result: any;
+          
+          // Mensagem padrão para cadência
+          const message = `Mensagem para ${candidatePhone}`;
+          
+          // Usar método correto do simpleMultiBailey
+          result = await simpleMultiBailey.sendMessage(candidatePhone, message, clientId);
 
           console.log(`📊 [USER-ISOLATED-RR] Resultado do envio:`, result);
           

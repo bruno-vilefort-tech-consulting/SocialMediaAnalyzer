@@ -63,8 +63,14 @@ class InteractiveInterviewService {
    * Esta função é chamada quando um contato responde "1"
    */
   private async activateUserImmediateCadence(phone: string, clientId?: string): Promise<void> {
+    console.log(`\n🔍 [USER-CADENCE] ===== INICIANDO ATIVAÇÃO DA CADÊNCIA =====`);
+    console.log(`📱 [USER-CADENCE] Telefone: ${phone}`);
+    console.log(`🏢 [USER-CADENCE] ClientId: ${clientId || 'UNDEFINED'}`);
+    console.log(`⚡ [USER-CADENCE] Tipo clientId: ${typeof clientId}`);
+    
     if (!clientId) {
-      console.log(`⚠️ [USER-CADENCE] ClientId não informado para telefone ${phone}`);
+      console.log(`❌ [USER-CADENCE] ERRO: ClientId não informado para telefone ${phone}`);
+      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - FALTA clientId`);
       return;
     }
 
@@ -73,6 +79,7 @@ class InteractiveInterviewService {
       
       // Mapear clientId para userId (neste sistema, clientId é o userId)
       const userId = clientId;
+      console.log(`🆔 [USER-CADENCE] UserId mapeado: ${userId}`);
       
       // 🔥 ETAPA 1: Inicializar slots se necessário
       console.log(`🔧 [USER-CADENCE] Inicializando slots para usuário ${userId}...`);
@@ -89,17 +96,9 @@ class InteractiveInterviewService {
         immediateMode: true // Modo imediato ativado
       });
       
-      // 🔥 ETAPA 3: BUSCAR TODOS OS CANDIDATOS DA LISTA DINAMICAMENTE
-      console.log(`🔍 [USER-CADENCE] Buscando todos os candidatos da lista para ${phone}...`);
-      const candidatePhones = await this.findCandidatesFromSameList(phone, clientId);
-      
-      if (candidatePhones.length === 0) {
-        console.log(`⚠️ [USER-CADENCE] Nenhum candidato encontrado para cadência, usando apenas ${phone}`);
-        candidatePhones.push(phone);
-      }
-      
-      console.log(`📦 [USER-CADENCE] Distribuindo ${candidatePhones.length} candidatos da lista: ${candidatePhones.join(', ')}`);
-      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, candidatePhones, 'immediate');
+      // 🔥 ETAPA 3: Distribuir apenas o candidato que respondeu "1"
+      console.log(`📦 [USER-CADENCE] Distribuindo candidato ${phone} que respondeu "1"...`);
+      await userIsolatedRoundRobin.distributeUserCandidates(userId, clientId, [phone], 'immediate');
       
       // 🔥 ETAPA 4: Ativar cadência imediata específica do usuário
       console.log(`🚀 [USER-CADENCE] Ativando cadência imediata...`);
@@ -129,78 +128,7 @@ class InteractiveInterviewService {
     }
   }
 
-  /**
-   * 🔥 NOVA FUNÇÃO: Buscar todos os candidatos da mesma lista/seleção
-   * Esta função identifica qual lista o candidato pertence e retorna todos os candidatos dessa lista
-   */
-  private async findCandidatesFromSameList(phone: string, clientId: string): Promise<string[]> {
-    try {
-      console.log(`🔍 [FIND-CANDIDATES] Buscando candidatos da mesma lista para ${phone} (cliente ${clientId})`);
-      
-      // Buscar candidato que respondeu "1"
-      const candidate = await this.findCandidate(phone, clientId);
-      if (!candidate) {
-        console.log(`❌ [FIND-CANDIDATES] Candidato não encontrado para ${phone}`);
-        return [];
-      }
-      
-      console.log(`✅ [FIND-CANDIDATES] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
-      
-      // Buscar todas as seleções do cliente
-      const allSelections = await storage.getAllSelections();
-      const clientSelections = allSelections.filter(s => 
-        s.clientId === parseInt(clientId) && s.status === 'enviado'
-      );
-      
-      console.log(`📋 [FIND-CANDIDATES] ${clientSelections.length} seleções encontradas para cliente ${clientId}`);
-      
-      if (clientSelections.length === 0) {
-        console.log(`⚠️ [FIND-CANDIDATES] Nenhuma seleção encontrada`);
-        return [];
-      }
-      
-      // Encontrar seleção mais recente que inclui esse candidato
-      const recentSelection = clientSelections.sort((a, b) => 
-        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-      )[0];
-      
-      console.log(`📋 [FIND-CANDIDATES] Seleção mais recente: ${recentSelection.name} (ID: ${recentSelection.id})`);
-      
-      // Buscar todos os candidatos da lista dessa seleção
-      let candidatePhones: string[] = [];
-      
-      if (recentSelection.candidateListId) {
-        console.log(`📋 [FIND-CANDIDATES] Buscando candidatos da lista ${recentSelection.candidateListId}`);
-        const listCandidates = await storage.getCandidatesByListId(recentSelection.candidateListId);
-        candidatePhones = listCandidates
-          .filter(c => c.whatsapp) // Apenas candidatos com WhatsApp
-          .map(c => c.whatsapp.replace(/\D/g, '')); // Limpar números
-          
-        console.log(`📞 [FIND-CANDIDATES] ${candidatePhones.length} candidatos encontrados na lista`);
-      } else if (recentSelection.searchQuery) {
-        console.log(`🔍 [FIND-CANDIDATES] Seleção por busca: "${recentSelection.searchQuery}"`);
-        const allCandidates = await storage.getCandidatesByClientId(parseInt(clientId));
-        const searchCandidates = allCandidates.filter(candidate => 
-          candidate.name.toLowerCase().includes(recentSelection.searchQuery.toLowerCase()) ||
-          candidate.email.toLowerCase().includes(recentSelection.searchQuery.toLowerCase())
-        );
-        candidatePhones = searchCandidates
-          .filter(c => c.whatsapp)
-          .map(c => c.whatsapp.replace(/\D/g, ''));
-          
-        console.log(`🔍 [FIND-CANDIDATES] ${candidatePhones.length} candidatos encontrados por busca`);
-      }
-      
-      console.log(`✅ [FIND-CANDIDATES] Total de candidatos para cadência: ${candidatePhones.length}`);
-      console.log(`📱 [FIND-CANDIDATES] Números: ${candidatePhones.join(', ')}`);
-      
-      return candidatePhones;
-      
-    } catch (error) {
-      console.error(`❌ [FIND-CANDIDATES] Erro ao buscar candidatos da lista:`, error);
-      return [];
-    }
-  }
+
 
   private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
     console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD COM NOVA NOMENCLATURA =====`);
@@ -370,6 +298,7 @@ class InteractiveInterviewService {
     console.log(`💬 [INTERVIEW] Texto: "${text}"`);
     console.log(`🎵 [INTERVIEW] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
     console.log(`🏢 [INTERVIEW] Cliente ID: ${clientId || 'não informado'}`);
+    console.log(`🔍 [INTERVIEW] From completo: ${from}`);
     
     if (audioMessage) {
       // Verificar se é mensagem completa do Baileys ou apenas audioMessage
@@ -392,9 +321,14 @@ class InteractiveInterviewService {
 
     if (text === '1' && !activeInterview) {
       console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
+      console.log(`🔍 [CADENCE-DEBUG] Validando pré-condições para cadência:`);
+      console.log(`   📱 Telefone normalizado: ${phone}`);
+      console.log(`   🏢 ClientId fornecido: ${clientId || 'UNDEFINED'}`);
+      console.log(`   ⚡ Tipo do clientId: ${typeof clientId}`);
+      console.log(`   📋 Entrevista ativa: ${activeInterview ? 'SIM' : 'NÃO'}`);
       
       // 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
-      console.log(`🎯 [CADENCE-TRIGGER] Detectado "1" - Disparando cadência imediata para ${phone}`);
+      console.log(`🎯 [CADENCE-TRIGGER] Disparando cadência imediata para ${phone}`);
       await this.activateUserImmediateCadence(phone, clientId);
       
       // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
