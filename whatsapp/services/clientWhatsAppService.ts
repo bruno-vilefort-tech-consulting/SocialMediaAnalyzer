@@ -15,18 +15,15 @@ interface WhatsAppClientConfig {
 
 class ClientWhatsAppService {
   constructor() {
-    console.log(`🔧 [CLIENT-WA] ClientWhatsAppService inicializado`);
   }
 
   async getConnectionStatus(clientId: string): Promise<WhatsAppClientConfig> {
-    console.log(`🔍 [CLIENT-WA] Verificando status para cliente ${clientId} usando ActiveSessionDetector`);
 
     try {
       // PRIORIDADE 1: Detector de emergência (evita frustração do cliente)
       const emergencyDetection = await emergencyConnectionDetector.detectEmergencyConnection(clientId);
       
       if (emergencyDetection.isConnected && emergencyDetection.confidence === 'high') {
-        console.log(`🚨 [CLIENT-WA] CONEXÃO FORÇADA VIA EMERGÊNCIA - ${emergencyDetection.reason}`);
         return {
           isConnected: true,
           qrCode: null,
@@ -41,7 +38,6 @@ class ClientWhatsAppService {
       const activeConnection = await activeSessionDetector.detectActiveConnection(clientId);
       
       if (activeConnection.isConnected) {
-        console.log(`✅ [CLIENT-WA] Conexão ativa detectada via ${activeConnection.source} - Número: ${activeConnection.phoneNumber}`);
         return {
           isConnected: true,
           qrCode: null,
@@ -53,13 +49,11 @@ class ClientWhatsAppService {
       }
       
       // Se não há conexão ativa, verificar se há QR Code disponível
-      console.log(`🔍 [CLIENT-WA] Nenhuma conexão ativa, verificando QR Codes...`);
       
       // PRIORIDADE 1: Verificar Baileys para QR Code
       try {
-        const baileysStatus = await whatsappBaileyService.getConnectionStatus(clientId);
+        const baileysStatus = await whatsappBaileyService.getConnection(clientId);
         if (baileysStatus?.qrCode) {
-          console.log(`📱 [CLIENT-WA] Baileys QR Code disponível`);
           return {
             isConnected: false,
             qrCode: baileysStatus.qrCode,
@@ -70,13 +64,11 @@ class ClientWhatsAppService {
           };
         }
       } catch (error) {
-        console.log(`⚠️ [CLIENT-WA] Baileys não disponível, tentando outras opções...`);
       }
       
       // PRIORIDADE 2: Verificar WppConnect para QR Code
       const wppStatus = await wppConnectService.getConnectionStatus(clientId);
       if (wppStatus.qrCode) {
-        console.log(`📱 [CLIENT-WA] WppConnect QR Code disponível`);
         return {
           isConnected: false,
           qrCode: wppStatus.qrCode,
@@ -90,7 +82,6 @@ class ClientWhatsAppService {
       // PRIORIDADE 3: Verificar Evolution API para QR Code (fallback)
       const evolutionStatus = await evolutionApiService.getConnectionStatus(clientId);
       if (evolutionStatus.qrCode) {
-        console.log(`📱 [CLIENT-WA] Evolution API QR Code disponível`);
         return {
           isConnected: false,
           qrCode: evolutionStatus.qrCode,
@@ -101,7 +92,6 @@ class ClientWhatsAppService {
         };
       }
 
-      console.log(`❌ [CLIENT-WA] Nenhuma conexão ou QR Code encontrado para cliente ${clientId}`);
       return {
         isConnected: false,
         qrCode: null,
@@ -111,7 +101,6 @@ class ClientWhatsAppService {
       };
       
     } catch (error) {
-      console.error(`❌ [CLIENT-WA] Erro ao verificar status:`, error);
       return {
         isConnected: false,
         qrCode: null,
@@ -123,14 +112,12 @@ class ClientWhatsAppService {
   }
 
   async connectClient(clientId: string): Promise<{ success: boolean; qrCode?: string; message?: string }> {
-    console.log(`🔗 [CLIENT-WA] Conectando ${clientId}`);
     
     try {
       // Verificar se já está conectado legitimamente
       const currentStatus = await this.getConnectionStatus(clientId);
       
       if (currentStatus.isConnected && currentStatus.phoneNumber) {
-        console.log(`⚠️ [CLIENT-WA] WhatsApp já conectado em ${currentStatus.phoneNumber}`);
         return {
           success: false,
           message: `WhatsApp já conectado no número ${currentStatus.phoneNumber}. Use "Desconectar" primeiro se quiser trocar de número.`
@@ -142,7 +129,6 @@ class ClientWhatsAppService {
         const baileysResult = await whatsappBaileyService.initWhatsApp(clientId);
         
         if (baileysResult?.qrCode) {
-          console.log(`✅ [CLIENT-WA] Baileys conectado com QR Code`);
           return {
             success: true,
             qrCode: baileysResult.qrCode,
@@ -150,14 +136,12 @@ class ClientWhatsAppService {
           };
         }
       } catch (error: any) {
-        console.log(`⚠️ [CLIENT-WA] Baileys falhou, tentando WppConnect...`);
       }
 
       // PRIORIDADE 2: Tentar conectar via WppConnect
       const wppResult = await wppConnectService.createSession(clientId);
       
       if (wppResult.success && wppResult.qrCode) {
-        console.log(`✅ [CLIENT-WA] WppConnect conectado`);
         return {
           success: true,
           qrCode: wppResult.qrCode,
@@ -169,7 +153,6 @@ class ClientWhatsAppService {
       const evolutionResult = await evolutionApiService.connectClient(clientId);
       
       if (evolutionResult.success) {
-        console.log(`✅ [CLIENT-WA] Evolution conectado com novo QR Code`);
         return evolutionResult;
       }
       
@@ -179,7 +162,6 @@ class ClientWhatsAppService {
       };
       
     } catch (error: any) {
-      console.error(`❌ [CLIENT-WA] Erro ao conectar:`, error);
       return {
         success: false,
         message: `Erro de conexão: ${error.message}`
@@ -188,7 +170,6 @@ class ClientWhatsAppService {
   }
 
   async disconnectClient(clientId: string): Promise<{ success: boolean; message?: string }> {
-    console.log(`🔌 [CLIENT-WA] Desconectando ${clientId}`);
     
     try {
       // Desconectar de ambos os serviços
@@ -201,7 +182,6 @@ class ClientWhatsAppService {
       };
       
     } catch (error: any) {
-      console.error(`❌ [CLIENT-WA] Erro ao desconectar:`, error);
       return {
         success: false,
         message: `Erro de desconexão: ${error.message}`
@@ -214,7 +194,6 @@ class ClientWhatsAppService {
     messageId?: string;
     error?: string;
   }> {
-    console.log(`📤 [CLIENT-WA] Enviando mensagem para ${phoneNumber} via cliente ${clientId}`);
     
     try {
       // Verificar conexão ativa primeiro
@@ -240,7 +219,6 @@ class ClientWhatsAppService {
       return evolutionResult;
       
     } catch (error: any) {
-      console.error(`❌ [CLIENT-WA] Erro ao enviar mensagem:`, error);
       return {
         success: false,
         error: `Erro de envio: ${error.message}`

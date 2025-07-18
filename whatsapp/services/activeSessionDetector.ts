@@ -28,37 +28,30 @@ export class ActiveSessionDetector {
   constructor() {
     this.tokensPath = path.join(process.cwd(), 'tokens');
     this.sessionsPath = path.join(process.cwd(), 'whatsapp-sessions');
-    console.log(`🔍 [DETECTOR] Iniciado - Tokens: ${this.tokensPath}, Sessions: ${this.sessionsPath}`);
   }
 
   /**
    * Detecta qualquer conexão WhatsApp ativa para um cliente
    */
   async detectActiveConnection(clientId: string): Promise<ActiveConnection> {
-    console.log(`🔍 [DETECTOR] Verificando conexões ativas para cliente ${clientId}`);
-
     // 1. Verificar WppConnect em memória
     const wppConnection = await this.checkWppConnectInMemory(clientId);
     if (wppConnection.isConnected) {
-      console.log(`✅ [DETECTOR] WppConnect ativo detectado para ${clientId}`);
       return wppConnection;
     }
 
     // 2. Verificar sessões persistentes em disco
     const persistentConnection = await this.checkPersistentSessions(clientId);
     if (persistentConnection.isConnected) {
-      console.log(`✅ [DETECTOR] Sessão persistente detectada para ${clientId}`);
       return persistentConnection;
     }
 
     // 3. Verificar Evolution API
     const evolutionConnection = await this.checkEvolutionAPI(clientId);
     if (evolutionConnection.isConnected) {
-      console.log(`✅ [DETECTOR] Evolution API ativa para ${clientId}`);
       return evolutionConnection;
     }
 
-    console.log(`❌ [DETECTOR] Nenhuma conexão ativa encontrada para ${clientId}`);
     return {
       isConnected: false,
       source: 'none'
@@ -74,11 +67,6 @@ export class ActiveSessionDetector {
       
       for (const key of possibleKeys) {
         const sessionStatus = wppConnectService.getSessionStatus(key);
-        console.log(`📋 [DETECTOR] WppConnect status ${key}:`, {
-          exists: !!sessionStatus,
-          isConnected: sessionStatus?.isConnected,
-          hasClient: !!sessionStatus?.client
-        });
         
         if (sessionStatus && sessionStatus.isConnected && sessionStatus.client) {
           let phoneNumber = sessionStatus.phoneNumber;
@@ -90,10 +78,8 @@ export class ActiveSessionDetector {
               const hostDevice = await sessionStatus.client.getHostDevice();
               if (hostDevice?.wid?.user) {
                 phoneNumber = `+${hostDevice.wid.user}`;
-                console.log(`📱 [DETECTOR] Número extraído via hostDevice: ${phoneNumber}`);
               } else if (hostDevice?.id?.user) {
                 phoneNumber = `+${hostDevice.id.user}`;
-                console.log(`📱 [DETECTOR] Número extraído via hostDevice.id: ${phoneNumber}`);
               }
               
               // Método 2: getWid (fallback)
@@ -101,7 +87,6 @@ export class ActiveSessionDetector {
                 const wid = await sessionStatus.client.getWid();
                 if (wid?.user) {
                   phoneNumber = `+${wid.user}`;
-                  console.log(`📱 [DETECTOR] Número extraído via getWid: ${phoneNumber}`);
                 }
               }
               
@@ -109,14 +94,12 @@ export class ActiveSessionDetector {
               if (!phoneNumber) {
                 if (sessionStatus.client.session?.wid?.user) {
                   phoneNumber = `+${sessionStatus.client.session.wid.user}`;
-                  console.log(`📱 [DETECTOR] Número extraído via sessão interna: ${phoneNumber}`);
                 } else if (sessionStatus.client.info?.wid?.user) {
                   phoneNumber = `+${sessionStatus.client.info.wid.user}`;
-                  console.log(`📱 [DETECTOR] Número extraído via info.wid: ${phoneNumber}`);
                 }
               }
             } catch (e: any) {
-              console.log(`⚠️ [DETECTOR] Erro ao obter número do telefone:`, e.message);
+              // Error silently handled
             }
           }
           
@@ -130,7 +113,7 @@ export class ActiveSessionDetector {
         }
       }
     } catch (error: any) {
-      console.log(`❌ [DETECTOR] Erro WppConnect:`, error.message);
+      // Error silently handled
     }
 
     return { isConnected: false, source: 'none' };
@@ -150,8 +133,6 @@ export class ActiveSessionDetector {
 
       for (const sessionPath of possiblePaths) {
         if (fs.existsSync(sessionPath)) {
-          console.log(`📁 [DETECTOR] Sessão persistente encontrada: ${sessionPath}`);
-          
           // Verificar se há arquivos de sessão válidos
           const files = fs.readdirSync(sessionPath);
           const hasValidSession = files.some(file => 
@@ -161,8 +142,6 @@ export class ActiveSessionDetector {
           );
           
           if (hasValidSession) {
-            console.log(`✅ [DETECTOR] Sessão válida em ${sessionPath}`);
-            
             // Tentar ler informações da sessão
             let phoneNumber = null;
             try {
@@ -178,7 +157,7 @@ export class ActiveSessionDetector {
                 }
               }
             } catch (e: any) {
-              console.log(`⚠️ [DETECTOR] Erro ao ler sessão:`, e.message);
+              // Error silently handled
             }
             
             return {
@@ -191,7 +170,7 @@ export class ActiveSessionDetector {
         }
       }
     } catch (error: any) {
-      console.log(`❌ [DETECTOR] Erro sessões persistentes:`, error.message);
+      // Error silently handled
     }
 
     return { isConnected: false, source: 'none' };
@@ -213,7 +192,7 @@ export class ActiveSessionDetector {
         };
       }
     } catch (error: any) {
-      console.log(`❌ [DETECTOR] Erro Evolution API:`, error.message);
+      // Error silently handled
     }
 
     return { isConnected: false, source: 'none' };
@@ -227,7 +206,7 @@ export class ActiveSessionDetector {
     
     // Verificar todas as sessões WppConnect
     const wppSessions = wppConnectService.getActiveSessions();
-    for (const [sessionId, session] of wppSessions) {
+    for (const [sessionId, session] of Array.from(wppSessions)) {
       if (session.isConnected) {
         const clientId = sessionId.replace('client_', '');
         connections[clientId] = {

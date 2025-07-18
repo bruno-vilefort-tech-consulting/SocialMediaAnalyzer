@@ -24,7 +24,6 @@ export class WhatsAppManager {
 
   constructor() {
     // Initialize manager without auto-loading connections to prevent startup loops
-    console.log('🚀 WhatsApp Manager criado - inicialização sob demanda');
     
     // Garantir que o diretório de sessões existe
     const sessionsDir = path.join(process.cwd(), 'whatsapp-sessions');
@@ -34,7 +33,6 @@ export class WhatsAppManager {
   }
 
   private async initializeManager() {
-    console.log('🚀 Inicializando WhatsApp Manager com Firebase');
     
     // Carregar conexões ativas do Firebase apenas quando necessário
     await this.loadActiveConnections();
@@ -45,17 +43,13 @@ export class WhatsAppManager {
       const connectionsRef = collection(firebaseDb, 'whatsappConnections');
       const snapshot = await getDocs(connectionsRef);
       
-      console.log(`📱 Carregando ${snapshot.size} conexões do Firebase`);
-      
       for (const docSnap of snapshot.docs) {
         const connection = docSnap.data() as WhatsAppConnection;
         if (connection.status === 'connected') {
-          console.log(`🔄 Tentando restaurar conexão: ${connection.clientName}`);
           await this.restoreConnection(connection);
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar conexões:', error);
     }
   }
 
@@ -64,7 +58,6 @@ export class WhatsAppManager {
       const authDir = path.join(process.cwd(), 'whatsapp-sessions', `client_${connection.clientId}`);
       
       if (!fs.existsSync(authDir)) {
-        console.log(`⚠️ Diretório de autenticação não encontrado para ${connection.clientName}`);
         await this.updateConnectionStatus(connection.id, 'disconnected');
         return;
       }
@@ -89,9 +82,7 @@ export class WhatsAppManager {
       this.activeConnections.set(connection.id, activeConnection);
       this.setupSocketEvents(connection.id, socket, saveCreds);
 
-      console.log(`✅ Conexão restaurada para ${connection.clientName}`);
     } catch (error) {
-      console.error(`❌ Erro ao restaurar conexão ${connection.clientName}:`, error);
       await this.updateConnectionStatus(connection.id, 'disconnected');
     }
   }
@@ -99,7 +90,6 @@ export class WhatsAppManager {
   async createConnection(clientId: string, clientName: string): Promise<string> {
     const connectionId = `client_${clientId}_${Date.now()}`;
     
-    console.log(`📱 Criando nova conexão WhatsApp para ${clientName} (ID: ${connectionId})`);
 
     try {
       // Criar diretório de autenticação específico para o cliente
@@ -143,10 +133,8 @@ export class WhatsAppManager {
       this.activeConnections.set(connectionId, activeConnection);
       this.setupSocketEvents(connectionId, socket, saveCreds);
 
-      console.log(`📱 QR Code gerado para ${clientName}`);
       return connectionId;
     } catch (error) {
-      console.error(`❌ Erro ao criar conexão para ${clientName}:`, error);
       throw new Error(`Falha ao criar conexão: ${error.message}`);
     }
   }
@@ -159,7 +147,6 @@ export class WhatsAppManager {
       const { connection: conn, lastDisconnect, qr } = update;
 
       if (qr) {
-        console.log(`🔄 QR Code recebido para ${connection.clientName}`);
         try {
           const qrDataUrl = await QRCode.toDataURL(qr);
           connection.qrCode = qrDataUrl;
@@ -174,13 +161,11 @@ export class WhatsAppManager {
           const listeners = this.qrListeners.get(connectionId) || [];
           listeners.forEach(listener => listener(qrDataUrl));
         } catch (error) {
-          console.error('❌ Erro ao gerar QR Code:', error);
         }
       }
 
       if (conn === 'close') {
         const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log(`🔌 Conexão fechada para ${connection.clientName}. Reconectar: ${shouldReconnect}`);
         
         if (shouldReconnect) {
           setTimeout(() => this.createConnection(connection.clientId, connection.clientName), 3000);
@@ -189,7 +174,6 @@ export class WhatsAppManager {
           this.activeConnections.delete(connectionId);
         }
       } else if (conn === 'open') {
-        console.log(`✅ WhatsApp conectado para ${connection.clientName}`);
         connection.isConnected = true;
         connection.phoneNumber = socket.user?.id?.split(':')[0] || undefined;
         
@@ -229,12 +213,10 @@ export class WhatsAppManager {
         if (phoneNumber) connection.phoneNumber = phoneNumber;
       }
     } catch (error) {
-      console.error('❌ Erro ao atualizar status da conexão:', error);
     }
   }
 
   async disconnectClient(connectionId: string): Promise<void> {
-    console.log(`🔌 Desconectando cliente: ${connectionId}`);
     
     const connection = this.activeConnections.get(connectionId);
     if (connection) {
@@ -242,7 +224,6 @@ export class WhatsAppManager {
         await connection.socket?.logout();
         connection.socket?.end();
       } catch (error) {
-        console.log('⚠️ Erro ao desconectar socket:', error);
       }
       
       this.activeConnections.delete(connectionId);
@@ -252,7 +233,6 @@ export class WhatsAppManager {
   }
 
   async deleteConnection(connectionId: string): Promise<void> {
-    console.log(`🗑️ Deletando conexão: ${connectionId}`);
     
     // Desconectar primeiro
     await this.disconnectClient(connectionId);
@@ -289,7 +269,6 @@ export class WhatsAppManager {
     const connection = this.activeConnections.get(connectionId);
     
     if (!connection || !connection.isConnected) {
-      console.log(`❌ Conexão ${connectionId} não está ativa`);
       return false;
     }
 
@@ -301,12 +280,9 @@ export class WhatsAppManager {
         ? formattedPhoneNumber 
         : `${formattedPhoneNumber}@s.whatsapp.net`;
 
-      console.log(`📱 Enviando mensagem para: ${phoneNumber} → ${formattedPhoneNumber}`);
       await connection.socket.sendMessage(whatsappNumber, { text: message });
-      console.log(`✅ Mensagem enviada via ${connection.clientName} para ${formattedPhoneNumber}`);
       return true;
     } catch (error) {
-      console.error(`❌ Erro ao enviar mensagem via ${connection.clientName}:`, error);
       return false;
     }
   }
@@ -332,7 +308,6 @@ export class WhatsAppManager {
         ...doc.data()
       } as WhatsAppConnection));
     } catch (error) {
-      console.error('❌ Erro ao buscar conexões:', error);
       return [];
     }
   }

@@ -73,14 +73,14 @@ export default function CandidatesPage() {
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCandidateForm, setShowCandidateForm] = useState(false);
-  
+
   // Estado para edição de lista
   const [editingList, setEditingList] = useState<CandidateList | null>(null);
   const [showEditListForm, setShowEditListForm] = useState(false);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
   // Estados para adicionar candidato existente
   const [showExistingCandidatesDialog, setShowExistingCandidatesDialog] = useState(false);
   const [existingCandidatesSearch, setExistingCandidatesSearch] = useState("");
@@ -89,11 +89,11 @@ export default function CandidatesPage() {
   // Estados de paginação
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
-  
+
   // Estados de paginação para listas
   const [currentListPage, setCurrentListPage] = useState(1);
   const listsPerPage = 10;
-  
+
   // Estado para seleção de cliente no upload (apenas para masters)
   const [uploadClientId, setUploadClientId] = useState<string>('');
 
@@ -106,7 +106,7 @@ export default function CandidatesPage() {
 
 
   const { data: candidateLists = [], isLoading: listsLoading } = useQuery<CandidateList[]>({
-    queryKey: user?.role === 'master' && selectedClientFilter !== 'all' 
+    queryKey: user?.role === 'master' && selectedClientFilter !== 'all'
       ? ['/api/candidate-lists', { clientId: selectedClientFilter }]
       : ['/api/candidate-lists'],
     queryFn: async () => {
@@ -173,8 +173,6 @@ export default function CandidatesPage() {
       }
 
       const data = await response.json();
-      console.log('🔍 Memberships recebidos do backend:', data);
-      console.log('🔍 Total de memberships no frontend:', data?.length || 0);
       return Array.isArray(data) ? data : [];
     }
   });
@@ -182,7 +180,7 @@ export default function CandidatesPage() {
   // Query para buscar candidatos com isolamento total por cliente
   const candidatesQueryKey = user?.role === 'master' && selectedClientFilter !== 'all'
     ? ['/api/candidates', { clientId: selectedClientFilter }]
-    : user?.role === 'client' 
+    : user?.role === 'client'
       ? ['/api/candidates', { clientId: user.clientId }]
       : ['/api/candidates', { clientId: 'none' }]; // Master sem filtro = vazio
 
@@ -269,13 +267,13 @@ export default function CandidatesPage() {
 
   // Query para buscar candidatos existentes do mesmo cliente (excluindo os já na lista atual)
   const { data: existingCandidates = [], isLoading: existingCandidatesLoading } = useQuery<Candidate[]>({
-    queryKey: showExistingCandidatesDialog && selectedListId ? 
-      ['/api/candidates/available', { clientId: selectedList?.clientId, listId: selectedListId }] : 
+    queryKey: showExistingCandidatesDialog && selectedListId ?
+      ['/api/candidates/available', { clientId: selectedList?.clientId, listId: selectedListId }] :
       ['empty-existing'],
     enabled: showExistingCandidatesDialog && !!selectedListId && !!selectedList?.clientId,
     queryFn: async () => {
       if (!selectedListId || !selectedList?.clientId) return [];
-      
+
       const token = localStorage.getItem("auth_token");
       const headers: Record<string, string> = {};
 
@@ -309,7 +307,7 @@ export default function CandidatesPage() {
       const currentListCandidateIds = currentListCandidates.map((c: Candidate) => c.id);
 
       // Filtrar candidatos que não estão na lista atual
-      const availableCandidates = allClientCandidates.filter((candidate: Candidate) => 
+      const availableCandidates = allClientCandidates.filter((candidate: Candidate) =>
         !currentListCandidateIds.includes(candidate.id)
       );
 
@@ -330,7 +328,7 @@ export default function CandidatesPage() {
       // Filtro por termo de busca
       if (searchTerm.trim() === '') return true;
       return list.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             (list.description && list.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        (list.description && list.description.toLowerCase().includes(searchTerm.toLowerCase()));
     });
 
   // Paginação para listas
@@ -341,7 +339,7 @@ export default function CandidatesPage() {
   const paginatedLists = filteredCandidateLists.slice(listStartIndex, listEndIndex);
 
   // Candidatos exibidos baseado no modo de visualização
-  const candidatesData = viewMode === 'single' && selectedListId 
+  const candidatesData = viewMode === 'single' && selectedListId
     ? listCandidates
     : allCandidates;
 
@@ -361,7 +359,7 @@ export default function CandidatesPage() {
     }
 
     // Ordenar alfabeticamente por nome
-    return filtered.sort((a: Candidate, b: Candidate) => 
+    return filtered.sort((a: Candidate, b: Candidate) =>
       a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
     );
   }, [candidatesData, searchTerm]);
@@ -390,25 +388,23 @@ export default function CandidatesPage() {
     // Se master está vendo "Todos os clientes", contar apenas memberships válidos
     // (não temos candidatos carregados neste modo)
     if (user?.role === 'master' && selectedClientFilter === 'all') {
-      console.log(`📊 Lista ${listId}: ${listMemberships.length} memberships (modo todos os clientes)`);
       return listMemberships.length;
     }
 
     // Para filtro específico ou usuário cliente, validar contra candidatos reais
     const candidateIdsInList = listMemberships.map(membership => membership.candidateId);
-    const realCandidatesCount = allCandidates.filter(candidate => 
+    const realCandidatesCount = allCandidates.filter(candidate =>
       candidateIdsInList.includes(candidate.id)
     ).length;
 
-    console.log(`📊 Lista ${listId}: ${candidateIdsInList.length} memberships, ${realCandidatesCount} candidatos reais`);
     return realCandidatesCount;
   };
 
   // Forms
   const listForm = useForm<CandidateListFormData>({
     resolver: zodResolver(candidateListSchema),
-    defaultValues: { 
-      name: "", 
+    defaultValues: {
+      name: "",
       description: "",
       clientId: user?.role === 'client' ? user?.clientId || 0 : 0
     }
@@ -416,9 +412,9 @@ export default function CandidatesPage() {
 
   const candidateForm = useForm<CandidateFormData>({
     resolver: zodResolver(candidateSchema),
-    defaultValues: { 
-      name: "", 
-      email: "", 
+    defaultValues: {
+      name: "",
+      email: "",
       whatsapp: "",
       listId: 0,
       clientId: 0
@@ -478,7 +474,6 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      console.log('🚀 Enviando dados para API:', data);
       return await apiRequest('/api/candidates', 'POST', data);
     },
     onSuccess: () => {
@@ -490,7 +485,6 @@ export default function CandidatesPage() {
       toast({ title: "Candidato adicionado com sucesso!" });
     },
     onError: (error) => {
-      console.error('❌ Erro na mutation:', error);
       toast({ title: "Erro ao adicionar candidato", variant: "destructive" });
     }
   });
@@ -500,8 +494,6 @@ export default function CandidatesPage() {
       if (!editingCandidate) {
         throw new Error("Nenhum candidato selecionado para edição");
       }
-
-      console.log(`🔧 Atualizando candidato ${editingCandidate.id} com dados:`, data);
 
       const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);
 
@@ -513,8 +505,6 @@ export default function CandidatesPage() {
       return response;
     },
     onSuccess: () => {
-      console.log('✅ Candidato atualizado com sucesso!');
-
       // Invalidar todos os caches relevantes
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
       if (selectedListId) {
@@ -536,8 +526,6 @@ export default function CandidatesPage() {
       toast({ title: "Candidato atualizado com sucesso!" });
     },
     onError: (error: any) => {
-      console.error('❌ Erro na atualização:', error);
-
       // Se candidato não existe mais, limpar estado
       if (error.message && (error.message.includes('não encontrado') || error.message.includes('404'))) {
         setEditingCandidate(null);
@@ -549,12 +537,12 @@ export default function CandidatesPage() {
         }
       }
 
-      toast({ 
-        title: "Erro ao atualizar candidato", 
-        description: error.message && (error.message.includes('não encontrado') || error.message.includes('404')) ? 
-          "Candidato não existe mais no sistema" : 
+      toast({
+        title: "Erro ao atualizar candidato",
+        description: error.message && (error.message.includes('não encontrado') || error.message.includes('404')) ?
+          "Candidato não existe mais no sistema" :
           error.message || "Falha na atualização",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
@@ -566,10 +554,8 @@ export default function CandidatesPage() {
         throw new Error("Lista não selecionada");
       }
 
-      console.log(`🔗 Removendo candidato ${candidateId} da lista ${selectedListId}`);
-      
       const response = await apiRequest(`/api/candidate-list-memberships/${candidateId}/${selectedListId}`, 'DELETE');
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
         throw new Error(errorData.message || `Erro ${response.status}: ${response.statusText}`);
@@ -578,20 +564,17 @@ export default function CandidatesPage() {
       return response;
     },
     onSuccess: () => {
-      console.log('✅ Candidato removido da lista com sucesso!');
-      
       // Invalidar caches relevantes
       queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
-      
+
       toast({ title: "Candidato removido da lista com sucesso!" });
     },
     onError: (error: any) => {
-      console.error('❌ Erro ao remover candidato da lista:', error);
-      toast({ 
-        title: "Erro ao remover candidato da lista", 
+      toast({
+        title: "Erro ao remover candidato da lista",
         description: error.message || "Erro desconhecido",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
@@ -615,14 +598,14 @@ export default function CandidatesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
       queryClient.invalidateQueries({ queryKey: ['/api/candidates/available'] });
-      
+
       setShowExistingCandidatesDialog(false);
       setSelectedExistingCandidates([]);
       setExistingCandidatesSearch("");
-      
+
       const count = candidateIds.length;
-      toast({ 
-        title: `${count} candidato${count > 1 ? 's' : ''} adicionado${count > 1 ? 's' : ''} à lista com sucesso!` 
+      toast({
+        title: `${count} candidato${count > 1 ? 's' : ''} adicionado${count > 1 ? 's' : ''} à lista com sucesso!`
       });
     },
     onError: () => {
@@ -687,8 +670,8 @@ export default function CandidatesPage() {
   // Handler para submeter edição de lista
   const handleSubmitEditList = (data: { name: string; description?: string }) => {
     if (!editingList) return;
-    editListMutation.mutate({ 
-      listId: editingList.id, 
+    editListMutation.mutate({
+      listId: editingList.id,
       data: {
         name: data.name.trim(),
         description: data.description?.trim() || ""
@@ -707,15 +690,12 @@ export default function CandidatesPage() {
   }, [editingList, showEditListForm, editListForm]);
 
   const handleSubmitCandidate = (data: CandidateFormData) => {
-    console.log('🚀 handleSubmitCandidate chamado com:', data);
-    console.log('🔍 Editando candidato?', !!editingCandidate);
-
     // Validação básica primeiro
     if (!data.name || !data.email || !data.whatsapp) {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Preencha todos os campos obrigatórios (nome, email e WhatsApp)",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -727,9 +707,6 @@ export default function CandidatesPage() {
         email: data.email.trim(),
         whatsapp: data.whatsapp.trim()
       };
-
-      console.log('✅ Atualizando candidato ID:', editingCandidate.id);
-      console.log('✅ Dados de atualização:', updatedData);
 
       updateCandidateMutation.mutate(updatedData);
     } else {
@@ -747,16 +724,14 @@ export default function CandidatesPage() {
 
       // Garantir que listId e clientId estão corretos
       if (!data.listId || !data.clientId) {
-        console.error('❌ IDs ausentes - listId:', data.listId, 'clientId:', data.clientId);
-        toast({ 
-          title: "Erro", 
+        toast({
+          title: "Erro",
           description: "Erro interno: IDs da lista ou cliente não definidos",
-          variant: "destructive" 
+          variant: "destructive"
         });
         return;
       }
 
-      console.log('✅ Criando candidato com dados finais:', data);
       createCandidateMutation.mutate(data);
     }
   };
@@ -768,24 +743,24 @@ export default function CandidatesPage() {
     // Para importação geral, precisamos de uma lista de destino
     // Vamos mostrar um diálogo para o usuário selecionar ou criar uma lista
     if (!selectedClientFilter || selectedClientFilter === 'all') {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Selecione um cliente específico antes de importar candidatos.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
 
     // Buscar primeira lista disponível do cliente ou sugerir criação
-    const clientLists = candidateLists?.filter(list => 
+    const clientLists = candidateLists?.filter(list =>
       list.clientId === parseInt(selectedClientFilter)
     );
 
     if (!clientLists || clientLists.length === 0) {
-      toast({ 
-        title: "Sem listas disponíveis", 
+      toast({
+        title: "Sem listas disponíveis",
         description: "Crie uma lista de candidatos primeiro para importar dados.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -807,15 +782,6 @@ export default function CandidatesPage() {
       // Para client: usar próprio clientId
       clientId = user?.clientId || targetList.clientId;
     }
-
-    console.log('🎯 Upload Excel no topo:', {
-      targetListId: targetList.id,
-      targetListClientId: targetList.clientId,
-      selectedClientFilter,
-      userRole: user?.role,
-      userClientId: user?.clientId,
-      finalClientId: clientId
-    });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -847,24 +813,23 @@ export default function CandidatesPage() {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
 
-        toast({ 
-          title: "Importação concluída!", 
-          description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}` 
+        toast({
+          title: "Importação concluída!",
+          description: `${result.imported} candidatos importados para a lista "${targetList.name}". ${result.duplicates > 0 ? `${result.duplicates} duplicatas ignoradas.` : ''}`
         });
       } else {
         const error = await response.json();
-        toast({ 
-          title: "Erro na importação", 
+        toast({
+          title: "Erro na importação",
           description: error.message || "Falha ao processar arquivo",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (error) {
-      console.error('Erro na importação:', error);
-      toast({ 
-        title: "Erro na importação", 
+      toast({
+        title: "Erro na importação",
         description: "Falha ao enviar arquivo. Verifique a conexão.",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
 
@@ -884,8 +849,8 @@ export default function CandidatesPage() {
 
   // Handlers para adicionar candidatos existentes
   const handleToggleExistingCandidate = (candidateId: number) => {
-    setSelectedExistingCandidates(prev => 
-      prev.includes(candidateId) 
+    setSelectedExistingCandidates(prev =>
+      prev.includes(candidateId)
         ? prev.filter(id => id !== candidateId)
         : [...prev, candidateId]
     );
@@ -900,19 +865,19 @@ export default function CandidatesPage() {
 
   const handleAddExistingCandidates = () => {
     if (selectedExistingCandidates.length === 0) {
-      toast({ 
-        title: "Nenhum candidato selecionado", 
+      toast({
+        title: "Nenhum candidato selecionado",
         description: "Selecione pelo menos um candidato para adicionar à lista.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
 
     if (!selectedListId) {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Lista não selecionada.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -945,20 +910,20 @@ export default function CandidatesPage() {
 
     // Verificar se temos uma lista selecionada ou precisamos selecionar uma
     if (!selectedListId) {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Selecione uma lista antes de importar candidatos.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
 
     // Verificar se a lista selecionada existe
     if (!selectedList) {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Lista selecionada não encontrada.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -974,19 +939,11 @@ export default function CandidatesPage() {
       clientId = user?.clientId || selectedList.clientId;
     }
 
-    console.log('🎯 Upload Excel dentro da lista:', {
-      selectedListId,
-      selectedListClientId: selectedList.clientId,
-      userRole: user?.role,
-      userClientId: user?.clientId,
-      finalClientId: clientId
-    });
-
     if (!clientId) {
-      toast({ 
-        title: "Erro", 
+      toast({
+        title: "Erro",
         description: "Cliente não identificado. Verifique suas permissões.",
-        variant: "destructive" 
+        variant: "destructive"
       });
       return;
     }
@@ -1021,32 +978,30 @@ export default function CandidatesPage() {
         // Mostrar mensagem com detalhes sobre duplicatas se existirem
         if (result.duplicates > 0) {
           const duplicateNames = result.duplicatesList?.map((dup: any) => dup.name).join(', ') || '';
-          toast({ 
+          toast({
             title: "Importação parcial",
             description: `${result.imported} candidatos importados para a lista "${selectedList.name}". ${result.duplicates} não foram importados por já existirem: ${duplicateNames}`,
             variant: "default"
           });
         } else {
-          toast({ 
+          toast({
             title: "Sucesso!",
             description: `${result.imported} candidatos importados para a lista "${selectedList.name}" com sucesso!`
           });
         }
       } else {
         const error = await response.json();
-        toast({ 
-          title: "Erro na importação", 
+        toast({
+          title: "Erro na importação",
           description: error.message || "Falha na importação",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error('Erro no upload:', error);
-
-      toast({ 
-        title: "Erro na importação", 
+      toast({
+        title: "Erro na importação",
         description: "Falha no upload do arquivo",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
 
@@ -1077,7 +1032,7 @@ export default function CandidatesPage() {
 
     // Determinar clientId baseado no tipo de usuário
     let targetClientId: number;
-    
+
     if (user?.role === 'master') {
       if (!uploadClientId) {
         toast({
@@ -1105,10 +1060,10 @@ export default function CandidatesPage() {
     const clientLists = candidateLists?.filter(list => list.clientId === targetClientId);
 
     if (!clientLists || clientLists.length === 0) {
-      const clientName = user?.role === 'master' 
+      const clientName = user?.role === 'master'
         ? clients.find(c => c.id === targetClientId)?.companyName || 'Cliente selecionado'
         : 'sua empresa';
-      
+
       toast({
         title: "Sem listas disponíveis",
         description: `Crie uma lista de candidatos para ${clientName} primeiro para importar dados.`,
@@ -1119,15 +1074,6 @@ export default function CandidatesPage() {
 
     // Usar a primeira lista disponível do cliente
     const targetList = clientLists[0];
-
-    console.log('🎯 Upload Excel no topo:', {
-      targetListId: targetList.id,
-      targetListName: targetList.name,
-      targetClientId,
-      userRole: user?.role,
-      uploadClientId,
-      availableLists: clientLists.length
-    });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1160,7 +1106,7 @@ export default function CandidatesPage() {
           queryClient.invalidateQueries({ queryKey: ['/api/lists', targetList.id, 'candidates'] });
         }
 
-        const clientName = user?.role === 'master' 
+        const clientName = user?.role === 'master'
           ? clients.find(c => c.id === targetClientId)?.companyName || 'cliente'
           : 'sua lista';
 
@@ -1182,7 +1128,6 @@ export default function CandidatesPage() {
         });
       }
     } catch (error) {
-      console.error('Erro na importação:', error);
       toast({
         title: "Erro na importação",
         description: "Falha ao enviar arquivo. Verifique a conexão.",
@@ -1229,7 +1174,7 @@ export default function CandidatesPage() {
                   </Select>
                 </div>
               )}
-              
+
               <Button onClick={() => setShowCreateForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Lista
@@ -1260,7 +1205,7 @@ export default function CandidatesPage() {
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">
-                    {user?.role === 'master' && selectedClientFilter !== 'all' 
+                    {user?.role === 'master' && selectedClientFilter !== 'all'
                       ? "Nenhuma lista encontrada para este cliente"
                       : "Nenhuma lista encontrada"
                     }
@@ -1292,7 +1237,6 @@ export default function CandidatesPage() {
                     {paginatedLists.map((list) => {
                       // Contar apenas candidatos que realmente existem no banco
                       const candidatesCount = getCandidateCountForList(list.id);
-                      console.log(`📊 Lista ${list.name} (ID: ${list.id}) - Candidatos reais:`, candidatesCount);
                       const client = clients.find(c => c.id === list.clientId);
 
                       return (
@@ -1316,13 +1260,13 @@ export default function CandidatesPage() {
                           <TableCell>
                             {(() => {
                               if (!list.createdAt) return 'N/A';
-                              const date = list.createdAt instanceof Date 
-                                ? list.createdAt 
+                              const date = list.createdAt instanceof Date
+                                ? list.createdAt
                                 : new Date((list.createdAt as any)?.seconds * 1000 || list.createdAt);
                               const dateFormatted = date.toLocaleDateString('pt-BR');
-                              const timeFormatted = date.toLocaleTimeString('pt-BR', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
+                              const timeFormatted = date.toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit'
                               });
                               return (
                                 <div className="text-sm">
@@ -1367,7 +1311,7 @@ export default function CandidatesPage() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Tem certeza que deseja deletar a lista "{list.name}"? 
+                                      Tem certeza que deseja deletar a lista "{list.name}"?
                                       Esta ação não pode ser desfeita e todos os candidatos desta lista também serão removidos.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
@@ -1459,8 +1403,8 @@ export default function CandidatesPage() {
               <h1 className="text-3xl font-bold">{selectedList?.name}</h1>
               <p className="text-muted-foreground">
                 {(() => {
-                  const count = viewMode === 'single' && selectedListId 
-                    ? listCandidates.length 
+                  const count = viewMode === 'single' && selectedListId
+                    ? listCandidates.length
                     : filteredCandidates.length;
                   return `${count} ${count === 1 ? 'candidato' : 'candidatos'} nesta lista`;
                 })()}
@@ -1482,9 +1426,9 @@ export default function CandidatesPage() {
               className="hidden"
               id="file-upload"
             />
-            
+
             {/* Botão principal - Novo Candidato */}
-            <Button 
+            <Button
               onClick={() => {
                 candidateForm.reset({
                   name: "",
@@ -1537,7 +1481,7 @@ export default function CandidatesPage() {
                     Adicione candidatos manualmente ou importe via Excel
                   </p>
                   <div className="flex justify-center flex-wrap gap-3">
-                    <Button 
+                    <Button
                       onClick={() => {
                         candidateForm.reset({
                           name: "",
@@ -1611,12 +1555,12 @@ export default function CandidatesPage() {
                               <AlertDialogDescription>
                                 {selectedListId ? (
                                   <>
-                                    Tem certeza que deseja remover o candidato "{candidate.name}" desta lista? 
+                                    Tem certeza que deseja remover o candidato "{candidate.name}" desta lista?
                                     O candidato permanecerá no sistema e poderá ser adicionado a outras listas.
                                   </>
                                 ) : (
                                   <>
-                                    Tem certeza que deseja excluir permanentemente o candidato "{candidate.name}"? 
+                                    Tem certeza que deseja excluir permanentemente o candidato "{candidate.name}"?
                                     Esta ação não pode ser desfeita e o candidato será removido de todas as listas.
                                   </>
                                 )}
@@ -1719,8 +1663,8 @@ export default function CandidatesPage() {
                     <FormItem>
                       <FormLabel>Cliente *</FormLabel>
                       <FormControl>
-                        <Select 
-                          value={field.value?.toString()} 
+                        <Select
+                          value={field.value?.toString()}
                           onValueChange={(value) => field.onChange(parseInt(value))}
                         >
                           <SelectTrigger>
@@ -1890,8 +1834,8 @@ export default function CandidatesPage() {
                         </FormControl>
                         <SelectContent>
                           {candidateLists
-                            ?.filter(list => user?.role === 'master' ? 
-                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) : 
+                            ?.filter(list => user?.role === 'master' ?
+                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) :
                               list.clientId === user?.clientId
                             )
                             .map((list) => (
@@ -1980,7 +1924,7 @@ export default function CandidatesPage() {
                         {existingCandidatesSearch ? 'Nenhum candidato encontrado' : 'Nenhum candidato disponível'}
                       </h3>
                       <p className="text-muted-foreground">
-                        {existingCandidatesSearch 
+                        {existingCandidatesSearch
                           ? 'Tente buscar com outros termos'
                           : 'Todos os candidatos deste cliente já estão nesta lista'
                         }
@@ -2041,18 +1985,18 @@ export default function CandidatesPage() {
 
             {/* Botões de ação */}
             <div className="flex justify-end space-x-2 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowExistingCandidatesDialog(false)}
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={handleAddExistingCandidates}
                 disabled={selectedExistingCandidates.length === 0 || addExistingCandidatesMutation.isPending}
               >
-                {addExistingCandidatesMutation.isPending 
-                  ? "Adicionando..." 
+                {addExistingCandidatesMutation.isPending
+                  ? "Adicionando..."
                   : `Adicionar ${selectedExistingCandidates.length} candidato${selectedExistingCandidates.length !== 1 ? 's' : ''}`
                 }
               </Button>
@@ -2097,7 +2041,7 @@ export default function CandidatesPage() {
                   <FormItem>
                     <FormLabel>Descrição</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Descrição opcional da lista..."
                         className="resize-none"
                         {...field}

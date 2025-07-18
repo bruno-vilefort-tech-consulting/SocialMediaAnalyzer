@@ -22,53 +22,43 @@ export class ConnectionDetector {
    * Verifica conexão usando múltiplos métodos de detecção
    */
   async detectConnection(clientId: string): Promise<ConnectionStatus> {
-    console.log(`🔍 [DETECTOR] Iniciando detecção abrangente para cliente ${clientId}`);
     
     // Método 1: Verificação de sessão ativa via WPPConnect
     try {
       const wppStatus = await this.checkWppConnectSession(clientId);
       if (wppStatus.isConnected) {
-        console.log(`✅ [DETECTOR] WPPConnect detectou conexão ativa: ${wppStatus.phoneNumber}`);
         return { ...wppStatus, service: 'WPPConnect' };
       }
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro WPPConnect:`, error);
     }
 
     // Método 2: Verificação via WhatsApp Web Service
     try {
       const webStatus = await this.checkWhatsAppWebSession(clientId);
       if (webStatus.isConnected) {
-        console.log(`✅ [DETECTOR] WhatsApp Web detectou conexão ativa: ${webStatus.phoneNumber}`);
         return { ...webStatus, service: 'WhatsAppWeb' };
       }
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro WhatsApp Web:`, error);
     }
 
     // Método 3: Verificação via Evolution API
     try {
       const evolutionStatus = await this.checkEvolutionApiSession(clientId);
       if (evolutionStatus.isConnected) {
-        console.log(`✅ [DETECTOR] Evolution API detectou conexão ativa`);
         return { ...evolutionStatus, service: 'EvolutionAPI' };
       }
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro Evolution API:`, error);
     }
 
     // Método 4: Verificação de arquivos de sessão diretamente
     try {
       const fileStatus = await this.checkSessionFiles(clientId);
       if (fileStatus.isConnected) {
-        console.log(`✅ [DETECTOR] Arquivos de sessão indicam conexão ativa`);
         return { ...fileStatus, service: 'FileSystem' };
       }
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro verificação de arquivos:`, error);
     }
 
-    console.log(`❌ [DETECTOR] Nenhuma conexão ativa detectada para ${clientId}`);
     return { isConnected: false };
   }
 
@@ -84,7 +74,6 @@ export class ConnectionDetector {
 
   private async checkWhatsAppWebSession(clientId: string): Promise<ConnectionStatus> {
     try {
-      console.log(`🔍 [DETECTOR] Verificando WhatsApp Web simplificado para ${clientId}`);
       const status = await simplifiedWebService.getConnectionStatus(clientId);
       
       if (status.isConnected) {
@@ -96,7 +85,6 @@ export class ConnectionDetector {
         };
       }
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro WhatsApp Web simplificado ${clientId}:`, error);
     }
     
     return { isConnected: false };
@@ -136,7 +124,6 @@ export class ConnectionDetector {
             const hoursDiff = (now.getTime() - lastModified.getTime()) / (1000 * 60 * 60);
             
             if (hoursDiff < 24) {
-              console.log(`📁 [DETECTOR] Sessão ativa encontrada em: ${sessionPath} (modificado há ${hoursDiff.toFixed(1)}h)`);
               
               // Tentar extrair número do telefone de arquivos de sessão
               const phoneNumber = await this.extractPhoneFromSession(sessionPath);
@@ -155,7 +142,6 @@ export class ConnectionDetector {
       
       return { isConnected: false };
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro ao verificar arquivos de sessão:`, error);
       return { isConnected: false };
     }
   }
@@ -209,7 +195,6 @@ export class ConnectionDetector {
       
       return undefined;
     } catch (error) {
-      console.log(`⚠️ [DETECTOR] Erro ao extrair número da sessão:`, error);
       return undefined;
     }
   }
@@ -218,7 +203,6 @@ export class ConnectionDetector {
    * Força nova verificação ignorando cache
    */
   async forceRefreshConnection(clientId: string): Promise<ConnectionStatus> {
-    console.log(`🔄 [DETECTOR] Forçando atualização de status para ${clientId}`);
     
     // Limpar qualquer cache que os serviços possam ter
     // (implementar se necessário)

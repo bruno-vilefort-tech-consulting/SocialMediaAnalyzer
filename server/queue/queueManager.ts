@@ -98,19 +98,17 @@ export class QueueManager {
   private isInitialized = false;
 
   constructor() {
-    console.log('🔄 [QUEUE-MANAGER] Inicializando sistema de filas...');
+    // Initialized
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('⚠️ [QUEUE-MANAGER] Sistema já inicializado');
       return;
     }
 
     try {
       // Conectar ao Redis Simulator
       await redisSimulator.connect();
-      console.log('✅ [QUEUE-MANAGER] Redis Simulator conectado');
 
       // Inicializar workers
       await this.initializeWorkers();
@@ -119,20 +117,16 @@ export class QueueManager {
       this.setupQueueEventListeners();
 
       this.isInitialized = true;
-      console.log('🚀 [QUEUE-MANAGER] Sistema de filas inicializado com sucesso');
       
       // Log das estatísticas iniciais
       await this.logQueueStats();
       
     } catch (error) {
-      console.error('❌ [QUEUE-MANAGER] Erro ao inicializar:', error);
       throw error;
     }
   }
 
   private async initializeWorkers(): Promise<void> {
-    console.log('👷 [QUEUE-MANAGER] Inicializando workers...');
-
     // Worker para processar dispatches (dividir em lotes)
     const dispatchWorker = new Worker('whatsapp-dispatch', async (job: Job<WhatsAppDispatchJobData>) => {
       return this.processDispatchJob(job);
@@ -162,44 +156,38 @@ export class QueueManager {
     // Event listeners para workers
     this.workers.forEach(worker => {
       worker.on('completed', (job) => {
-        console.log(`✅ [WORKER] Job ${job.id} completado na fila ${worker.name}`);
+        // Job completed
       });
 
       worker.on('failed', (job, err) => {
-        console.error(`❌ [WORKER] Job ${job?.id} falhou na fila ${worker.name}:`, err.message);
+        // Job failed
       });
 
       worker.on('error', (err) => {
-        console.error(`🚨 [WORKER] Erro no worker ${worker.name}:`, err);
+        // Worker error
       });
     });
-
-    console.log(`👷 [QUEUE-MANAGER] ${this.workers.length} workers inicializados`);
   }
 
   private setupQueueEventListeners(): void {
     // Listeners para fila de dispatch
     dispatchQueue.on('completed', (job) => {
-      console.log(`📋 [DISPATCH] Job ${job.id} completado`);
+      // Dispatch completed
     });
 
     dispatchQueue.on('failed', (job, err) => {
-      console.error(`📋 [DISPATCH] Job ${job?.id} falhou:`, err.message);
+      // Dispatch failed
     });
 
     // Listeners para fila de mensagens
     messageQueue.on('progress', (job, progress) => {
       this.updateJobProgress(job.data.jobId, { sent: progress });
     });
-
-    console.log('📡 [QUEUE-MANAGER] Event listeners configurados');
   }
 
   // Processar job de dispatch (dividir seleção em mensagens)
   private async processDispatchJob(job: Job<WhatsAppDispatchJobData>): Promise<void> {
     const { selectionId, clientId, candidateIds, rateLimitConfig, whatsappTemplate } = job.data;
-    
-    console.log(`📋 [DISPATCH] Processando seleção ${selectionId} com ${candidateIds.length} candidatos`);
 
     // Inicializar progresso
     const progress: JobProgress = {
@@ -233,8 +221,6 @@ export class QueueManager {
       
       for (let i = 0; i < candidateIds.length; i += batchSize) {
         const batch = candidateIds.slice(i, i + batchSize);
-        
-        console.log(`📦 [DISPATCH] Processando lote ${Math.floor(i/batchSize) + 1} com ${batch.length} candidatos`);
 
         // Criar jobs de mensagem para cada candidato do lote
         const messageJobs = await Promise.all(batch.map(async (candidateId, index) => {
@@ -243,7 +229,6 @@ export class QueueManager {
           const candidate = candidates.find(c => c.id === candidateId);
           
           if (!candidate) {
-            console.warn(`⚠️ [DISPATCH] Candidato ${candidateId} não encontrado`);
             return null;
           }
 
@@ -285,11 +270,8 @@ export class QueueManager {
           await new Promise(resolve => setTimeout(resolve, delayPerMessage * 2));
         }
       }
-
-      console.log(`✅ [DISPATCH] Seleção ${selectionId} dividida em ${candidateIds.length} mensagens`);
       
     } catch (error) {
-      console.error(`❌ [DISPATCH] Erro processando seleção ${selectionId}:`, error);
       throw error;
     }
   }
@@ -297,8 +279,6 @@ export class QueueManager {
   // Processar job de mensagem individual
   private async processMessageJob(job: Job<MessageJobData>): Promise<void> {
     const { candidateName, phone, message, clientId, slotNumber, jobId } = job.data;
-    
-    console.log(`📱 [MESSAGE] Enviando para ${candidateName} (${phone}) via slot ${slotNumber}`);
 
     try {
       // Importar serviço WhatsApp
@@ -313,16 +293,13 @@ export class QueueManager {
       );
 
       if (result.success) {
-        console.log(`✅ [MESSAGE] Mensagem enviada para ${candidateName}`);
         this.incrementJobProgress(jobId, 'sent');
       } else {
-        console.error(`❌ [MESSAGE] Falha ao enviar para ${candidateName}:`, result.error);
         this.incrementJobProgress(jobId, 'failed');
         throw new Error(result.error || 'Falha no envio');
       }
       
     } catch (error) {
-      console.error(`❌ [MESSAGE] Erro enviando para ${candidateName}:`, error);
       this.incrementJobProgress(jobId, 'failed');
       throw error;
     }
@@ -330,7 +307,6 @@ export class QueueManager {
 
   // Processar job de status
   private async processStatusJob(job: Job): Promise<void> {
-    console.log(`📊 [STATUS] Processando update de status:`, job.data);
     // Implementar lógica de update de status conforme necessário
   }
 
@@ -375,15 +351,12 @@ export class QueueManager {
     
     const priority = this.getPriorityValue(data.priority);
     
-    console.log(`📋 [QUEUE-MANAGER] Adicionando job de dispatch para seleção ${data.selectionId}`);
-    
     const job = await dispatchQueue.add('process-selection', data, {
       priority,
       attempts: 3,
       backoff: { type: 'exponential', delay: 10000 },
     });
 
-    console.log(`📋 [QUEUE-MANAGER] Job ${job.id} criado na fila de dispatch`);
     return job;
   }
 
@@ -421,12 +394,10 @@ export class QueueManager {
       const job = await dispatchQueue.getJob(jobId);
       if (job) {
         await job.remove();
-        console.log(`🗑️ [QUEUE-MANAGER] Job ${jobId} cancelado`);
         return true;
       }
       return false;
     } catch (error) {
-      console.error(`❌ [QUEUE-MANAGER] Erro cancelando job ${jobId}:`, error);
       return false;
     }
   }
@@ -468,7 +439,7 @@ export class QueueManager {
 
   private async logQueueStats(): Promise<void> {
     const stats = await this.getQueueStats();
-    console.log('📊 [QUEUE-MANAGER] Estatísticas das filas:', JSON.stringify(stats, null, 2));
+    // Stats logged silently
   }
 
   private getPriorityValue(priority: string): number {
@@ -489,8 +460,6 @@ export class QueueManager {
 
   // Cleanup ao fechar aplicação
   public async cleanup(): Promise<void> {
-    console.log('🧹 [QUEUE-MANAGER] Iniciando cleanup...');
-    
     try {
       // Fechar workers
       await Promise.all(this.workers.map(worker => worker.close()));
@@ -505,9 +474,8 @@ export class QueueManager {
       // Desconectar Redis
       await redisSimulator.disconnect();
       
-      console.log('✅ [QUEUE-MANAGER] Cleanup concluído');
     } catch (error) {
-      console.error('❌ [QUEUE-MANAGER] Erro no cleanup:', error);
+      // Error handled silently
     }
   }
 }

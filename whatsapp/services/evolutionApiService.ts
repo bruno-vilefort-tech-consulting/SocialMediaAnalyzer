@@ -40,7 +40,6 @@ export class EvolutionApiService {
   constructor() {
     this.apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:5000';
     this.apiKey = process.env.EVOLUTION_API_KEY || 'default_api_key';
-    console.log(`🔧 [EVOLUTION] Configurado para usar: ${this.apiUrl}`);
   }
 
   /**
@@ -51,7 +50,6 @@ export class EvolutionApiService {
       const instanceName = `client_${clientId}_${Date.now()}`;
       
       // Usar WPPConnect para gerar QR Code real do WhatsApp Web
-      console.log(`🔄 [EVOLUTION] Verificando conexão existente para cliente ${clientId}`);
       
       const { wppConnectService } = await import('./wppConnectService');
       
@@ -72,7 +70,6 @@ export class EvolutionApiService {
 
           this.instances.set(clientId, instance);
           
-          console.log(`✅ [EVOLUTION] Cliente ${clientId} já conectado no número: ${status.phoneNumber}`);
           return {
             success: true,
             qrCode: undefined // Não precisa de QR Code se já conectado
@@ -90,7 +87,6 @@ export class EvolutionApiService {
 
           this.instances.set(clientId, instance);
           
-          console.log(`✅ [EVOLUTION] QR Code existente para cliente ${clientId}: ${status.qrCode.length} chars`);
           return {
             success: true,
             qrCode: status.qrCode
@@ -111,13 +107,11 @@ export class EvolutionApiService {
 
             this.instances.set(clientId, instance);
             
-            console.log(`✅ [EVOLUTION] QR Code REAL gerado via WPPConnect para cliente ${clientId}: ${result.qrCode.length} chars`);
             return {
               success: true,
               qrCode: result.qrCode
             };
           } else {
-            console.error(`❌ [EVOLUTION] WPPConnect falhou para cliente ${clientId}:`, result.error);
             return {
               success: false,
               error: result.error || 'Falha ao criar sessão WhatsApp'
@@ -126,45 +120,14 @@ export class EvolutionApiService {
         }
         
       } catch (wppError) {
-        console.error(`❌ [EVOLUTION] Erro WPPConnect para cliente ${clientId}:`, wppError);
         return {
           success: false,
           error: `Erro ao inicializar WhatsApp: ${wppError}`
         };
       }
 
-      // Fallback para Baileys - gerar QR Code autêntico
-      console.log(`🔄 [EVOLUTION] Gerando QR Code autêntico via Baileys para cliente ${clientId}`);
-      
-      const qrCode = await this.generateAuthenticQRCode(clientId);
-      
-      if (qrCode) {
-        const instance: EvolutionInstance = {
-          clientId,
-          instanceId: instanceName,
-          token: 'baileys_token',
-          isConnected: false,
-          qrCode,
-          createdAt: new Date()
-        };
-
-        this.instances.set(clientId, instance);
-        
-        console.log(`✅ [EVOLUTION] QR Code autêntico gerado via Baileys para cliente ${clientId}`);
-        
-        return {
-          success: true,
-          qrCode: qrCode
-        };
-      }
-
-      return {
-        success: false,
-        error: 'Falha ao gerar QR Code autêntico'
-      };
 
     } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao criar instância para cliente ${clientId}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -194,7 +157,24 @@ export class EvolutionApiService {
           sock = makeWASocket({
             auth: state,
             printQRInTerminal: false,
-            logger: { level: 'silent' },
+            logger: {
+              level: 'silent',
+              child: () => ({
+                level: 'silent',
+                trace: () => {},
+                debug: () => {},
+                info: () => {},
+                warn: () => {},
+                error: () => {},
+                fatal: () => {}
+              }),
+              trace: () => {},
+              debug: () => {},
+              info: () => {},
+              warn: () => {},
+              error: () => {},
+              fatal: () => {}
+            },
             browser: ['WhatsApp Business', 'Chrome', '1.0.0'],
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
@@ -208,22 +188,19 @@ export class EvolutionApiService {
             const { connection, lastDisconnect, qr } = update;
             
             if (qr) {
-              console.log(`📱 [BAILEYS] QR Code autêntico gerado para cliente ${clientId} (${qr.length} chars)`);
               if (sock) sock.end();
               resolve(qr);
               return;
             }
             
             if (connection === 'close') {
-              const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+              const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
               
               if (!shouldReconnect) {
-                console.log(`🔌 [BAILEYS] Cliente ${clientId} logout detectado`);
                 if (sock) sock.end();
                 reject(new Error('Logout detectado'));
               }
             } else if (connection === 'open') {
-              console.log(`✅ [BAILEYS] Cliente ${clientId} conectado com sucesso`);
               if (sock) sock.end();
               resolve(null); // Já conectado, não precisa de QR
             }
@@ -236,14 +213,12 @@ export class EvolutionApiService {
           }, 30000);
 
         } catch (error) {
-          console.error(`❌ [BAILEYS] Erro ao configurar socket para cliente ${clientId}:`, error);
           if (sock) sock.end();
           reject(error);
         }
       });
 
     } catch (error) {
-      console.error(`❌ [BAILEYS] Erro ao importar dependências:`, error);
       return null;
     }
   }
@@ -255,7 +230,6 @@ export class EvolutionApiService {
     try {
       const instance = this.instances.get(clientId);
       if (!instance) {
-        console.log(`❌ [EVOLUTION] Instância não encontrada para cliente ${clientId}`);
         return null;
       }
 
@@ -268,7 +242,6 @@ export class EvolutionApiService {
       });
 
       if (!response.ok) {
-        console.log(`❌ [EVOLUTION] Erro ao obter QR Code: ${response.status}`);
         return null;
       }
 
@@ -278,14 +251,12 @@ export class EvolutionApiService {
         const qrCode = data.qrCode || data.qrcode || data.qr;
         instance.qrCode = qrCode;
         
-        console.log(`📱 [EVOLUTION] QR Code obtido para cliente ${clientId} (${qrCode.length} chars)`);
         return qrCode;
       }
 
       return null;
 
     } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao obter QR Code para cliente ${clientId}:`, error);
       return null;
     }
   }
@@ -327,7 +298,6 @@ export class EvolutionApiService {
       };
       
     } catch (error) {
-      console.log(`⚠️ [EVOLUTION] Erro ao verificar status real para ${clientId}:`, error);
       
       // Fallback para instância local
       const instance = this.instances.get(clientId);
@@ -422,7 +392,6 @@ export class EvolutionApiService {
       const data = await response.json();
       
       if (data.success !== false && data.messageId) {
-        console.log(`✅ [EVOLUTION] Mensagem enviada para ${phoneNumber} via cliente ${clientId}:`, data.messageId);
         return {
           success: true,
           messageId: data.messageId
@@ -435,7 +404,6 @@ export class EvolutionApiService {
       };
 
     } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao enviar mensagem via cliente ${clientId}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido'
@@ -464,12 +432,9 @@ export class EvolutionApiService {
       // Remover do mapa local independentemente da resposta da API
       this.instances.delete(clientId);
       
-      console.log(`🗑️ [EVOLUTION] Instância removida para cliente ${clientId}`);
-      
       return { success: true };
 
     } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao remover instância para cliente ${clientId}:`, error);
       // Ainda assim remove localmente
       this.instances.delete(clientId);
       return {
@@ -514,7 +479,6 @@ export class EvolutionApiService {
     try {
       const instance = this.instances.get(clientId);
       if (!instance) {
-        console.log(`⚠️ [EVOLUTION] Webhook recebido para cliente inexistente: ${clientId}`);
         return;
       }
 
@@ -523,29 +487,24 @@ export class EvolutionApiService {
           if (event.data.connection === 'open') {
             instance.isConnected = true;
             instance.phoneNumber = event.data.me?.id?.split(':')[0];
-            console.log(`✅ [EVOLUTION] Cliente ${clientId} conectado: ${instance.phoneNumber}`);
           } else if (event.data.connection === 'close') {
             instance.isConnected = false;
-            console.log(`❌ [EVOLUTION] Cliente ${clientId} desconectado`);
           }
           break;
 
         case 'qr.updated':
           instance.qrCode = event.data.qr;
-          console.log(`📱 [EVOLUTION] QR Code atualizado para cliente ${clientId}`);
           break;
 
         case 'messages.upsert':
           // Handler para mensagens recebidas
-          console.log(`📨 [EVOLUTION] Nova mensagem para cliente ${clientId}:`, event.data);
           break;
 
         default:
-          console.log(`📝 [EVOLUTION] Evento não tratado para cliente ${clientId}:`, event.event);
+          break;
       }
 
     } catch (error) {
-      console.error(`❌ [EVOLUTION] Erro ao processar webhook para cliente ${clientId}:`, error);
     }
   }
 }

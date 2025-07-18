@@ -20,13 +20,11 @@ export class BaileysConfig {
         // Primeira tentativa: versão dinâmica
         const { version: dynamicVersion } = await fetchLatestBaileysVersion()
         version = dynamicVersion as [number, number, number];
-        console.log(`🔧 [BAILEYS-CONFIG] Usando versão dinâmica: ${version.join('.')}`);
       } else {
         // Tentativas subsequentes: versão fixa
-        console.log(`🔧 [BAILEYS-CONFIG] Usando versão fixa: ${version.join('.')}`);
       }
     } catch (error) {
-      console.log(`⚠️ [BAILEYS-CONFIG] Erro ao buscar versão, usando fallback: ${version.join('.')}`);
+      //
     }
     
     // 🔥 CONFIGURAÇÕES PROGRESSIVAS BASEADAS NO NÚMERO DE TENTATIVAS

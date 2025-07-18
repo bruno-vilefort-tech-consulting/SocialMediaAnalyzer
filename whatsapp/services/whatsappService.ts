@@ -61,7 +61,7 @@ export class WhatsAppService {
 
   private async loadConfig() {
     try {
-      const apiConfig = await storage.getApiConfig();
+      const apiConfig = await storage.getApiConfig('master', '1749848502212');
       if (apiConfig?.whatsappToken && apiConfig?.whatsappPhoneId) {
         this.config = {
           accessToken: apiConfig.whatsappToken,
@@ -69,18 +69,13 @@ export class WhatsAppService {
           verifyToken: apiConfig.whatsappVerifyToken || 'verify_token_123',
           webhookUrl: process.env.WEBHOOK_URL || 'https://seu-app.replit.app/webhook/whatsapp'
         };
-        console.log('✅ WhatsApp configurado com sucesso');
-      } else {
-        console.log('❌ Configuração do WhatsApp não encontrada');
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar configuração WhatsApp:', error);
     }
   }
 
   private async sendMessage(message: WhatsAppMessage): Promise<boolean> {
     if (!this.config) {
-      console.error('❌ WhatsApp não configurado');
       return false;
     }
 
@@ -103,14 +98,11 @@ export class WhatsAppService {
       const result = await response.json();
       
       if (response.ok) {
-        console.log('✅ Mensagem WhatsApp enviada:', result);
         return true;
       } else {
-        console.error('❌ Erro ao enviar mensagem WhatsApp:', result);
         return false;
       }
     } catch (error) {
-      console.error('❌ Erro na API WhatsApp:', error);
       return false;
     }
   }
@@ -183,7 +175,6 @@ export class WhatsAppService {
 
   async handleWebhook(body: any): Promise<void> {
     try {
-      console.log('📱 Webhook WhatsApp recebido:', JSON.stringify(body, null, 2));
 
       // Verificar se é uma mensagem de entrada
       if (body.object === 'whatsapp_business_account') {
@@ -196,7 +187,6 @@ export class WhatsAppService {
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao processar webhook WhatsApp:', error);
     }
   }
 
@@ -207,8 +197,6 @@ export class WhatsAppService {
       for (const message of messageData.messages) {
         const from = message.from;
         
-        console.log(`📨 Mensagem de ${from}:`, message);
-
         // Processar botão de resposta (aceitar/recusar entrevista)
         if (message.type === 'interactive' && message.interactive.type === 'button_reply') {
           await this.handleButtonResponse(from, message.interactive.button_reply);
@@ -225,13 +213,11 @@ export class WhatsAppService {
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao processar mensagem:', error);
     }
   }
 
   private async handleButtonResponse(phone: string, buttonReply: any): Promise<void> {
     const buttonId = buttonReply.id;
-    console.log(`🔘 Botão clicado: ${buttonId} por ${phone}`);
 
     // Extrair informações do botão
     const [action, selectionId, candidatePhone] = buttonId.split('_');
@@ -245,12 +231,9 @@ export class WhatsAppService {
 
   private async startInterview(phone: string, selectionId: number): Promise<void> {
     try {
-      console.log(`🎤 Iniciando entrevista para ${phone} na seleção ${selectionId}`);
-
       // Buscar dados da seleção
       const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
-        console.error('❌ Seleção não encontrada:', selectionId);
         return;
       }
 
@@ -259,14 +242,12 @@ export class WhatsAppService {
       const candidate = candidates.find(c => c.phone === phone);
       
       if (!candidate) {
-        console.error('❌ Candidato não encontrado:', phone);
         return;
       }
 
       // Buscar job e perguntas
       const job = await storage.getJobById(selection.jobId);
       if (!job) {
-        console.error('❌ Job não encontrado:', selection.jobId);
         return;
       }
 
@@ -299,13 +280,10 @@ export class WhatsAppService {
       }, 3000);
 
     } catch (error) {
-      console.error('❌ Erro ao iniciar entrevista:', error);
     }
   }
 
   private async handleDecline(phone: string, selectionId: number): Promise<void> {
-    console.log(`❌ Candidato ${phone} recusou a entrevista da seleção ${selectionId}`);
-    
     // Salvar recusa no banco
     const interviewState: CandidateInterviewState = {
       candidateId: 0,
@@ -334,7 +312,6 @@ export class WhatsAppService {
       // Buscar job e perguntas
       const job = await storage.getJobById(interviewState.jobId);
       if (!job || !job.perguntas || job.perguntas.length === 0) {
-        console.error('❌ Job ou perguntas não encontradas');
         return;
       }
 
@@ -350,8 +327,6 @@ export class WhatsAppService {
       const currentQuestion = questions[currentIndex];
       const questionText = currentQuestion.pergunta || currentQuestion.question;
 
-      console.log(`❓ Enviando pergunta ${currentIndex + 1}/${questions.length} para ${phone}: ${questionText}`);
-
       // Enviar pergunta como texto
       await this.sendTextMessage(phone, `Pergunta ${currentIndex + 1}/${questions.length}: ${questionText}`);
 
@@ -363,7 +338,6 @@ export class WhatsAppService {
       await this.saveInterviewState(phone, interviewState);
 
     } catch (error) {
-      console.error('❌ Erro ao enviar próxima pergunta:', error);
     }
   }
 
@@ -393,24 +367,20 @@ export class WhatsAppService {
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao gerar/enviar áudio:', error);
     }
   }
 
   private async handleAudioResponse(phone: string, audioData: any): Promise<void> {
     try {
-      console.log(`🔊 Áudio recebido de ${phone}:`, audioData);
 
       const interviewState = await this.getInterviewState(phone);
       if (!interviewState || interviewState.status !== 'in_progress') {
-        console.log('❌ Estado de entrevista inválido para áudio');
         return;
       }
 
       // Download do áudio do WhatsApp
       const audioUrl = await this.downloadWhatsAppAudio(audioData.id);
       if (!audioUrl) {
-        console.error('❌ Erro ao baixar áudio do WhatsApp');
         return;
       }
 
@@ -422,7 +392,6 @@ export class WhatsAppService {
       const currentQuestion = job?.perguntas?.[interviewState.currentQuestionIndex];
       
       if (!currentQuestion) {
-        console.error('❌ Pergunta atual não encontrada');
         return;
       }
 
@@ -456,7 +425,6 @@ export class WhatsAppService {
       }, 2000);
 
     } catch (error) {
-      console.error('❌ Erro ao processar áudio:', error);
     }
   }
 
@@ -475,59 +443,48 @@ export class WhatsAppService {
       await this.sendTextMessage(phone, farewell);
       await this.sendQuestionAudio(phone, farewell, true);
 
-      console.log(`✅ Entrevista finalizada para ${phone}`);
     } catch (error) {
-      console.error('❌ Erro ao finalizar entrevista:', error);
     }
   }
 
   private async handleTextResponse(phone: string, text: string): Promise<void> {
     // Fallback para mensagens de texto
-    console.log(`💬 Mensagem de texto de ${phone}: ${text}`);
     await this.sendTextMessage(phone, "Por favor, responda com áudio para prosseguir com a entrevista.");
   }
 
   // Métodos auxiliares Firebase
   private async saveInterviewState(phone: string, state: CandidateInterviewState): Promise<void> {
     // Implementar salvamento no Firebase
-    console.log('💾 Salvando estado da entrevista:', state);
   }
 
   private async getInterviewState(phone: string): Promise<CandidateInterviewState | null> {
     // Implementar busca no Firebase
-    console.log('🔍 Buscando estado da entrevista para:', phone);
     return null;
   }
 
   private async saveResponseToFirestore(response: any): Promise<void> {
     // Implementar salvamento estruturado no Firestore
-    console.log('💾 Salvando resposta no Firestore:', response);
   }
 
   private async downloadWhatsAppAudio(audioId: string): Promise<string | null> {
     // Implementar download do áudio via WhatsApp API
-    console.log('⬇️ Baixando áudio do WhatsApp:', audioId);
     return null;
   }
 
   private async transcribeAudio(audioUrl: string): Promise<string> {
     // Implementar transcrição via Whisper
-    console.log('🎙️ Transcrevendo áudio:', audioUrl);
     return 'Transcrição simulada';
   }
 
   private async uploadAudioToFirebase(audioBlob: Blob, filename: string): Promise<string | null> {
     // Implementar upload para Firebase Storage
-    console.log('☁️ Upload para Firebase:', filename);
     return null;
   }
 
   verifyWebhook(mode: string, token: string, challenge: string): string | null {
     if (mode === 'subscribe' && token === this.config?.verifyToken) {
-      console.log('✅ Webhook verificado com sucesso');
       return challenge;
     }
-    console.log('❌ Verificação de webhook falhou');
     return null;
   }
 }

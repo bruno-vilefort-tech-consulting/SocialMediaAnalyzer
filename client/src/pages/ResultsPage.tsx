@@ -72,13 +72,6 @@ export default function ResultsPage() {
     enabled: true,
   });
 
-  // Debug logs para desenvolvimento
-  console.log("📊 Dados dos relatórios:", { 
-    total: results?.length, 
-    isLoading, 
-    hasError: !!error
-  });
-
   // Filter results based on search and category
   const filteredResults = results.filter(result => {
     const matchesSearch = result.candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

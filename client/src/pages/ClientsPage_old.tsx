@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Building, Edit, Trash2, Filter, Calendar, Users, X, Search } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -40,6 +40,23 @@ const clientFormSchema = z.object({
 });
 
 type ClientFormData = z.infer<typeof clientFormSchema>;
+
+// Schema de validação para usuários dos clientes
+const clientUserFormSchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório"),
+  email: z.string().email("Email inválido"),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").optional(),
+});
+
+type ClientUserFormData = z.infer<typeof clientUserFormSchema>;
+
+// Interface para usuário do cliente
+interface ClientUser {
+  id: number;
+  name: string;
+  email: string;
+  createdAt?: any;
+}
 
 export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -117,7 +134,7 @@ export default function ClientsPage() {
 
   // Mutation para atualizar cliente
   const updateClientMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Client> }) => 
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
       apiRequest(`/api/clients/${id}`, "PATCH", data),
     onSuccess: () => {
       toast({
@@ -138,11 +155,9 @@ export default function ClientsPage() {
 
   const deleteClientMutation = useMutation({
     mutationFn: (id: number) => {
-      console.log('🔥 Frontend: Enviando DELETE para /api/clients/' + id);
       return apiRequest(`/api/clients/${id}`, "DELETE");
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Frontend: Cliente deletado com sucesso', variables);
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
         title: "Cliente removido",
@@ -150,7 +165,6 @@ export default function ClientsPage() {
       });
     },
     onError: (error, variables) => {
-      console.error('❌ Frontend: Erro ao deletar cliente', variables, error);
       toast({
         title: "Erro",
         description: `Falha ao remover cliente: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
@@ -162,14 +176,9 @@ export default function ClientsPage() {
   // Mutations para usuários dos clientes
   const createClientUserMutation = useMutation({
     mutationFn: ({ clientId, userData }: { clientId: number; userData: ClientUserFormData }) => {
-      console.log('🔧 Frontend: Enviando requisição para criar usuário');
-      console.log('   ClientId:', clientId);
-      console.log('   UserData:', userData);
-      console.log('   URL:', `/api/clients/${clientId}/users`);
       return apiRequest(`/api/clients/${clientId}/users`, "POST", userData);
     },
     onSuccess: (data) => {
-      console.log('✅ Frontend: Usuário criado com sucesso:', data);
       toast({
         title: "Sucesso!",
         description: "Usuário criado com sucesso.",
@@ -178,12 +187,6 @@ export default function ClientsPage() {
       resetUserForm();
     },
     onError: (error: any) => {
-      console.error('❌ Frontend: Erro ao criar usuário:', error);
-      console.error('   Error details:', {
-        message: error.message,
-        status: error.status,
-        response: error.response
-      });
       toast({
         title: "Erro",
         description: error.message || "Erro ao criar usuário.",
@@ -313,7 +316,7 @@ export default function ClientsPage() {
       });
     } else {
       // Criar novo cliente
-      const clientData: InsertClient = {
+      const clientData: any = {
         companyName: data.companyName,
         cnpj: data.cnpj,
         email: data.email,
@@ -335,10 +338,8 @@ export default function ClientsPage() {
   const handleDeleteClient = async (id: number) => {
     if (window.confirm("Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.")) {
       try {
-        console.log('Tentando deletar cliente ID:', id);
         deleteClientMutation.mutate(id);
       } catch (error) {
-        console.error('Erro ao deletar cliente:', error);
         toast({
           title: "Erro",
           description: "Erro inesperado ao tentar remover cliente",
@@ -382,7 +383,7 @@ export default function ClientsPage() {
 
   const handleDeleteUser = async (userId: number) => {
     if (!editingClient) return;
-    
+
     if (window.confirm("Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.")) {
       deleteClientUserMutation.mutate({
         clientId: editingClient.id,
@@ -413,7 +414,7 @@ export default function ClientsPage() {
           <h1 className="text-2xl font-bold text-slate-900">Gerenciar Clientes</h1>
           <p className="text-slate-600">Cadastre e gerencie clientes do sistema</p>
         </div>
-        
+
         {!showNewClientForm && (
           <Button onClick={startNewClient} className="bg-primary hover:bg-primary/90">
             <Plus className="w-4 h-4 mr-2" />
@@ -453,7 +454,7 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={clientForm.control}
                     name="cnpj"
@@ -467,7 +468,7 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={clientForm.control}
                     name="email"
@@ -481,7 +482,7 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={clientForm.control}
                     name="phone"
@@ -495,9 +496,9 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
-                  
 
-                  
+
+
                   <FormField
                     control={clientForm.control}
                     name="status"
@@ -519,7 +520,7 @@ export default function ClientsPage() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={clientForm.control}
                     name="monthlyLimit"
@@ -527,9 +528,9 @@ export default function ClientsPage() {
                       <FormItem>
                         <FormLabel>Limite Mensal de Entrevistas</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
+                          <Input
+                            type="number"
+                            min="1"
                             placeholder="5"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -546,7 +547,7 @@ export default function ClientsPage() {
                 {/* Dados do Contrato */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Dados do Contrato</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={clientForm.control}
@@ -555,8 +556,8 @@ export default function ClientsPage() {
                         <FormItem>
                           <FormLabel>Data de Início do Contrato</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
+                            <Input
+                              type="date"
                               {...field}
                               value={field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.toISOString().split('T')[0] : ''}
                               onChange={(e) => field.onChange(new Date(e.target.value))}
@@ -596,8 +597,8 @@ export default function ClientsPage() {
                         <FormItem>
                           <FormLabel>Data de Término do Contrato</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
+                            <Input
+                              type="date"
                               {...field}
                               value={field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value.toISOString().split('T')[0] : ''}
                               onChange={(e) => field.onChange(new Date(e.target.value))}
@@ -615,7 +616,7 @@ export default function ClientsPage() {
                 {/* Dados do Responsável */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Responsável</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={clientForm.control}
@@ -630,7 +631,7 @@ export default function ClientsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={clientForm.control}
                       name="responsiblePhone"
@@ -644,7 +645,7 @@ export default function ClientsPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={clientForm.control}
                       name="responsibleEmail"
@@ -673,11 +674,11 @@ export default function ClientsPage() {
                           Gerencie os usuários que podem acessar o sistema para este cliente
                         </p>
                       </div>
-                      
+
                       {!showNewUserForm && (
-                        <Button 
+                        <Button
                           type="button"
-                          onClick={startNewUser} 
+                          onClick={startNewUser}
                           variant="outline"
                           className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
@@ -717,7 +718,7 @@ export default function ClientsPage() {
                                     </FormItem>
                                   )}
                                 />
-                                
+
                                 <FormField
                                   control={clientUserForm.control}
                                   name="email"
@@ -742,10 +743,10 @@ export default function ClientsPage() {
                                       {editingUser ? "Nova Senha (deixe em branco para manter atual)" : "Senha"}
                                     </FormLabel>
                                     <FormControl>
-                                      <Input 
-                                        type="password" 
+                                      <Input
+                                        type="password"
                                         placeholder={editingUser ? "Digite nova senha ou deixe em branco" : "Digite a senha"}
-                                        {...field} 
+                                        {...field}
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -754,7 +755,7 @@ export default function ClientsPage() {
                               />
 
                               <div className="flex gap-2 pt-2">
-                                <Button 
+                                <Button
                                   type="button"
                                   onClick={clientUserForm.handleSubmit(onSubmitUser)}
                                   disabled={createClientUserMutation.isPending || updateClientUserMutation.isPending}
@@ -828,19 +829,19 @@ export default function ClientsPage() {
                                     </p>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => startEditUser(user)}
                                     className="h-8 w-8 p-0"
                                   >
                                     <Edit className="w-3 h-3" />
                                   </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => handleDeleteUser(user.id)}
                                     className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                   >
@@ -865,10 +866,10 @@ export default function ClientsPage() {
                     disabled={createClientMutation.isPending || updateClientMutation.isPending}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    {createClientMutation.isPending || updateClientMutation.isPending 
-                      ? "Salvando..." 
-                      : editingClient 
-                        ? "Atualizar Cliente" 
+                    {createClientMutation.isPending || updateClientMutation.isPending
+                      ? "Salvando..."
+                      : editingClient
+                        ? "Atualizar Cliente"
                         : "Cadastrar Cliente"
                     }
                   </Button>
@@ -912,8 +913,8 @@ export default function ClientsPage() {
                       {searchTerm ? "Nenhum cliente encontrado" : "Nenhum cliente cadastrado"}
                     </h3>
                     <p className="text-slate-600 mb-6">
-                      {searchTerm 
-                        ? "Tente ajustar os termos de busca." 
+                      {searchTerm
+                        ? "Tente ajustar os termos de busca."
                         : "Comece criando seu primeiro cliente."
                       }
                     </p>
@@ -937,14 +938,14 @@ export default function ClientsPage() {
                           <h3 className="text-lg font-semibold text-slate-900">
                             {user?.role === 'master' ? `#${client.id} - ${client.companyName}` : client.companyName}
                           </h3>
-                          <Badge 
+                          <Badge
                             variant={client.status === 'active' ? 'default' : 'secondary'}
                             className={client.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
                           >
                             {client.status === 'active' ? 'Ativo' : 'Inativo'}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                           <div>
                             <span className="text-sm font-medium text-slate-700">CNPJ:</span>
@@ -960,8 +961,8 @@ export default function ClientsPage() {
                           </div>
                         </div>
 
-                        
-                        
+
+
                         <div className="flex items-center gap-4 text-sm text-slate-500">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
@@ -978,7 +979,7 @@ export default function ClientsPage() {
                                   return "Data inválida";
                                 }
                               })() : "N/A"}
-                              {client.contractEnd 
+                              {client.contractEnd
                                 ? (() => {
                                   try {
                                     const date = (client.contractEnd as any)?.toDate ? (client.contractEnd as any).toDate() : new Date(client.contractEnd);
@@ -993,19 +994,19 @@ export default function ClientsPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex gap-2 flex-wrap">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => startEditClient(client)}
                         >
                           <Edit className="w-4 h-4 mr-1" />
                           Editar
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleDeleteClient(client.id)}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >

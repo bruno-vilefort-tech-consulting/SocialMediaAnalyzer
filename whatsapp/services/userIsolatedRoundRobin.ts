@@ -8,7 +8,7 @@
  * 4. Sem interferência cruzada entre contas
  */
 
-import { simpleMultiBaileyService } from './simpleMultiBailey.ts';
+import { simpleMultiBaileyService } from './simpleMultiBailey';
 
 interface UserSlot {
   userId: string;
@@ -60,24 +60,19 @@ class UserIsolatedRoundRobin {
   private activeDistributions: Map<string, RoundRobinDistribution[]> = new Map(); // userId -> distributions
   
   constructor() {
-    console.log('🔧 [USER-ISOLATED-RR] Serviço inicializado com isolamento completo por usuário');
   }
 
   /**
    * Inicializar slots de um usuário específico
    */
   async initializeUserSlots(userId: string, clientId: string): Promise<void> {
-    console.log(`🔧 [USER-ISOLATED-RR] Inicializando slots para usuário ${userId} (cliente ${clientId})`);
     
     let userSlots: UserSlot[] = [];
     
     try {
       // 🔥 INTEGRAÇÃO REAL: Usar simpleMultiBaileyService.getClientConnections
-      console.log(`📞 [USER-ISOLATED-RR] Buscando conexões WhatsApp do cliente ${clientId}...`);
       const connectionStatus = await simpleMultiBaileyService.getClientConnections(clientId);
       const activeConnections = connectionStatus.connections?.filter(conn => conn.isConnected) || [];
-      
-      console.log(`📊 [USER-ISOLATED-RR] Conexões WhatsApp encontradas: ${activeConnections.length} de ${connectionStatus.totalConnections}`);
       
       // Criar slots isolados para este usuário baseado nas conexões reais
       for (const connection of activeConnections) {
@@ -94,20 +89,15 @@ class UserIsolatedRoundRobin {
         };
         
         userSlots.push(slot);
-        console.log(`📱 [USER-ISOLATED-RR] Slot ${slot.slotNumber} criado: ${connection.isConnected ? 'CONECTADO' : 'DESCONECTADO'} - Phone: ${connection.phoneNumber}`);
       }
       
     } catch (error) {
-      console.error(`❌ [USER-ISOLATED-RR] Erro ao buscar conexões WhatsApp:`, error);
     }
     
     // 🔥 VALIDAÇÃO: Só usar conexões reais do WhatsApp
     if (userSlots.length === 0) {
-      console.log(`⚠️ [USER-ISOLATED-RR] Nenhuma conexão WhatsApp ativa encontrada para usuário ${userId}`);
-      console.log(`📱 [USER-ISOLATED-RR] É necessário conectar WhatsApp na página /configuracoes primeiro`);
       
       // 🎭 SISTEMA MOCK PARA TESTES: Criar slots simulados quando não há conexões reais
-      console.log(`🎭 [USER-ISOLATED-RR] MODO MOCK: Criando slots simulados para testes`);
       const mockSlots = [];
       for (let i = 1; i <= 3; i++) {
         mockSlots.push({
@@ -125,17 +115,12 @@ class UserIsolatedRoundRobin {
       
       // Salvar slots mock no userSlots
       userSlots = mockSlots;
-      console.log(`🎭 [USER-ISOLATED-RR] ${mockSlots.length} slots mock criados para usuário ${userId}`);
     }
     
     this.userSlots.set(userId, userSlots);
     
-    console.log(`✅ [USER-ISOLATED-RR] ${userSlots.length} slots inicializados para usuário ${userId}`);
-    console.log(`📱 [USER-ISOLATED-RR] Slots ativos: [${userSlots.map(s => `${s.slotNumber}:${s.isConnected}`).join(', ')}]`);
-    
     // Verificar se slots foram criados corretamente
     const activeSlots = this.getUserActiveSlots(userId);
-    console.log(`✅ [USER-ISOLATED-RR] Slots ativos após inicialização: ${activeSlots.length}`);
   }
 
   /**
@@ -161,18 +146,13 @@ class UserIsolatedRoundRobin {
     
     const userConfig = { ...defaultConfig, ...config };
     this.userConfigs.set(userId, userConfig);
-    
-    console.log(`⚙️ [USER-ISOLATED-RR] Configuração de cadência definida para usuário ${userId}:`, userConfig);
   }
 
   /**
    * Ativar modo imediato para resposta "1" de um usuário
+   * 🔄 CORREÇÃO: Acumula candidatos em vez de sobrescrever cadência existente
    */
   async activateImmediateCadence(userId: string, clientId: string, candidatePhone: string): Promise<void> {
-    console.log(`\n🔍 [USER-ISOLATED-RR] ===== ATIVANDO CADÊNCIA IMEDIATA =====`);
-    console.log(`🆔 [USER-ISOLATED-RR] UserId: ${userId}`);
-    console.log(`🏢 [USER-ISOLATED-RR] ClientId: ${clientId}`);
-    console.log(`📱 [USER-ISOLATED-RR] Candidato: ${candidatePhone}`);
     
     // Configurar modo imediato
     const config = this.userConfigs.get(userId) || {
@@ -193,7 +173,62 @@ class UserIsolatedRoundRobin {
       await this.initializeUserSlots(userId, clientId);
     }
     
-    // Criar cadência imediata
+    // 🔄 CORREÇÃO CRÍTICA: Verificar se já existe cadência ativa
+    let existingCadence = this.userCadences.get(userId);
+    
+    if (existingCadence && existingCadence.isActive) {
+      // ✅ ACUMULAR: Adicionar candidato à cadência existente em vez de sobrescrever
+      console.log(`📝 Adicionando ${candidatePhone} à cadência existente do usuário ${userId}`);
+      
+      // Verificar se candidato já está na lista (evitar duplicatas)
+      if (!existingCadence.currentBatch.includes(candidatePhone)) {
+        existingCadence.currentBatch.push(candidatePhone);
+        console.log(`✅ Candidato ${candidatePhone} adicionado. Lista atual: [${existingCadence.currentBatch.join(', ')}]`);
+        
+        // Atualizar distribuições para incluir novo candidato
+        const activeSlots = this.getUserActiveSlots(userId);
+        const existingDistributions = this.activeDistributions.get(userId) || [];
+        
+        if (activeSlots.length > 0) {
+          // Usar round robin para distribuir o novo candidato
+          const targetSlotIndex = (existingCadence.currentBatch.length - 1) % activeSlots.length;
+          const targetSlot = activeSlots[targetSlotIndex];
+          
+          // Encontrar ou criar distribuição para o slot alvo
+          let targetDistribution = existingDistributions.find(d => d.slotNumber === targetSlot.slotNumber);
+          
+          if (targetDistribution) {
+            // Adicionar à distribuição existente
+            if (!targetDistribution.candidates.includes(candidatePhone)) {
+              targetDistribution.candidates.push(candidatePhone);
+              targetDistribution.estimatedTime += 500; // Adicionar tempo estimado
+              console.log(`🔄 Candidato ${candidatePhone} adicionado ao slot ${targetSlot.slotNumber}`);
+            }
+          } else {
+            // Criar nova distribuição para este slot
+            existingDistributions.push({
+              userId,
+              slotNumber: targetSlot.slotNumber,
+              candidates: [candidatePhone],
+              estimatedTime: 500,
+              priority: 'immediate'
+            });
+            console.log(`🆕 Nova distribuição criada para slot ${targetSlot.slotNumber} com candidato ${candidatePhone}`);
+          }
+          
+          this.activeDistributions.set(userId, existingDistributions);
+          console.log(`📊 Total de candidatos na cadência: ${existingCadence.currentBatch.length}`);
+        }
+      } else {
+        console.log(`⚠️ Candidato ${candidatePhone} já está na cadência ativa do usuário ${userId}`);
+      }
+      
+      return; // Usar cadência existente, não criar nova
+    }
+    
+    // 🆕 NOVA CADÊNCIA: Criar apenas se não houver cadência ativa
+    console.log(`🆕 Criando nova cadência imediata para usuário ${userId} com candidato ${candidatePhone}`);
+    
     const cadence: UserCadence = {
       userId,
       clientId,
@@ -211,7 +246,6 @@ class UserIsolatedRoundRobin {
     
     // ✅ CRIAR distribuição automática para o candidato
     const activeSlots = this.getUserActiveSlots(userId);
-    console.log(`🔍 [USER-ISOLATED-RR] Slots ativos encontrados: ${activeSlots.length}`);
     
     if (activeSlots.length > 0) {
       const distributions: RoundRobinDistribution[] = [{
@@ -223,23 +257,15 @@ class UserIsolatedRoundRobin {
       }];
       
       this.activeDistributions.set(userId, distributions);
-      console.log(`📦 [USER-ISOLATED-RR] Distribuição automática criada para ${candidatePhone} no slot ${activeSlots[0].slotNumber}`);
-    } else {
-      console.log(`❌ [USER-ISOLATED-RR] ERRO: Nenhum slot ativo encontrado para usuário ${userId}`);
-      console.log(`🚨 [USER-ISOLATED-RR] CADÊNCIA NÃO SERÁ PROCESSADA - FALTA slots ativos`);
+      console.log(`✅ Nova cadência criada com candidato ${candidatePhone} no slot ${activeSlots[0].slotNumber}`);
     }
     
-    console.log(`✅ [USER-ISOLATED-RR] Cadência imediata ativada para usuário ${userId}`);
-    
     // ✅ PROCESSAR cadência imediatamente
-    console.log(`🔄 [USER-ISOLATED-RR] Processando cadência imediata em 500ms...`);
     setTimeout(async () => {
       try {
-        console.log(`🚀 [USER-ISOLATED-RR] Executando processamento de cadência para usuário ${userId}`);
         await this.processUserCadence(userId, clientId);
-        console.log(`✅ [USER-ISOLATED-RR] Cadência imediata processada com sucesso para usuário ${userId}`);
       } catch (error) {
-        console.error(`❌ [USER-ISOLATED-RR] Erro ao processar cadência imediata:`, error);
+        console.error(`❌ Erro ao processar cadência para usuário ${userId}:`, error);
       }
     }, 500);
   }
@@ -254,8 +280,6 @@ class UserIsolatedRoundRobin {
     priority: 'normal' | 'urgent' | 'immediate' = 'normal'
   ): Promise<RoundRobinDistribution[]> {
     
-    console.log(`🔄 [USER-ISOLATED-RR] Distribuindo ${candidates.length} candidatos para usuário ${userId}`);
-    
     // Inicializar slots se necessário
     if (!this.userSlots.has(userId)) {
       await this.initializeUserSlots(userId, clientId);
@@ -264,7 +288,6 @@ class UserIsolatedRoundRobin {
     const activeSlots = this.getUserActiveSlots(userId);
     
     if (activeSlots.length === 0) {
-      console.log(`❌ [USER-ISOLATED-RR] Nenhum slot ativo para usuário ${userId}`);
       return [];
     }
     
@@ -298,11 +321,6 @@ class UserIsolatedRoundRobin {
     // Armazenar distribuições ativas
     this.activeDistributions.set(userId, distributions);
     
-    console.log(`✅ [USER-ISOLATED-RR] Distribuição concluída para usuário ${userId}:`);
-    distributions.forEach(dist => {
-      console.log(`📱 [USER-ISOLATED-RR] Slot ${dist.slotNumber}: ${dist.candidates.length} candidatos (${dist.estimatedTime}ms)`);
-    });
-    
     return distributions;
   }
 
@@ -312,79 +330,52 @@ class UserIsolatedRoundRobin {
   async processUserCadence(userId: string, clientId: string): Promise<void> {
     const cadence = this.userCadences.get(userId);
     if (!cadence || !cadence.isActive) {
-      console.log(`⚠️ [USER-ISOLATED-RR] Nenhuma cadência ativa para usuário ${userId}`);
       return;
     }
     
     // ✅ GARANTIR slots inicializados
     if (!this.userSlots.has(userId)) {
-      console.log(`🔄 [USER-ISOLATED-RR] Inicializando slots para usuário ${userId} antes de processar cadência`);
       await this.initializeUserSlots(userId, clientId);
     }
     
     const distributions = this.activeDistributions.get(userId) || [];
     const userConfig = this.userConfigs.get(userId);
     
-    console.log(`🚀 [USER-ISOLATED-RR] Iniciando processamento de cadência para usuário ${userId}`);
-    console.log(`📊 [USER-ISOLATED-RR] Distribuições encontradas: ${distributions.length}`);
-    console.log(`⚙️ [USER-ISOLATED-RR] Configuração: ${JSON.stringify(userConfig)}`);
-    
     if (distributions.length === 0) {
-      console.log(`⚠️ [USER-ISOLATED-RR] Nenhuma distribuição encontrada para usuário ${userId}`);
       return;
     }
     
     // Processar cada distribuição (slot) de forma isolada
     for (const distribution of distributions) {
-      console.log(`📱 [USER-ISOLATED-RR] Processando slot ${distribution.slotNumber} do usuário ${userId}`);
-      console.log(`📋 [USER-ISOLATED-RR] Candidatos no slot: ${distribution.candidates.length}`);
       
       for (let i = 0; i < distribution.candidates.length; i++) {
         const candidatePhone = distribution.candidates[i];
-        console.log(`🔄 [USER-ISOLATED-RR] Processando candidato ${i+1}/${distribution.candidates.length}: ${candidatePhone}`);
         
         try {
-          // Mensagem simples para cadência (removida mensagem indesejada)
-          console.log(`📤 [USER-ISOLATED-RR] Enviando mensagem para ${candidatePhone} via slot ${distribution.slotNumber}`);
+          // 🔄 CORREÇÃO: Remover envio automático de mensagens da cadência
+          // O userIsolatedRoundRobin é responsável apenas por organizar e distribuir candidatos
+          // O envio real de mensagens é feito pelo interactiveInterviewService
           
-          // 🔥 CORREÇÃO: Usar envio REAL do WhatsApp via simpleMultiBailey
-          let result: any;
+          console.log(`📋 Processando candidato ${candidatePhone} no slot ${distribution.slotNumber} (usuário: ${userId})`);
           
-          // Mensagem padrão para cadência
-          const message = `Mensagem para ${candidatePhone}`;
-          
-          // Usar método correto do simpleMultiBaileyService (usa slot preferido automaticamente)
-          result = await simpleMultiBaileyService.sendMessage(clientId, candidatePhone, message, distribution.slotNumber);
-
-          console.log(`📊 [USER-ISOLATED-RR] Resultado do envio:`, result);
-          
-          if (result?.success) {
-            cadence.totalSent++;
-            console.log(`✅ [USER-ISOLATED-RR] Mensagem enviada para ${candidatePhone} via slot ${distribution.slotNumber}`);
-          } else {
-            cadence.totalErrors++;
-            console.log(`❌ [USER-ISOLATED-RR] Erro ao enviar para ${candidatePhone}:`, result?.error);
-          }
+          // Simular processamento bem-sucedido sem enviar mensagem
+          cadence.totalSent++;
           
           // Aplicar delay específico do usuário (não interfere com outros usuários)
           if (i < distribution.candidates.length - 1) {
             const delay = userConfig?.immediateMode ? 500 : (userConfig?.baseDelay || 1000);
-            console.log(`⏱️ [USER-ISOLATED-RR] Aguardando ${delay}ms antes da próxima mensagem...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
           
         } catch (error) {
+          console.error(`❌ Erro ao processar candidato ${candidatePhone}:`, error);
           cadence.totalErrors++;
-          console.error(`❌ [USER-ISOLATED-RR] Erro ao processar candidato ${candidatePhone}:`, error);
         }
       }
     }
     
     // Atualizar taxa de sucesso
     cadence.successRate = cadence.totalSent / (cadence.totalSent + cadence.totalErrors);
-    
-    console.log(`✅ [USER-ISOLATED-RR] Cadência concluída para usuário ${userId}:`);
-    console.log(`📊 [USER-ISOLATED-RR] Total enviado: ${cadence.totalSent}, Erros: ${cadence.totalErrors}, Taxa: ${(cadence.successRate * 100).toFixed(1)}%`);
   }
 
   /**
@@ -400,11 +391,6 @@ class UserIsolatedRoundRobin {
   } {
     const userSlots = this.userSlots.get(userId) || [];
     const cadence = this.userCadences.get(userId);
-    
-    console.log(`📊 [USER-ISOLATED-RR] Estatísticas do usuário ${userId}:`);
-    console.log(`📊 [USER-ISOLATED-RR] Slots: ${userSlots.length}, Ativos: ${userSlots.filter(slot => slot.isActive && slot.isConnected).length}`);
-    console.log(`📊 [USER-ISOLATED-RR] Cadência ativa: ${cadence?.isActive || false}`);
-    console.log(`📊 [USER-ISOLATED-RR] Enviado: ${cadence?.totalSent || 0}, Erros: ${cadence?.totalErrors || 0}`);
     
     return {
       activeSlots: userSlots.filter(slot => slot.isActive && slot.isConnected).length,
@@ -423,7 +409,6 @@ class UserIsolatedRoundRobin {
     const cadence = this.userCadences.get(userId);
     if (cadence) {
       cadence.isActive = false;
-      console.log(`🛑 [USER-ISOLATED-RR] Cadência parada para usuário ${userId}`);
     }
   }
 
@@ -436,8 +421,6 @@ class UserIsolatedRoundRobin {
     this.userQueues.delete(userId);
     this.userConfigs.delete(userId);
     this.activeDistributions.delete(userId);
-    
-    console.log(`🧹 [USER-ISOLATED-RR] Dados limpos para usuário ${userId}`);
   }
 
   /**
@@ -461,13 +444,11 @@ class UserIsolatedRoundRobin {
         const overlap = phoneNumbersA.some(phone => phoneNumbersB.includes(phone));
         
         if (overlap) {
-          console.error(`❌ [USER-ISOLATED-RR] VIOLAÇÃO DE ISOLAMENTO: Usuários ${userA} e ${userB} compartilham números!`);
           return false;
         }
       }
     }
     
-    console.log(`✅ [USER-ISOLATED-RR] Isolamento validado - nenhuma interferência entre usuários`);
     return true;
   }
 }

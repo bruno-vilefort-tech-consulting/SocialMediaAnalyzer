@@ -163,8 +163,6 @@ eu sou Ana Luíza, gestora de RH da [clienteid], estou lhe enviando os Assessmen
     if (sendOption === "now") {
       sendEmailMutation.mutate(formData);
     } else {
-      // Para agendamento, por enquanto só mostra console
-      console.log("Agendamento de assessment:", formData);
       toast({
         title: "Assessment agendado",
         description: "O assessment foi agendado para envio na data especificada.",

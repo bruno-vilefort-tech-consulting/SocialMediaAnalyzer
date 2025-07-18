@@ -48,28 +48,28 @@ export default function CandidatesManagementPage() {
   const [previousSelectedClient, setPreviousSelectedClient] = useState<number | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  
+
   // Estados para paginação
   const [currentPage, setCurrentPage] = useState(1);
   const candidatesPerPage = 10;
-  
+
   // Reset página quando filtros mudam
   const resetPagination = () => setCurrentPage(1);
-  
+
   const [isListsDialogOpen, setIsListsDialogOpen] = useState(false);
   const [isNewCandidateDialogOpen, setIsNewCandidateDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // Estados para paginação do diálogo de listas
   const [currentListsPage, setCurrentListsPage] = useState(1);
   const [listSearchTerm, setListSearchTerm] = useState('');
   const listsPerPage = 5;
   const [editForm, setEditForm] = useState({ name: "", email: "", whatsapp: "" });
-  const [newCandidateForm, setNewCandidateForm] = useState({ 
-    name: "", 
-    email: "", 
-    whatsapp: "", 
-    clientId: 0, 
+  const [newCandidateForm, setNewCandidateForm] = useState({
+    name: "",
+    email: "",
+    whatsapp: "",
+    clientId: 0,
     listId: undefined as number | undefined
   });
 
@@ -108,21 +108,20 @@ export default function CandidatesManagementPage() {
   const filteredCandidates = Array.isArray(candidates) ? candidates.filter((candidate: Candidate) => {
     // Verificar se o ID é válido
     if (!candidate.clientId || isNaN(candidate.clientId)) {
-      console.log(`⚠️ Candidato ${candidate.name} tem clientId inválido:`, candidate.clientId);
       return false;
     }
 
-    const searchMatch = !searchTerm || 
+    const searchMatch = !searchTerm ||
       candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.whatsapp.includes(searchTerm);
-    
+
     // Para master: filtrar por cliente selecionado se houver, senão mostrar todos
     if (isMaster) {
       const clientMatch = !selectedClient || candidate.clientId === selectedClient;
       return searchMatch && clientMatch;
     }
-    
+
     // Para cliente: filtrar por seu próprio clientId
     return searchMatch && candidate.clientId === user?.clientId;
   }).sort((a: Candidate, b: Candidate) => {
@@ -145,33 +144,21 @@ export default function CandidatesManagementPage() {
     return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
   }) : [];
 
-
-
-
-
   // Função para obter listas de um candidato
   const getCandidateLists = (candidateId: number) => {
-    console.log(`🔍 Buscando listas para candidato ${candidateId}`);
-    console.log(`📋 Memberships disponíveis:`, memberships);
-    
     if (!memberships || !Array.isArray(memberships)) {
-      console.log(`❌ Memberships não disponíveis`);
       return [];
     }
-    
+
     const candidateMemberships = (memberships as CandidateListMembership[]).filter((m: CandidateListMembership) => {
       const match = m.candidateId === candidateId;
-      console.log(`🔍 Comparando ${m.candidateId} === ${candidateId}: ${match}`);
       return match;
     });
-    
-    console.log(`📋 Memberships do candidato ${candidateId}:`, candidateMemberships);
-    
+
     const lists = candidateMemberships.map((membership: CandidateListMembership) => {
       return (candidateLists as CandidateList[]).find((list: CandidateList) => list.id === membership.listId);
     }).filter(Boolean) as CandidateList[];
-    
-    console.log(`📋 Listas encontradas:`, lists);
+
     return lists;
   };
 
@@ -192,7 +179,7 @@ export default function CandidatesManagementPage() {
     },
     onError: () => {
       toast({
-        title: "Erro", 
+        title: "Erro",
         description: "Falha ao criar candidato",
         variant: "destructive",
       });
@@ -337,7 +324,7 @@ export default function CandidatesManagementPage() {
 
   const handleSaveEdit = () => {
     if (!selectedCandidate) return;
-    
+
     updateCandidateMutation.mutate({
       id: selectedCandidate.id,
       ...editForm
@@ -377,7 +364,7 @@ export default function CandidatesManagementPage() {
       ...newCandidateForm,
       clientId: isMaster ? newCandidateForm.clientId : clientId!
     };
-    
+
     // Validar apenas campos obrigatórios (nome, email, whatsapp, clientId)
     if (!candidateData.name || !candidateData.email || !candidateData.whatsapp || !candidateData.clientId) {
       toast({
@@ -387,7 +374,7 @@ export default function CandidatesManagementPage() {
       });
       return;
     }
-    
+
     createCandidateMutation.mutate(candidateData);
   };
 
@@ -396,19 +383,19 @@ export default function CandidatesManagementPage() {
     if (!selectedCandidate) return [];
     const candidateListIds = getCandidateLists(selectedCandidate.id).map((list: CandidateList) => list.id);
     // Usar o clientId do candidato selecionado, não o filtro atual
-    let availableLists = (candidateLists as CandidateList[]).filter((list: CandidateList) => 
-      !candidateListIds.includes(list.id) && 
+    let availableLists = (candidateLists as CandidateList[]).filter((list: CandidateList) =>
+      !candidateListIds.includes(list.id) &&
       list.clientId === selectedCandidate.clientId
     );
-    
+
     // Aplicar filtro de busca se existir
     if (listSearchTerm.trim()) {
-      availableLists = availableLists.filter(list => 
+      availableLists = availableLists.filter(list =>
         list.name.toLowerCase().includes(listSearchTerm.toLowerCase()) ||
         list.description.toLowerCase().includes(listSearchTerm.toLowerCase())
       );
     }
-    
+
     return availableLists;
   };
 
@@ -438,26 +425,19 @@ export default function CandidatesManagementPage() {
 
   // Função para obter o nome do cliente pelo ID
   const getClientName = (clientId: number) => {
-    console.log('🏢 getClientName chamado com clientId:', clientId, 'tipo:', typeof clientId);
-    
     if (!isMaster || !clients || !Array.isArray(clients)) {
-      console.log('❌ Condições não atendidas - isMaster:', isMaster, 'clients:', clients);
       return null;
     }
-    
+
     if (!clientId || isNaN(clientId)) {
-      console.log('❌ ClientId inválido:', clientId);
       return `Cliente #undefined`;
     }
-    
+
     const client = (clients as Client[]).find((c: Client) => c.id === clientId);
-    console.log('🔍 Cliente encontrado:', client);
-    
+
     if (client) {
       return client.companyName;
     } else {
-      console.log('❌ Cliente não encontrado para ID:', clientId);
-      console.log('📋 Clientes disponíveis:', clients);
       return `Cliente #${clientId}`;
     }
   };
@@ -486,7 +466,7 @@ export default function CandidatesManagementPage() {
 
     // Determinar clientId baseado no role do usuário
     let targetClientId: number;
-    
+
     if (user?.role === 'master') {
       if (!uploadClientId) {
         toast({
@@ -513,13 +493,6 @@ export default function CandidatesManagementPage() {
       targetClientId = user.clientId;
     }
 
-    console.log('🎯 Upload Excel direto para candidatos:', {
-      userRole: user?.role,
-      userClientId: user?.clientId,
-      uploadClientId,
-      targetClientId
-    });
-
     const formData = new FormData();
     formData.append('file', file);
     formData.append('clientId', targetClientId.toString());
@@ -542,38 +515,37 @@ export default function CandidatesManagementPage() {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Invalidar caches para atualizar a interface
         queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
         queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
 
         // Mostrar mensagem de sucesso
         if (result.duplicates > 0) {
-          toast({ 
+          toast({
             title: "Importação parcial",
             description: `${result.imported} candidatos importados. ${result.duplicates} não foram importados por já existirem no sistema.`,
             variant: "default"
           });
         } else {
-          toast({ 
+          toast({
             title: "Sucesso!",
             description: `${result.imported} candidatos importados com sucesso!`
           });
         }
       } else {
         const error = await response.json();
-        toast({ 
-          title: "Erro na importação", 
+        toast({
+          title: "Erro na importação",
           description: error.message || "Falha na importação",
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (error: any) {
-      console.error('Erro no upload:', error);
-      toast({ 
-        title: "Erro na importação", 
+      toast({
+        title: "Erro na importação",
         description: "Falha no upload do arquivo",
-        variant: "destructive" 
+        variant: "destructive"
       });
     } finally {
       setIsUploadingExcel(false);
@@ -616,7 +588,7 @@ export default function CandidatesManagementPage() {
               </SelectContent>
             </Select>
           )}
-          
+
           <input
             type="file"
             accept=".xlsx,.xls,.csv"
@@ -685,7 +657,7 @@ export default function CandidatesManagementPage() {
         ) : (
           paginatedCandidates.map((candidate) => {
             const candidateLists = getCandidateLists(candidate.id);
-            
+
             return (
               <Card key={candidate.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -701,7 +673,7 @@ export default function CandidatesManagementPage() {
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500">Listas:</span>
                         {candidateLists.length > 0 ? (
@@ -715,17 +687,17 @@ export default function CandidatesManagementPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Button
-                        variant="outline" 
+                        variant="outline"
                         size="sm"
                         onClick={() => handleManageLists(candidate)}
                       >
                         <Users className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="outline" 
+                        variant="outline"
                         size="sm"
                         onClick={() => handleEditCandidate(candidate)}
                       >
@@ -746,7 +718,7 @@ export default function CandidatesManagementPage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
+                            <AlertDialogAction
                               onClick={() => deleteCandidateMutation.mutate(candidate.id)}
                               className="bg-red-600 hover:bg-red-700"
                             >
@@ -769,7 +741,7 @@ export default function CandidatesManagementPage() {
           <div className="text-sm text-gray-600">
             Mostrando {startIndex + 1} a {Math.min(endIndex, totalCandidates)} de {totalCandidates} candidatos
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -779,7 +751,7 @@ export default function CandidatesManagementPage() {
             >
               Anterior
             </Button>
-            
+
             <div className="flex items-center gap-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
@@ -793,7 +765,7 @@ export default function CandidatesManagementPage() {
                 </Button>
               ))}
             </div>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -841,7 +813,7 @@ export default function CandidatesManagementPage() {
               />
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2 mt-6">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
@@ -864,7 +836,7 @@ export default function CandidatesManagementPage() {
           <DialogHeader>
             <DialogTitle>Gerenciar Listas - {selectedCandidate?.name}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6 overflow-y-auto flex-1 pr-2">
             {/* Listas atuais */}
             <div>
@@ -955,7 +927,7 @@ export default function CandidatesManagementPage() {
               </div>
             )}
           </div>
-          
+
           <div className="flex justify-end mt-6">
             <Button onClick={() => setIsListsDialogOpen(false)}>
               Fechar
@@ -1028,8 +1000,8 @@ export default function CandidatesManagementPage() {
                 <SelectContent>
                   <SelectItem value="0">Sem lista</SelectItem>
                   {(candidateLists as CandidateList[])
-                    .filter((list: CandidateList) => 
-                      isMaster ? 
+                    .filter((list: CandidateList) =>
+                      isMaster ?
                         (newCandidateForm.clientId ? list.clientId === newCandidateForm.clientId : true) :
                         list.clientId === clientId
                     )
@@ -1042,7 +1014,7 @@ export default function CandidatesManagementPage() {
               </Select>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2 mt-6">
             <Button variant="outline" onClick={() => setIsNewCandidateDialogOpen(false)}>
               Cancelar

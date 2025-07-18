@@ -33,8 +33,6 @@ const fictionalNames = [
 ];
 
 export async function createTestCandidates() {
-  console.log("🚀 Iniciando criação de 20 candidatos fictícios...");
-
   const clientId = 1749849987543; // Grupo Maximuns
   const selectionId = "1750476614396"; // Comercial 5
   const listId = 1750448724282; // Lista de candidatos existente
@@ -55,7 +53,6 @@ export async function createTestCandidates() {
       };
 
       await setDoc(doc(firebaseDb, "candidates", candidateId.toString()), candidateData);
-      console.log(`✅ Candidato criado: ${candidateData.name} (ID: ${candidateId})`);
 
       // 2. Adicionar à lista de candidatos
       const membershipData = {
@@ -67,7 +64,6 @@ export async function createTestCandidates() {
       };
 
       await setDoc(doc(firebaseDb, "candidateListMemberships", membershipData.id), membershipData);
-      console.log(`📋 Adicionado à lista: ${candidateData.name}`);
 
       // 3. Criar transcrições para cada pergunta
       for (let j = 0; j < transcriptions.length; j++) {
@@ -91,7 +87,6 @@ export async function createTestCandidates() {
         };
 
         await setDoc(doc(firebaseDb, "transcriptions", transcriptionId), transcriptionData);
-        console.log(`🎤 Transcrição ${j + 1} criada para ${candidateData.name}`);
       }
 
       // 4. Criar entrevista na coleção interviews
@@ -112,31 +107,19 @@ export async function createTestCandidates() {
       };
 
       await setDoc(doc(firebaseDb, "interviews", interviewData.id), interviewData);
-      console.log(`📝 Entrevista criada para ${candidateData.name}`);
 
       // Delay para evitar sobrecarga
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    console.log("🎉 Todos os 20 candidatos fictícios foram criados com sucesso!");
-    console.log("📊 Dados criados:");
-    console.log("- 20 candidatos novos");
-    console.log("- 20 memberships na lista");
-    console.log("- 40 transcrições (2 por candidato)");
-    console.log("- 20 entrevistas completas");
-    console.log("- Todos vinculados ao relatório 'Comercial 5'");
-
   } catch (error) {
-    console.error("❌ Erro ao criar candidatos fictícios:", error);
     throw error;
   }
 }
 
 // Função para limpar os dados de teste (se necessário)
 export async function cleanTestCandidates() {
-  console.log("🧹 Limpando candidatos de teste...");
   // Esta função pode ser implementada se necessário para remover os dados de teste
-  console.log("⚠️ Função de limpeza não implementada - dados devem ser removidos manualmente se necessário");
 }
 
 // Função auxiliar para verificar se candidatos de teste já existem
@@ -152,7 +135,6 @@ export async function checkTestCandidatesExist(): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    console.error("Erro ao verificar candidatos de teste:", error);
     return false;
   }
 }

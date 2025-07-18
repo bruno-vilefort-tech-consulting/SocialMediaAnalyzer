@@ -66,34 +66,28 @@ export class SimpleQueueManager {
   private jobProgressStorage = new Map<string, JobProgress>();
 
   constructor() {
-    console.log('🔄 [SIMPLE-QUEUE] Inicializando sistema de filas simplificado...');
+    // Initialized
   }
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('⚠️ [SIMPLE-QUEUE] Sistema já inicializado');
       return;
     }
 
     try {
       // 🔥 CORREÇÃO: Verificar se Redis Simulator está funcionando
       await redisSimulator.connect();
-      console.log('✅ [SIMPLE-QUEUE] Redis Simulator conectado');
 
       // 🔥 CORREÇÃO: Verificar filas existentes
       const dispatchQueueLength = await redisSimulator.llen('dispatch-queue');
       const messageQueueLength = await redisSimulator.llen('message-queue');
-      
-      console.log(`📊 [SIMPLE-QUEUE] Filas encontradas: dispatch=${dispatchQueueLength}, messages=${messageQueueLength}`);
 
       // Iniciar processamento contínuo
       this.startProcessing();
       
       this.isInitialized = true;
-      console.log('🚀 [SIMPLE-QUEUE] Sistema de filas simplificado inicializado com sucesso');
       
     } catch (error) {
-      console.error('❌ [SIMPLE-QUEUE] Erro ao inicializar:', error);
       throw error;
     }
   }
@@ -108,11 +102,9 @@ export class SimpleQueueManager {
       try {
         await this.processJobs();
       } catch (error) {
-        console.error('❌ [SIMPLE-QUEUE] Erro no loop de processamento:', error);
+        // Error handled silently
       }
     }, 500); // 🔥 CORREÇÃO: Reduzido de 1000ms para 500ms
-
-    console.log('⚡ [SIMPLE-QUEUE] Processamento iniciado com intervalo de 500ms');
   }
 
   private async processJobs(): Promise<void> {
@@ -121,12 +113,8 @@ export class SimpleQueueManager {
       const dispatchProcessed = await this.processMultipleJobs('dispatch-queue', 2);
       const messageProcessed = await this.processMultipleJobs('message-queue', 5);
       
-      if (dispatchProcessed > 0 || messageProcessed > 0) {
-        console.log(`🔄 [SIMPLE-QUEUE] Ciclo: ${dispatchProcessed} dispatch, ${messageProcessed} mensagens processadas`);
-      }
-      
     } catch (error) {
-      console.error('❌ [SIMPLE-QUEUE] Erro processando jobs:', error);
+      // Error handled silently
     }
   }
 
@@ -142,8 +130,6 @@ export class SimpleQueueManager {
         const job: SimpleJob = JSON.parse(jobData);
         
         if (job.status !== 'pending') continue;
-        
-        console.log(`🔄 [SIMPLE-QUEUE] Processando job ${job.id} tipo ${job.type}`);
         
         // Marcar como processando
         job.status = 'processing';
@@ -161,12 +147,9 @@ export class SimpleQueueManager {
         job.status = 'completed';
         await this.updateJobStatus(job);
         
-        console.log(`✅ [SIMPLE-QUEUE] Job ${job.id} completado`);
         processed++;
         
       } catch (error) {
-        console.error(`❌ [SIMPLE-QUEUE] Erro processando job:`, error);
-        
         // Marcar como falhou e tentar retry
         try {
           const job: SimpleJob = JSON.parse(jobData);
@@ -174,17 +157,15 @@ export class SimpleQueueManager {
           job.error = error instanceof Error ? error.message : 'Erro desconhecido';
           
           if (job.attempts < job.maxAttempts) {
-            console.log(`🔄 [SIMPLE-QUEUE] Retry ${job.attempts}/${job.maxAttempts} para job ${job.id}`);
             job.status = 'pending';
             await redisSimulator.lpush(queueName, JSON.stringify(job));
           } else {
             job.status = 'failed';
-            console.error(`💀 [SIMPLE-QUEUE] Job ${job.id} falhou definitivamente após ${job.attempts} tentativas`);
           }
           
           await this.updateJobStatus(job);
         } catch (updateError) {
-          console.error('❌ [SIMPLE-QUEUE] Erro atualizando status do job falhou:', updateError);
+          // Error handled silently
         }
       }
     }
@@ -200,8 +181,6 @@ export class SimpleQueueManager {
   private async processDispatchJob(job: SimpleJob): Promise<void> {
     const data = job.data as WhatsAppDispatchJobData;
     const { selectionId, clientId, candidateIds, rateLimitConfig, whatsappTemplate } = data;
-    
-    console.log(`📋 [DISPATCH] Processando seleção ${selectionId} com ${candidateIds.length} candidatos`);
 
     // Inicializar progresso
     const progress: JobProgress = {
@@ -236,7 +215,6 @@ export class SimpleQueueManager {
 
       activeSlots = connectionsStatus.connections?.filter((conn: any) => conn.isConnected) || [];
     } catch (error) {
-      console.error('⚠️ [DISPATCH] Erro acessando WhatsApp service, usando mock slots:', error);
       // Usar slots mock para desenvolvimento
       activeSlots = [{ slotNumber: 1, isConnected: true }];
     }
@@ -251,15 +229,12 @@ export class SimpleQueueManager {
     // Processar candidatos em lotes
     for (let i = 0; i < candidateIds.length; i += batchSize) {
       const batch = candidateIds.slice(i, i + batchSize);
-      
-      console.log(`📦 [DISPATCH] Processando lote ${Math.floor(i/batchSize) + 1} com ${batch.length} candidatos`);
 
       // Criar jobs de mensagem para cada candidato do lote
       for (const candidateId of batch) {
         const candidate = candidateMap.get(candidateId);
         
         if (!candidate) {
-          console.warn(`⚠️ [DISPATCH] Candidato ${candidateId} não encontrado`);
           progress.failed++;
           continue;
         }
@@ -313,19 +288,14 @@ export class SimpleQueueManager {
     try {
       const { storage } = await import('../storage');
       await storage.updateSelection(selectionId, { status: 'enviado' });
-      console.log(`✅ [DISPATCH] Status da seleção ${selectionId} atualizado para "enviado"`);
     } catch (updateError) {
-      console.error(`❌ [DISPATCH] Erro ao atualizar status da seleção ${selectionId}:`, updateError);
+      // Error handled silently
     }
-    
-    console.log(`✅ [DISPATCH] Seleção ${selectionId} dividida em ${candidateIds.length} mensagens`);
   }
 
   private async processMessageJob(job: SimpleJob): Promise<void> {
     const data = job.data as MessageJobData;
     const { candidateName, phone, message, clientId, slotNumber, jobId } = data;
-    
-    console.log(`📱 [MESSAGE] Enviando para ${candidateName} (${phone}) via slot ${slotNumber}`);
 
     try {
       // Simular envio de mensagem (desenvolvimento)
@@ -342,19 +312,15 @@ export class SimpleQueueManager {
         );
         
         if (result.success) {
-          console.log(`✅ [MESSAGE] Mensagem enviada para ${candidateName}`);
           this.incrementJobProgress(jobId, 'sent');
         } else {
           throw new Error(result.error || 'Falha no envio WhatsApp');
         }
       } catch (whatsappError) {
-        console.warn(`⚠️ [MESSAGE] WhatsApp service não disponível, simulando envio:`, whatsappError);
-        
         // Simular delay de envio
         await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
         
         if (success) {
-          console.log(`✅ [MESSAGE] Mensagem simulada enviada para ${candidateName}`);
           this.incrementJobProgress(jobId, 'sent');
         } else {
           throw new Error('Simulação de falha no envio');
@@ -362,7 +328,6 @@ export class SimpleQueueManager {
       }
       
     } catch (error) {
-      console.error(`❌ [MESSAGE] Erro enviando para ${candidateName}:`, error);
       this.incrementJobProgress(jobId, 'failed');
       throw error;
     }
@@ -385,8 +350,6 @@ export class SimpleQueueManager {
       status: 'pending',
       createdAt: Date.now(),
     };
-
-    console.log(`📋 [SIMPLE-QUEUE] Adicionando job de dispatch para seleção ${data.selectionId}`);
     
     // Adicionar à fila
     await redisSimulator.lpush('dispatch-queue', JSON.stringify(job));
@@ -394,7 +357,6 @@ export class SimpleQueueManager {
     // Salvar metadata do job
     await redisSimulator.set(`job:${jobId}`, JSON.stringify(job));
     
-    console.log(`📋 [SIMPLE-QUEUE] Job ${jobId} criado na fila de dispatch`);
     return jobId;
   }
 
@@ -439,12 +401,10 @@ export class SimpleQueueManager {
         job.error = 'Cancelado pelo usuário';
         await this.updateJobStatus(job);
         
-        console.log(`🗑️ [SIMPLE-QUEUE] Job ${jobId} cancelado`);
         return true;
       }
       return false;
     } catch (error) {
-      console.error(`❌ [SIMPLE-QUEUE] Erro cancelando job ${jobId}:`, error);
       return false;
     }
   }
@@ -524,8 +484,6 @@ export class SimpleQueueManager {
 
   // Cleanup
   public async cleanup(): Promise<void> {
-    console.log('🧹 [SIMPLE-QUEUE] Iniciando cleanup...');
-    
     try {
       if (this.processingInterval) {
         clearInterval(this.processingInterval);
@@ -535,9 +493,8 @@ export class SimpleQueueManager {
       this.isProcessing = false;
       await redisSimulator.disconnect();
       
-      console.log('✅ [SIMPLE-QUEUE] Cleanup concluído');
     } catch (error) {
-      console.error('❌ [SIMPLE-QUEUE] Erro no cleanup:', error);
+      // Error handled silently
     }
   }
 }

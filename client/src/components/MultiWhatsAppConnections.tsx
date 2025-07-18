@@ -58,21 +58,12 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
   // QR deve aparecer se já existe um QR Code ou se o usuário clicou para conectar
   const [showQR, setShowQR] = useState(() => {
     const hasQrCode = !!connection.qrCode;
-    console.log(`🔧 [SLOT ${connection.slotNumber}] Estado inicial showQR:`, hasQrCode);
     return hasQrCode;
   });
 
   // Atualizar showQR quando connection.qrCode mudar
   React.useEffect(() => {
-    console.log(`🔍 [SLOT ${connection.slotNumber}] QR Code Debug:`, {
-      hasQrCode: !!connection.qrCode,
-      qrCodeLength: connection.qrCode?.length || 0,
-      isConnected: connection.isConnected,
-      showQR: showQR
-    });
-
     if (connection.qrCode && !connection.isConnected) {
-      console.log(`✅ [SLOT ${connection.slotNumber}] Exibindo QR Code de ${connection.qrCode.length} caracteres`);
       setShowQR(true);
     } else if (!connection.qrCode) {
       // Reset showQR se não há QR Code
@@ -187,7 +178,7 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                   </Button>
                 </>
               )}
-              
+
               {/* Botão Esconder quando desconectado */}
               <Button
                 onClick={handleHideCard}
@@ -222,8 +213,8 @@ const ConnectionSlot: React.FC<ConnectionSlotProps> = ({
                       height: '200px',
                       display: 'block'
                     }}
-                    onLoad={() => console.log(`✅ [SLOT ${connection.slotNumber}] QR Code image carregada com sucesso`)}
-                    onError={(e) => console.error(`❌ [SLOT ${connection.slotNumber}] Erro ao carregar QR Code:`, e)}
+                    onLoad={() => {/* QR Code loaded */ }}
+                    onError={() => {/* QR Code load error */ }}
                   />
                 </div>
               </div>
@@ -319,7 +310,7 @@ const MultiWhatsAppConnections: React.FC = () => {
   const [connectingSlots, setConnectingSlots] = useState<Set<number>>(new Set());
   const [disconnectingSlots, setDisconnectingSlots] = useState<Set<number>>(new Set());
   const [testingSlots, setTestingSlots] = useState<Set<number>>(new Set());
-  
+
   // Estado para controlar quantas conexões estão visíveis com persistência
   const [visibleConnections, setVisibleConnections] = useState<number>(() => {
     try {
@@ -350,20 +341,19 @@ const MultiWhatsAppConnections: React.FC = () => {
         // Clear any potential cached WhatsApp errors
         sessionStorage.removeItem('whatsapp_error_cache');
         localStorage.removeItem('whatsapp_error_cache');
-        
+
         // Clear any potential toast errors
         sessionStorage.removeItem('whatsapp_toast_errors');
         localStorage.removeItem('whatsapp_toast_errors');
-        
+
         // Force cache invalidation for WhatsApp queries
         queryClient.invalidateQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        
-        console.log('🧹 [CACHE-CLEAR] Cached errors cleared, fresh start garantido');
+
       } catch (error) {
-        console.log('⚠️ [CACHE-CLEAR] Erro ao limpar cache:', error);
+        // Error handled silently
       }
     };
-    
+
     clearCachedErrors();
   }, [queryClient]);
 
@@ -383,7 +373,6 @@ const MultiWhatsAppConnections: React.FC = () => {
       const random = Math.random().toString(36).substring(7);
       const response = await apiRequest(`/api/multi-whatsapp/connections?_t=${timestamp}&_r=${random}`, 'GET');
       const data = await response.json();
-      console.log('🔍 [MULTI-WA] Dados recebidos da API:', data);
       return data;
     }
   });
@@ -391,7 +380,6 @@ const MultiWhatsAppConnections: React.FC = () => {
   // Tratamento de erro da query
   React.useEffect(() => {
     if (error) {
-      console.error('❌ [MULTI-WA] Erro ao buscar conexões:', error);
       toast({
         title: "Erro de conexão",
         description: "Falha ao carregar status das conexões WhatsApp",
@@ -420,12 +408,10 @@ const MultiWhatsAppConnections: React.FC = () => {
   React.useEffect(() => {
     if (connectionsData?.connections) {
       setConnections(connectionsData.connections);
-      
+
       // ✅ TEMPO REAL: Log das mudanças de status para debug
       const connectedCount = connectionsData.connections.filter(c => c.isConnected).length;
       const disconnectedCount = connectionsData.connections.filter(c => !c.isConnected).length;
-      
-      console.log(`📊 [MULTI-WA] Status atualizado: ${connectedCount} conectadas, ${disconnectedCount} desconectadas`);
     }
   }, [connectionsData]);
 
@@ -438,25 +424,23 @@ const MultiWhatsAppConnections: React.FC = () => {
         localStorage.removeItem('whatsapp_connection_errors');
         sessionStorage.removeItem('whatsapp_phantom_errors');
         localStorage.removeItem('whatsapp_phantom_errors');
-        console.log('🧹 [CONNECT] Cache errors cleared before connection attempt');
       } catch (error) {
-        console.log('⚠️ [CONNECT] Cache clear warning:', error);
+        // Cache clear handled silently
       }
-      
+
       const response = await apiRequest(`/api/multi-whatsapp/test-direct-qr/${slotNumber}`, 'POST');
       return response.json();
     },
     onMutate: (slotNumber) => {
       setConnectingSlots(prev => new Set(prev).add(slotNumber));
-      
+
       // 🔥 CACHE BUSTING: Clear any cached errors at mutation start
       try {
         sessionStorage.clear();
         localStorage.removeItem('whatsapp_error_cache');
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        console.log('🧹 [CONNECT] Full cache cleared for slot', slotNumber);
       } catch (error) {
-        console.log('⚠️ [CONNECT] Cache clear warning in onMutate:', error);
+        // Cache clear handled silently
       }
     },
     onSuccess: (data, slotNumber) => {
@@ -467,11 +451,10 @@ const MultiWhatsAppConnections: React.FC = () => {
           localStorage.removeItem('whatsapp_error_cache');
           sessionStorage.removeItem('whatsapp_phantom_errors');
           localStorage.removeItem('whatsapp_phantom_errors');
-          console.log('🧹 [CONNECT-SUCCESS] All error caches cleared');
         } catch (error) {
-          console.log('⚠️ [CONNECT-SUCCESS] Cache clear warning:', error);
+          // Cache clear handled silently
         }
-        
+
         // Atualizar state local com o QR Code real do DirectQrBaileys
         setConnections(prev => prev.map(conn =>
           conn.slotNumber === slotNumber
@@ -486,18 +469,16 @@ const MultiWhatsAppConnections: React.FC = () => {
             title: "QR Code Real Gerado!",
             description: `QR Code autêntico do Baileys criado para Conexão ${slotNumber}. Escaneie com seu WhatsApp.`,
           });
-        } else {
-          console.log('🛡️ [PHANTOM-SUPPRESS] Phantom error suppressed:', data.message);
         }
 
         // Invalidar cache com força total
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['/api/multi-whatsapp/connections'],
           exact: true,
           refetchType: 'all'
         });
-        
+
         // Forçar refetch imediato com delay para garantir
         setTimeout(() => {
           refetch();
@@ -508,15 +489,13 @@ const MultiWhatsAppConnections: React.FC = () => {
           data.message.includes('desconectada manualmente') ||
           data.message.includes('Escaneie o QR Code novamente')
         );
-        
+
         if (!isPhantomError) {
           toast({
             title: "Erro na geração do QR",
             description: data.message || "Falha ao gerar QR Code real",
             variant: "destructive"
           });
-        } else {
-          console.log('🛡️ [PHANTOM-SUPPRESS] Phantom error blocked:', data.message);
         }
       }
     },
@@ -544,25 +523,23 @@ const MultiWhatsAppConnections: React.FC = () => {
     },
     onMutate: (slotNumber) => {
       setDisconnectingSlots(prev => new Set(prev).add(slotNumber));
-      
+
       // ✅ TEMPO REAL: Atualizar estado local IMEDIATAMENTE
       setConnections(prev => prev.map(conn =>
         conn.slotNumber === slotNumber
-          ? { 
-              ...conn, 
-              isConnected: false, 
-              qrCode: null, 
-              phoneNumber: null,
-              lastConnection: null,
-              lastUpdate: new Date().toISOString()
-            }
+          ? {
+            ...conn,
+            isConnected: false,
+            qrCode: null,
+            phoneNumber: null,
+            lastConnection: null,
+            lastUpdate: new Date().toISOString()
+          }
           : conn
       ));
 
       // ✅ CACHE BUSTING: Cancelar todas as queries para evitar sobrescrever estado
       queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-      
-      console.log(`🔄 [DISCONNECT] Slot ${slotNumber} - Estado local atualizado IMEDIATAMENTE`);
     },
     onSuccess: (data, slotNumber) => {
       if (data.success) {
@@ -570,25 +547,23 @@ const MultiWhatsAppConnections: React.FC = () => {
           title: "Desconectado",
           description: `Slot ${slotNumber} desconectado com sucesso.`,
         });
-        
+
         // ✅ TEMPO REAL: Manter estado local já atualizado no onMutate
         // Não fazer nada aqui - o estado já foi atualizado instantaneamente
-        
+
         // ✅ CACHE BUSTING: Invalidação robusta com múltiplas estratégias
         queryClient.cancelQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
         queryClient.removeQueries({ queryKey: ['/api/multi-whatsapp/connections'] });
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['/api/multi-whatsapp/connections'],
           exact: true,
           refetchType: 'all'
         });
-        
+
         // ✅ SINCRONIZAÇÃO: Refetch imediato com delay mínimo
         setTimeout(() => {
           refetch();
         }, 200);
-        
-        console.log(`✅ [DISCONNECT] Slot ${slotNumber} - Desconectado com sucesso, cache invalidado`);
       } else {
         // ✅ ERRO: Reverter estado local em caso de falha
         if (connectionsData?.connections) {
@@ -599,14 +574,12 @@ const MultiWhatsAppConnections: React.FC = () => {
             ));
           }
         }
-        
+
         toast({
           title: "Erro na desconexão",
           description: data.message || "Falha ao desconectar",
           variant: "destructive"
         });
-        
-        console.log(`❌ [DISCONNECT] Slot ${slotNumber} - Erro: ${data.message}`);
       }
     },
     onError: (error, slotNumber) => {

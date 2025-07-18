@@ -54,7 +54,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log("🔐 Iniciando login com:", email);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
@@ -63,10 +62,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         body: JSON.stringify({ email, password })
       });
       
-      console.log("📡 Status da resposta:", response.status);
       
       const responseText = await response.text();
-      console.log("📄 Resposta bruta:", responseText);
       
       if (!response.ok) {
         let errorMessage = "Erro de autenticação";
@@ -80,7 +77,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       
       const data = JSON.parse(responseText);
-      console.log("📄 Dados processados:", data);
       
       if (!data.token || !data.user) {
         throw new Error("Dados de autenticação inválidos recebidos do servidor");
@@ -92,7 +88,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       localStorage.setItem("auth_token", data.token);
       localStorage.setItem("auth_user", JSON.stringify(data.user));
       
-      console.log("✅ Login realizado com sucesso para:", data.user.name);
     } catch (error) {
       console.error("❌ Erro no login:", error);
       throw error;

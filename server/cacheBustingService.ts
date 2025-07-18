@@ -13,7 +13,6 @@ class CacheBustingService {
   constructor() {
     this.startTime = Date.now();
     this.deployVersion = this.generateDeployVersion();
-    console.log(`🚀 [CACHE-BUSTING] Deploy version: ${this.deployVersion}`);
   }
   
   /**
@@ -89,7 +88,6 @@ class CacheBustingService {
    */
   triggerCacheReload(): void {
     this.deployVersion = this.generateDeployVersion();
-    console.log(`🔄 [CACHE-BUSTING] Cache reload triggered: ${this.deployVersion}`);
   }
 }
 

@@ -33,7 +33,6 @@ class MultiWhatsAppService {
   private readonly MAX_CONNECTIONS_PER_CLIENT = 3;
 
   constructor() {
-    console.log(`🔧 [MULTI-WA] MultiWhatsAppService inicializado - Max ${this.MAX_CONNECTIONS_PER_CLIENT} conexões por cliente`);
   }
 
   /**
@@ -47,12 +46,10 @@ class MultiWhatsAppService {
    * Obter status de todas as conexões de um cliente
    */
   async getClientConnections(clientId: string): Promise<MultiConnectionStatus> {
-    console.log(`🔍 [MULTI-WA] Verificando conexões para cliente ${clientId}`);
     
     // 🔥 CORREÇÃO: Consultar simpleMultiBaileyService primeiro (fonte da verdade)
     try {
       const { simpleMultiBaileyService } = await import('./simpleMultiBailey');
-      console.log(`🔍 [SIMPLE-BAILEYS] Verificando conexões para cliente ${clientId}`);
       
       const clientConnections: WhatsAppConnection[] = [];
       
@@ -77,8 +74,6 @@ class MultiWhatsAppService {
       }
 
       const activeConnections = clientConnections.filter(conn => conn.isConnected).length;
-      
-      console.log(`📱 [MULTI-WA] Status das conexões:`, { clientId, totalConnections: this.MAX_CONNECTIONS_PER_CLIENT, activeConnections });
 
       return {
         clientId,
@@ -88,7 +83,6 @@ class MultiWhatsAppService {
       };
       
     } catch (error) {
-      console.log(`⚠️ [MULTI-WA] Erro ao consultar SimpleMultiBailey:`, error);
       
       // Fallback para conexões desconectadas
       const clientConnections: WhatsAppConnection[] = [];
@@ -144,7 +138,6 @@ class MultiWhatsAppService {
         
         // Atualizar cache com status real
         this.connections.set(connectionId, connection);
-        console.log(`✅ [MULTI-WA] Status real para ${connectionId}: CONECTADO (${realStatus.phoneNumber || 'unknown'})`);
         return connection;
       } else if (realStatus.qrCode) {
         const connection: WhatsAppConnection = {
@@ -159,11 +152,9 @@ class MultiWhatsAppService {
         };
         
         this.connections.set(connectionId, connection);
-        console.log(`📱 [MULTI-WA] QR Code disponível para ${connectionId}`);
         return connection;
       }
     } catch (error) {
-      console.log(`⚠️ [MULTI-WA] Erro ao consultar SimpleMultiBailey para ${connectionId}:`, error);
     }
     
     // Criar conexão padrão desconectada caso simpleMultiBailey falhe
@@ -195,7 +186,6 @@ class MultiWhatsAppService {
     }
 
     const connectionId = this.generateConnectionId(clientId, slotNumber);
-    console.log(`🔗 [MULTI-WA] Conectando slot ${slotNumber} para cliente ${clientId}`);
 
     try {
       // 🔥 PRIORIDADE 1: Baileys usando simpleMultiBaileyService
@@ -215,7 +205,6 @@ class MultiWhatsAppService {
         };
         
         this.connections.set(connectionId, connection);
-        console.log(`✅ [MULTI-WA] QR Code gerado para ${connectionId} via Baileys`);
         
         return {
           success: true,
@@ -230,7 +219,6 @@ class MultiWhatsAppService {
       };
       
     } catch (error: any) {
-      console.log(`❌ [MULTI-WA] Erro ao conectar slot ${connectionId}:`, error.message);
       return {
         success: false,
         message: `Erro ao conectar: ${error.message}`
@@ -243,7 +231,6 @@ class MultiWhatsAppService {
    */
   async disconnectSlot(clientId: string, slotNumber: number): Promise<{success: boolean; message: string}> {
     const connectionId = this.generateConnectionId(clientId, slotNumber);
-    console.log(`🔌 [MULTI-WA] Desconectando slot ${slotNumber} para cliente ${clientId}`);
 
     try {
       // 🔥 Desconectar do simpleMultiBaileyService
@@ -253,15 +240,12 @@ class MultiWhatsAppService {
       // Limpar cache local
       this.connections.delete(connectionId);
       
-      console.log(`✅ [MULTI-WA] Slot ${connectionId} desconectado`);
-      
       return {
         success: true,
         message: result.message || 'Desconectado com sucesso'
       };
       
     } catch (error: any) {
-      console.log(`❌ [MULTI-WA] Erro ao desconectar slot ${connectionId}:`, error.message);
       return {
         success: false,
         message: `Erro ao desconectar: ${error.message}`
@@ -273,7 +257,6 @@ class MultiWhatsAppService {
    * Enviar mensagem usando qualquer conexão ativa
    */
   async sendMessage(clientId: string, phoneNumber: string, message: string, preferredSlot?: number): Promise<{success: boolean; usedSlot?: number; message: string}> {
-    console.log(`📞 [MULTI-WA] Enviando mensagem para ${phoneNumber} - cliente ${clientId}`);
     
     try {
       // 🔥 Usar simpleMultiBaileyService para envio real
@@ -293,19 +276,15 @@ class MultiWhatsAppService {
       // Usar slot preferido ou primeiro ativo
       const slotToUse = preferredSlot || activeConnections[0].slotNumber;
       
-      console.log(`📱 [MULTI-WA] Usando slot ${slotToUse} para envio`);
-      
       const result = await simpleMultiBaileyService.sendTestMessage(clientId, slotToUse, phoneNumber, message);
       
       if (result.success) {
-        console.log(`✅ [MULTI-WA] Mensagem enviada com sucesso via slot ${slotToUse}`);
         return {
           success: true,
           usedSlot: slotToUse,
           message: `Mensagem enviada via slot ${slotToUse}`
         };
       } else {
-        console.log(`❌ [MULTI-WA] Falha no envio via slot ${slotToUse}: ${result.error}`);
         return {
           success: false,
           message: result.error || 'Erro desconhecido no envio'
@@ -313,7 +292,6 @@ class MultiWhatsAppService {
       }
       
     } catch (error: any) {
-      console.log(`❌ [MULTI-WA] Erro geral no envio:`, error.message);
       return {
         success: false,
         message: `Erro no envio: ${error.message}`
@@ -330,10 +308,8 @@ class MultiWhatsAppService {
         const connectionId = this.generateConnectionId(clientId, slot);
         this.connections.delete(connectionId);
       }
-      console.log(`🗑️ [MULTI-WA] Cache limpo para cliente ${clientId}`);
     } else {
       this.connections.clear();
-      console.log(`🗑️ [MULTI-WA] Cache completo limpo`);
     }
   }
 }

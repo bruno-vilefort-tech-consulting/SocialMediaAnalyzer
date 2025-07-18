@@ -27,12 +27,9 @@ export class SimplifiedWebService {
     instanceId?: string;
   }> {
     try {
-      console.log(`🔍 [SIMPLIFIED-WEB] Verificando sessão para ${clientId}`);
-      
       const sessionPath = path.join(this.sessionsPath, `client_${clientId}`);
       
       if (!fs.existsSync(sessionPath)) {
-        console.log(`❌ [SIMPLIFIED-WEB] Pasta de sessão não existe: ${sessionPath}`);
         return { isConnected: false };
       }
 
@@ -48,8 +45,7 @@ export class SimplifiedWebService {
         
         if (hoursSinceModified < 24) {
           hasRecentActivity = true;
-          console.log(`✅ [SIMPLIFIED-WEB] Atividade recente detectada: ${file} (${hoursSinceModified.toFixed(1)}h atrás)`);
-          
+
           // Tentar extrair número da sessão
           if (file.endsWith('.json')) {
             try {
@@ -64,7 +60,6 @@ export class SimplifiedWebService {
       }
 
       if (hasRecentActivity) {
-        console.log(`✅ [SIMPLIFIED-WEB] Conexão ativa detectada para ${clientId}: ${phoneNumber || 'número não identificado'}`);
         return {
           isConnected: true,
           phoneNumber,
@@ -72,11 +67,9 @@ export class SimplifiedWebService {
         };
       }
 
-      console.log(`❌ [SIMPLIFIED-WEB] Nenhuma atividade recente para ${clientId}`);
       return { isConnected: false };
       
     } catch (error) {
-      console.log(`⚠️ [SIMPLIFIED-WEB] Erro ao verificar status ${clientId}:`, error);
       return { isConnected: false };
     }
   }
@@ -85,7 +78,6 @@ export class SimplifiedWebService {
    * Retorna fallback para casos onde a biblioteca principal falha
    */
   async createSession(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
-    console.log(`🔄 [SIMPLIFIED-WEB] Criação de sessão não disponível (modo simplificado)`);
     return {
       success: false,
       error: 'Criação de sessão não disponível - use Evolution API ou WPPConnect'
@@ -98,13 +90,11 @@ export class SimplifiedWebService {
       
       if (fs.existsSync(sessionPath)) {
         fs.rmSync(sessionPath, { recursive: true, force: true });
-        console.log(`✅ [SIMPLIFIED-WEB] Sessão ${clientId} removida`);
         return true;
       }
       
       return false;
     } catch (error) {
-      console.log(`⚠️ [SIMPLIFIED-WEB] Erro ao remover sessão ${clientId}:`, error);
       return false;
     }
   }

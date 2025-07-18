@@ -33,7 +33,6 @@ class EmailService {
         throw new Error(`Erro ao enviar email: ${result.error.message || JSON.stringify(result.error)}`);
       }
 
-      console.log(`✅ Email enviado para ${data.to} - ID: ${result.data?.id}`);
       return result;
     } catch (error) {
       console.error('❌ Erro no serviço de email:', error);

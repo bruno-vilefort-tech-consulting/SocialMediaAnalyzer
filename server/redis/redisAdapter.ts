@@ -258,12 +258,11 @@ export class RedisAdapter {
 
   // Métodos de pub/sub (implementação básica)
   async publish(channel: string, message: string): Promise<number> {
-    console.log(`📡 [REDIS-ADAPTER] Publish to ${channel}:`, message);
     return 1; // Simular 1 subscriber
   }
 
   async subscribe(channel: string): Promise<void> {
-    console.log(`📡 [REDIS-ADAPTER] Subscribe to ${channel}`);
+    //
   }
 
   // Métodos de conexão
@@ -296,17 +295,14 @@ instantaneous_ops_per_sec:10`;
 
   // Event emitter methods (para compatibilidade)
   on(event: string, callback: Function): this {
-    console.log(`📡 [REDIS-ADAPTER] Event listener registered for: ${event}`);
     return this;
   }
 
   emit(event: string, ...args: any[]): boolean {
-    console.log(`📡 [REDIS-ADAPTER] Event emitted: ${event}`, args);
     return true;
   }
 
   off(event: string, callback?: Function): this {
-    console.log(`📡 [REDIS-ADAPTER] Event listener removed for: ${event}`);
     return this;
   }
 }

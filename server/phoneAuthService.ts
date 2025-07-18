@@ -20,7 +20,6 @@ class PhoneAuthService {
   private async initializeBaileys() {
     try {
       this.baileys = await import('@whiskeysockets/baileys');
-      console.log('📱 PhoneAuthService: Baileys inicializado');
     } catch (error) {
       console.error('❌ Erro ao inicializar Baileys:', error);
     }
@@ -46,8 +45,6 @@ class PhoneAuthService {
         attempts: 0,
         clientId
       });
-
-      console.log(`📱 Código gerado para ${phoneNumber}: ${code}`);
 
       // Em um ambiente real, você enviaria via API de SMS
       // Por ora, vamos simular o envio via próprio WhatsApp
@@ -160,7 +157,6 @@ class PhoneAuthService {
           const { connection, lastDisconnect } = update;
 
           if (connection === 'open') {
-            console.log(`✅ WhatsApp conectado via telefone: ${phoneNumber}`);
             this.connectedSockets.set(clientId, socket);
             
             // Salvar status no Firebase
@@ -174,7 +170,6 @@ class PhoneAuthService {
             const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
             
             if (!shouldReconnect) {
-              console.log('🔐 WhatsApp desconectado pelo usuário');
               this.connectedSockets.delete(clientId);
               resolve({
                 success: false,

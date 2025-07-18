@@ -110,7 +110,6 @@ export class DatabaseStorage implements IStorage {
       const [user] = await pgDb.select().from(users).where(eq(users.id, String(id)));
       return user || undefined;
     } catch (error) {
-      console.log('Error fetching user by ID:', error);
       return undefined;
     }
   }
@@ -120,7 +119,6 @@ export class DatabaseStorage implements IStorage {
       const [user] = await pgDb.select().from(users).where(eq(users.email, email));
       return user || undefined;
     } catch (error) {
-      console.log('Error fetching user by email:', error);
       return undefined;
     }
   }
@@ -147,7 +145,6 @@ export class DatabaseStorage implements IStorage {
       const [client] = await pgDb.select().from(clients).where(eq(clients.id, numericId));
       return client || undefined;
     } catch (error) {
-      console.log('Error fetching client by ID:', error);
       return undefined;
     }
   }

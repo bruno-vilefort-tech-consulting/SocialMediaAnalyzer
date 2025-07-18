@@ -3,7 +3,6 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 
 export async function debugCandidatesWithInterviews(clientId: number) {
   try {
-    console.log(`🔍 Buscando candidatos que iniciaram entrevistas para cliente ${clientId}`);
     
     // Buscar relatórios do cliente no período atual (junho 2025)
     const fromDate = new Date('2025-06-01T03:00:00.000Z');
@@ -17,7 +16,6 @@ export async function debugCandidatesWithInterviews(clientId: number) {
     );
     
     const reportsSnapshot = await getDocs(reportsQuery);
-    console.log(`📊 Encontrados ${reportsSnapshot.size} relatórios no período`);
     
     const candidatesWithInterviews = [];
     
@@ -25,7 +23,6 @@ export async function debugCandidatesWithInterviews(clientId: number) {
       const reportData = reportDoc.data();
       
       if (reportData.completedInterviews && reportData.completedInterviews > 0) {
-        console.log(`📋 Relatório ${reportData.selectionId}: ${reportData.completedInterviews} entrevistas completadas`);
         
         // Buscar dados dos candidatos neste relatório
         if (reportData.candidatesData && Array.isArray(reportData.candidatesData)) {
@@ -60,12 +57,7 @@ export async function debugCandidatesWithInterviews(clientId: number) {
         }
       }
     }
-    
-    console.log(`✅ Total de candidatos que iniciaram entrevistas: ${candidatesWithInterviews.length}`);
-    candidatesWithInterviews.forEach((candidate, index) => {
-      console.log(`${index + 1}. ${candidate.nome} (${candidate.telefone}) - ${candidate.nomeVaga} - ${candidate.data}`);
-    });
-    
+
     return candidatesWithInterviews;
     
   } catch (error) {

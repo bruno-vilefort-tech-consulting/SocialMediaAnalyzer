@@ -13,8 +13,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export async function cleanFirebaseData() {
-  console.log('🧹 Limpando dados do João Silva do Firebase...');
-  
   try {
     // Remover entrevistas do João Silva
     const interviewsRef = collection(db, 'interviews');
@@ -24,7 +22,6 @@ export async function cleanFirebaseData() {
     for (const docSnap of interviewsSnapshot.docs) {
       const interview = docSnap.data();
       if (interview.candidateName === 'João Silva' || interview.candidatePhone === '5511984316526') {
-        console.log(`🗑️ Deletando entrevista ${docSnap.id} do João Silva`);
         await deleteDoc(doc(db, 'interviews', docSnap.id));
         deletedInterviews++;
       }
@@ -38,14 +35,10 @@ export async function cleanFirebaseData() {
     for (const docSnap of candidatesSnapshot.docs) {
       const candidate = docSnap.data();
       if (candidate.name === 'João Silva' || candidate.whatsapp === '5511984316526') {
-        console.log(`🗑️ Deletando candidato ${docSnap.id}: ${candidate.name}`);
         await deleteDoc(doc(db, 'candidates', docSnap.id));
         deletedCandidates++;
       }
     }
-    
-    console.log(`✅ Limpeza concluída! ${deletedInterviews} entrevistas e ${deletedCandidates} candidatos removidos.`);
-    
   } catch (error) {
     console.error('❌ Erro na limpeza:', error);
   }

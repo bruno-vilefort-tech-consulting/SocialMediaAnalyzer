@@ -27,9 +27,7 @@ export class EmergencyConnectionDetector {
   }> {
     try {
       const sessionPath = path.join(this.tokensPath, `client_${clientId}`, `client_${clientId}`);
-      
-      console.log(`🚨 [EMERGENCY] Verificando conexão de emergência para ${clientId}`);
-      
+
       if (!fs.existsSync(sessionPath)) {
         return {
           isConnected: false,
@@ -40,13 +38,10 @@ export class EmergencyConnectionDetector {
 
       const sessionFiles = fs.readdirSync(sessionPath);
       const fileCount = sessionFiles.length;
-      
-      console.log(`📁 [EMERGENCY] Encontrados ${fileCount} arquivos de sessão`);
 
       // Se tem mais de 10 arquivos, assumir conectado
       if (fileCount > 10) {
-        console.log(`🎉 [EMERGENCY] FORÇANDO STATUS CONECTADO - ${fileCount} arquivos válidos`);
-        
+
         return {
           isConnected: true,
           phoneNumber: '+5511984316526', // Número conhecido do usuário
@@ -72,8 +67,6 @@ export class EmergencyConnectionDetector {
       };
 
     } catch (error) {
-      console.log(`⚠️ [EMERGENCY] Erro na detecção de emergência:`, error);
-      
       return {
         isConnected: false,
         confidence: 'low',
@@ -89,7 +82,6 @@ export class EmergencyConnectionDetector {
     const detection = await this.detectEmergencyConnection(clientId);
     
     if (detection.isConnected && detection.confidence === 'high') {
-      console.log(`🚨 [EMERGENCY] FORÇANDO CONEXÃO ATIVA - ${detection.reason}`);
       return true;
     }
     

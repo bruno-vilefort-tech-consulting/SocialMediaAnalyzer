@@ -23,14 +23,11 @@ class RedisSimulator {
   }
 
   async connect(): Promise<void> {
-    console.log('🔗 [REDIS-SIM] Conectando ao Redis Simulator...');
     this.isConnected = true;
-    console.log('✅ [REDIS-SIM] Redis Simulator conectado e operacional');
   }
 
   async disconnect(): Promise<void> {
     this.isConnected = false;
-    console.log('🔌 [REDIS-SIM] Redis Simulator desconectado');
   }
 
   private cleanExpired(): void {
@@ -43,10 +40,6 @@ class RedisSimulator {
       delete this.data[key];
       delete this.expirations[key];
     });
-
-    if (expiredKeys.length > 0) {
-      console.log(`🧹 [REDIS-SIM] Removidas ${expiredKeys.length} chaves expiradas`);
-    }
   }
 
   // Operações básicas do Redis

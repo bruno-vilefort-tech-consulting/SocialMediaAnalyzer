@@ -41,9 +41,8 @@ export class SimplePDFService {
     // Configurar ffmpeg path
     try {
       ffmpeg.setFfmpegPath('/nix/store/3zc5jbvqzrn8zmva4fx5p0nh4yy03wk4-ffmpeg-6.1.1-bin/bin/ffmpeg');
-      console.log('FFmpeg configurado com sucesso');
     } catch (error) {
-      console.log('Erro ao configurar FFmpeg:', error);
+      //
     }
   }
 
@@ -57,7 +56,6 @@ export class SimplePDFService {
         .audioBitrate(128)
         .output(mp3Path)
         .on('end', () => {
-          console.log(`Conversao de audio concluida: ${path.basename(mp3Path)}`);
           resolve();
         })
         .on('error', (err) => {
@@ -349,7 +347,6 @@ export class SimplePDFService {
     for (const filePath of filePaths) {
       try {
         await unlink(filePath);
-        console.log(`Arquivo temporario removido: ${path.basename(filePath)}`);
       } catch (error) {
         console.error(`Erro ao remover arquivo temporario: ${error.message}`);
       }

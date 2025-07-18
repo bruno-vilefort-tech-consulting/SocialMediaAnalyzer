@@ -571,7 +571,6 @@ export class FirebaseStorage implements IStorage {
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const candidates = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log(`📋 Candidato ${doc.id}:`, data);
 
       // Ensure clientId is properly parsed as number
       let clientId = data.clientId;
@@ -600,7 +599,6 @@ export class FirebaseStorage implements IStorage {
     const snapshot = await getDocs(collection(firebaseDb, "candidates"));
     const allCandidates = snapshot.docs.map(doc => {
       const data = doc.data();
-      console.log(`📋 Candidato ${doc.id}:`, data);
 
       // Ensure clientId is properly parsed as number
       let candidateClientId = data.clientId;
@@ -621,11 +619,9 @@ export class FirebaseStorage implements IStorage {
     // Filter candidates by clientId
     const filteredCandidates = allCandidates.filter(candidate => {
       const match = candidate.clientId === clientId;
-      console.log(`🔍 Candidato ${candidate.name} (${candidate.id}) incluído: ${match}`);
       return match;
     });
 
-    console.log(`📋 Candidatos encontrados para cliente ${clientId} : ${filteredCandidates.length}`);
     return filteredCandidates;
   }
 
@@ -681,7 +677,6 @@ export class FirebaseStorage implements IStorage {
 
     const filteredCandidates = allCandidates.filter(candidate => {
       const isIncluded = candidateIds.includes(candidate.id);
-      console.log(`🔍 Candidato ${candidate.id} (${candidate.name}) incluído: ${isIncluded}`);
       return isIncluded;
     });
     console.log(`✅ Candidatos filtrados para lista ${listId}:`, filteredCandidates);

@@ -37,7 +37,6 @@ export class WhatsAppQRService {
           error.message.includes('Timed Out') || 
           error.message.includes('baileys') ||
           error.message.includes('cipher')) {
-        console.log('⚠️ Erro WhatsApp capturado e ignorado:', error.message);
         this.handleWhatsAppError(error);
         return; // Não permitir que o processo termine
       }
@@ -53,19 +52,16 @@ export class WhatsAppQRService {
             error.message.includes('Timed Out') || 
             error.message.includes('baileys') ||
             error.message.includes('cipher')) {
-          console.log('⚠️ Promise rejeitada do WhatsApp capturada e ignorada:', error.message);
           this.handleWhatsAppError(error);
           return;
         }
       }
-      console.error('Unhandled promise rejection:', reason);
     });
 
     // Inicializar de forma completamente assíncrona em background
     // Não deve bloquear a inicialização do servidor
     setImmediate(() => {
       this.safeInitialize().catch(error => {
-        console.log('⚠️ WhatsApp não disponível - aplicação funcionará sem WhatsApp:', error.message);
         this.handleWhatsAppError(error);
       });
     });
@@ -107,7 +103,6 @@ export class WhatsAppQRService {
       // Tentar remover sessão corrompida
       try {
         await fs.rm(sessionPath, { recursive: true, force: true });
-        console.log('🧹 Sessão WhatsApp corrompida removida');
       } catch (rmError) {
         // Ignorar se diretório não existe
       }
@@ -127,7 +122,6 @@ export class WhatsAppQRService {
       ]);
       
     } catch (error) {
-      console.log('⚠️ WhatsApp não inicializado - aplicação funcionará sem WhatsApp:', error.message);
       this.config.isConnected = false;
       this.config.qrCode = null;
       this.config.phoneNumber = null;
@@ -138,14 +132,12 @@ export class WhatsAppQRService {
     try {
       simpleInterviewService.setWhatsAppService(this);
     } catch (serviceError) {
-      console.log('⚠️ Erro ao conectar com simpleInterviewService - continuando sem notificações WhatsApp');
     }
   }
 
   private async initializeWithTimeout() {
     try {
       // Desabilitar inicialização do Baileys por enquanto para estabilizar aplicação
-      console.log('⚠️ WhatsApp Baileys temporariamente desabilitado para estabilidade');
       throw new Error('WhatsApp temporariamente desabilitado');
       
       /*
@@ -154,7 +146,6 @@ export class WhatsAppQRService {
       try {
         await this.loadConnectionFromDB();
       } catch (dbError) {
-        console.log('⚠️ Erro ao carregar dados do banco - continuando sem dados salvos');
       }
       
       // Timeout muito curto para conexão inicial - 2 segundos
@@ -167,7 +158,6 @@ export class WhatsAppQRService {
       */
       
     } catch (error) {
-      console.log('⚠️ Falha na inicialização - WhatsApp não disponível');
       throw error;
     }
   }
@@ -182,7 +172,6 @@ export class WhatsAppQRService {
         throw new Error('makeWASocket não encontrado na biblioteca Baileys');
       }
     } catch (error) {
-      console.error('❌ Erro ao importar Baileys:', error);
       throw error;
     }
   }
@@ -197,20 +186,12 @@ export class WhatsAppQRService {
         this.config.phoneNumber = config.whatsappQrPhoneNumber || null;
         this.config.lastConnection = config.whatsappQrLastConnection;
         
-        console.log('📱 Dados WhatsApp QR carregados do banco:', {
-          connected: this.config.isConnected,
-          phone: this.config.phoneNumber,
-          lastConnection: this.config.lastConnection
-        });
-        
         // Se o banco indica que está conectado, notificar listeners
         if (this.config.isConnected) {
           this.notifyConnectionListeners(true);
-          console.log('✅ Status conectado carregado do banco de dados');
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar dados WhatsApp QR do banco:', error);
     }
   }
 
@@ -235,14 +216,7 @@ export class WhatsAppQRService {
         updatedAt: new Date()
       });
       
-      console.log(`💾 WhatsApp Status Cliente ${clientId}: ${finalConnection ? 'CONECTADO' : 'DESCONECTADO'} (${finalPhoneNumber})`);
-      
-      // Log adicional para debug
-      if (finalConnection && finalPhoneNumber) {
-        console.log(`📱 Número conectado salvo para cliente ${clientId}: ${finalPhoneNumber}`);
-      }
     } catch (error) {
-      console.error('❌ Erro ao salvar conexão WhatsApp QR no banco:', error);
     }
   }
 
@@ -250,7 +224,6 @@ export class WhatsAppQRService {
     try {
       // Só limpar sessões se realmente necessário (não a cada inicialização)
       if (this.socket) {
-        console.log('🔄 Conexão existente detectada - não limpando sessões');
         return;
       }
 
@@ -266,7 +239,6 @@ export class WhatsAppQRService {
         );
 
         if (!hasValidSession) {
-          console.log('🧹 Limpando sessões inválidas do WhatsApp...');
           for (const file of files) {
             try {
               fs.unlinkSync(path.join(authDir, file));
@@ -274,13 +246,9 @@ export class WhatsAppQRService {
               // Ignorar erros de arquivos em uso
             }
           }
-          console.log('✅ Sessões inválidas removidas');
-        } else {
-          console.log('📱 Sessões válidas encontradas - mantendo autenticação');
         }
       }
     } catch (error) {
-      console.log('⚠️ Erro ao verificar sessões:', error.message);
     }
   }
 
@@ -288,12 +256,10 @@ export class WhatsAppQRService {
     try {
       // Prevenir múltiplas conexões simultâneas
       if (this.isConnecting) {
-        console.log('⚠️ Conexão já em andamento - aguardando...');
         return this.connectionPromise;
       }
 
       if (this.socket && this.config.isConnected) {
-        console.log('✅ WhatsApp já conectado - reutilizando conexão existente');
         return;
       }
 
@@ -307,7 +273,6 @@ export class WhatsAppQRService {
         this.connectionPromise = null;
       }
     } catch (error) {
-      console.error('❌ Erro na inicialização:', error.message);
       this.isConnecting = false;
       this.connectionPromise = null;
       throw error;
@@ -317,11 +282,8 @@ export class WhatsAppQRService {
   private async _doInitializeConnection() {
     try {
       if (!this.makeWASocket || !this.useMultiFileAuthState) {
-        console.log('⚠️ Baileys não foi inicializado corretamente - funcionando sem WhatsApp');
         return;
       }
-
-      console.log('🔗 Inicializando conexão WhatsApp QR...');
       
       const { state, saveCreds } = await this.useMultiFileAuthState('./whatsapp-auth');
       
@@ -354,16 +316,8 @@ export class WhatsAppQRService {
         try {
           const { connection, lastDisconnect, qr, receivedPendingNotifications } = update;
           
-          console.log('📱 [CONNECTION UPDATE]:', { 
-            connection, 
-            hasQR: !!qr,
-            hasDisconnect: !!lastDisconnect,
-            receivedPendingNotifications 
-          });
-          
           // CORREÇÃO CRÍTICA: Se conexão está aberta, forçar reconexão de serviços WhatsApp
           if (connection === 'open') {
-            console.log('🔧 [CRITICAL_FIX] Conexão aberta - configurando serviços de entrevista...');
             
             // Configurar WhatsAppService no simpleInterviewService
             try {
@@ -376,52 +330,40 @@ export class WhatsAppQRService {
               };
               
               simpleInterviewService.setWhatsAppService(whatsappService);
-              console.log('✅ [CRITICAL_FIX] SimpleInterviewService configurado com WhatsApp ativo');
               
               // HEARTBEAT CRÍTICO: Ping a cada 8 segundos para manter conexão viva
               setInterval(async () => {
                 try {
                   if (this.socket && this.socket.ws && this.socket.ws.readyState === 1) {
                     await this.socket.sendPresenceUpdate('available');
-                    console.log('💓 [HEARTBEAT] Ping enviado para manter conexão viva');
                   }
                 } catch (pingError) {
-                  console.log('⚠️ [HEARTBEAT] Erro no ping:', pingError.message);
                 }
               }, 8000);
               
             } catch (serviceError) {
-              console.error('❌ [CRITICAL_FIX] Erro ao configurar serviços:', serviceError);
             }
           }
           
           if (qr) {
             // Evitar spam de QR codes - só gerar se diferente do anterior
             if (!this.config.qrCode || this.config.qrCode !== qr) {
-              console.log('🔄 Novo QR Code recebido - gerando...');
               await this.generateQRCode(qr).catch(err => 
-                console.log('Erro ao gerar QR Code:', err.message)
+                null
               );
-              console.log('📱 QR Code atualizado - escaneie com WhatsApp no CELULAR');
-              console.log('⚠️  IMPORTANTE: Use WhatsApp do celular -> Menu (⋮) -> Aparelhos conectados -> Conectar um aparelho');
-            } else {
-              console.log('📱 QR Code já está atualizado - aguardando escaneamento...');
             }
           }
           
           if (connection === 'connecting') {
-            console.log('🔗 WhatsApp conectando...');
             this.config.isConnected = false;
             this.config.qrCode = null;
             this.notifyConnectionListeners(false);
           }
           
           if (connection === 'open') {
-            console.log('✅ WhatsApp conectado com sucesso!');
             
             // Extrair número do telefone conectado
             const phoneNumber = this.socket.user?.id?.split(':')[0] || null;
-            console.log(`📞 Número conectado: ${phoneNumber}`);
             
             // Atualizar configuração local
             this.config.isConnected = true;
@@ -435,17 +377,13 @@ export class WhatsAppQRService {
             
             // Salvar no banco de dados
             await this.saveConnectionToDB().catch(err => 
-              console.error('Erro ao salvar conexão:', err.message)
+              null
             );
-            
-            console.log('🎉 WhatsApp QR conectado e pronto para uso!');
           }
           
           if (connection === 'close') {
             const errorCode = lastDisconnect?.error?.output?.statusCode;
             const errorMessage = lastDisconnect?.error?.message || 'Desconhecido';
-            
-            console.log(`🔌 Conexão fechada devido a: ${errorMessage} (código: ${errorCode})`);
             
             this.config.isConnected = false;
             this.config.phoneNumber = null;
@@ -454,7 +392,7 @@ export class WhatsAppQRService {
             
             // Salvar desconexão no banco de dados
             await this.saveConnectionToDB().catch(err => 
-              console.error('Erro ao salvar desconexão:', err.message)
+              null
             );
             
             // CORREÇÃO CRÍTICA: Detectar erro 428 como prioritário para reconexão imediata
@@ -466,26 +404,23 @@ export class WhatsAppQRService {
             
             // PRIORIDADE MÁXIMA: Erro 428 reconecta IMEDIATAMENTE
             if (isError428) {
-              console.log('🚨 [CRITICAL_428] Connection Terminated by Server - reconectando IMEDIATAMENTE');
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
-                  console.error('Erro na reconexão crítica 428:', err.message)
+                  null
                 );
               }, 1000); // Apenas 1 segundo de delay
               return; // Sair imediatamente, não executar outras lógicas
             }
             
             if (isStreamError) {
-              console.log('🔄 Erro de stream detectado - limpando credenciais e forçando nova autenticação...');
               // Limpar credenciais antigas para forçar novo QR
               await this.clearOldSessions();
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
-                  console.error('Erro na reconexão:', err.message)
+                  null
                 );
               }, 5000);
             } else if (isConflictError) {
-              console.log('⚠️ Conflito detectado - forçando desconexão completa para permitir nova autenticação');
               // Para conflitos, limpar tudo e forçar nova autenticação
               this.config.isConnected = false;
               this.config.phoneNumber = null;
@@ -500,37 +435,31 @@ export class WhatsAppQRService {
                 const authDir = path.resolve('./whatsapp-auth');
                 if (fs.existsSync(authDir)) {
                   fs.rmSync(authDir, { recursive: true, force: true });
-                  console.log('🗑️ Dados de autenticação WhatsApp removidos - nova autenticação necessária');
                 }
               } catch (cleanError) {
-                console.log('⚠️ Erro ao limpar dados de autenticação:', cleanError.message);
               }
               
               await this.saveConnectionToDB().catch(err => 
-                console.error('Erro ao salvar desconexão por conflito:', err.message)
+                null
               );
               this.notifyConnectionListeners(false);
               this.notifyQRListeners(null);
               
               // Iniciar processo de nova autenticação após delay
               setTimeout(() => {
-                console.log('🔄 Iniciando nova autenticação WhatsApp após conflito...');
                 this.initializeConnection().catch(err => 
-                  console.error('Erro na nova autenticação:', err.message)
+                  null
                 );
               }, 5000);
             } else if (shouldReconnect) {
               setTimeout(() => {
                 this.initializeConnection().catch(err => 
-                  console.error('Erro na reconexão:', err.message)
+                  null
                 );
               }, 5000);
-            } else {
-              console.log('❌ Não reconectando devido ao tipo de erro');
             }
           }
         } catch (updateError) {
-          console.error('❌ Erro no handler de conexão:', updateError.message);
         }
       });
 
@@ -538,7 +467,6 @@ export class WhatsAppQRService {
         try {
           saveCreds();
         } catch (credsError) {
-          console.error('❌ Erro ao salvar credenciais:', credsError.message);
         }
       });
       
@@ -546,20 +474,17 @@ export class WhatsAppQRService {
         try {
           this.handleIncomingMessages(data);
         } catch (messageError) {
-          console.error('❌ Erro ao processar mensagem:', messageError.message);
         }
       });
 
     } catch (error) {
-      console.error('❌ Erro ao inicializar conexão WhatsApp QR:', error.message);
       this.config.isConnected = false;
       this.notifyConnectionListeners(false);
       
       // Tentar novamente em 30 segundos
       setTimeout(() => {
-        console.log('🔄 Tentando reinicializar WhatsApp após erro...');
         this.initializeConnection().catch(err => 
-          console.error('Erro na reinicialização:', err.message)
+          null
         );
       }, 30000);
     }
@@ -571,10 +496,8 @@ export class WhatsAppQRService {
       this.config.qrCode = qrCodeDataURL;
       this.notifyQRListeners(qrCodeDataURL);
       
-      console.log('📱 QR Code gerado! Escaneie com seu WhatsApp.');
       qrcodeTerminal.generate(qr, { small: true });
     } catch (error) {
-      console.error('❌ Erro ao gerar QR Code:', error);
     }
   }
 
@@ -587,13 +510,9 @@ export class WhatsAppQRService {
                       message.message.extendedTextMessage?.text || '';
           const audioMessage = message.message?.audioMessage;
           
-          console.log(`📨 Nova mensagem de ${from.replace('@s.whatsapp.net', '')}`);
-          console.log(`📝 Texto: "${text || ''}", Áudio: ${audioMessage ? 'Sim' : 'Não'}`);
-          
           try {
             // CORREÇÃO CRÍTICA: Detectar clientId automaticamente para todas as mensagens
             const phoneNumber = from.replace('@s.whatsapp.net', '');
-            console.log(`🔍 [MESSAGE] Detectando clientId para telefone: ${phoneNumber}`);
             
             // Buscar candidato para obter clientId
             const candidates = await storage.getAllCandidates();
@@ -606,47 +525,37 @@ export class WhatsAppQRService {
             let detectedClientId = null;
             if (candidate) {
               detectedClientId = candidate.clientId?.toString();
-              console.log(`✅ [MESSAGE] ClientId detectado: ${detectedClientId} para candidato ${candidate.name}`);
             } else {
-              console.log(`⚠️ [MESSAGE] Candidato não encontrado, usando clientId padrão`);
               detectedClientId = '1749849987543'; // Fallback para Grupo Maximuns
             }
             
             // CORREÇÃO CRÍTICA: Inicializar simpleInterviewService com este serviço WhatsApp ativo
             if (!simpleInterviewService.whatsappService) {
-              console.log(`🔧 [CRITICAL_FIX] Inicializando simpleInterviewService com WhatsApp ativo...`);
               simpleInterviewService.setWhatsAppService(this);
             }
             
             // Se é áudio, passar a mensagem completa para transcrição real
             if (audioMessage) {
-              console.log(`🎵 [AUDIO] Processando mensagem de áudio completa...`);
               await simpleInterviewService.handleMessage(from, text, message, detectedClientId);
             } else {
               // Para mensagens de texto, usar o fluxo normal
-              console.log(`💬 [TEXT] Processando mensagem de texto: "${text}"`);
               await simpleInterviewService.handleMessage(from, text, null, detectedClientId);
             }
           } catch (messageError) {
-            console.error(`❌ Erro ao processar mensagem individual:`, messageError.message);
           }
         }
       }
     } catch (error) {
-      console.error('❌ Erro ao processar mensagens:', error.message);
     }
   }
 
   private async processButtonResponse(from: string, buttonId: string) {
-    console.log(`🔘 [DEBUG] Processando resposta de botão: ${buttonId}`);
     
     if (buttonId.startsWith('start_interview_')) {
       // Extrair dados do botão: start_interview_{selectionId}_{candidateName}
       const parts = buttonId.split('_');
       const selectionId = parseInt(parts[2]);
       const candidateName = parts.slice(3).join('_');
-      
-      console.log(`🚀 [DEBUG] Iniciando entrevista - Seleção: ${selectionId}, Candidato: ${candidateName}`);
       
       await this.startInterviewProcess(from, selectionId, candidateName);
     } 
@@ -657,56 +566,38 @@ export class WhatsAppQRService {
 
   private async startInterviewProcess(phoneNumber: string, selectionId: number, candidateName: string) {
     try {
-      console.log(`🎤 [DEBUG] ===== INICIANDO PROCESSO DE ENTREVISTA =====`);
-      console.log(`👤 [DEBUG] Candidato: ${candidateName}`);
-      console.log(`📞 [DEBUG] Telefone: ${phoneNumber}`);
-      console.log(`🆔 [DEBUG] Seleção ID: ${selectionId}`);
       
       // Buscar dados da seleção e job
       const { storage } = await import('../../server/storage');
-      console.log(`🔍 [DEBUG] Buscando seleção no storage...`);
       const selection = await storage.getSelectionById(selectionId);
       if (!selection) {
-        console.error(`❌ [DEBUG] Seleção ${selectionId} não encontrada no storage`);
         await this.sendTextMessage(phoneNumber, "Erro: seleção não encontrada.");
         return;
       }
-      console.log(`✅ [DEBUG] Seleção encontrada:`, { id: selection.id, jobId: selection.jobId, clientId: selection.clientId });
 
       // Buscar job e perguntas
-      console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId}...`);
       let job = await storage.getJobById(selection.jobId);
       
       if (!job) {
-        console.log(`⚠️ [DEBUG] Job não encontrado com ID exato, tentando busca alternativa...`);
         const allJobs = await storage.getJobsByClientId(selection.clientId);
-        console.log(`📋 [DEBUG] Jobs disponíveis no cliente:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga, perguntas: j.perguntas?.length || 0 })));
         job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
         if (job) {
-          console.log(`✅ [DEBUG] Job encontrado via busca alternativa:`, { id: job.id, nome: job.nomeVaga });
         }
       } else {
-        console.log(`✅ [DEBUG] Job encontrado com ID exato:`, { id: job.id, nome: job.nomeVaga, perguntas: job.perguntas?.length || 0 });
       }
 
       if (!job) {
-        console.error(`❌ [DEBUG] Job não encontrado de forma alguma`);
         await this.sendTextMessage(phoneNumber, "Erro: vaga não encontrada.");
         return;
       }
 
       if (!job.perguntas || job.perguntas.length === 0) {
-        console.error(`❌ [DEBUG] Job sem perguntas. Perguntas:`, job.perguntas);
         await this.sendTextMessage(phoneNumber, "Desculpe, esta vaga não possui perguntas cadastradas. Entre em contato conosco.");
         return;
       }
 
-      console.log(`📋 [DEBUG] Job válido encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
-      console.log(`📝 [DEBUG] Primeira pergunta:`, job.perguntas[0]);
-
       // Buscar candidato pelo telefone
       const phoneClean = phoneNumber.replace('@s.whatsapp.net', '');
-      console.log(`🔍 [DEBUG] Buscando candidato para telefone: ${phoneClean}`);
       
       const allCandidates = await storage.getAllCandidates();
       const candidate = allCandidates.find(c => {
@@ -717,13 +608,10 @@ export class WhatsAppQRService {
       });
       
       if (!candidate) {
-        console.log(`❌ [DEBUG] Candidato não encontrado para ${phoneClean}`);
         await this.sendTextMessage(phoneNumber, "Erro: candidato não encontrado.");
         return;
       }
       
-      console.log(`✅ [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
-
       // Verificar se já existe entrevista em andamento
       const allInterviews = await storage.getAllInterviews();
       let interview = allInterviews.find(i => 
@@ -734,50 +622,34 @@ export class WhatsAppQRService {
       
       if (!interview) {
         // Criar nova entrevista apenas se não existir
-        console.log(`💾 [DEBUG] Criando nova entrevista...`);
         interview = await storage.createInterview({
           selectionId: selectionId,
           candidateId: candidate.id,
           token: `whatsapp_${Date.now()}`,
           status: 'in_progress'
         });
-        console.log(`🆔 [DEBUG] Nova entrevista criada com ID: ${interview.id}`);
       } else {
-        console.log(`🔄 [DEBUG] Usando entrevista existente: ID ${interview.id}`);
       }
 
       // Enviar primeira pergunta por áudio
-      console.log(`🎵 [DEBUG] Chamando sendQuestionAudio para primeira pergunta...`);
       await this.sendQuestionAudio(phoneNumber, candidateName, job.perguntas[0], interview.id, 0, job.perguntas.length);
-      console.log(`✅ [DEBUG] ===== PROCESSO DE ENTREVISTA FINALIZADO =====`);
 
     } catch (error) {
-      console.error(`❌ [DEBUG] Erro ao iniciar processo de entrevista:`, error);
-      console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
       await this.sendTextMessage(phoneNumber, "Desculpe, ocorreu um erro ao iniciar a entrevista. Tente novamente mais tarde.");
     }
   }
 
   private async sendQuestionAudio(phoneNumber: string, candidateName: string, question: any, interviewId: number, questionIndex: number, totalQuestions: number) {
     try {
-      console.log(`🎵 [DEBUG] ===== ENVIANDO PERGUNTA POR ÁUDIO =====`);
-      console.log(`👤 [DEBUG] Candidato: ${candidateName}`);
-      console.log(`📞 [DEBUG] Telefone: ${phoneNumber}`);
-      console.log(`❓ [DEBUG] Pergunta ${questionIndex + 1} de ${totalQuestions}: ${question.pergunta}`);
-      console.log(`🆔 [DEBUG] Interview ID: ${interviewId}`);
-      console.log(`📝 [DEBUG] Objeto pergunta completo:`, question);
       
       // Buscar configuração de voz
       const { storage } = await import('../../server/storage');
-      console.log(`🔍 [DEBUG] Buscando configuração OpenAI...`);
       const config = await storage.getApiConfig('master', '1749848502212');
       
       if (!config?.openaiApiKey) {
-        console.error(`❌ [DEBUG] OpenAI API não configurada - enviando pergunta por texto`);
         await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
         return;
       }
-      console.log(`✅ [DEBUG] OpenAI API configurada, gerando áudio...`);
 
       // Preparar dados para TTS com velocidade mais lenta e formato OGG para mobile
       const ttsData = {
@@ -787,15 +659,6 @@ export class WhatsAppQRService {
         response_format: "opus",  // OGG/Opus funciona melhor no mobile
         speed: 1.0  // Velocidade normal do TTS
       };
-      console.log(`🎙️ [DEBUG] Dados TTS:`, ttsData);
-
-      // Gerar áudio da pergunta
-      console.log(`🌐 [DEBUG] Fazendo requisição para OpenAI TTS...`);
-      console.log(`🔑 [DEBUG] API Key configurada: ${config.openaiApiKey ? 'SIM' : 'NÃO'}`);
-      console.log(`📝 [DEBUG] Headers:`, {
-        "Authorization": `Bearer ${config.openaiApiKey?.substring(0, 10)}...`,
-        "Content-Type": "application/json"
-      });
       
       let response;
       try {
@@ -814,78 +677,51 @@ export class WhatsAppQRService {
         });
         
         clearTimeout(timeoutId);
-        console.log(`📡 [DEBUG] Resposta OpenAI TTS recebida - Status: ${response.status}`);
         
       } catch (fetchError) {
-        console.error(`❌ [DEBUG] Erro na requisição TTS:`, fetchError.message);
         if (fetchError.name === 'AbortError') {
-          console.log(`⏰ [DEBUG] Timeout na requisição TTS - enviando por texto`);
         }
-        console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback...`);
         await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
         return;
       }
 
       // Primeiro enviar pergunta por texto
       const jid = phoneNumber.includes('@') ? phoneNumber : `${phoneNumber}@s.whatsapp.net`;
-      console.log(`📝 [DEBUG] Enviando pergunta por texto primeiro...`);
       await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
       
       if (response.ok) {
-        console.log(`✅ [DEBUG] Áudio gerado com sucesso, baixando buffer...`);
         const audioBuffer = await response.arrayBuffer();
-        console.log(`💾 [DEBUG] Buffer de áudio criado - Tamanho: ${audioBuffer.byteLength} bytes`);
         
         // Aguardar um momento antes de enviar o áudio
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Enviar áudio via WhatsApp
-        console.log(`📱 [DEBUG] JID formatado: ${jid}`);
-        console.log(`📤 [DEBUG] Enviando áudio via WhatsApp...`);
-        
         const sendResult = await this.socket.sendMessage(jid, {
           audio: Buffer.from(audioBuffer),
           mimetype: 'audio/mp4',
           ptt: true // Nota de voz
         });
 
-        console.log(`✅ [DEBUG] Áudio enviado via WhatsApp - Resultado:`, sendResult);
-        console.log(`✅ [DEBUG] Pergunta ${questionIndex + 1} enviada por texto + áudio com sucesso`);
-        
         // Salvar estado da entrevista
-        console.log(`💾 [DEBUG] Salvando estado da entrevista...`);
         await this.saveInterviewState(interviewId, questionIndex, question.pergunta);
-        console.log(`✅ [DEBUG] Estado da entrevista salvo`);
         
       } else {
         const errorText = await response.text();
-        console.error(`❌ [DEBUG] Erro na API OpenAI para TTS - Status: ${response.status}, Erro: ${errorText}`);
-        console.log(`📝 [DEBUG] Pergunta já foi enviada por texto - continuando...`);
       }
 
-      console.log(`🏁 [DEBUG] ===== ENVIO DE PERGUNTA FINALIZADO =====`);
-
     } catch (error) {
-      console.error(`❌ [DEBUG] Erro ao enviar pergunta por áudio:`, error);
-      console.error(`🔍 [DEBUG] Stack trace:`, error.stack);
-      console.log(`📝 [DEBUG] Enviando pergunta por texto como fallback de erro...`);
       await this.sendTextMessage(phoneNumber, `Pergunta ${questionIndex + 1}: ${question.pergunta}`);
     }
   }
 
   private async processAudioResponse(from: string, message: any) {
     try {
-      console.log(`🎵 [DEBUG] ===== PROCESSANDO RESPOSTA DE ÁUDIO =====`);
-      console.log(`📞 [DEBUG] De: ${from}`);
-      console.log(`📱 [DEBUG] Objeto mensagem:`, JSON.stringify(message?.message?.audioMessage || {}, null, 2));
-      
       const { storage } = await import('../../server/storage');
       const fs = await import('fs');
       const path = await import('path');
       
       // Buscar candidato
       const phoneClean = from.replace('@s.whatsapp.net', '');
-      console.log(`🔍 [DEBUG] Buscando candidato para telefone: ${phoneClean}`);
       
       const allCandidates = await storage.getAllCandidates();
       const candidate = allCandidates.find(c => {
@@ -896,23 +732,12 @@ export class WhatsAppQRService {
       });
       
       if (!candidate) {
-        console.log(`❌ [DEBUG] Candidato não encontrado para ${phoneClean}`);
         await this.sendTextMessage(from, "Erro: candidato não encontrado.");
         return;
       }
       
-      console.log(`✅ [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
-      
       // Buscar entrevista em andamento para este candidato
       const allInterviews = await storage.getAllInterviews();
-      console.log(`🔍 [DEBUG] Total de entrevistas encontradas: ${allInterviews.length}`);
-      console.log(`🔍 [DEBUG] Entrevistas do candidato ${candidate.id}:`, 
-        allInterviews.filter(i => i.candidateId === candidate.id).map(i => ({
-          id: i.id,
-          status: i.status,
-          selectionId: i.selectionId
-        }))
-      );
       
       let currentInterview = allInterviews.find(i => 
         i.candidateId === candidate.id && 
@@ -920,65 +745,42 @@ export class WhatsAppQRService {
       );
       
       if (!currentInterview) {
-        console.log(`❌ [DEBUG] Entrevista em andamento não encontrada para candidato ${candidate.id}`);
         await this.sendTextMessage(from, "Erro: entrevista não encontrada. Digite '1' novamente para iniciar.");
         return;
       }
       
-      console.log(`✅ [DEBUG] Entrevista encontrada: ID ${currentInterview.id}, Status: ${currentInterview.status}, SelectionId: ${currentInterview.selectionId}`);
-      
       // Buscar seleção com logs detalhados
-      console.log(`🔍 [DEBUG] Buscando seleção com ID: ${currentInterview.selectionId}`);
-      console.log(`🔍 [DEBUG] Tipo do selectionId: ${typeof currentInterview.selectionId}`);
       
       // Tentar buscar por ID exato primeiro
       let selection = await storage.getSelectionById(currentInterview.selectionId);
-      console.log(`📋 [DEBUG] Seleção encontrada por ID exato:`, selection ? {
-        id: selection.id,
-        jobId: selection.jobId,
-        status: selection.status
-      } : 'NULL');
       
       // Se não encontrou, listar todas as seleções para debug
       if (!selection) {
-        console.log(`🔍 [DEBUG] Seleção não encontrada, listando todas as seleções...`);
         const allSelections = await storage.getAllSelections();
-        console.log(`📋 [DEBUG] Total de seleções no sistema: ${allSelections.length}`);
-        console.log(`📋 [DEBUG] Todas as seleções:`, allSelections.map(s => ({
-          id: s.id,
-          status: s.status,
-          jobId: s.jobId
-        })));
         
         // Tentar encontrar seleção ativa para este candidato
         selection = allSelections.find(s => s.status === 'enviado');
         if (selection) {
-          console.log(`✅ [DEBUG] Usando seleção ativa encontrada: ID ${selection.id}`);
           // Atualizar a entrevista com a seleção correta
           await storage.updateInterview(currentInterview.id, { 
             selectionId: selection.id 
           });
-          console.log(`🔄 [DEBUG] Entrevista atualizada com seleção correta`);
         }
       }
       
       if (!selection) {
-        console.log(`❌ [DEBUG] Nenhuma seleção ativa encontrada no sistema`);
         await this.sendTextMessage(from, "Erro: nenhuma seleção ativa encontrada. Tente enviar uma nova campanha.");
         return;
       }
       
-      console.log(`✅ [DEBUG] Seleção encontrada: ID ${selection.id}, JobId: ${selection.jobId}`);
-      
       // Baixar arquivo de áudio usando método robusto
-      console.log(`📱 [DEBUG] Baixando áudio do WhatsApp...`);
-      let audioBuffer: Buffer;
       
       try {
         // MÉTODO 1: Tentar downloadMediaMessage do Baileys (método principal)
         const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
         
-        console.log(`🔄 [DEBUG] Iniciando download com downloadMediaMessage...`);
+        let audioBuffer: Buffer;
+        
         audioBuffer = await downloadMediaMessage(
           message,
           'buffer',
@@ -990,12 +792,10 @@ export class WhatsAppQRService {
         );
         
         if (!audioBuffer || audioBuffer.length < 1024) {
-          console.log(`⚠️ [DEBUG] Buffer muito pequeno: ${audioBuffer?.length || 0} bytes - tentando método alternativo...`);
           
           // MÉTODO 2: Tentar downloadContentFromMessage
           try {
             const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-            console.log(`🔄 [DEBUG] Tentando downloadContentFromMessage...`);
             
             const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
             const chunks: Buffer[] = [];
@@ -1005,22 +805,16 @@ export class WhatsAppQRService {
             audioBuffer = Buffer.concat(chunks);
             
             if (audioBuffer && audioBuffer.length > 1024) {
-              console.log(`✅ [DEBUG] Download alternativo bem-sucedido: ${audioBuffer.length} bytes`);
             } else {
               throw new Error('Buffer ainda muito pequeno');
             }
           } catch (altError) {
-            console.log(`❌ [DEBUG] Método alternativo também falhou:`, altError.message);
             throw new Error('Todos os métodos de download falharam');
           }
         } else {
-          console.log(`✅ [DEBUG] Áudio baixado com sucesso - Tamanho: ${audioBuffer.length} bytes`);
         }
         
-        console.log(`🔍 [DEBUG] Primeiros bytes do áudio:`, audioBuffer.subarray(0, 16).toString('hex'));
-        
       } catch (downloadError) {
-        console.log(`❌ [DEBUG] Erro no download de áudio:`, downloadError.message);
         await this.sendTextMessage(from, "Erro ao baixar áudio. Tente enviar novamente.");
         return;
       }
@@ -1029,7 +823,6 @@ export class WhatsAppQRService {
       const uploadsDir = './uploads';
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
-        console.log(`📁 [DEBUG] Diretório uploads criado`);
       }
       
       // Salvar arquivo temporário primeiro para processamento
@@ -1039,30 +832,17 @@ export class WhatsAppQRService {
       
       try {
         fs.writeFileSync(tempAudioPath, audioBuffer);
-        console.log(`💾 [DEBUG] Áudio salvo temporariamente em: ${tempAudioPath}`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo salvo: ${fs.statSync(tempAudioPath).size} bytes`);
       } catch (saveError) {
-        console.log(`❌ [DEBUG] Erro ao salvar arquivo temporário:`, saveError);
         await this.sendTextMessage(from, "Erro ao processar áudio. Tente novamente.");
         return;
       }
       
       // Buscar job com estratégia robusta
-      console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId} (tipo: ${typeof selection.jobId})`);
       let job = await storage.getJobById(selection.jobId);
       
       if (!job) {
-        console.log(`❌ [DEBUG] Job não encontrado por ID exato, tentando busca robusta...`);
-        
-        // Buscar todos os jobs do cliente
         const allJobs = await storage.getJobsByClientId(selection.clientId);
-        console.log(`📋 [DEBUG] Jobs do cliente ${selection.clientId}:`, allJobs.map(j => ({
-          id: j.id,
-          nome: j.nomeVaga,
-          perguntas: j.perguntas?.length || 0
-        })));
         
-        // Tentar encontrar por match parcial ou contém
         job = allJobs.find(j => 
           String(j.id).includes(String(selection.jobId)) || 
           String(selection.jobId).includes(String(j.id)) ||
@@ -1071,63 +851,42 @@ export class WhatsAppQRService {
         );
         
         if (job) {
-          console.log(`✅ [DEBUG] Job encontrado por busca robusta: ${job.id} -> ${job.nomeVaga}`);
-          // Atualizar seleção com ID correto
           await storage.updateSelection(selection.id, { jobId: job.id });
-          console.log(`🔄 [DEBUG] Seleção atualizada com jobId correto`);
         }
       }
       
       if (!job) {
-        console.log(`❌ [DEBUG] Job não encontrado em nenhuma estratégia de busca`);
         await this.sendTextMessage(from, "Erro: vaga não encontrada no sistema.");
         return;
       }
       
-      console.log(`✅ [DEBUG] Job encontrado: ${job.nomeVaga} (ID: ${job.id})`);
-      console.log(`📝 [DEBUG] Perguntas disponíveis: ${job.perguntas?.length || 0}`);
-      
       if (!job.perguntas || job.perguntas.length === 0) {
-        console.log(`❌ [DEBUG] Job sem perguntas configuradas`);
         await this.sendTextMessage(from, "Erro: esta vaga não possui perguntas cadastradas.");
         return;
       }
-      
-      console.log(`✅ [DEBUG] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
       
       // Descobrir qual pergunta atual baseado nas respostas já dadas
       const allResponses = await storage.getAllResponses();
       const existingResponses = allResponses.filter(r => r.interviewId === currentInterview.id);
       const currentQuestionIndex = existingResponses.length;
       
-      console.log(`📊 [DEBUG] Respostas existentes: ${existingResponses.length}, Pergunta atual: ${currentQuestionIndex + 1}`);
-      
       if (currentQuestionIndex >= job.perguntas.length) {
-        console.log(`✅ [DEBUG] Entrevista já completa - todas as perguntas respondidas`);
         await this.sendTextMessage(from, `🎉 Parabéns ${candidate.name}! Você já completou todas as perguntas da entrevista.`);
         return;
       }
       
       const currentQuestion = job.perguntas[currentQuestionIndex];
-      console.log(`❓ [DEBUG] Processando resposta para pergunta ${currentQuestionIndex + 1}: ${currentQuestion.pergunta}`);
       
       // Buscar configuração OpenAI para transcrição
       const config = await storage.getApiConfig('master', '1749848502212');
       if (!config?.openaiApiKey) {
-        console.log(`❌ [DEBUG] OpenAI API não configurada para transcrição`);
         await this.sendTextMessage(from, "Erro: sistema de transcrição não configurado.");
         return;
       }
       
-      console.log(`🔧 [DEBUG] OpenAI configurado - iniciando transcrição...`);
-      
       // Transcrever áudio usando OpenAI SDK (corrigido)
       let transcription = '';
       try {
-        console.log(`🌐 [DEBUG] Iniciando transcrição via OpenAI SDK...`);
-        console.log(`📊 [DEBUG] Tamanho do arquivo: ${fs.statSync(tempAudioPath).size} bytes`);
-        
-        // Usar OpenAI SDK em vez de FormData
         const OpenAI = (await import('openai')).default;
         const openai = new OpenAI({ apiKey: config.openaiApiKey });
         
@@ -1139,15 +898,12 @@ export class WhatsAppQRService {
         });
         
         transcription = transcriptionResult || '';
-        console.log(`📝 [DEBUG] Transcrição via SDK recebida: "${transcription}"`);
         
         if (!transcription.trim()) {
           transcription = '[Áudio sem fala detectada]';
-          console.log(`⚠️ [DEBUG] Transcrição vazia - áudio pode não conter fala`);
         }
         
       } catch (transcriptionError) {
-        console.log(`❌ [DEBUG] Erro na transcrição SDK:`, transcriptionError.message);
         transcription = '[Erro na transcrição]';
       }
       
@@ -1163,45 +919,22 @@ export class WhatsAppQRService {
       try {
         // Copiar arquivo temporário para arquivo definitivo
         fs.copyFileSync(tempAudioPath, audioPath);
-        console.log(`✅ [DEBUG] Áudio DEFINITIVO salvo: ${audioFileName}`);
         
         // Remover arquivo temporário
         fs.unlinkSync(tempAudioPath);
-        console.log(`🗑️ [DEBUG] Arquivo temporário removido`);
         
       } catch (renameError) {
-        console.log(`⚠️ [DEBUG] Erro ao criar arquivo definitivo:`, renameError);
         // Se der erro, manter o arquivo temporário como definitivo
-        console.log(`📝 [DEBUG] Usando arquivo temporário como definitivo: ${tempAudioFileName}`);
       }
-      
-      console.log(`💾 [DEBUG] Preparando para salvar resposta no banco...`);
-      console.log(`📋 [DEBUG] Dados da resposta:`, {
-        interviewId: currentInterview.id,
-        questionIndex: currentQuestionIndex,
-        transcription: transcription.substring(0, 100) + '...',
-        audioFileName
-      });
       
       // Salvar resposta no banco de dados com logs detalhados
       try {
-        console.log(`💾 [DEBUG] ===== SALVANDO RESPOSTA NO BANCO =====`);
-        console.log(`📋 [DEBUG] Dados para salvamento:`, {
-          interviewId: currentInterview.id,
-          questionId: currentQuestion.id,
-          transcricao: transcription.substring(0, 100) + (transcription.length > 100 ? '...' : ''),
-          audioFileName: audioFileName,
-          questionIndex: currentQuestionIndex
-        });
-        
-        // Verificar se já existe resposta para esta pergunta para evitar recálculos
         const existingResponse = existingResponses.find(r => r.questionId === currentQuestion.id);
         let pontuacao = 50; // Valor padrão caso falhe
         
         if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined) {
           // Usar score já calculado para evitar gasto desnecessário de API
           pontuacao = existingResponse.score;
-          console.log(`♻️ [EVALUATION] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo)`);
         } else {
           // Calcular pontuação usando IA apenas se não existe
           try {
@@ -1209,7 +942,6 @@ export class WhatsAppQRService {
             const openaiApiKey = config.openaiApiKey;
             
             if (openaiApiKey && currentQuestion.respostaPerfeita && transcription) {
-              console.log(`🤖 [EVALUATION] Calculando pontuação pela primeira vez...`);
               const responseId = `whatsapp_response_${Date.now()}`;
               
               pontuacao = await candidateEvaluationService.evaluateInterviewResponse(
@@ -1219,12 +951,8 @@ export class WhatsAppQRService {
                 currentQuestion.respostaPerfeita,
                 openaiApiKey
               );
-              console.log(`📊 [EVALUATION] Pontuação calculada: ${pontuacao}/100`);
-            } else {
-              console.log(`⚠️ [EVALUATION] Avaliação não disponível - usando pontuação padrão`);
             }
           } catch (evaluationError) {
-            console.log(`❌ [EVALUATION] Erro na avaliação:`, evaluationError.message);
           }
         }
 
@@ -1237,83 +965,44 @@ export class WhatsAppQRService {
           feedback: null
         });
         
-        console.log(`✅ [DEBUG] RESPOSTA SALVA COM SUCESSO!`);
-        console.log(`🆔 [DEBUG] Response ID: ${response.id}`);
-        console.log(`📝 [DEBUG] Transcrição salva: "${transcription}"`);
-        console.log(`🎵 [DEBUG] Áudio salvo: ${audioFileName}`);
-        console.log(`📊 [DEBUG] Pergunta ${currentQuestionIndex + 1} processada e salva`);
+        // Determinar próximos passos da entrevista
+        const nextQuestionIndex = currentQuestionIndex + 1;
+        const isLastQuestion = nextQuestionIndex >= job.perguntas.length;
         
-        // Verificar se salvou corretamente
-        const allResponses = await storage.getResponsesByInterviewId(currentInterview.id);
-        console.log(`📈 [DEBUG] Total de respostas da entrevista ${currentInterview.id}: ${allResponses.length}`);
-        console.log(`📋 [DEBUG] Últimas respostas:`, allResponses.map(r => ({
-          id: r.id,
-          questionId: r.questionId,
-          hasAudio: !!r.audioUrl,
-          hasText: !!r.responseText
-        })));
+        if (!isLastQuestion) {
+          await this.sendTextMessage(from, `✅ Resposta ${currentQuestionIndex + 1} recebida! Preparando próxima pergunta...`);
+          
+          // Aguardar um momento antes de enviar próxima pergunta
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const nextQuestion = job.perguntas[nextQuestionIndex];
+          
+          await this.sendQuestionAudio(from, candidate.name, nextQuestion, currentInterview.id, nextQuestionIndex, job.perguntas.length);
+          
+        } else {
+          // Última pergunta - finalizar entrevista
+          const finalizationMessage = `🎉 Parabéns, ${candidate.name}! Você completou sua entrevista com sucesso. Todas as ${job.perguntas.length} perguntas foram respondidas. Nossa equipe analisará suas respostas e retornará em breve. Obrigado pela participação!`;
+          
+          await this.sendTextMessage(from, finalizationMessage);
+          
+          // Atualizar status da entrevista no banco
+          await storage.updateInterview(currentInterview.id, { 
+            status: 'completed',
+            completedAt: new Date()
+          });
+        }
         
       } catch (saveError) {
-        console.log(`❌ [DEBUG] ===== ERRO AO SALVAR RESPOSTA =====`);
-        console.log(`💥 [DEBUG] Erro completo:`, saveError);
-        console.log(`🔍 [DEBUG] Stack trace:`, saveError.stack);
         await this.sendTextMessage(from, "Erro ao salvar resposta. Tente novamente.");
-        return;
       }
-      
-      // Determinar próximos passos da entrevista
-      const nextQuestionIndex = currentQuestionIndex + 1;
-      const isLastQuestion = nextQuestionIndex >= job.perguntas.length;
-      
-      console.log(`🔄 [DEBUG] Avaliando continuação: pergunta ${currentQuestionIndex + 1}/${job.perguntas.length}`);
-      
-      if (!isLastQuestion) {
-        // Há mais perguntas - continuar entrevista
-        console.log(`➡️ [DEBUG] Continuando para pergunta ${nextQuestionIndex + 1}...`);
-        
-        await this.sendTextMessage(from, `✅ Resposta ${currentQuestionIndex + 1} recebida! Preparando próxima pergunta...`);
-        
-        // Aguardar um momento antes de enviar próxima pergunta
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const nextQuestion = job.perguntas[nextQuestionIndex];
-        console.log(`📤 [DEBUG] Enviando pergunta ${nextQuestionIndex + 1}: "${nextQuestion.pergunta}"`);
-        
-        await this.sendQuestionAudio(from, candidate.name, nextQuestion, currentInterview.id, nextQuestionIndex, job.perguntas.length);
-        
-        console.log(`✅ [DEBUG] Pergunta ${nextQuestionIndex + 1}/${job.perguntas.length} enviada com sucesso`);
-        
-      } else {
-        // Última pergunta - finalizar entrevista
-        console.log(`🏁 [DEBUG] Finalizando entrevista - todas as ${job.perguntas.length} perguntas respondidas`);
-        
-        // Enviar mensagem de finalização personalizada
-        const finalizationMessage = `🎉 Parabéns, ${candidate.name}! Você completou sua entrevista com sucesso. Todas as ${job.perguntas.length} perguntas foram respondidas. Nossa equipe analisará suas respostas e retornará em breve. Obrigado pela participação!`;
-        
-        await this.sendTextMessage(from, finalizationMessage);
-        
-        // Atualizar status da entrevista no banco
-        await storage.updateInterview(currentInterview.id, { 
-          status: 'completed',
-          completedAt: new Date()
-        });
-        
-        console.log(`✅ [DEBUG] Entrevista ${currentInterview.id} finalizada com sucesso`);
-        console.log(`📈 [DEBUG] Total de respostas coletadas: ${job.perguntas.length}`);
-      }
-      
-      // CORRIGIDO: NÃO DELETAR mais o arquivos de áudio para mantê-los salvos na pasta uploads
-      console.log(`✅ [DEBUG] Áudio mantido permanentemente em: ${audioFileName}`);
       
     } catch (error) {
-      console.error(`❌ Erro ao processar áudio:`, error);
       await this.sendTextMessage(from, "Erro ao processar resposta. Tente novamente.");
     }
   }
 
   private async processInterviewMessage(from: string, text: string, message: any) {
     try {
-      console.log(`🤖 Processando mensagem de entrevista de ${from}: ${text}`);
       
       // Normalizar texto
       const normalizedText = text.toLowerCase().trim();
@@ -1323,56 +1012,35 @@ export class WhatsAppQRService {
           normalizedText === 'aceito' || normalizedText === 'começar' ||
           normalizedText === 'ok' || normalizedText === 'yes') {
         
-        console.log(`✅ [DEBUG] Candidato aceitou entrevista via texto: ${text}`);
-        
         // Buscar seleção mais recente para este telefone
         const phoneClean = from.replace('@s.whatsapp.net', '');
-        console.log(`🔍 [DEBUG] Buscando seleção para telefone: ${phoneClean}`);
         
         try {
-          console.log(`🔍 [DEBUG] Importando storage...`);
           const { storage } = await import('../../server/storage');
           
-          console.log(`🔍 [DEBUG] Buscando candidatos para cliente 1749849987543...`);
           // Buscar todos os candidatos diretamente via storage
           const candidates = await storage.getCandidatesByClientId(1749849987543); // buscar do cliente ativo
-          console.log(`👥 [DEBUG] Total de candidatos encontrados: ${candidates.length}`);
-          console.log(`👥 [DEBUG] Candidatos:`, candidates.map(c => ({ id: c.id, name: c.name, phone: c.phone })));
           
-          console.log(`🔍 [DEBUG] Procurando candidato com telefone: ${phoneClean}`);
           const candidate = candidates.find(c => {
             if (!c.phone) {
-              console.log(`⚠️ [DEBUG] Candidato ${c.name} sem telefone`);
               return false;
             }
             const candidatePhone = c.phone.replace(/\D/g, '');
             const searchPhone = phoneClean.replace(/\D/g, '');
-            console.log(`🔍 [DEBUG] Comparando: candidato ${candidatePhone} vs busca ${searchPhone}`);
             const match = candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
             if (match) {
-              console.log(`✅ [DEBUG] Match encontrado para candidato: ${c.name}`);
             }
             return match;
           });
           
           if (candidate) {
-            console.log(`👤 [DEBUG] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
             
             // Buscar seleção mais recente que inclua este candidato
-            console.log(`🔍 [DEBUG] Buscando todas as seleções...`);
             const allSelections = await storage.getAllSelections();
-            console.log(`📋 [DEBUG] Total de seleções encontradas: ${allSelections.length}`);
-            console.log(`📋 [DEBUG] Seleções:`, allSelections.map(s => ({ 
-              id: s.id, 
-              name: s.name, 
-              status: s.status, 
-              candidateListId: s.candidateListId 
-            })));
             
             const candidateSelections = allSelections.filter(s => 
               s.candidateListId && s.status === 'enviado'
             );
-            console.log(`📋 [DEBUG] Seleções com status 'enviado': ${candidateSelections.length}`);
             
             if (candidateSelections.length > 0) {
               // Pegar a seleção mais recente
@@ -1380,59 +1048,36 @@ export class WhatsAppQRService {
                 new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
               )[0];
               
-              console.log(`📋 [DEBUG] Seleção mais recente encontrada: ${selection.name} (ID: ${selection.id})`);
-              console.log(`📋 [DEBUG] Detalhes da seleção:`, { 
-                id: selection.id, 
-                jobId: selection.jobId, 
-                clientId: selection.clientId, 
-                candidateListId: selection.candidateListId 
-              });
-              
               // Buscar job e suas perguntas
-              console.log(`🔍 [DEBUG] Buscando job com ID: ${selection.jobId}`);
               let job = await storage.getJobById(selection.jobId);
               
               if (!job) {
-                console.log(`⚠️ [DEBUG] Job não encontrado com ID exato, tentando busca por partial match`);
                 const allJobs = await storage.getJobsByClientId(selection.clientId);
-                console.log(`📋 [DEBUG] Jobs disponíveis:`, allJobs.map(j => ({ id: j.id, nome: j.nomeVaga, perguntas: j.perguntas?.length || 0 })));
                 job = allJobs.find(j => j.id.toString().includes(selection.jobId.toString()) || selection.jobId.toString().includes(j.id.toString()));
                 if (job) {
-                  console.log(`✅ [DEBUG] Job encontrado via partial match: ${job.nomeVaga}`);
                 }
               } else {
-                console.log(`✅ [DEBUG] Job encontrado com ID exato: ${job.nomeVaga}`);
               }
               
               if (job && job.perguntas && job.perguntas.length > 0) {
-                console.log(`❓ [DEBUG] Job válido com ${job.perguntas.length} perguntas`);
-                console.log(`📝 [DEBUG] Primeira pergunta: ${job.perguntas[0].pergunta}`);
                 
                 // Iniciar processo de entrevista
-                console.log(`🚀 [DEBUG] ===== CHAMANDO START INTERVIEW PROCESS =====`);
                 await this.startInterviewProcess(from, selection.id, candidate.name);
-                console.log(`✅ [DEBUG] ===== START INTERVIEW PROCESS FINALIZADO =====`);
                 return;
               } else {
-                console.log(`❌ [DEBUG] Job inválido - sem perguntas`);
                 if (job) {
-                  console.log(`❌ [DEBUG] Job encontrado mas perguntas:`, job.perguntas);
                 } else {
-                  console.log(`❌ [DEBUG] Job não encontrado`);
                 }
               }
             } else {
-              console.log(`❌ [DEBUG] Nenhuma seleção com status 'enviado' encontrada`);
             }
           } else {
-            console.log(`❌ [DEBUG] Candidato não encontrado para telefone: ${phoneClean}`);
           }
           
           // Fallback se não encontrar dados
           await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
           
         } catch (error) {
-          console.error(`❌ [DEBUG] Erro ao buscar dados para entrevista:`, error);
           await this.sendTextMessage(from, "Perfeito! Iniciando sua entrevista...");
         }
         
@@ -1442,7 +1087,6 @@ export class WhatsAppQRService {
                normalizedText === '2' || normalizedText === 'recuso' || 
                normalizedText === 'no') {
         
-        console.log(`❌ [DEBUG] Candidato recusou entrevista via texto: ${text}`);
         await this.sendTextMessage(from, "Obrigado pela resposta. Caso mude de ideia, entre em contato conosco.");
         
       } 
@@ -1457,7 +1101,6 @@ Ou use os botões se disponíveis.`);
       }
       
     } catch (error) {
-      console.error('❌ Erro ao processar mensagem de entrevista:', error);
     }
   }
 
@@ -1474,21 +1117,17 @@ Ou use os botões se disponíveis.`);
         content: `Pergunta ${questionIndex + 1}: ${questionText}`
       });
       
-      console.log(`💾 [DEBUG] Estado da entrevista salvo - Pergunta ${questionIndex + 1}`);
     } catch (error) {
-      console.error(`❌ Erro ao salvar estado da entrevista:`, error);
     }
   }
 
   public async sendTextMessage(phoneNumber: string, message: string): Promise<boolean> {
-    console.log(`🚀 Enviando WhatsApp para ${phoneNumber}: ${message.substring(0, 50)}...`);
     
     try {
       // Verificações robustas de conectividade
       if (!this.socket) {
         await this.ensureInitialized();
         if (!this.socket) {
-          console.log(`❌ Falha na reconexão do socket`);
           return false;
         }
       }
@@ -1496,7 +1135,6 @@ Ou use os botões se disponíveis.`);
       if (!this.socket.user) {
         await this.ensureInitialized();
         if (!this.socket || !this.socket.user) {
-          console.log(`❌ Falha na reautenticação`);
           return false;
         }
       }
@@ -1510,13 +1148,10 @@ Ou use os botões se disponíveis.`);
           
           // Verificar novamente após reconexão
           if (!this.socket?.ws || this.socket.ws.readyState !== 1) {
-            console.log(`❌ Reconexão do WebSocket falhou - estado final: ${this.socket?.ws?.readyState || 'undefined'}`);
             return false;
           }
           
-          console.log(`✅ WebSocket reconectado com sucesso - estado: ${this.socket.ws.readyState}`);
         } catch (reconnectError) {
-          console.log(`❌ Erro durante reconexão: ${reconnectError.message}`);
           return false;
         }
       }
@@ -1527,11 +1162,9 @@ Ou use os botões se disponíveis.`);
       try {
         const [numberExists] = await this.socket.onWhatsApp(jid);
         if (!numberExists || !numberExists.exists) {
-          console.log(`❌ Número ${phoneNumber} não existe no WhatsApp`);
           return false;
         }
       } catch (checkError) {
-        console.log(`⚠️ Não foi possível verificar o número - prosseguindo com envio`);
       }
       
       // Envio com timeout reduzido
@@ -1543,22 +1176,18 @@ Ou use os botões se disponíveis.`);
       ]);
       
       if (result && result.key && result.key.id) {
-        console.log(`✅ WhatsApp enviado com sucesso! ID: ${result.key.id}`);
         return true;
       } else {
-        console.log(`❌ Falha no envio - resposta inválida`);
         return false;
       }
       
     } catch (error: any) {
-      console.error(`❌ Erro no envio WhatsApp:`, error?.message || 'Erro desconhecido');
       
       // Tratar diferentes tipos de erro de conexão
       if (error?.message?.includes('Connection Closed') || 
           error?.message?.includes('Socket') ||
           error?.message?.includes('stream errored') ||
           error?.output?.statusCode === 428) {
-        console.log(`🔌 Conexão perdida - atualizando status`);
         this.config.isConnected = false;
         await this.saveConnectionToDB();
       }
@@ -1612,8 +1241,6 @@ Você gostaria de iniciar a entrevista?`;
         headerType: 1
       };
 
-      console.log(`📨 [DEBUG] Enviando mensagem com botões para ${candidateName}`);
-      
       try {
         // Enviar apenas texto simples com instruções claras
         const textWithInstructions = `${finalMessage}
@@ -1622,14 +1249,11 @@ Você gostaria de iniciar a entrevista?`;
 *1* - Sim, começar agora
 *2* - Não quero participar`;
 
-        console.log(`🔄 [DEBUG] Enviando mensagem com instruções...`);
         const textResult = await this.socket.sendMessage(jid, { text: textWithInstructions });
-        console.log(`✅ [DEBUG] Mensagem enviada:`, textResult?.key || 'sem key');
         
         return true;
         
       } catch (quickError) {
-        console.log(`⚠️ [DEBUG] Quick Reply falhou, tentando botões simples:`, quickError);
         
         try {
           // Fallback para botões mais simples
@@ -1642,11 +1266,9 @@ Você gostaria de iniciar a entrevista?`;
           };
           
           const simpleResult = await this.socket.sendMessage(jid, simpleButtons);
-          console.log(`✅ [DEBUG] Botões simples enviados:`, simpleResult?.key || 'sem key');
           return true;
           
         } catch (simpleError) {
-          console.log(`⚠️ [DEBUG] Botões simples falharam, tentando lista:`, simpleError);
           
           try {
             // Fallback para lista interativa
@@ -1673,11 +1295,9 @@ Você gostaria de iniciar a entrevista?`;
             };
 
             const listResult = await this.socket.sendMessage(jid, listMessage);
-            console.log(`✅ [DEBUG] Lista interativa enviada:`, listResult?.key || 'sem key');
             return true;
             
           } catch (listError) {
-            console.log(`⚠️ [DEBUG] Lista também falhou, usando texto simples:`, listError);
             
             // Fallback final para texto simples
             const textMessage = `${finalMessage}
@@ -1692,7 +1312,6 @@ Você gostaria de iniciar a entrevista?`;
       }
 
     } catch (error) {
-      console.error(`❌ Erro geral ao enviar convite:`, error);
       return false;
     }
   }
@@ -1703,7 +1322,6 @@ Você gostaria de iniciar a entrevista?`;
 
   public setClientId(clientId: string) {
     this.currentClientId = clientId;
-    console.log(`📱 Cliente ID definido para WhatsApp: ${clientId}`);
   }
 
   public onQRCode(callback: (qr: string | null) => void) {
@@ -1729,7 +1347,6 @@ Você gostaria de iniciar a entrevista?`;
 
   async connect(): Promise<{ success: boolean; message: string; qrCode?: string }> {
     try {
-      console.log('🔗 Iniciando conexão WhatsApp QR...');
       await this.initializeConnection();
       return { 
         success: true, 
@@ -1737,7 +1354,6 @@ Você gostaria de iniciar a entrevista?`;
         qrCode: this.config.qrCode || undefined
       };
     } catch (error) {
-      console.error('❌ Erro na conexão WhatsApp QR:', error);
       return { success: false, message: error.message };
     }
   }
@@ -1761,22 +1377,17 @@ Você gostaria de iniciar a entrevista?`;
       this.notifyConnectionListeners(false);
       this.notifyQRListeners(null);
       
-      console.log('🔌 WhatsApp QR desconectado');
     } catch (error) {
-      console.error('❌ Erro ao desconectar WhatsApp QR:', error);
     }
   }
 
   public async ensureInitialized(): Promise<void> {
     if (!this.baileys) {
-      console.log('🔧 Inicializando Baileys...');
       try {
         this.baileys = await import('@whiskeysockets/baileys');
         this.makeWASocket = this.baileys.default;
         this.useMultiFileAuthState = this.baileys.useMultiFileAuthState;
-        console.log('✅ Baileys inicializado com sucesso');
       } catch (error) {
-        console.error('❌ Erro ao inicializar Baileys:', error);
         throw new Error('Falha na inicialização do WhatsApp');
       }
     }
@@ -1788,7 +1399,6 @@ Você gostaria de iniciar a entrevista?`;
                                this.socket.ws.readyState === 1;
 
     if (!isSocketFunctional) {
-      console.log('🔄 Socket não funcional - forçando nova conexão completa...');
       
       // Limpar socket antigo
       this.socket = null;
@@ -1802,13 +1412,11 @@ Você gostaria de iniciar a entrevista?`;
       
       while (attempts < maxAttempts) {
         if (this.socket?.ws?.readyState === 1 && this.socket?.user) {
-          console.log(`✅ WebSocket conectado na tentativa ${attempts + 1}`);
           return;
         }
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         attempts++;
-        console.log(`⏳ Aguardando WebSocket conectar... ${attempts}/${maxAttempts}`);
       }
       
       if (!this.socket?.ws || this.socket.ws.readyState !== 1) {
@@ -1818,7 +1426,6 @@ Você gostaria de iniciar a entrevista?`;
   }
 
   public async reconnect() {
-    console.log('🔄 Iniciando processo de reconexão...');
     await this.disconnect();
     
     // Limpa o estado atual
@@ -1835,15 +1442,12 @@ Você gostaria de iniciar a entrevista?`;
       
       if (fs.existsSync(authPath)) {
         fs.rmSync(authPath, { recursive: true, force: true });
-        console.log('🗑️ Credenciais antigas removidas');
       }
     } catch (error) {
-      console.log('⚠️ Erro ao remover credenciais:', error);
     }
     
     // Força uma nova inicialização
     setTimeout(() => {
-      console.log('🔗 Reinicializando conexão WhatsApp para gerar novo QR...');
       this.initializeConnection();
     }, 2000);
   }

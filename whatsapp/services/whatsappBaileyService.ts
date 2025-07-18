@@ -8,13 +8,11 @@ let QRCode: any;
 
 async function initializeDependencies() {
   if (!makeWASocket) {
-    console.log('📦 Carregando dependências Baileys...');
     const baileys = await import('@whiskeysockets/baileys');
     makeWASocket = baileys.makeWASocket;
     useMultiFileAuthState = baileys.useMultiFileAuthState;
     const qrCodeModule = await import('qrcode');
     QRCode = qrCodeModule.default || qrCodeModule;
-    console.log('📦 Dependências carregadas com sucesso');
   }
 }
 
@@ -42,7 +40,6 @@ class WhatsAppBaileyService {
     if (this.connections.has(clientId)) {
       const existing = this.connections.get(clientId)!;
       if (existing.isConnected) {
-        console.log(`✅ Cliente ${clientId} já conectado`);
         return {
           success: true,
           isConnected: true,
@@ -67,7 +64,6 @@ class WhatsAppBaileyService {
             }
           }
         } catch (error) {
-          console.log('⚠️ [BAILEYS] Usando versão padrão do WhatsApp Web:', (error as Error).message);
         }
         
         const sock = makeWASocket({ 
@@ -109,7 +105,6 @@ class WhatsAppBaileyService {
           if (qr) {
             const dataURL = await QRCode.toDataURL(qr);
             connectionState.qrCode = dataURL;
-            console.log(`📱 QR Code gerado para cliente ${clientId} - Length: ${dataURL.length}`);
             await this.saveConnectionToDB(clientId, connectionState);
             
             // 🔥 CORREÇÃO: Resolver Promise com QR Code
@@ -123,20 +118,16 @@ class WhatsAppBaileyService {
           
           // Tratamento especial para isNewLogin - crítico para resolver erro 515
           if (isNewLogin) {
-            console.log(`🔐 [515 FIX] isNewLogin detectado para cliente ${clientId} - aguardando estabelecimento da conexão`);
             // Enviar presença imediatamente após nova autenticação
             setTimeout(async () => {
               try {
                 await sock.sendPresenceUpdate('available');
-                console.log(`👀 [515 FIX] Presença enviada após isNewLogin`);
               } catch (error) {
-                console.log(`⚠️ [515 FIX] Erro ao enviar presença:`, (error as Error).message);
               }
             }, 2000);
           }
           
           if (connection === 'open') {
-            console.log(`✅ WhatsApp conectado para cliente ${clientId}`);
             connectionState.isConnected = true;
             connectionState.phoneNumber = sock.user?.id?.split(':')[0] || null;
             connectionState.qrCode = '';
@@ -160,23 +151,18 @@ class WhatsAppBaileyService {
                 whatsappQrCode: null, // Limpar QR Code quando conectado
                 whatsappQrLastConnection: new Date()
               } as any);
-              console.log(`💾 Status CONECTADO salvo no banco para cliente ${clientId}`);
             } catch (error) {
-              console.log(`❌ Erro ao salvar status conectado:`, (error as Error).message);
             }
           }
           
           if (connection === 'close') {
             const errorCode = (lastDisconnect?.error as any)?.output?.statusCode;
-            console.log(`🔌 WhatsApp desconectado para cliente ${clientId} - Código: ${errorCode}`);
             
             // Códigos transitórios conforme instruções ChatGPT
             const transientCodes = [408, 428, 515];
             
             if (transientCodes.includes(errorCode)) {
-              console.log(`🔄 [515 FIX] Erro transitório ${errorCode} detectado - reconectando em 5s...`);
               setTimeout(async () => {
-                console.log(`🔄 [515 FIX] Reiniciando conexão para cliente ${clientId}`);
                 // Limpar conexão anterior antes de reiniciar
                 this.connections.delete(clientId);
                 await this.initWhatsApp(clientId);
@@ -199,8 +185,6 @@ class WhatsAppBaileyService {
             const from = message.key.remoteJid;
             if (!from || !from.includes('@s.whatsapp.net')) continue;
             
-            console.log(`📨 [INTERVIEW] Nova mensagem de ${from}`);
-            
             // Extrair texto da mensagem
             let messageText = '';
             if (message.message.conversation) {
@@ -214,14 +198,12 @@ class WhatsAppBaileyService {
             if (message.message.audioMessage) {
               // Passar a mensagem completa com todos os metadados necessários para download
               audioMessage = message;
-              console.log(`🎵 [BAILEYS] Mensagem de áudio detectada - passando mensagem completa`);
             }
             
             // Processar mensagem via interactiveInterviewService
             try {
               await interactiveInterviewService.handleMessage(from, messageText, audioMessage, clientId);
             } catch (error) {
-              console.log(`❌ Erro ao processar mensagem:`, (error as Error).message);
             }
           }
         });
@@ -230,12 +212,10 @@ class WhatsAppBaileyService {
           try {
             await saveCreds();
           } catch (error) {
-            console.log(`❌ Erro ao salvar credenciais:`, (error as Error).message);
           }
         });
 
       } catch (error) {
-        console.log(`❌ Erro ao inicializar WhatsApp para cliente ${clientId}:`, (error as Error).message);
         reject(error);
       }
     });
@@ -254,7 +234,6 @@ class WhatsAppBaileyService {
         whatsappQrLastConnection: new Date()
       } as any);
     } catch (error) {
-      console.log(`❌ Erro ao salvar no banco:`, (error as Error).message);
     }
   }
 
@@ -285,7 +264,6 @@ class WhatsAppBaileyService {
         await connection.socket.sendMessage(jid, { text });
         return true;
       } catch (error) {
-        console.log(`❌ Erro ao enviar mensagem:`, (error as Error).message);
         return false;
       }
     }

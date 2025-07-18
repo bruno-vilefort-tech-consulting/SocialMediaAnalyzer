@@ -325,8 +325,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           }
 
           // 🔥 ENVIO DIRETO VIA BAILEYS PURO - usando endpoint existente
-          console.log(`🟣 Iniciando envio via Baileys puro para seleção ${newSelection.id}`);
-
           const sendResponse = await Promise.race([
             apiRequest(`/api/selections/${newSelection.id}/send-whatsapp?baileys=direct`, 'POST'),
             new Promise((_, reject) =>
@@ -334,25 +332,19 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
             )
           ]) as Response;
 
-          console.log(`📡 Resposta do envio WhatsApp:`, sendResponse.status);
-
           if (!sendResponse.ok) {
             let errorMessage = 'Erro no envio WhatsApp';
             try {
               const errorData = await sendResponse.json();
               errorMessage = errorData.message || errorMessage;
-              console.error(`❌ Erro JSON (${sendResponse.status}):`, errorData);
             } catch {
               const errorText = await sendResponse.text();
               errorMessage = errorText || errorMessage;
-              console.error(`❌ Erro TEXT (${sendResponse.status}):`, errorText);
             }
-            console.error(`❌ Lançando erro:`, errorMessage);
             throw new Error(errorMessage);
           }
 
           const sendResult = await sendResponse.json();
-          console.log(`✅ Resultado do envio:`, sendResult);
 
           // Finalizar progresso
           setSendingProgress(prev => ({
@@ -363,9 +355,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           return { selection: newSelection, sendResult };
 
         } catch (sendError: any) {
-          console.error(`❌ Erro no envio WhatsApp:`, sendError);
-          console.error(`❌ Mensagem do erro:`, sendError.message);
-
           // Usar a mensagem do erro diretamente se existir
           let errorMessage = sendError.message || "Erro desconhecido no envio";
 
@@ -496,7 +485,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
   // Salvar seleção
   const salvarSelecao = () => {
-    console.log('🎯 salvarSelecao iniciada');
 
     if (!nomeSelecao.trim()) {
       toast({ title: "Nome da seleção é obrigatório", variant: "destructive" });
@@ -546,17 +534,12 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
       clientId: finalClientId,
     };
 
-    console.log('📋 Dados da seleção:', selectionData);
-    console.log('🔄 Tipo de envio:', tipoEnvio);
-    console.log('📱 Enviar WhatsApp:', enviarWhatsApp);
 
     if (editingSelection) {
-      console.log('✏️ Editando seleção existente');
       updateSelectionMutation.mutate(selectionData);
     } else {
       // Nova implementação: Salvar primeiro, depois enviar em background
       if (tipoEnvio === "agora" && (enviarWhatsApp || selectionData.sendVia === 'whatsapp' || selectionData.sendVia === 'both')) {
-        console.log('🚀 Salvando seleção e enviando em background');
 
         // Fecha o formulário IMEDIATAMENTE antes de qualquer operação
         resetForm();
@@ -596,7 +579,6 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
           }
         });
       } else {
-        console.log('📝 Criando seleção sem envio automático');
         createSelectionMutation.mutate(selectionData);
       }
     }

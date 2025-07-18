@@ -98,10 +98,8 @@ export default function ApiConfigPage() {
 
   useEffect(() => {
     if (apiConfig?.openaiVoice) {
-      console.log('🎵 Voz carregada do apiConfig:', apiConfig.openaiVoice);
       setSelectedVoice(apiConfig.openaiVoice);
     } else if (voiceSetting?.voice) {
-      console.log('🎵 Voz carregada do voiceSetting (legacy):', voiceSetting.voice);
       setSelectedVoice(voiceSetting.voice);
     }
   }, [apiConfig, voiceSetting]);

@@ -43,9 +43,12 @@ async function lazyLoadWhatsAppServices() {
   
   if (!simpleMultiBaileyService) {
     try {
+      console.log('🔄 [LAZY-LOAD] Carregando simpleMultiBaileyService...');
       const { simpleMultiBaileyService: service } = await import("../whatsapp/services/simpleMultiBailey");
       simpleMultiBaileyService = service;
+      console.log('✅ [LAZY-LOAD] simpleMultiBaileyService carregado:', !!simpleMultiBaileyService);
     } catch (error) {
+      console.error('❌ [LAZY-LOAD] Erro ao carregar Simple Multi Bailey Service:', error);
       console.log('⚠️ Simple Multi Bailey Service não disponível');
     }
   }
@@ -1298,7 +1301,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (clientIdFilter) {
           console.log('🔍 Master buscando candidatos do cliente:', clientIdFilter);
           const candidates = await storage.getCandidatesByClientId(parseInt(clientIdFilter));
-          console.log('📋 Candidatos encontrados para cliente', clientIdFilter, ':', candidates.length);
           res.json(candidates);
         } else {
           // Master sem filtro = ver TODOS os candidatos
@@ -1316,7 +1318,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return isValid;
           });
           
-          console.log('📋 Candidatos válidos após filtro:', validCandidates.length);
           res.json(validCandidates);
         }
       } else {
@@ -1492,8 +1493,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             continue;
           }
-
-          console.log(`📋 Candidato ${nameStr} será importado para clientId: ${clientId}`);
 
           validCandidates.push({
             name: nameStr,
@@ -4089,7 +4088,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log(`📋 Candidatos que iniciaram entrevistas no período (${candidatesWithInterviews.length}):`);
       candidatesWithInterviews.forEach((candidate, index) => {
         console.log(`${index + 1}. ${candidate.nome} - ${candidate.vaga} - ${candidate.data} (Relatório: ${candidate.relatorio})`);
       });
@@ -4547,7 +4545,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Buscar candidatos da lista usada na seleção
       const candidatesInList = await storage.getCandidatesInList(selection.candidateListId);
-      console.log(`📋 Candidatos na lista ${selection.candidateListId}: ${candidatesInList.length}`);
       
       // Buscar perguntas do job
       const questions = await storage.getQuestionsByJobId(selection.jobId);

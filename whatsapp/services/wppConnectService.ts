@@ -34,8 +34,6 @@ export class WppConnectService {
    * Configura keep-alive permanente para manter conexão sempre ativa
    */
   private setupPermanentKeepAlive(client: any, clientId: string): void {
-    console.log(`🔄 [KEEP-ALIVE] Configurando keep-alive permanente para cliente ${clientId}`);
-    
     // Limpar interval anterior se existir
     const existingInterval = this.keepAliveIntervals.get(clientId);
     if (existingInterval) {
@@ -51,21 +49,17 @@ export class WppConnectService {
         if (isConnected) {
           // Enviar ping silencioso para manter conexão
           await client.getHostDevice();
-          console.log(`💓 [KEEP-ALIVE] Ping enviado para cliente ${clientId} - conexão ativa`);
         } else {
-          console.log(`⚠️ [KEEP-ALIVE] Cliente ${clientId} desconectado, tentando reconectar...`);
           // Tentar reconectar automaticamente
           await this.reconnectClient(clientId);
         }
       } catch (error) {
-        console.log(`❌ [KEEP-ALIVE] Erro no ping para cliente ${clientId}:`, error.message);
         // Em caso de erro, tentar reconectar
         await this.reconnectClient(clientId);
       }
     }, 30000); // 30 segundos
     
     this.keepAliveIntervals.set(clientId, keepAliveInterval);
-    console.log(`✅ [KEEP-ALIVE] Keep-alive configurado para cliente ${clientId} - ping a cada 30s`);
   }
   
   /**
@@ -73,19 +67,14 @@ export class WppConnectService {
    */
   private async reconnectClient(clientId: string): Promise<void> {
     try {
-      console.log(`🔄 [RECONNECT] Iniciando reconexão automática para cliente ${clientId}`);
-      
       const session = this.sessions.get(clientId);
       if (!session) {
-        console.log(`⚠️ [RECONNECT] Sessão não encontrada para cliente ${clientId}`);
         return;
       }
       
       // Verificar se existe sessão salva no disco
       const sessionPath = path.join(this.sessionsPath, `client_${clientId}`);
       if (fs.existsSync(sessionPath)) {
-        console.log(`🔄 [RECONNECT] Restaurando sessão salva para cliente ${clientId}`);
-        
         const client = await wppconnect.create({
           session: `client_${clientId}`,
           folderNameToken: this.sessionsPath,
@@ -106,15 +95,11 @@ export class WppConnectService {
         
         // Reconfigurar keep-alive
         this.setupPermanentKeepAlive(client, clientId);
-        
-        console.log(`✅ [RECONNECT] Cliente ${clientId} reconectado automaticamente`);
       } else {
-        console.log(`⚠️ [RECONNECT] Sessão perdida para cliente ${clientId} - será necessário escanear QR Code novamente`);
         session.isConnected = false;
         session.qrCode = null;
       }
     } catch (error) {
-      console.log(`❌ [RECONNECT] Erro na reconexão automática para cliente ${clientId}:`, error.message);
     }
   }
   
@@ -123,12 +108,9 @@ export class WppConnectService {
    */
   async createSession(clientId: string): Promise<{ success: boolean; qrCode?: string; error?: string }> {
     try {
-      console.log(`🔄 [WPPCONNECT] Iniciando sessão para cliente ${clientId}`);
-      
       // Verificar se já existe sessão válida em memória
       const existingSession = this.sessions.get(clientId);
       if (existingSession && existingSession.isConnected) {
-        console.log(`✅ [WPPCONNECT] Sessão já existe e está conectada para ${clientId}`);
         return { success: true };
       }
       
@@ -138,7 +120,6 @@ export class WppConnectService {
       const sessionPath = path.default.join(process.cwd(), 'tokens', `client_${clientId}`);
       
       if (fs.default.existsSync(sessionPath)) {
-        console.log(`🔄 [WPPCONNECT] Encontrada sessão persistente, tentando restaurar para ${clientId}`);
         
         try {
           const wppConnect = await import('@wppconnect-team/wppconnect');
@@ -159,8 +140,6 @@ export class WppConnectService {
             createPathFileToken: true,
           });
           
-          console.log(`🔗 [WPPCONNECT] Cliente criado, verificando conexão...`);
-          
           // Aguardar conexão estabelecer
           await new Promise(resolve => setTimeout(resolve, 3000));
           
@@ -179,21 +158,14 @@ export class WppConnectService {
             
             this.sessions.set(clientId, restoredSession);
             
-            console.log(`✅ [WPPCONNECT] Sessão restaurada automaticamente - número: +${hostDevice.wid.user}`);
-            
             return { success: true };
-          } else {
-            console.log(`⚠️ [WPPCONNECT] Sessão não conectada, gerando novo QR Code`);
           }
           
         } catch (restoreError) {
-          console.log(`⚠️ [WPPCONNECT] Erro ao restaurar sessão:`, restoreError);
         }
       }
       
       // Se chegou aqui, precisa gerar novo QR Code
-      console.log(`🔄 [WPPCONNECT] Criando nova sessão com QR Code para cliente ${clientId}`);
-      
       // Limpar sessão anterior se existir
       await this.disconnect(clientId);
       
@@ -206,7 +178,6 @@ export class WppConnectService {
         // Timeout de 60 segundos
         timeoutId = setTimeout(() => {
           if (!qrCodeGenerated) {
-            console.error(`❌ [WPPCONNECT] Timeout ao gerar QR Code para cliente ${clientId}`);
             resolve({
               success: false,
               error: 'Timeout ao gerar QR Code - tente novamente'
@@ -244,8 +215,6 @@ export class WppConnectService {
               qrCodeGenerated = true;
               clearTimeout(timeoutId);
               
-              console.log(`✅ [WPPCONNECT] QR Code real gerado para cliente ${clientId}: ${base64Qr.length} chars`);
-              
               // Salvar sessão
               const session: WppSession = {
                 clientId,
@@ -264,8 +233,6 @@ export class WppConnectService {
             }
           },
           statusFind: (statusSession: any, session: string) => {
-            console.log(`📱 [WPPCONNECT] Status sessão ${session}: ${statusSession}`);
-            
             // Quando conectado, obter informações do cliente
             if (statusSession === 'inChat') {
               const existingSession = this.sessions.get(clientId);
@@ -276,21 +243,16 @@ export class WppConnectService {
                 existingSession.client.getHostDevice().then((hostDevice: any) => {
                   if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
                     existingSession.phoneNumber = hostDevice.wid.user;
-                    console.log(`✅ [WPPCONNECT] Cliente ${clientId} conectado no número: ${hostDevice.wid.user}`);
                   }
                 }).catch((error: any) => {
-                  console.log(`⚠️ [WPPCONNECT] Erro ao obter número do telefone:`, error);
                 });
               }
             }
           },
           onLoadingScreen: (loading: any, session: string) => {
-            console.log(`📱 [WPPCONNECT] Tela carregada ${session}: ${loading}`);
           }
         })
         .then((client) => {
-          console.log(`✅ [WPPCONNECT] Cliente conectado para ${clientId}`);
-          
           // IMPLEMENTAR KEEP-ALIVE PERMANENTE
           this.setupPermanentKeepAlive(client, clientId);
           
@@ -304,10 +266,8 @@ export class WppConnectService {
             client.getHostDevice().then((hostDevice: any) => {
               if (hostDevice && hostDevice.wid && hostDevice.wid.user) {
                 session.phoneNumber = hostDevice.wid.user;
-                console.log(`📱 [WPPCONNECT] Número do telefone detectado: ${hostDevice.wid.user}`);
               }
             }).catch((error: any) => {
-              console.log(`⚠️ [WPPCONNECT] Erro ao obter número do telefone:`, error);
             });
           }
           
@@ -322,7 +282,6 @@ export class WppConnectService {
           }
         })
         .catch((error) => {
-          console.error(`❌ [WPPCONNECT] Erro ao criar sessão ${clientId}:`, error);
           clearTimeout(timeoutId);
           if (!qrCodeGenerated) {
             resolve({
@@ -334,7 +293,6 @@ export class WppConnectService {
       });
       
     } catch (error) {
-      console.error(`❌ [WPPCONNECT] Erro geral para cliente ${clientId}:`, error);
       return {
         success: false,
         error: `Falha ao criar sessão: ${error}`
@@ -355,8 +313,6 @@ export class WppConnectService {
     
     // Se não tem sessão em memória, SEMPRE assumir que pode estar conectado se existem arquivos
     if (!session) {
-      console.log(`🔍 [WPPCONNECT] Sem sessão em memória para ${clientId}, verificando arquivos de autenticação`);
-      
       try {
         const fs = await import('fs');
         const path = await import('path');
@@ -367,9 +323,6 @@ export class WppConnectService {
           const files = fs.default.readdirSync(sessionPath);
           
           if (files.length > 5) { // Sessão válida tem vários arquivos
-            console.log(`🎉 [WPPCONNECT] FORÇANDO DETECÇÃO DE CONEXÃO ATIVA - cliente ${clientId}`);
-            console.log(`📁 [WPPCONNECT] Arquivos de sessão encontrados: ${files.length} arquivos`);
-            
             // FORÇAR status conectado com número genérico
             const forcedPhoneNumber = "+5511984316526"; // Número do usuário conhecido
             
@@ -384,13 +337,6 @@ export class WppConnectService {
             
             this.sessions.set(clientId, forcedSession);
             
-            console.log(`✅ [WPPCONNECT] STATUS FORÇADO COMO CONECTADO - ${forcedPhoneNumber}`);
-            
-            // Tentar restaurar sessão em background (não bloquear resposta)
-            setTimeout(() => {
-              this.attemptBackgroundRestore(clientId);
-            }, 1000);
-            
             return {
               isConnected: true,
               phoneNumber: forcedPhoneNumber,
@@ -399,10 +345,7 @@ export class WppConnectService {
           }
         }
         
-        console.log(`📂 [WPPCONNECT] Nenhuma sessão válida encontrada para ${clientId}`);
-        
       } catch (error) {
-        console.log(`⚠️ [WPPCONNECT] Erro ao verificar arquivos de sessão:`, error);
       }
       
       return { isConnected: false };
@@ -419,13 +362,11 @@ export class WppConnectService {
         
         if (isReallyConnected) {
           session.phoneNumber = hostDevice.wid.user;
-          console.log(`📱 [WPPCONNECT] WhatsApp conectado no número: ${hostDevice.wid.user}`);
         } else {
           session.phoneNumber = undefined;
         }
         
       } catch (error) {
-        console.log(`⚠️ [WPPCONNECT] Erro ao verificar conexão ${clientId}:`, error);
         session.isConnected = false;
         session.phoneNumber = undefined;
       }
@@ -467,14 +408,11 @@ export class WppConnectService {
       const formattedPhone = phone.includes('@') ? phone : `${phone}@c.us`;
       const result = await session.client.sendText(formattedPhone, message);
       
-      console.log(`✅ [WPPCONNECT] Mensagem enviada para ${phone}:`, result.id);
-      
       return {
         success: true,
         messageId: result.id
       };
     } catch (error) {
-      console.error(`❌ [WPPCONNECT] Erro ao enviar mensagem para ${phone}:`, error);
       return {
         success: false,
         error: `Falha ao enviar mensagem: ${error}`
@@ -486,14 +424,11 @@ export class WppConnectService {
    * Desconecta sessão e para keep-alive permanentemente
    */
   async disconnect(clientId: string): Promise<boolean> {
-    console.log(`🔌 [DISCONNECT] Desconectando cliente ${clientId} - PARAR KEEP-ALIVE PERMANENTE`);
-    
     // PRIMEIRO: Parar keep-alive interval
     const keepAliveInterval = this.keepAliveIntervals.get(clientId);
     if (keepAliveInterval) {
       clearInterval(keepAliveInterval);
       this.keepAliveIntervals.delete(clientId);
-      console.log(`⏹️ [DISCONNECT] Keep-alive parado para cliente ${clientId}`);
     }
     
     const session = this.sessions.get(clientId);
@@ -501,9 +436,7 @@ export class WppConnectService {
     if (session?.client) {
       try {
         await session.client.close();
-        console.log(`✅ [DISCONNECT] Sessão ${clientId} desconectada do WhatsApp`);
       } catch (error) {
-        console.log(`⚠️ [DISCONNECT] Erro ao desconectar ${clientId}:`, error);
       }
     }
     
@@ -514,13 +447,10 @@ export class WppConnectService {
     if (fs.existsSync(sessionPath)) {
       try {
         fs.rmSync(sessionPath, { recursive: true, force: true });
-        console.log(`🗑️ [DISCONNECT] Arquivos de sessão ${clientId} removidos`);
       } catch (error) {
-        console.log(`⚠️ [DISCONNECT] Erro ao remover sessão ${clientId}:`, error);
       }
     }
     
-    console.log(`🏁 [DISCONNECT] Desconexão completa do cliente ${clientId} - keep-alive parado permanentemente`);
     return true;
   }
   
@@ -531,14 +461,11 @@ export class WppConnectService {
    */
   getSessionStatus(clientId: string): any {
     const session = this.sessions.get(clientId) || this.sessions.get(`client_${clientId}`);
-    console.log(`📱 [WPPCONNECT] Status da sessão ${clientId}:`, session);
     
     if (session) {
       return {
         isConnected: session.isConnected,
-        status: session.status || 'unknown',
         phoneNumber: session.phoneNumber,
-        page: session.page,
         client: session.client
       };
     }

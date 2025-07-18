@@ -1,7 +1,5 @@
-import { AudioDownloadService } from './audioDownloadService.js';
 import { storage } from './storage';
 import { userIsolatedRoundRobin } from '../whatsapp/services/userIsolatedRoundRobin';
-import { baileysFallbackService } from '../whatsapp/services/baileysFallbackService';
 
 // Estado em memória das entrevistas ativas
 interface ActiveInterview {
@@ -27,141 +25,81 @@ interface ActiveInterview {
 
 class InteractiveInterviewService {
   private activeInterviews: Map<string, ActiveInterview> = new Map();
-  private audioDownloadService: AudioDownloadService | null = null;
 
-  constructor() {
-    // Inicializar AudioDownloadService com null, será configurado quando necessário
-    
-    // 🔥 CONFIGURAR SISTEMA DE FALLBACK PARA RESOLVER ERRO 405
-    this.setupFallbackSystem();
-  }
+  constructor() {}
   
-  /**
-   * 🔥 CONFIGURAR SISTEMA DE FALLBACK PARA RESOLVER ERRO 405
-   * Este método configura o sistema de fallback para contornar o problema do erro 405
-   */
-  private setupFallbackSystem() {
-    console.log('🔄 [INTERVIEW-SERVICE] Configurando sistema de fallback para erro 405...');
-    
-    // Ativar modo de simulação do fallback
-    baileysFallbackService.enableSimulationMode();
-    
-    // Registrar handler de mensagens para todos os clientes
-    // Este handler será chamado quando a mensagem "1" for recebida
-    baileysFallbackService.registerMessageHandler('global', async (from: string, text: string, audioMessage: any, clientId?: string) => {
-      console.log(`📨 [FALLBACK-HANDLER] Mensagem recebida:`, { from, text, clientId });
-      
-      // Processar mensagem usando o handler original
-      await this.handleMessage(from, text, audioMessage, clientId);
-    });
-    
-    console.log('✅ [INTERVIEW-SERVICE] Sistema de fallback configurado com sucesso');
-  }
-
   /**
    * 🔍 MÉTODO DE DETECÇÃO ROBUSTA DE CLIENTE
    * Detecta o clientId correto baseado no telefone do candidato
+   * PRIORIZA O ISOLAMENTO POR CLIENTE - busca apenas no escopo do cliente logado
    */
   private async detectClientIdRobust(phone: string, clientId?: string): Promise<string | null> {
-    console.log(`\n🔍 [ROBUST-DETECTION] ===== INICIANDO DETECÇÃO ROBUSTA =====`);
-    console.log(`📱 [ROBUST-DETECTION] Telefone: ${phone}`);
-    console.log(`🏢 [ROBUST-DETECTION] ClientId fornecido: ${clientId || 'UNDEFINED'}`);
-    
-    // Se clientId fornecido for válido, usar esse
+    // Se clientId fornecido for válido, usar esse E buscar apenas candidatos desse cliente
     if (clientId && clientId !== 'undefined' && clientId !== 'null') {
-      console.log(`✅ [ROBUST-DETECTION] ClientId válido fornecido: ${clientId}`);
-      return clientId;
-    }
-    
-    try {
-      // Limpar telefone para comparação (apenas números)
-      const cleanPhone = phone.replace(/\D/g, '');
-      console.log(`🧹 [ROBUST-DETECTION] Telefone limpo: ${cleanPhone}`);
-      
-      // Buscar candidatos no Firebase
-      console.log(`🔍 [ROBUST-DETECTION] Buscando candidatos no Firebase...`);
-      const candidatesByClientId = await storage.getCandidatesByMultipleClients([1749849987543, 1750169283780]);
-      
-      const matchingCandidates = [];
-      
-      for (const candidate of candidatesByClientId) {
-        const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
-        console.log(`📋 [ROBUST-DETECTION] Comparando: ${cleanPhone} vs ${candidatePhone} (${candidate.name})`);
+      try {
+        // 🔒 ISOLAMENTO: Buscar candidatos APENAS do cliente logado
+        const clientCandidates = await storage.getCandidatesByClientId(parseInt(clientId));
         
-        if (candidatePhone === cleanPhone) {
-          matchingCandidates.push(candidate);
-          console.log(`✅ [ROBUST-DETECTION] Match encontrado: ${candidate.name} (Cliente: ${candidate.clientId})`);
+        // Limpar telefone para comparação (apenas números)
+        const cleanPhone = phone.replace(/\D/g, '');
+        
+        // Buscar candidato correspondente no escopo do cliente
+        const matchingCandidate = clientCandidates.find(candidate => {
+          const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
+          return candidatePhone === cleanPhone;
+        });
+        
+        // Se encontrou candidato no cliente logado, confirmar o clientId
+        if (matchingCandidate) {
+          return clientId;
+        } else {
+          // Candidato não pertence a este cliente - violação de isolamento
+          console.log(`⚠️ Telefone ${phone} não encontrado no cliente ${clientId} - isolamento respeitado`);
+          return null;
         }
-      }
-      
-      console.log(`📊 [ROBUST-DETECTION] Candidatos encontrados: ${matchingCandidates.length}`);
-      
-      if (matchingCandidates.length === 0) {
-        console.log(`❌ [ROBUST-DETECTION] Nenhum candidato encontrado para telefone ${phone}`);
+        
+      } catch (error) {
+        console.error(`❌ Erro ao buscar candidatos do cliente ${clientId}:`, error);
         return null;
       }
-      
-      if (matchingCandidates.length === 1) {
-        const detectedClientId = matchingCandidates[0].clientId.toString();
-        console.log(`✅ [ROBUST-DETECTION] Cliente único detectado: ${detectedClientId}`);
-        return detectedClientId;
-      }
-      
-      // Múltiplos candidatos: usar critério determinístico (mais recente)
-      console.log(`⚠️ [ROBUST-DETECTION] Múltiplos candidatos encontrados, usando critério determinístico...`);
-      const sortedCandidates = matchingCandidates.sort((a, b) => {
-        const dateA = a.createdAt?.seconds || 0;
-        const dateB = b.createdAt?.seconds || 0;
-        return dateB - dateA; // Mais recente primeiro
-      });
-      
-      const selectedCandidate = sortedCandidates[0];
-      const detectedClientId = selectedCandidate.clientId.toString();
-      console.log(`✅ [ROBUST-DETECTION] Cliente selecionado (mais recente): ${detectedClientId} (${selectedCandidate.name})`);
-      
-      return detectedClientId;
-      
-    } catch (error) {
-      console.error(`❌ [ROBUST-DETECTION] Erro na detecção:`, error);
-      return null;
     }
   }
 
   /**
-   * ✅ MÉTODO DE VALIDAÇÃO COMPLETA
-   * Valida se o cliente está apto para receber cadência
+   * ✅ MÉTODO DE VALIDAÇÃO COMPLETA COM ISOLAMENTO POR USUÁRIO
+   * Valida se o cliente está apto para receber cadência usando conexões isoladas
    */
   private async validateClientForCadence(clientId: string, phone: string): Promise<boolean> {
-    console.log(`\n✅ [VALIDATION] ===== INICIANDO VALIDAÇÃO COMPLETA =====`);
-    console.log(`🏢 [VALIDATION] Cliente: ${clientId}`);
-    console.log(`📱 [VALIDATION] Telefone: ${phone}`);
-    
     try {
-      // VALIDAÇÃO 1: Verificar conexões WhatsApp ativas
-      console.log(`🔍 [VALIDATION] Verificando conexões WhatsApp ativas...`);
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+      // VALIDAÇÃO 1: Verificar conexões WhatsApp ativas ISOLADAS por usuário
+      // 🔒 ISOLAMENTO: Usar userIsolatedRoundRobin para garantir que apenas 
+      //    conexões do usuário logado sejam verificadas
       
-      let hasActiveConnection = false;
-      for (let slot = 1; slot <= 3; slot++) {
-        try {
-          const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slot);
-          if (connectionStatus.isConnected) {
-            hasActiveConnection = true;
-            console.log(`✅ [VALIDATION] Conexão ativa encontrada no slot ${slot}`);
-            break;
-          }
-        } catch (slotError: any) {
-          console.log(`⚠️ [VALIDATION] Slot ${slot} não disponível: ${slotError.message}`);
-        }
-      }
+      // Mapear clientId para userId (neste sistema, clientId é o userId)
+      const userId = clientId;
       
-      if (!hasActiveConnection) {
-        console.log(`❌ [VALIDATION] FALHA: Nenhuma conexão WhatsApp ativa para cliente ${clientId}`);
+      // Inicializar slots do usuário se necessário
+      await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+      
+      // Verificar se usuário tem slots ativos (conexões WhatsApp funcionais)
+      const activeSlots = userIsolatedRoundRobin.getUserActiveSlots(userId);
+      
+      if (activeSlots.length === 0) {
+        console.log(`❌ Cliente ${clientId} não possui conexões WhatsApp ativas isoladas`);
         return false;
       }
       
-      // VALIDAÇÃO 2: Verificar se candidato existe na base do cliente
-      console.log(`🔍 [VALIDATION] Verificando candidato na base do cliente...`);
+      // Obter estatísticas isoladas do usuário
+      const userStats = userIsolatedRoundRobin.getUserStats(userId);
+      
+      if (userStats.activeSlots === 0) {
+        console.log(`❌ Cliente ${clientId} - slots ativos: ${userStats.activeSlots}`);
+        return false;
+      }
+      
+      console.log(`✅ Cliente ${clientId} - ${userStats.activeSlots} conexões ativas isoladas`);
+      
+      // VALIDAÇÃO 2: Verificar se candidato existe na base do cliente (isolamento por cliente)
       const candidatesByClient = await storage.getCandidatesByClientId(parseInt(clientId));
       
       const cleanPhone = phone.replace(/\D/g, '');
@@ -171,31 +109,34 @@ class InteractiveInterviewService {
       });
       
       if (!candidateExists) {
-        console.log(`❌ [VALIDATION] FALHA: Candidato ${phone} não encontrado na base do cliente ${clientId}`);
+        console.log(`❌ Candidato ${phone} não encontrado na base do cliente ${clientId}`);
         return false;
       }
       
-      console.log(`✅ [VALIDATION] Candidato encontrado na base do cliente`);
-      
       // VALIDAÇÃO 3: Verificar se telefone confere exatamente
-      console.log(`🔍 [VALIDATION] Verificando correspondência exata do telefone...`);
       const matchingCandidate = candidatesByClient.find(candidate => {
         const candidatePhone = candidate.whatsapp?.replace(/\D/g, '') || '';
         return candidatePhone === cleanPhone;
       });
       
       if (!matchingCandidate) {
-        console.log(`❌ [VALIDATION] FALHA: Telefone não confere exatamente`);
+        console.log(`❌ Telefone ${phone} não confere exatamente no cliente ${clientId}`);
         return false;
       }
       
-      console.log(`✅ [VALIDATION] Telefone confere exatamente: ${matchingCandidate.name}`);
+      // VALIDAÇÃO 4: Verificar isolamento entre usuários
+      const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
       
-      console.log(`✅ [VALIDATION] TODAS AS VALIDAÇÕES PASSARAM! Cliente ${clientId} apto para cadência`);
+      if (!isIsolated) {
+        console.log(`⚠️ Violação de isolamento detectada - cadência suspensa por segurança`);
+        return false;
+      }
+      
+      console.log(`✅ Todas as validações passaram para cliente ${clientId}, telefone ${phone}`);
       return true;
       
     } catch (error) {
-      console.error(`❌ [VALIDATION] Erro na validação:`, error);
+      console.error(`❌ Erro na validação de cadência para cliente ${clientId}:`, error);
       return false;
     }
   }
@@ -205,47 +146,28 @@ class InteractiveInterviewService {
    * Esta função é chamada quando um contato responde "1"
    */
   private async activateUserImmediateCadence(phone: string, clientId?: string): Promise<void> {
-    console.log(`\n🔍 [USER-CADENCE] ===== INICIANDO ATIVAÇÃO DA CADÊNCIA =====`);
-    console.log(`📱 [USER-CADENCE] Telefone: ${phone}`);
-    console.log(`🏢 [USER-CADENCE] ClientId original: ${clientId || 'UNDEFINED'}`);
-    
     // 🔍 ETAPA 1: DETECÇÃO ROBUSTA DE CLIENTE
-    console.log(`🔍 [USER-CADENCE] Iniciando detecção robusta de cliente...`);
     const detectedClientId = await this.detectClientIdRobust(phone, clientId);
     
     if (!detectedClientId) {
-      console.log(`❌ [USER-CADENCE] ABORTANDO: Cliente não detectado para telefone ${phone}`);
-      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - CLIENTE NÃO DETECTADO`);
       return;
     }
     
-    console.log(`✅ [USER-CADENCE] Cliente detectado: ${detectedClientId}`);
-    
     // ✅ ETAPA 2: VALIDAÇÃO COMPLETA
-    console.log(`✅ [USER-CADENCE] Iniciando validação completa...`);
     const isValid = await this.validateClientForCadence(detectedClientId, phone);
     
     if (!isValid) {
-      console.log(`❌ [USER-CADENCE] ABORTANDO: Validação falhou para cliente ${detectedClientId} - telefone ${phone}`);
-      console.log(`🚨 [USER-CADENCE] CADÊNCIA NÃO SERÁ ATIVADA - VALIDAÇÃO FALHOU`);
       return;
     }
-    
-    console.log(`✅ [USER-CADENCE] Validação completa aprovada! PROSSEGUINDO com cadência...`);
 
     try {
-      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata para telefone ${phone} (cliente ${detectedClientId})`);
-      
       // Mapear clientId para userId (neste sistema, clientId é o userId)
       const userId = detectedClientId;
-      console.log(`🆔 [USER-CADENCE] UserId mapeado: ${userId}`);
       
       // 🔥 ETAPA 3: Inicializar slots se necessário
-      console.log(`🔧 [USER-CADENCE] Inicializando slots para usuário ${userId}...`);
       await userIsolatedRoundRobin.initializeUserSlots(userId, detectedClientId);
       
       // 🔥 ETAPA 4: Configurar cadência imediata para o usuário
-      console.log(`⚙️ [USER-CADENCE] Configurando cadência imediata...`);
       userIsolatedRoundRobin.setUserCadenceConfig(userId, {
         userId,
         baseDelay: 500, // Delay reduzido para resposta "1"
@@ -256,43 +178,29 @@ class InteractiveInterviewService {
       });
       
       // 🔥 ETAPA 5: Distribuir apenas o candidato que respondeu "1"
-      console.log(`📦 [USER-CADENCE] Distribuindo candidato ${phone} que respondeu "1"...`);
       await userIsolatedRoundRobin.distributeUserCandidates(userId, detectedClientId, [phone], 'immediate');
       
       // 🔥 ETAPA 6: Ativar cadência imediata específica do usuário
-      console.log(`🚀 [USER-CADENCE] Ativando cadência imediata...`);
       await userIsolatedRoundRobin.activateImmediateCadence(userId, detectedClientId, phone);
-      
-      console.log(`✅ [USER-CADENCE] Cadência imediata ativada para usuário ${userId} - telefone ${phone}`);
       
       // 🔥 ETAPA 7: Validar isolamento entre usuários
       const isIsolated = userIsolatedRoundRobin.validateUserIsolation();
-      if (!isIsolated) {
-        console.error(`❌ [USER-CADENCE] FALHA NO ISOLAMENTO DETECTADA!`);
-      }
       
       // 🔥 ETAPA 8: Aguardar 1 segundo e processar cadência garantindo execução
-      console.log(`🔄 [USER-CADENCE] Processando cadência imediata em 1 segundo...`);
       setTimeout(async () => {
         try {
           await userIsolatedRoundRobin.processUserCadence(userId, detectedClientId);
-          console.log(`✅ [USER-CADENCE] Cadência imediata processada com sucesso para usuário ${userId}`);
         } catch (error) {
-          console.error(`❌ [USER-CADENCE] Erro ao processar cadência imediata:`, error);
         }
       }, 1000);
       
     } catch (error) {
-      console.error(`❌ [USER-CADENCE] Erro ao ativar cadência imediata para ${phone}:`, error);
     }
   }
 
 
 
   private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
-    console.log(`\n🎯 [AUDIO_DOWNLOAD] ===== DOWNLOAD COM NOVA NOMENCLATURA =====`);
-    console.log(`📱 [AUDIO_DOWNLOAD] Telefone: ${phone}, Seleção: ${selectionId}, Pergunta: ${questionNumber}`);
-    
     try {
       const { UPLOADS_DIR } = await import('../src/config/paths');
       const path = await import('path');
@@ -307,10 +215,8 @@ class InteractiveInterviewService {
       try {
         const stats = await fs.promises.stat(audioPath);
         if (stats.size > 1024) {
-          console.log(`✅ [AUDIO_DOWNLOAD] Arquivo válido já existe: ${audioPath} (${stats.size} bytes)`);
           return audioPath;
         } else {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo existe mas é muito pequeno (${stats.size} bytes), re-downloading...`);
           // Remove arquivo pequeno para forçar novo download
           await fs.promises.unlink(audioPath).catch(() => {});
         }
@@ -318,54 +224,72 @@ class InteractiveInterviewService {
         // Arquivo não existe, continuar com download
       }
       
-      console.log(`🔍 [AUDIO_DOWNLOAD] Estrutura da mensagem completa:`, {
-        hasMessage: !!message.message,
-        hasAudioMessage: !!message.message?.audioMessage,
-        hasKey: !!message.key,
-        audioType: message.message?.audioMessage?.mimetype,
-        audioSize: message.message?.audioMessage?.fileLength,
-        messageType: message.messageType || 'unknown'
-      });
-      
       let audioBuffer: Buffer | null = null;
       
       // MÉTODO 1: Tentar usar buffer já processado (se disponível)
       if (message._audioBuffer && message._audioBuffer.length > 1024) {
-        console.log(`✅ [AUDIO_DOWNLOAD] Usando buffer pré-processado (${message._audioBuffer.length} bytes)`);
         audioBuffer = message._audioBuffer;
       }
       
       // MÉTODO 2: Download direto via Baileys (método mais confiável)
       if (!audioBuffer && message.message?.audioMessage) {
         try {
-          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando download direto via Baileys...`);
+          // 🔒 ISOLAMENTO: Buscar conexão ativa usando slots isolados do usuário
+          const userId = clientId; // Mapear clientId para userId
           
-          // Buscar conexão ativa no sistema
-          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          // Inicializar slots isolados do usuário
+          await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+          const activeSlots = userIsolatedRoundRobin.getUserActiveSlots(userId);
           
-          // Tentar encontrar uma conexão ativa do cliente específico
           let activeSocket = null;
-          for (let slot = 1; slot <= 3; slot++) {
-            try {
-              const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slot);
-              if (connectionStatus.isConnected) {
-                const connectionId = `${clientId}_slot_${slot}`;
-                const connections = (simpleMultiBaileyService as any).connections;
-                const connection = connections.get(connectionId);
-                if (connection?.socket) {
-                  activeSocket = connection.socket;
-                  console.log(`✅ [AUDIO_DOWNLOAD] Socket ativo encontrado no slot ${slot}`);
-                  break;
+          
+          if (activeSlots.length > 0) {
+            // Usar slots isolados do usuário em vez de busca genérica
+            const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+            
+            for (const userSlot of activeSlots) {
+              try {
+                const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, userSlot.slotNumber);
+                if (connectionStatus.isConnected) {
+                  const connectionId = `${clientId}_slot_${userSlot.slotNumber}`;
+                  const connections = (simpleMultiBaileyService as any).connections;
+                  const connection = connections.get(connectionId);
+                  if (connection?.socket) {
+                    activeSocket = connection.socket;
+                    console.log(`🔒 Usando socket isolado slot ${userSlot.slotNumber} do usuário ${userId}`);
+                    break;
+                  }
                 }
+              } catch (slotError: any) {
+                continue; // Tentar próximo slot isolado
               }
-            } catch (slotError: any) {
-              console.log(`⚠️ [AUDIO_DOWNLOAD] Slot ${slot} não disponível: ${slotError.message}`);
+            }
+          } else {
+            console.log(`⚠️ Nenhum slot isolado ativo para usuário ${userId}, tentando fallback`);
+            
+            // Fallback: busca tradicional apenas para este cliente específico
+            const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+            
+            for (let slot = 1; slot <= 3; slot++) {
+              try {
+                const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slot);
+                if (connectionStatus.isConnected) {
+                  const connectionId = `${clientId}_slot_${slot}`;
+                  const connections = (simpleMultiBaileyService as any).connections;
+                  const connection = connections.get(connectionId);
+                  if (connection?.socket) {
+                    activeSocket = connection.socket;
+                    break;
+                  }
+                }
+              } catch (slotError: any) {
+                continue;
+              }
             }
           }
           
           if (activeSocket) {
             const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
-            console.log(`🔄 [AUDIO_DOWNLOAD] Baixando com downloadContentFromMessage...`);
             
             const stream = await downloadContentFromMessage(message.message.audioMessage, 'audio');
             
@@ -376,24 +300,17 @@ class InteractiveInterviewService {
             
             audioBuffer = Buffer.concat(chunks);
             
-            if (audioBuffer && audioBuffer.length > 1024) {
-              console.log(`✅ [AUDIO_DOWNLOAD] Download via Baileys bem-sucedido: ${audioBuffer.length} bytes`);
-            } else {
-              console.log(`⚠️ [AUDIO_DOWNLOAD] Buffer muito pequeno via Baileys: ${audioBuffer?.length || 0} bytes`);
+            if (audioBuffer && audioBuffer.length <= 1024) {
               audioBuffer = null;
             }
-          } else {
-            console.log(`❌ [AUDIO_DOWNLOAD] Nenhum socket ativo encontrado para download`);
           }
         } catch (baileyError: any) {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download via Baileys:`, baileyError.message);
         }
       }
       
       // MÉTODO 3: Tentar via outros serviços WhatsApp disponíveis
       if (!audioBuffer) {
         try {
-          console.log(`🔄 [AUDIO_DOWNLOAD] Tentando via whatsappQRService...`);
           const { downloadMediaMessage } = await import('@whiskeysockets/baileys');
           
           audioBuffer = await downloadMediaMessage(
@@ -402,13 +319,10 @@ class InteractiveInterviewService {
             {}
           );
           
-          if (audioBuffer && audioBuffer.length > 1024) {
-            console.log(`✅ [AUDIO_DOWNLOAD] Download via whatsappQRService bem-sucedido: ${audioBuffer.length} bytes`);
-          } else {
+          if (audioBuffer && audioBuffer.length <= 1024) {
             audioBuffer = null;
           }
         } catch (qrError: any) {
-          console.log(`⚠️ [AUDIO_DOWNLOAD] Erro no download via whatsappQRService:`, qrError.message);
         }
       }
       
@@ -416,16 +330,12 @@ class InteractiveInterviewService {
       if (audioBuffer && audioBuffer.length > 1024) {
         
         await fs.promises.writeFile(audioPath, audioBuffer);
-        console.log(`✅ [AUDIO_DOWNLOAD] Arquivo de áudio REAL salvo: ${audioPath} (${audioBuffer.length} bytes)`);
         
         // Verificar se arquivo foi realmente salvo
         const verifyStats = await fs.promises.stat(audioPath);
-        console.log(`✅ [AUDIO_DOWNLOAD] Verificação: arquivo salvo com ${verifyStats.size} bytes`);
         
         return audioPath;
       } else {
-        console.log(`❌ [AUDIO_DOWNLOAD] Falha em todos os métodos de download de áudio`);
-        
         // Como último recurso, criar um arquivo de placeholder válido OGG 
         // mas marcar claramente que precisa ser re-processado
         const oggHeader = Buffer.from([
@@ -438,118 +348,62 @@ class InteractiveInterviewService {
         const placeholderBuffer = Buffer.concat([oggHeader, placeholderComment]);
         
         await fs.promises.writeFile(audioPath, placeholderBuffer);
-        console.log(`⚠️ [AUDIO_DOWNLOAD] Arquivo placeholder criado: ${audioPath} (${placeholderBuffer.length} bytes)`);
         
         // Retornar caminho mesmo para placeholder para não quebrar o fluxo
         return audioPath;
       }
       
     } catch (error: any) {
-      console.log(`❌ [AUDIO_DOWNLOAD] Erro geral:`, error.message);
       return null;
     }
   }
 
   async handleMessage(from: string, text: string, audioMessage?: any, clientId?: string): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`\n🎯 [INTERVIEW] ===== NOVA MENSAGEM RECEBIDA =====`);
-    console.log(`📱 [INTERVIEW] Telefone: ${phone}`);
-    console.log(`💬 [INTERVIEW] Texto: "${text}"`);
-    console.log(`🎵 [INTERVIEW] Áudio: ${audioMessage ? 'SIM' : 'NÃO'}`);
-    console.log(`🏢 [INTERVIEW] Cliente ID fornecido: ${clientId || 'não informado'}`);
-    console.log(`🔍 [INTERVIEW] From completo: ${from}`);
     
-    // 🔥 CORREÇÃO CRÍTICA: FORÇAR USO DO CLIENTE CORRETO PARA PRISCILA COMERCIAL
-    const priscilaComercialhone = '553182956616';
-    const clienteCorreto = '1750169283780';
-    
-    if (phone === priscilaComercialhone) {
-      console.log(`🎯 [FORCE-CLIENT] Detectado Priscila Comercial (${phone}) - forçando cliente ${clienteCorreto}`);
-      clientId = clienteCorreto;
-    } else if (!clientId) {
-      console.log(`🔍 [AUTO-DETECT] ClientId não fornecido, detectando automaticamente...`);
+    // 🔒 ISOLAMENTO CORRIGIDO: Usar o método detectClientIdRobust para determinar cliente
+    // Se clientId não fornecido, detectar automaticamente respeitando isolamento
+    if (!clientId) {
+      clientId = await this.detectClientIdRobust(phone);
       
-      // Buscar candidato em todos os clientes para detectar o correto
-      const allCandidates = await storage.getAllCandidates();
-      const matchingCandidates = allCandidates.filter(c => {
-        if (!c.whatsapp) return false;
-        const candidatePhone = c.whatsapp.replace(/\D/g, '');
-        const searchPhone = phone.replace(/\D/g, '');
-        return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
-      });
-      
-      if (matchingCandidates.length > 0) {
-        // 🎯 PRIORIZAR CLIENTE 1750169283780 se disponível
-        const clientePreferido = matchingCandidates.find(c => c.clientId.toString() === clienteCorreto);
-        if (clientePreferido) {
-          clientId = clienteCorreto;
-          console.log(`✅ [AUTO-DETECT] Usando cliente preferido: ${clientId} (candidato: ${clientePreferido.name})`);
-        } else {
-          clientId = matchingCandidates[0].clientId.toString();
-          console.log(`✅ [AUTO-DETECT] ClientId detectado automaticamente: ${clientId} (candidato: ${matchingCandidates[0].name})`);
-        }
-        
-        // Se há múltiplos candidatos, mostrar todos
-        if (matchingCandidates.length > 1) {
-          console.log(`⚠️ [AUTO-DETECT] Múltiplos candidatos encontrados:`)
-          matchingCandidates.forEach((c, index) => {
-            console.log(`  ${index + 1}. ${c.name} (ID: ${c.id}) - Cliente: ${c.clientId} - WhatsApp: ${c.whatsapp}`);
-          });
-          console.log(`🎯 [AUTO-DETECT] Usando cliente escolhido: ${clientId}`);
-        }
-      } else {
-        console.log(`❌ [AUTO-DETECT] Nenhum candidato encontrado para telefone ${phone}`);
+      if (!clientId) {
+        console.log(`⚠️ ClientId não detectado para telefone ${phone} - mensagem ignorada para manter isolamento`);
+        return; // Não processar mensagens sem contexto de cliente válido
       }
+    } else {
+      // Se clientId foi fornecido, validar se o telefone pertence a esse cliente
+      const validatedClientId = await this.detectClientIdRobust(phone, clientId);
+      
+      if (!validatedClientId) {
+        console.log(`⚠️ Telefone ${phone} não pertence ao cliente ${clientId} - isolamento respeitado`);
+        return; // Não processar violações de isolamento
+      }
+      
+      clientId = validatedClientId;
     }
     
     if (audioMessage) {
       // Verificar se é mensagem completa do Baileys ou apenas audioMessage
-      const audioData = audioMessage.message?.audioMessage || audioMessage;
-      console.log(`🎧 [INTERVIEW] Dados do áudio:`, {
-        type: audioData.type || 'não informado',
-        mimetype: audioData.mimetype || 'não informado',
-        size: audioData.fileLength || audioData.seconds || 'não informado',
-        hasCompleteMessage: !!audioMessage.message,
-        hasKey: !!audioMessage.key
-      });
+      // const audioData = audioMessage.message?.audioMessage || audioMessage;
     }
 
     const activeInterview = this.activeInterviews.get(phone);
-    console.log(`📋 [INTERVIEW] Entrevista ativa: ${activeInterview ? 'SIM' : 'NÃO'}`);
     
-    if (activeInterview) {
-      console.log(`📊 [INTERVIEW] Status da entrevista: pergunta ${activeInterview.currentQuestion + 1}/${activeInterview.questions.length}`);
-    }
-
     if (text === '1' && !activeInterview) {
-      console.log(`🚀 [INTERVIEW] Comando "1" detectado - iniciando entrevista`);
-      console.log(`🔍 [CADENCE-DEBUG] Validando pré-condições para cadência:`);
-      console.log(`   📱 Telefone normalizado: ${phone}`);
-      console.log(`   🏢 ClientId final: ${clientId || 'UNDEFINED'}`);
-      console.log(`   ⚡ Tipo do clientId: ${typeof clientId}`);
-      console.log(`   📋 Entrevista ativa: ${activeInterview ? 'SIM' : 'NÃO'}`);
-      
       // 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
-      console.log(`🎯 [CADENCE-TRIGGER] Disparando cadência imediata para ${phone}`);
       await this.activateUserImmediateCadence(phone, clientId);
       
       // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
       this.activeInterviews.clear();
-      console.log(`🧹 [INTERVIEW] Cache de entrevistas ativas completamente limpo`);
       await this.startInterview(phone, clientId);
     } else if (text === '2') {
-      console.log(`❌ [INTERVIEW] Comando "2" detectado - recusando entrevista`);
       await this.sendMessage(from, "Entendido. Obrigado!", clientId);
     } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
-      console.log(`⏹️ [INTERVIEW] Comando "parar/sair" detectado`);
       await this.stopInterview(phone, clientId);
     } else if (activeInterview && text !== '1') {
-      console.log(`📝 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}`);
-      console.log(`🔍 [INTERVIEW] Entrevista ativa - seleção: ${activeInterview.selectionId}, candidato: ${activeInterview.candidateId}`);
       
       // 🔥 CORREÇÃO CRÍTICA: Verificar se entrevista está em estado válido
       if (activeInterview.currentQuestion >= activeInterview.questions.length) {
-        console.log(`[DEBUG] Estado inválido detectado - entrevista completa, reiniciando`);
         this.activeInterviews.delete(phone);
         return;
       }
@@ -566,42 +420,30 @@ class InteractiveInterviewService {
         const oneHourAgo = Date.now() - (60 * 60 * 1000);
         const interviewStartTime = new Date(activeInterview.startTime).getTime();
         
-        if (latestSelection && activeInterview.selectionId !== latestSelection.id && interviewStartTime < oneHourAgo) {
-          console.log(`🔄 [INTERVIEW] CORREÇÃO: Entrevista ativa usa seleção antiga ${activeInterview.selectionId}, mudando para mais recente ${latestSelection.id}`);
+        if (latestSelection && parseInt(activeInterview.selectionId) !== parseInt(latestSelection.id.toString()) && interviewStartTime < oneHourAgo) {
           this.activeInterviews.delete(phone);
           await this.startInterview(phone, clientId);
           return;
         }
       } catch (error) {
-        console.log(`⚠️ [INTERVIEW] Erro na verificação automática, continuando com entrevista atual:`, error.message);
       }
       
       await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
-      console.log(`❓ [INTERVIEW] Comando não reconhecido - enviando instruções`);
       await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar", clientId);
     }
-    
-    console.log(`🎯 [INTERVIEW] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
   private async startInterview(phone: string, clientId?: string): Promise<void> {
-    console.log(`🚀 [DEBUG_NOVA_SELEÇÃO] INICIANDO ENTREVISTA para ${phone}`);
-
     // Buscar candidato
     const candidate = await this.findCandidate(phone, clientId);
     if (!candidate) {
       await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Candidato não encontrado.", clientId);
       return;
     }
-    
-    console.log(`👤 [CANDIDATE_MAPPING] Candidato encontrado: ${candidate.name} (ID: ${candidate.id}) para telefone ${phone}`);
-
-    console.log(`👤 [DEBUG_NOVA_SELEÇÃO] Candidato encontrado: ${candidate.name} (ID: ${candidate.id})`);
 
     // CORREÇÃO CRÍTICA: Limpar entrevista ativa antiga antes de iniciar nova
     if (this.activeInterviews.has(phone)) {
-      console.log(`🧹 [INTERVIEW] Removendo entrevista ativa antiga para ${phone}`);
       this.activeInterviews.delete(phone);
     }
 
@@ -609,34 +451,18 @@ class InteractiveInterviewService {
     try {
       const allSelections = await storage.getAllSelections();
       
-      console.log(`🔍 [SELECTION_SEARCH] Total seleções: ${allSelections.length}`);
-      
       // Filtrar por cliente e ordenar por ID (mais recente primeiro - IDs são timestamps)
       const clientSelections = allSelections
         .filter(s => clientId ? s.clientId.toString() === clientId : true)
         .sort((a, b) => parseInt(b.id.toString()) - parseInt(a.id.toString()));
-        
-      console.log(`🔍 [SELECTION_SEARCH] Seleções do cliente ${clientId}: ${clientSelections.length}`);
       
       // Pegar a mais recente independente do status
       const selection = clientSelections[0];
-      
-      if (clientSelections.length > 0) {
-        console.log(`📋 [SELECTION_SEARCH] Últimas 3 seleções:`);
-        clientSelections.slice(0, 3).forEach((s, i) => {
-          const isNewest = i === 0;
-          console.log(`  ${i + 1}. ${s.name} (ID: ${s.id}) - Status: ${s.status} - Data: ${new Date(s.createdAt).toLocaleString()} ${isNewest ? '← SERÁ USADA' : ''}`);
-        });
-      }
 
       if (!selection) {
         await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Nenhuma vaga disponível no momento.", clientId);
         return;
       }
-
-      console.log(`🎯 [SELECTION_MAPPING] Seleção mais recente: ${selection.name} (ID: ${selection.id}) - Status: ${selection.status}`);
-      console.log(`🎯 [SELECTION_MAPPING] Data criação: ${new Date(selection.createdAt).toLocaleString()}`);
-      console.log(`🎯 [SELECTION_MAPPING] ClientId da seleção: ${selection.clientId}, ClientId do candidato: ${candidate.clientId}`);
 
       // Buscar job da seleção
       const job = await storage.getJobById(selection.jobId);
@@ -645,17 +471,9 @@ class InteractiveInterviewService {
         return;
       }
       
-      console.log(`💼 [DEBUG_NOVA_SELEÇÃO] Job encontrado: ${job.nomeVaga} com ${job.perguntas.length} perguntas`);
-      
       // NOVA ARQUITETURA: Criar IDs únicos para cada entrevista/seleção
       const uniqueInterviewId = `${selection.id}_${phone.replace(/\D/g, '')}_${Date.now()}`;
       const uniqueCandidateId = `candidate_${selection.id}_${phone.replace(/\D/g, '')}`;
-      
-      console.log(`🆔 [NEW_ARCHITECTURE] Criando IDs únicos:`);
-      console.log(`   📋 Interview ID: ${uniqueInterviewId}`);
-      console.log(`   👤 Candidate ID: ${uniqueCandidateId}`);
-      console.log(`   📞 Phone: ${phone}`);
-      console.log(`   🏢 Selection: ${selection.name} (${selection.id})`);
       
       // Criar entrevista no banco de dados com IDs únicos
       const interviewDb = await storage.createInterview({
@@ -681,16 +499,6 @@ class InteractiveInterviewService {
         selectionId: selection.id.toString(),
         interviewDbId: uniqueInterviewId // ID único de entrevista
       };
-      
-      console.log(`✅ [DEBUG_NOVA_SELEÇÃO] ENTREVISTA INICIADA COM ISOLAMENTO TOTAL:`, {
-        candidateId: candidate.id,
-        candidateName: candidate.name,
-        selectionId: selection.id.toString(),
-        clientId: selection.clientId,
-        jobId: job.id,
-        totalQuestions: job.perguntas.length,
-        timestamp: new Date().toISOString()
-      });
 
       this.activeInterviews.set(phone, interview);
 
@@ -704,7 +512,6 @@ class InteractiveInterviewService {
       }, 2000);
       
     } catch (error) {
-      console.log(`❌ Erro ao buscar vaga:`, error);
       await this.sendMessage(`${phone}@s.whatsapp.net`, "❌ Erro ao carregar entrevista. Tente novamente.", clientId);
     }
   }
@@ -712,7 +519,6 @@ class InteractiveInterviewService {
   private async sendNextQuestion(phone: string, interview: ActiveInterview): Promise<void> {
     // 🔥 CORREÇÃO CRÍTICA: Verificar se já respondeu todas as perguntas
     if (interview.currentQuestion >= interview.questions.length) {
-      console.log(`🏁 [SENDNEXT] Entrevista completa - todas as ${interview.questions.length} perguntas respondidas`);
       await this.finishInterview(phone, interview);
       return;
     }
@@ -720,15 +526,12 @@ class InteractiveInterviewService {
     const question = interview.questions[interview.currentQuestion];
     
     if (!question) {
-      console.log(`❌ [SENDNEXT] Pergunta ${interview.currentQuestion + 1} não encontrada, finalizando entrevista`);
       await this.finishInterview(phone, interview);
       return;
     }
 
     const questionNum = interview.currentQuestion + 1;
     const total = interview.questions.length;
-    
-    console.log(`📝 [SENDNEXT] Enviando pergunta ${questionNum}/${total} para ${phone}`);
     
     const message = `📝 Pergunta ${questionNum}/${total}:\n\n${question.pergunta}\n\n🎤 Responda somente por áudio`;
 
@@ -738,49 +541,31 @@ class InteractiveInterviewService {
     try {
       await this.sendQuestionAudio(phone, question.pergunta, interview.clientId);
     } catch (error) {
-      console.log(`⚠️ TTS falhou, pergunta enviada por texto:`, error.message);
     }
   }
 
   private async sendQuestionAudio(phone: string, questionText: string, clientId: string): Promise<void> {
     try {
-      console.log(`\n🎙️ [TTS_DEBUG] ===== INICIANDO GERAÇÃO DE ÁUDIO TTS =====`);
-      console.log(`📱 [TTS_DEBUG] Telefone: ${phone}`);
-      console.log(`👤 [TTS_DEBUG] Cliente ID: ${clientId}`);
-      console.log(`📝 [TTS_DEBUG] Texto: "${questionText}"`);
-      
       // Buscar configuração OpenAI
-      console.log(`🔍 [TTS_DEBUG] Buscando configuração OpenAI...`);
       const config = await storage.getMasterSettings();
       
       if (!config) {
-        console.log(`❌ [TTS_DEBUG] Master settings não encontrados`);
         return;
       }
       
       if (!config.openaiApiKey) {
-        console.log(`❌ [TTS_DEBUG] OpenAI API Key não configurada no master settings`);
-        
         // Verificar se existe na variável de ambiente
         const envKey = process.env.OPENAI_API_KEY;
         if (envKey) {
-          console.log(`✅ [TTS_DEBUG] Encontrou OPENAI_API_KEY na variável de ambiente: ${envKey.substring(0, 10)}...`);
           config.openaiApiKey = envKey;
         } else {
-          console.log(`❌ [TTS_DEBUG] OPENAI_API_KEY não encontrada nem no banco nem nas variáveis de ambiente`);
           return;
         }
-      } else {
-        console.log(`✅ [TTS_DEBUG] OpenAI API Key encontrada no master settings: ${config.openaiApiKey.substring(0, 10)}...`);
       }
 
       // Buscar configuração de voz do cliente
-      console.log(`🔍 [TTS_DEBUG] Buscando configuração de voz do cliente...`);
       const clientConfig = await storage.getApiConfig('client', clientId);
       const voice = clientConfig?.openaiVoice || 'nova';
-      console.log(`🎵 [TTS_DEBUG] Voz configurada: ${voice}`);
-
-      console.log(`🌐 [TTS_DEBUG] Fazendo requisição para OpenAI TTS...`);
 
       const ttsRequest = {
         model: "tts-1",
@@ -789,7 +574,6 @@ class InteractiveInterviewService {
         response_format: "opus",
         speed: 1.0
       };
-      console.log(`📝 [TTS_DEBUG] Dados da requisição TTS:`, ttsRequest);
 
       const response = await fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
@@ -800,16 +584,11 @@ class InteractiveInterviewService {
         body: JSON.stringify(ttsRequest)
       });
 
-      console.log(`📡 [TTS_DEBUG] Resposta OpenAI - Status: ${response.status}`);
-
       if (response.ok) {
-        console.log(`✅ [TTS_DEBUG] Áudio gerado com sucesso - convertendo para buffer`);
         const audioBuffer = await response.arrayBuffer();
-        console.log(`💾 [TTS_DEBUG] Buffer criado - Tamanho: ${audioBuffer.byteLength} bytes`);
         
-        // Tentar enviar áudio via sistema multi-WhatsApp
+        // 🔒 ISOLAMENTO: Tentar enviar áudio via slots isolados do usuário
         try {
-          console.log(`📁 [TTS_DEBUG] Preparando sistema de arquivos temporários...`);
           const fs = await import('fs');
           const path = await import('path');
           
@@ -817,7 +596,6 @@ class InteractiveInterviewService {
           const tempDir = path.join(process.cwd(), 'temp');
           if (!fs.existsSync(tempDir)) {
             fs.mkdirSync(tempDir, { recursive: true });
-            console.log(`📁 [TTS_DEBUG] Diretório temp criado: ${tempDir}`);
           }
           
           const tempFileName = `tts_${phone}_${Date.now()}.ogg`;
@@ -825,48 +603,58 @@ class InteractiveInterviewService {
           
           // Salvar buffer como arquivo
           fs.writeFileSync(tempFilePath, Buffer.from(audioBuffer));
-          console.log(`💾 [TTS_DEBUG] Áudio salvo temporariamente: ${tempFilePath}`);
           
-          console.log(`🔗 [TTS_DEBUG] Importando simpleMultiBailey...`);
-          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          // 1️⃣ PRIMEIRA TENTATIVA: Usar slots isolados do usuário
+          const userId = clientId;
+          await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+          const activeSlots = userIsolatedRoundRobin.getUserActiveSlots(userId);
           
-          console.log(`📡 [TTS_DEBUG] Buscando conexões do cliente ${clientId}...`);
-          const clientConnections = await simpleMultiBaileyService.getClientConnections(clientId);
+          let audioSent = false;
           
-          console.log(`📊 [TTS_DEBUG] Resultado das conexões:`, {
-            hasConnections: !!clientConnections,
-            activeConnections: clientConnections?.activeConnections || 0,
-            totalConnections: clientConnections?.connections?.length || 0
-          });
-          
-          if (clientConnections && clientConnections.activeConnections > 0) {
-            console.log(`📱 [TTS_DEBUG] Cliente tem ${clientConnections.activeConnections} conexões ativas`);
+          if (activeSlots.length > 0) {
+            // Usar primeiro slot ativo isolado do usuário
+            const userSlot = activeSlots[0];
             
-            // Usar primeiro slot ativo
-            const activeSlot = clientConnections.connections.find((conn: any) => conn.isConnected);
-            console.log(`🎯 [TTS_DEBUG] Slot ativo encontrado:`, {
-              hasActiveSlot: !!activeSlot,
-              slotNumber: activeSlot?.slotNumber,
-              isConnected: activeSlot?.isConnected
-            });
-            
-            if (activeSlot) {
-              console.log(`📤 [TTS_DEBUG] Enviando áudio via slot ${activeSlot.slotNumber} para ${phone}...`);
-              const result = await simpleMultiBaileyService.sendAudioMessage(clientId, activeSlot.slotNumber, phone, Buffer.from(audioBuffer));
+            try {
+              const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+              const result = await simpleMultiBaileyService.sendAudioMessage(
+                clientId, 
+                userSlot.slotNumber, 
+                phone, 
+                Buffer.from(audioBuffer)
+              );
               
-              console.log(`📋 [TTS_DEBUG] Resultado do envio:`, result);
-              
-              if (result.success) {
-                console.log(`🎵 [TTS_DEBUG] ✅ Áudio TTS enviado com sucesso para ${phone} via slot ${activeSlot.slotNumber}`);
-              } else {
-                console.log(`❌ [TTS_DEBUG] Falha no envio do áudio: ${result.error}`);
+              if (result?.success) {
+                console.log(`🔊 Áudio TTS enviado via slot isolado ${userSlot.slotNumber} do usuário ${userId}`);
+                audioSent = true;
               }
-            } else {
-              console.log(`❌ [TTS_DEBUG] Nenhum slot ativo encontrado nas conexões`);
+            } catch (isolatedAudioError) {
+              console.log(`⚠️ Falha no envio de áudio isolado para usuário ${userId}`);
             }
-          } else {
-            console.log(`❌ [TTS_DEBUG] Nenhuma conexão WhatsApp ativa encontrada para cliente ${clientId}`);
-            console.log(`💡 [TTS_DEBUG] Configure ao menos uma conexão WhatsApp ativa na página Configurações`);
+          }
+          
+          // 2️⃣ FALLBACK: Usar método tradicional apenas se isolado falhou
+          if (!audioSent) {
+            const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+            const clientConnections = await simpleMultiBaileyService.getClientConnections(clientId);
+            
+            if (clientConnections && clientConnections.activeConnections > 0) {
+              // Usar primeiro slot ativo
+              const activeSlot = clientConnections.connections.find((conn: any) => conn.isConnected);
+              
+              if (activeSlot) {
+                const result = await simpleMultiBaileyService.sendAudioMessage(
+                  clientId, 
+                  activeSlot.slotNumber, 
+                  phone, 
+                  Buffer.from(audioBuffer)
+                );
+                
+                if (result?.success) {
+                  console.log(`🔊 Áudio TTS enviado via fallback para cliente ${clientId}`);
+                }
+              }
+            }
           }
           
           // Limpar arquivo temporário
@@ -874,47 +662,28 @@ class InteractiveInterviewService {
             try {
               if (fs.existsSync(tempFilePath)) {
                 fs.unlinkSync(tempFilePath);
-                console.log(`🗑️ [TTS] Arquivo temporário removido: ${tempFilePath}`);
               }
             } catch (cleanupError) {
-              console.log(`⚠️ [TTS] Erro ao remover arquivo temporário:`, cleanupError);
             }
           }, 10000); // Remover após 10 segundos
           
         } catch (audioError: any) {
-          console.log(`❌ [TTS_DEBUG] Erro ao enviar áudio via simpleMultiBailey:`, audioError.message);
-          console.log(`📋 [TTS_DEBUG] Stack trace do erro de áudio:`, audioError.stack);
         }
       } else {
         const errorText = await response.text();
-        console.log(`❌ [TTS_DEBUG] Erro na API OpenAI: ${response.status} - ${errorText}`);
       }
     } catch (error: any) {
-      console.log(`❌ [TTS_DEBUG] Erro geral no TTS:`, error.message);
-      console.log(`📋 [TTS_DEBUG] Stack trace do erro geral:`, error.stack);
     }
-    
-    console.log(`🏁 [TTS_DEBUG] ===== FINALIZADO PROCESSO TTS =====\n`);
   }
 
   private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
-    console.log(`\n🎯 [DEBUG_NOVA_SELEÇÃO] ===== PROCESSANDO RESPOSTA =====`);
-    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Telefone: ${phone}`);
-    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Pergunta atual: ${interview.currentQuestion + 1}/${interview.questions.length}`);
-    console.log(`📝 [DEBUG_NOVA_SELEÇÃO] Texto recebido: "${text}"`);
-    console.log(`🎵 [DEBUG_NOVA_SELEÇÃO] Áudio presente: ${audioMessage ? 'SIM' : 'NÃO'}`);
-    console.log(`🏢 [DEBUG_NOVA_SELEÇÃO] ClientId: ${interview.clientId}`);
-    console.log(`📋 [DEBUG_NOVA_SELEÇÃO] SeleçãoId: ${interview.selectionId || 'NÃO_DEFINIDO'}`);
-    console.log(`👤 [DEBUG_NOVA_SELEÇÃO] CandidatoId: ${interview.candidateId}`);
 
     let responseText = text;
     let audioFile: string | undefined;
 
     // Se há áudio, processar
     if (audioMessage) {
-      console.log(`🎧 [AUDIO] Iniciando processamento de áudio...`);
-      
       try {
         // Usar novo método de download direto com nomenclatura padronizada
         const audioPath = await this.downloadAudioDirect(
@@ -926,8 +695,6 @@ class InteractiveInterviewService {
         );
         
         if (audioPath) {
-          console.log(`✅ [AUDIO] Áudio baixado: ${audioPath}`);
-          
           // Transcrever áudio usando arquivo direto
           try {
             const transcription = await this.transcribeAudio(audioPath, phone);
@@ -935,23 +702,18 @@ class InteractiveInterviewService {
             if (transcription && transcription.trim().length > 0) {
               responseText = transcription;
               audioFile = audioPath;
-              console.log(`✅ [AUDIO] Transcrição: "${responseText}"`);
             } else {
-              console.log(`⚠️ [AUDIO] Transcrição vazia, usando resposta padrão`);
               responseText = "Resposta de áudio processada";
               audioFile = audioPath;
             }
           } catch (transcribeError) {
-            console.log(`❌ [AUDIO] Erro na transcrição:`, transcribeError.message);
             responseText = "Resposta de áudio recebida";
             audioFile = audioPath;
           }
         } else {
-          console.log(`❌ [AUDIO] Falha no download do áudio`);
           responseText = "Resposta de áudio recebida";
         }
       } catch (error) {
-        console.log(`❌ [AUDIO] Erro geral no processamento:`, error.message);
         responseText = "Resposta de áudio recebida";
       }
     }
@@ -967,8 +729,6 @@ class InteractiveInterviewService {
     };
 
     interview.responses.push(response);
-    
-    console.log(`💾 [AUDIO] Resposta salva na entrevista ativa`);
 
     // Salvar resposta no banco de dados com nova nomenclatura
     try {
@@ -994,7 +754,6 @@ class InteractiveInterviewService {
         if (existingResponse && existingResponse.score !== null && existingResponse.score !== undefined && existingResponse.score > 0) {
           // Usar score já calculado para evitar gasto desnecessário de API
           pontuacao = existingResponse.score;
-          console.log(`♻️ [SCORE_OTIMIZADO] Usando pontuação já calculada: ${pontuacao}/100 (evitando recálculo e economia de API)`);
         } else {
           // Calcular pontuação usando IA apenas se não existe - PRIMEIRA VEZ APENAS
           try {
@@ -1004,8 +763,6 @@ class InteractiveInterviewService {
             const openaiApiKey = process.env.OPENAI_API_KEY;
             
             if (openaiApiKey && currentQuestion.respostaPerfeita && responseText) {
-              console.log(`🤖 [IA_REAL] Calculando pontuação com IA pela primeira vez usando prompt detalhado...`);
-              
               // Usar o sistema de avaliação completo com prompt detalhado
               const evaluationResult = await candidateEvaluationService.evaluateResponse({
                 pergunta: currentQuestion.pergunta,
@@ -1014,20 +771,10 @@ class InteractiveInterviewService {
               });
               
               pontuacao = evaluationResult.pontuacaoGeral;
-              console.log(`📊 [IA_SCORE_SALVO] Score calculado pela IA: ${pontuacao}/100`);
-              console.log(`📊 [IA_DETALHES] Conteúdo: ${evaluationResult.conteudo}/70, Coerência: ${evaluationResult.coerencia}/25, Tom: ${evaluationResult.tom}/5`);
-              
-              // Salvar também o feedback da IA se disponível
-              if (evaluationResult.feedback) {
-                console.log(`📝 [IA_FEEDBACK] ${evaluationResult.feedback}`);
-              }
-              
             } else {
-              console.log(`⚠️ [EVALUATION] OpenAI API Key não configurada ou dados insuficientes - usando pontuação padrão`);
               pontuacao = 0;
             }
           } catch (evaluationError) {
-            console.log(`❌ [EVALUATION] Erro na avaliação IA:`, evaluationError.message);
             pontuacao = 0;
           }
         }
@@ -1060,35 +807,18 @@ class InteractiveInterviewService {
               transcricaoWhisper = transcricao;
             }
           } catch (error) {
-            console.log(`⚠️ [WHISPER] Erro na transcrição:`, error.message);
           }
         }
-
-        console.log(`✅ [DEBUG_NOVA_SELEÇÃO] RESPOSTA SALVA COM ISOLAMENTO TOTAL:`, {
-          responseId: responseId,
-          selectionId: interview.selectionId || 'unknown',
-          candidateId: interview.candidateId,
-          candidateName: interview.candidateName,
-          questionNumber: interview.currentQuestion + 1,
-          audioFile: audioFile ? 'SIM' : 'NÃO',
-          transcription: transcricaoWhisper.substring(0, 50) + '...',
-          timestamp: new Date().toISOString(),
-          ISOLAMENTO: 'TOTAL_GARANTIDO'
-        });
       }
     } catch (saveError) {
-      console.log(`❌ [DEBUG_NOVA_SELEÇÃO] Erro ao salvar resposta isolada:`, saveError.message);
     }
 
     // Avançar para próxima pergunta
     interview.currentQuestion++;
     this.activeInterviews.set(phone, interview);
 
-    console.log(`📊 [AUDIO] Status da entrevista atualizado: pergunta ${interview.currentQuestion + 1}/${interview.questions.length}`);
-
     // 🔥 CORREÇÃO CRÍTICA: Verificar se ainda há perguntas antes de enviar confirmação
     if (interview.currentQuestion >= interview.questions.length) {
-      console.log(`🎉 [AUDIO] Todas as perguntas foram respondidas! Finalizando entrevista...`);
       await this.finishInterview(phone, interview);
       return;
     }
@@ -1099,23 +829,16 @@ class InteractiveInterviewService {
     setTimeout(async () => {
       await this.sendNextQuestion(phone, interview);
     }, 2000);
-    
-    console.log(`🎯 [AUDIO] ===== FIM DO PROCESSAMENTO =====\n`);
   }
 
   private async transcribeAudio(audioPath: string, phone: string): Promise<string> {
-    console.log(`🎯 [WHISPER] Processando resposta de áudio...`);
-    
     try {
       // Usar chave do ambiente que está funcionando
       const openaiApiKey = process.env.OPENAI_API_KEY;
       
       if (!openaiApiKey) {
-        console.log(`❌ OpenAI API não configurada para transcrição`);
         return '';
       }
-      
-      console.log(`🔑 [WHISPER] Usando chave OpenAI do ambiente`);
       
       const fs = await import('fs');
       const path = await import('path');
@@ -1124,13 +847,9 @@ class InteractiveInterviewService {
         throw new Error(`Arquivo de áudio não encontrado: ${audioPath}`);
       }
       
-      console.log(`💾 [WHISPER] Usando arquivo: ${audioPath}`);
-      
       const stats = fs.statSync(audioPath);
-      console.log(`📊 [WHISPER] Tamanho do arquivo: ${stats.size} bytes`);
       
       if (stats.size < 1000) {
-        console.log(`❌ [WHISPER] Arquivo muito pequeno: ${stats.size} bytes`);
         return '';
       }
       
@@ -1140,16 +859,12 @@ class InteractiveInterviewService {
         apiKey: openaiApiKey
       });
 
-      console.log(`🚀 [WHISPER] Transcrevendo via OpenAI SDK...`);
-
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(audioPath),
         model: 'whisper-1',
         language: 'pt',
         response_format: 'text'
       });
-
-      console.log(`✅ [WHISPER] Transcrição via SDK obtida: "${transcription}"`);
       
       if (transcription && transcription.trim().length > 0) {
         return transcription.trim();
@@ -1158,24 +873,19 @@ class InteractiveInterviewService {
       return '';
       
     } catch (error) {
-      console.log(`❌ [WHISPER] Erro na transcrição:`, error.message);
       return '';
     }
   }
 
   private async finishInterview(phone: string, interview: ActiveInterview): Promise<void> {
-    console.log(`🎉 Finalizando entrevista de ${interview.candidateName}`);
-
     // Atualizar status da entrevista no banco
     try {
       if (interview.interviewDbId) {
-        await storage.updateInterview(interview.interviewDbId, { 
+        await storage.updateInterview(parseInt(interview.interviewDbId), { 
           status: 'completed'
         });
-        console.log(`💾 Entrevista marcada como concluída no banco`);
       }
     } catch (error) {
-      console.log(`❌ Erro ao finalizar entrevista no banco:`, error.message);
     }
 
     // Mensagem final
@@ -1186,7 +896,6 @@ class InteractiveInterviewService {
 
     // Remover entrevista ativa
     this.activeInterviews.delete(phone);
-    console.log(`🗑️ Entrevista removida da memória`);
   }
 
   private async stopInterview(phone: string, clientId?: string): Promise<void> {
@@ -1195,12 +904,11 @@ class InteractiveInterviewService {
       // Atualizar status para cancelada
       try {
         if (interview.interviewDbId) {
-          await storage.updateInterview(interview.interviewDbId, { 
+          await storage.updateInterview(parseInt(interview.interviewDbId), { 
             status: 'cancelled'
           });
         }
       } catch (error: any) {
-        console.log(`❌ Erro ao cancelar entrevista:`, error.message);
       }
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
@@ -1209,22 +917,16 @@ class InteractiveInterviewService {
       );
       
       this.activeInterviews.delete(phone);
-      console.log(`🗑️ Entrevista ${interview.candidateName} cancelada e removida`);
     } else {
       await this.sendMessage(`${phone}@s.whatsapp.net`, "Nenhuma entrevista ativa encontrada.", clientId);
     }
   }
 
   private async findCandidate(phone: string, clientId?: string) {
-    console.log(`🔍 [FIND-CANDIDATE] Buscando candidato para telefone: ${phone}, cliente: ${clientId}`);
-    
     let candidates;
+
     if (clientId) {
       candidates = await storage.getCandidatesByClientId(parseInt(clientId));
-      console.log(`👥 [FIND-CANDIDATE] Candidatos do cliente ${clientId}: ${candidates.length}`);
-    } else {
-      candidates = await storage.getAllCandidates();
-      console.log(`👥 [FIND-CANDIDATE] Todos os candidatos: ${candidates.length}`);
     }
     
     // 🔥 CORREÇÃO CRÍTICA: Priorizar candidatos do cliente especificado quando há duplicatas
@@ -1235,15 +937,7 @@ class InteractiveInterviewService {
       return candidatePhone.includes(searchPhone) || searchPhone.includes(candidatePhone);
     });
     
-    console.log(`🎯 [FIND-CANDIDATE] Candidatos encontrados com telefone ${phone}: ${matchingCandidates.length}`);
-    
-    // Listar todos os candidatos encontrados
-    matchingCandidates.forEach((c, index) => {
-      console.log(`  ${index + 1}. ${c.name} (ID: ${c.id}) - Cliente: ${c.clientId} - WhatsApp: ${c.whatsapp}`);
-    });
-    
     if (matchingCandidates.length === 0) {
-      console.log(`❌ [FIND-CANDIDATE] Nenhum candidato encontrado para telefone ${phone}`);
       return null;
     }
     
@@ -1253,97 +947,123 @@ class InteractiveInterviewService {
       
       if (clientCandidates.length > 0) {
         const candidate = clientCandidates[0];
-        console.log(`✅ [FIND-CANDIDATE] Candidato do cliente ${clientId}: ${candidate.name} (ID: ${candidate.id})`);
         return candidate;
       } else {
-        console.log(`❌ [FIND-CANDIDATE] Nenhum candidato do cliente ${clientId} encontrado com telefone ${phone}`);
         return null;
       }
     }
     
     // Fallback: retornar primeiro candidato encontrado
     const candidate = matchingCandidates[0];
-    console.log(`✅ [FIND-CANDIDATE] Candidato encontrado (fallback): ${candidate.name} (ID: ${candidate.id}) - Cliente: ${candidate.clientId}`);
     return candidate;
   }
 
   private async sendMessage(to: string, text: string, clientId?: string): Promise<void> {
-    console.log(`📤 [INTERVIEW-SEND] Enviando mensagem para ${to}: "${text.substring(0, 50)}..."`);
-    
     try {
-      // 🔥 CORREÇÃO: Usar o novo sistema multiBailey em vez do antigo whatsappBaileyService
-      const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
-      
-      // Se temos clientId específico, usar suas conexões
+      // 🔒 ISOLAMENTO CORRIGIDO: Priorizar userIsolatedRoundRobin para envio de mensagens
       if (clientId) {
-        console.log(`📱 [INTERVIEW-SEND] Buscando conexões ativas para cliente ${clientId}`);
+        // Mapear clientId para userId (neste sistema, clientId é o userId)
+        const userId = clientId;
         
-        const allConnections = await simpleMultiBaileyService.getClientConnections(clientId);
-        const activeConnections = allConnections.connections.filter((conn: any) => conn.isConnected);
-        
-        if (activeConnections.length > 0) {
-          const connection = activeConnections[0]; // Usar primeira conexão ativa
-          console.log(`📨 [INTERVIEW-SEND] Usando slot ${connection.slotNumber} para envio`);
-          
-          // Extrair apenas o número de telefone do formato JID
-          const phoneNumber = to.replace('@s.whatsapp.net', '');
-          
-          const result = await simpleMultiBaileyService.sendTestMessage(
-            clientId, 
-            connection.slotNumber, 
-            phoneNumber, 
-            text
-          );
-          
-          if (result.success) {
-            console.log(`✅ [INTERVIEW-SEND] Mensagem enviada via slot ${connection.slotNumber}`);
-            return;
-          } else {
-            console.log(`❌ [INTERVIEW-SEND] Falha no envio via slot ${connection.slotNumber}: ${result.error}`);
-          }
-        } else {
-          console.log(`❌ [INTERVIEW-SEND] Nenhuma conexão ativa encontrada para cliente ${clientId}`);
-        }
-      }
-      
-      // Fallback: buscar qualquer conexão ativa do sistema
-      console.log(`🔍 [INTERVIEW-SEND] Fallback: buscando qualquer conexão ativa do sistema`);
-      
-      // Buscar todas as conexões de todos os clientes
-      const allClients = ['1749849987543']; // Lista de clientes conhecidos
-      
-      for (const fallbackClientId of allClients) {
         try {
-          const clientConnections = await simpleMultiBaileyService.getClientConnections(fallbackClientId);
-          const activeConnections = clientConnections.connections.filter((conn: any) => conn.isConnected);
+          // 1️⃣ PRIMEIRA TENTATIVA: Usar userIsolatedRoundRobin (isolamento garantido)
+          await userIsolatedRoundRobin.initializeUserSlots(userId, clientId);
+          const activeSlots = userIsolatedRoundRobin.getUserActiveSlots(userId);
           
-          if (activeConnections.length > 0) {
-            const connection = activeConnections[0];
-            console.log(`📨 [INTERVIEW-SEND] Fallback: usando cliente ${fallbackClientId}, slot ${connection.slotNumber}`);
+          if (activeSlots.length > 0) {
+            // Usar primeiro slot ativo do usuário isolado
+            const userSlot = activeSlots[0];
             
             const phoneNumber = to.replace('@s.whatsapp.net', '');
             
+            // Usar método de envio via userIsolatedRoundRobin
+            // (que internamente usa simpleMultiBailey de forma isolada)
+            const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+            
             const result = await simpleMultiBaileyService.sendTestMessage(
-              fallbackClientId,
-              connection.slotNumber,
-              phoneNumber,
+              clientId, 
+              userSlot.slotNumber, 
+              phoneNumber, 
               text
             );
             
             if (result.success) {
-              console.log(`✅ [INTERVIEW-SEND] Mensagem enviada via fallback cliente ${fallbackClientId}`);
+              console.log(`📤 Mensagem enviada via slot isolado ${userSlot.slotNumber} do usuário ${userId}`);
               return;
             }
           }
-        } catch (fallbackError: any) {
-          console.log(`❌ [INTERVIEW-SEND] Erro no fallback cliente ${fallbackClientId}:`, fallbackError.message);
+        } catch (isolatedError) {
+          console.log(`⚠️ Falha no envio isolado para usuário ${userId}, tentando fallback`);
+        }
+        
+        // 2️⃣ FALLBACK: Usar simpleMultiBailey diretamente apenas como emergência
+        try {
+          const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+          const allConnections = await simpleMultiBaileyService.getClientConnections(clientId);
+          const activeConnections = allConnections.connections.filter((conn: any) => conn.isConnected);
+          
+          if (activeConnections.length > 0) {
+            const connection = activeConnections[0];
+            const phoneNumber = to.replace('@s.whatsapp.net', '');
+            
+            const result = await simpleMultiBaileyService.sendTestMessage(
+              clientId, 
+              connection.slotNumber, 
+              phoneNumber, 
+              text
+            );
+            
+            if (result.success) {
+              console.log(`📤 Mensagem enviada via fallback para cliente ${clientId}`);
+              return;
+            }
+          }
+        } catch (fallbackError) {
+          console.log(`❌ Falha no fallback para cliente ${clientId}`);
         }
       }
       
-      console.log(`❌ [INTERVIEW-SEND] Nenhuma conexão WhatsApp ativa encontrada em todo o sistema`);
+      // 3️⃣ EMERGÊNCIA FINAL: Buscar qualquer conexão ativa como último recurso
+      // (usado apenas quando métodos isolados falharam completamente)
+      try {
+        console.log('⚠️ Tentando envio de emergência (não isolado)');
+        
+        const allClients = await storage.getClients();
+        
+        for (const client of allClients) {
+          try {
+            const { simpleMultiBaileyService } = await import('../whatsapp/services/simpleMultiBailey');
+            const clientConnections = await simpleMultiBaileyService.getClientConnections(client.id.toString());
+            const activeConnections = clientConnections.connections.filter((conn: any) => conn.isConnected);
+            
+            if (activeConnections.length > 0) {
+              const connection = activeConnections[0];
+              const phoneNumber = to.replace('@s.whatsapp.net', '');
+              
+              const result = await simpleMultiBaileyService.sendTestMessage(
+                client.id.toString(),
+                connection.slotNumber,
+                phoneNumber,
+                text
+              );
+              
+              if (result.success) {
+                console.log(`📤 Mensagem enviada via emergência usando cliente ${client.id}`);
+                return;
+              }
+            }
+          } catch (emergencyError: any) {
+            continue; // Tentar próximo cliente
+          }
+        }
+        
+        console.log('❌ Nenhuma conexão ativa encontrada em todos os clientes');
+        
+      } catch (emergencySearchError) {
+        console.error('❌ Erro no envio de emergência:', emergencySearchError);
+      }
       
     } catch (error) {
-      console.log(`❌ [INTERVIEW-SEND] Erro geral no envio:`, error.message);
     }
   }
 

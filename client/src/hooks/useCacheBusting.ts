@@ -36,7 +36,6 @@ export function useCacheBusting() {
   useEffect(() => {
     if (cacheVersion?.version && !initialVersion) {
       setInitialVersion(cacheVersion.version);
-      console.log('🚀 [CACHE-BUSTING] Versão inicial definida:', cacheVersion.version);
     }
   }, [cacheVersion, initialVersion]);
 
@@ -48,12 +47,6 @@ export function useCacheBusting() {
       cacheVersion.version !== initialVersion &&
       !hasReloaded
     ) {
-      console.log('🔄 [CACHE-BUSTING] Nova versão detectada:', {
-        anterior: initialVersion,
-        atual: cacheVersion.version,
-        forçandoReload: true
-      });
-      
       setHasReloaded(true);
       
       // Pequeno delay para garantir que o usuário veja a mensagem
@@ -67,7 +60,6 @@ export function useCacheBusting() {
   const triggerCacheBust = async () => {
     try {
       await apiRequest('/api/cache-bust', { method: 'POST' });
-      console.log('🔄 [CACHE-BUSTING] Cache invalidado manualmente');
     } catch (error) {
       console.error('❌ [CACHE-BUSTING] Erro ao invalidar cache:', error);
     }

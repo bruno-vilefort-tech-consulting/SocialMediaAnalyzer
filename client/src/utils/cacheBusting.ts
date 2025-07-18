@@ -37,8 +37,6 @@ export async function clearBrowserCache(): Promise<void> {
         cacheNames.map(cacheName => caches.delete(cacheName))
       );
     }
-    
-    console.log('🧹 [CACHE-BUSTING] Cache do navegador limpo completamente');
   } catch (error) {
     console.error('❌ [CACHE-BUSTING] Erro ao limpar cache:', error);
   }

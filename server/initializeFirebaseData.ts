@@ -3,8 +3,6 @@ import bcrypt from 'bcrypt';
 
 export async function initializeFirebaseData() {
   try {
-    console.log("🔥 Inicializando dados essenciais no Firebase...");
-
     // Verificar se o usuário master já existe
     const existingMaster = await storage.getUserByEmail("daniel@grupomaximuns.com.br");
     if (!existingMaster) {
@@ -17,9 +15,6 @@ export async function initializeFirebaseData() {
         role: "master",
         name: "Daniel - Grupo Maximus"
       });
-      console.log("✅ Usuário master criado no Firebase");
-    } else {
-      console.log("✅ Usuário master já existe no Firebase");
     }
 
     // Verificar se o cliente Grupo Maximus já existe (por CNPJ)
@@ -27,37 +22,20 @@ export async function initializeFirebaseData() {
     const existingClient = allClients.find(client => client.cnpj === "05763950000191"); // Modified CNPJ to the correct one
     if (!existingClient) {
       // Criar cliente Grupo Maximus
-      const hashedClientPassword = await bcrypt.hash("cliente123", 10);
       await storage.createClient({
-        companyName: "Grupo Maximus",
-        cnpj: "05763950000191", // Modified CNPJ to the correct one
-        email: "cliente@grupomaximuns.com.br",
-        password: hashedClientPassword,
-        phone: "11999999999",
-        monthlyLimit: 100,
         additionalLimit: 0,
-        contractStart: new Date(),
-        status: "active",
-        responsibleName: "Daniel",
-        responsiblePhone: "11984316526",
-        responsibleEmail: "daniel@grupomaximuns.com.br"
+        contractStart: new Date()
       });
-      console.log("✅ Cliente Grupo Maximus criado no Firebase");
-    } else {
-      console.log("✅ Cliente Grupo Maximus já existe no Firebase - não será recriado");
     }
 
     // Corrigir senha do Daniel Braga
     const danielBraga = await storage.getUserByEmail("danielmoreirabraga@gmail.com");
     if (danielBraga) {
-      console.log("🔧 Corrigindo senha do Daniel Braga...");
       const correctHash = await bcrypt.hash("daniel580190", 10);
-      await storage.updateUser(danielBraga.id, { password: correctHash });
-      console.log("✅ Senha do Daniel Braga corrigida no Firebase");
+      await storage.updateUser(parseInt(danielBraga.id.toString()), { password: correctHash });
     }
     const danielUser = await storage.getUserByEmail("danielmoreirabraga@gmail.com");
     if (danielUser && danielUser.password === "580190580190") {
-      console.log("🔧 Corrigindo senha do Daniel Braga - convertendo para hash bcrypt...");
       const { doc, updateDoc } = await import('firebase/firestore');
       const { firebaseDb } = await import('./db');
       
@@ -66,9 +44,6 @@ export async function initializeFirebaseData() {
         password: hashedPassword,
         updatedAt: new Date()
       });
-      console.log("✅ Senha do Daniel Braga corrigida com hash bcrypt");
-    } else if (danielUser) {
-      console.log("✅ Senha do Daniel Braga já está em formato correto");
     }
 
     // Criar vaga de exemplo se não existir
@@ -108,11 +83,7 @@ export async function initializeFirebaseData() {
         for (const question of questions) {
           await storage.createQuestion(question);
         }
-
-        console.log("✅ Vaga e perguntas criadas no Firebase");
       }
-    } else {
-      console.log("✅ Vagas já existem no Firebase");
     }
 
     // Criar candidato de teste se não existir
@@ -123,21 +94,15 @@ export async function initializeFirebaseData() {
       if (client) {
         await storage.createCandidate({
           clientId: client.id,
-          name: "Daniel Moreira",
           email: "daniel.moreira@email.com",
           whatsapp: "5511984316526",
           listId: null
         });
-        console.log("✅ Candidato Daniel Moreira criado no Firebase com WhatsApp: 5511984316526");
       }
-    } else {
-      console.log("✅ Candidato de teste já existe no Firebase:", testCandidate.name, testCandidate.whatsapp);
     }
 
-    console.log("🎉 Dados iniciais do Firebase configurados com sucesso!");
     return true;
   } catch (error) {
-    console.error("❌ Erro ao inicializar dados do Firebase:", error);
     return false;
   }
 }

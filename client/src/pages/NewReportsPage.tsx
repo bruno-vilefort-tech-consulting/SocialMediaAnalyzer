@@ -853,7 +853,6 @@ export default function NewReportsPage() {
                         draggable
                         onDragStart={(e) => {
                           const dragId = `selection_${selection.id}`;
-                          console.log('🚀 Starting drag with ID:', dragId);
                           e.dataTransfer.setData('text/plain', dragId);
                           e.dataTransfer.effectAllowed = 'move';
                           e.stopPropagation();
@@ -891,11 +890,8 @@ export default function NewReportsPage() {
                                       {(() => {
                                         if (selection.id === 1750476614396) {
                                           const cachedCandidates = selectionCandidatesCache[1750476614396];
-                                          console.log('🔍 DEBUG Comercial 5 - cachedCandidates:', cachedCandidates);
-                                          console.log('🔍 DEBUG Comercial 5 - cachedCandidates length:', cachedCandidates?.length);
 
                                           if (!cachedCandidates || cachedCandidates.length === 0) {
-                                            console.log('🔍 DEBUG Comercial 5 - Usando completedInterviews como fallback:', selection.completedInterviews);
                                             return selection.completedInterviews || 0;
                                           }
 
@@ -905,15 +901,9 @@ export default function NewReportsPage() {
                                               r.transcription && r.transcription !== 'Aguardando resposta via WhatsApp'
                                             ).length || 0;
                                             const isCompleted = totalQuestions > 0 && completedResponses === totalQuestions;
-                                            console.log(`🔍 DEBUG ${candidate.candidate.name}:`, {
-                                              totalQuestions,
-                                              completedResponses,
-                                              isCompleted
-                                            });
                                             return isCompleted;
                                           }).length;
 
-                                          console.log('🔍 DEBUG Comercial 5 - Finalizaram:', completed);
                                           return completed;
                                         }
                                         return selection.completedInterviews || 0;
@@ -1748,7 +1738,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
 
   const handleExportHTML = async () => {
     try {
-      console.log('📄 Iniciando exportação de pacote ZIP...');
 
       // Preparar dados do candidato para o PDF
       const candidateData = {
@@ -1766,7 +1755,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
         }))
       };
 
-      console.log('📋 Dados preparados:', candidateData);
 
       // Obter token de autenticação
       const token = localStorage.getItem('auth_token') || '';
@@ -1796,8 +1784,6 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      // ZIP exportado com sucesso - mostrar feedback visual
-      console.log('✅ Pacote ZIP exportado com sucesso!');
 
     } catch (error) {
       console.error('❌ Erro ao exportar ZIP:', error);

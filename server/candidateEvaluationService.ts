@@ -29,19 +29,17 @@ interface EvaluationResult {
 export class CandidateEvaluationService {
   private openai: OpenAI | null = null;
 
-  async initialize(): Promise<void> {
+  async initialize(apiKey?: string): Promise<void> {
     try {
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
+      const key = apiKey || process.env.OPENAI_API_KEY;
+      if (!key) {
         throw new Error('OPENAI_API_KEY não configurada');
       }
       
       this.openai = new OpenAI({
-        apiKey: apiKey
+        apiKey: key
       });
-      console.log('✅ [EVALUATION] CandidateEvaluationService inicializado com OpenAI API Key');
     } catch (error) {
-      console.error('❌ [EVALUATION] Erro ao inicializar:', error.message);
       this.openai = null;
     }
   }
@@ -53,16 +51,10 @@ export class CandidateEvaluationService {
     }
 
     if (!this.openai) {
-      console.log('⚠️ [EVALUATION] OpenAI não disponível - usando fallback');
       return this.getFallbackEvaluation();
     }
 
     try {
-      console.log('🤖 [IA_EVALUATION] Iniciando avaliação detalhada com OpenAI...');
-      console.log('📝 [IA_INPUT] Pergunta:', request.pergunta.substring(0, 80) + '...');
-      console.log('📝 [IA_INPUT] Resposta candidato:', request.respostaCandidato.substring(0, 80) + '...');
-      console.log('📝 [IA_INPUT] Resposta perfeita:', request.respostaPerfeita.substring(0, 80) + '...');
-
       const prompt = this.buildEvaluationPrompt(request);
       
       const response = await this.openai.chat.completions.create({
@@ -85,24 +77,12 @@ export class CandidateEvaluationService {
       if (!content) {
         throw new Error('Resposta vazia da OpenAI');
       }
-
-      console.log('📊 [IA_OUTPUT] Resposta bruta da OpenAI:', content.substring(0, 200) + '...');
       
       const result = this.parseEvaluationResponse(content);
-      
-      console.log('✅ [IA_FINAL] Avaliação IA concluída:', {
-        pontuacaoGeral: result.pontuacaoGeral,
-        conteudo: result.conteudo,
-        coerencia: result.coerencia,
-        tom: result.tom,
-        feedback: result.feedback ? result.feedback.substring(0, 50) + '...' : 'Sem feedback'
-      });
 
       return result;
 
     } catch (error) {
-      console.error('❌ [IA_ERROR] Erro na avaliação:', error.message);
-      
       // Fallback: retorna pontuação neutra em caso de erro
       return this.getFallbackEvaluation();
     }
@@ -160,9 +140,6 @@ ${request.respostaCandidato}`;
       };
 
     } catch (parseError) {
-      console.error('❌ [EVALUATION] Erro ao parsear resposta JSON:', parseError.message);
-      console.error('📄 [EVALUATION] Conteúdo recebido:', content);
-      
       return this.getFallbackEvaluation();
     }
   }
@@ -174,7 +151,6 @@ ${request.respostaCandidato}`;
   }
 
   private getFallbackEvaluation(): EvaluationResult {
-    console.log('⚠️ [EVALUATION] Usando avaliação fallback');
     return {
       pontuacaoGeral: 50,
       conteudo: 35,
@@ -205,13 +181,10 @@ ${request.respostaCandidato}`;
         respostaCandidato: candidateResponse,
         respostaPerfeita: perfectAnswer
       });
-
-      console.log(`📊 [EVALUATION] Entrevista ${interviewId} - Pontuação: ${evaluation.pontuacaoGeral}/100`);
       
       return evaluation.pontuacaoGeral;
 
     } catch (error) {
-      console.error(`❌ [EVALUATION] Erro na avaliação da entrevista ${interviewId}:`, error.message);
       return 50; // Pontuação neutra em caso de erro
     }
   }

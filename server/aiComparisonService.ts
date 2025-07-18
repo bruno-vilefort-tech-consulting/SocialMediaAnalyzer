@@ -34,12 +34,8 @@ export class AIComparisonService {
     try {
       const config = await storage.getMasterSettings();
       this.openaiApiKey = config?.openaiApiKey || null;
-      
-      if (!this.openaiApiKey) {
-        console.log('⚠️ OpenAI API key não configurada para análise de respostas');
-      }
     } catch (error) {
-      console.log('❌ Erro ao inicializar serviço de comparação AI:', error.message);
+      // Error handled silently
     }
   }
 
@@ -92,8 +88,6 @@ export class AIComparisonService {
       return this.parseAIResponse(content);
       
     } catch (error) {
-      console.log('❌ Erro na comparação AI:', error.message);
-      
       // Fallback: análise simples baseada em palavras-chave
       return this.fallbackComparison(request);
     }
@@ -150,7 +144,6 @@ Seja objetivo e construtivo na análise. O score deve refletir a qualidade geral
       };
       
     } catch (error) {
-      console.log('❌ Erro ao processar resposta AI:', error.message);
       throw new Error('Resposta da AI inválida');
     }
   }
@@ -177,17 +170,16 @@ Seja objetivo e construtivo na análise. O score deve refletir a qualidade geral
 
   async analyzeAllResponses(interviewId: string): Promise<void> {
     try {
-      console.log(`🤖 Iniciando análise AI para entrevista ${interviewId}`);
+      const interviewIdNum = parseInt(interviewId);
       
       // Buscar entrevista e respostas
-      const interview = await storage.getInterviewById(interviewId);
+      const interview = await storage.getInterviewById(interviewIdNum);
       if (!interview) {
         throw new Error('Entrevista não encontrada');
       }
 
-      const responses = await storage.getResponsesByInterviewId(interviewId);
+      const responses = await storage.getResponsesByInterviewId(interviewIdNum);
       if (!responses || responses.length === 0) {
-        console.log('⚠️ Nenhuma resposta encontrada para análise');
         return;
       }
 
@@ -235,10 +227,8 @@ Seja objetivo e construtivo na análise. O score deve refletir a qualidade geral
           totalScore += comparison.score;
           validResponses++;
           
-          console.log(`✅ Resposta ${response.id} analisada: ${comparison.score}%`);
-          
         } catch (error) {
-          console.log(`❌ Erro ao analisar resposta ${response.id}:`, error.message);
+          // Error analyzing individual response handled silently
         }
       }
 
@@ -246,17 +236,15 @@ Seja objetivo e construtivo na análise. O score deve refletir a qualidade geral
       if (validResponses > 0) {
         const finalScore = Math.round(totalScore / validResponses);
         
-        await storage.updateInterview(interviewId, {
+        await storage.updateInterview(interviewIdNum, {
           totalScore: finalScore,
-          completedAt: new Date().toISOString(),
+          completedAt: new Date(),
           status: 'completed'
         });
-        
-        console.log(`🎯 Análise completa da entrevista ${interviewId}: Score final ${finalScore}%`);
       }
       
     } catch (error) {
-      console.log(`❌ Erro na análise geral da entrevista ${interviewId}:`, error.message);
+      // Error analyzing interview handled silently
     }
   }
 }

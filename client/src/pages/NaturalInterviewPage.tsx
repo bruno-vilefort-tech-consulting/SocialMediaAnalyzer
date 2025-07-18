@@ -11,12 +11,12 @@ import { useAudioRecorder } from "@/hooks/useAudio";
 // Componente de ondas sonoras para quando a IA está falando
 const SpeakingWaves = () => {
   const [amplitudes, setAmplitudes] = useState([0, 0, 0, 0, 0, 0, 0]);
-  
+
   useEffect(() => {
     const interval = setInterval(() => {
       setAmplitudes(prev => prev.map(() => Math.random()));
     }, 150);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -55,7 +55,7 @@ const ListeningIndicator = () => {
 // Componente de visualização de amplitude de voz
 const VoiceVisualizer = ({ isActive }: { isActive: boolean }) => {
   const [amplitude, setAmplitude] = useState(0);
-  
+
   useEffect(() => {
     if (isActive) {
       const interval = setInterval(() => {
@@ -72,9 +72,8 @@ const VoiceVisualizer = ({ isActive }: { isActive: boolean }) => {
       {[...Array(20)].map((_, i) => (
         <div
           key={i}
-          className={`w-1 rounded-full transition-all duration-100 ${
-            isActive ? 'bg-green-500' : 'bg-gray-300'
-          }`}
+          className={`w-1 rounded-full transition-all duration-100 ${isActive ? 'bg-green-500' : 'bg-gray-300'
+            }`}
           style={{
             height: isActive ? `${5 + (amplitude * Math.sin(i * 0.5)) / 10}px` : '5px'
           }}
@@ -110,7 +109,7 @@ export default function NaturalInterviewPage() {
   const { token } = useParams();
   const { toast } = useToast();
   const { playAudio: playAudioHook, pauseAudio, resumeAudio, stopAudio, isPlaying: isAudioPlaying, isPaused: isAudioPaused, currentAudioUrl } = useAudioRecorder();
-  
+
   // Estados principais
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -124,11 +123,11 @@ export default function NaturalInterviewPage() {
   }>>([]);
   const [interviewCompleted, setInterviewCompleted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  
+
   // Estados para gravação completa da sessão
   const [isRecordingSession, setIsRecordingSession] = useState(false);
   const [sessionAudioChunks, setSessionAudioChunks] = useState<Blob[]>([]);
-  
+
   // Refs para controle de áudio
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -136,7 +135,7 @@ export default function NaturalInterviewPage() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Query para buscar dados da entrevista
   const { data: interview, isLoading } = useQuery<Interview>({
     queryKey: [`/api/interview/${token}`],
@@ -148,21 +147,20 @@ export default function NaturalInterviewPage() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
       const recognition = new SpeechRecognition();
-      
+
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'pt-BR';
       recognition.maxAlternatives = 1;
-      
+
       recognition.onstart = () => {
-        console.log('🎤 Reconhecimento de voz iniciado');
         setIsListening(true);
       };
-      
+
       recognition.onresult = (event) => {
         let transcript = '';
         let isFinal = false;
-        
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
           transcript += result[0].transcript;
@@ -170,12 +168,11 @@ export default function NaturalInterviewPage() {
             isFinal = true;
           }
         }
-        
+
         setCurrentTranscript(transcript);
-        
+
         // Processar quando a frase estiver completa e tiver conteúdo
         if (isFinal && transcript.trim().length > 2) {
-          console.log('🗣️ Resposta captada:', transcript.trim());
           handleCandidateResponse(transcript.trim());
           setCurrentTranscript("");
           // Limpar timeout existente
@@ -185,27 +182,24 @@ export default function NaturalInterviewPage() {
           }
         }
       };
-      
+
       recognition.onerror = (event) => {
-        console.error('❌ Erro no reconhecimento:', event.error);
         setIsListening(false);
       };
-      
+
       recognition.onend = () => {
-        console.log('🔇 Reconhecimento finalizado');
         setIsListening(false);
-        
+
         // CORREÇÃO: Reiniciar automaticamente se ainda estiver ativo
         if (!interviewCompleted && !isSpeaking && isInterviewStarted) {
           setTimeout(() => {
             if (!interviewCompleted && !isSpeaking) {
-              console.log('🔄 Reiniciando reconhecimento automaticamente...');
               startListening();
             }
           }, 1000); // 1 segundo para reiniciar
         }
       };
-      
+
       recognitionRef.current = recognition;
     } else {
       toast({
@@ -214,7 +208,7 @@ export default function NaturalInterviewPage() {
         variant: "destructive",
       });
     }
-    
+
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -225,7 +219,6 @@ export default function NaturalInterviewPage() {
   // AUTO-INICIAR entrevista quando dados carregarem
   useEffect(() => {
     if (interview && !isInterviewStarted && !interviewCompleted && !isSpeaking) {
-      console.log('🚀 Auto-iniciando entrevista...');
       startInterview();
     }
   }, [interview, isInterviewStarted, interviewCompleted, isSpeaking]);
@@ -234,7 +227,7 @@ export default function NaturalInterviewPage() {
   const speakWithAI = async (text: string) => {
     try {
       setIsSpeaking(true);
-      
+
       const response = await fetch('/api/natural-tts', {
         method: 'POST',
         headers: {
@@ -249,17 +242,17 @@ export default function NaturalInterviewPage() {
       if (response.ok) {
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
-        
+
         // Usar o hook para reproduzir áudio
         playAudioHook(audioUrl);
-        
+
         // Adicionar à conversa
         setConversationHistory(prev => [...prev, {
           type: 'ai',
           message: text,
           timestamp: new Date()
         }]);
-        
+
         // Aguardar o áudio terminar usando um listener
         const checkAudioEnd = setInterval(() => {
           if (!isAudioPlaying && currentAudioUrl === null) {
@@ -274,12 +267,11 @@ export default function NaturalInterviewPage() {
             }
           }
         }, 200);
-        
+
       } else {
         throw new Error('Falha ao gerar áudio');
       }
     } catch (error) {
-      console.error('❌ Erro ao falar:', error);
       setIsSpeaking(false);
       toast({
         title: "Erro",
@@ -292,37 +284,36 @@ export default function NaturalInterviewPage() {
   // Processar resposta do candidato
   const handleCandidateResponse = async (transcript: string) => {
     if (!transcript.trim() || !interview || isProcessing) return;
-    
-    console.log('💬 Processando resposta:', transcript);
+
     setIsProcessing(true);
-    
+
     // Parar reconhecimento durante processamento
     if (recognitionRef.current && isListening) {
       try {
         recognitionRef.current.stop();
       } catch (e) {
-        console.log('Reconhecimento já parado');
+        // Reconhecimento já parado
       }
     }
-    
+
     // Cancelar timeout de silêncio se existir
     if (silenceTimeoutRef.current) {
       clearTimeout(silenceTimeoutRef.current);
       silenceTimeoutRef.current = null;
     }
-    
+
     // Marcar entrevista como iniciada
     setIsInterviewStarted(true);
-    
+
     // Atualizar histórico da conversa
     const updatedHistory = [...conversationHistory, {
       type: 'candidate' as const,
       message: transcript,
       timestamp: new Date()
     }];
-    
+
     setConversationHistory(updatedHistory);
-    
+
     // Salvar no banco de dados
     try {
       await fetch(`/api/interview/${token}/natural-response`, {
@@ -337,14 +328,13 @@ export default function NaturalInterviewPage() {
         }),
       });
     } catch (error) {
-      console.error('❌ Erro ao salvar resposta:', error);
+      // Erro ao salvar resposta
     }
-    
+
     try {
       // Gerar próxima resposta da IA com histórico atualizado
       await generateAIResponse(transcript, updatedHistory);
     } catch (error) {
-      console.error('❌ Erro ao gerar resposta IA:', error);
       // Reiniciar reconhecimento em caso de erro
       setTimeout(() => {
         if (!interviewCompleted && !isSpeaking) {
@@ -361,15 +351,7 @@ export default function NaturalInterviewPage() {
     try {
       // Usar histórico atualizado se fornecido, senão usar o estado atual
       const historyToUse = updatedHistory || conversationHistory;
-      
-      // Debug: mostrar estado atual
-      console.log('🔍 Debug generateAIResponse:', {
-        isInterviewStarted,
-        historyLength: historyToUse.length,
-        candidateResponse: candidateResponse.substring(0, 50),
-        currentQuestionIndex
-      });
-      
+
       const response = await fetch('/api/natural-conversation', {
         method: 'POST',
         headers: {
@@ -385,28 +367,26 @@ export default function NaturalInterviewPage() {
       });
 
       const data = await response.json();
-      
+
       if (data.aiResponse) {
         // CORREÇÃO CRÍTICA: Marcar entrevista como iniciada após primeira resposta da IA
         if (!isInterviewStarted) {
-          console.log('✅ Marcando entrevista como iniciada após primeira resposta IA');
           setIsInterviewStarted(true);
         }
-        
+
         await speakWithAI(data.aiResponse);
-        
+
         // Atualizar índice da pergunta se necessário
         if (data.nextQuestionIndex !== undefined) {
           setCurrentQuestionIndex(data.nextQuestionIndex);
         }
-        
+
         // Verificar se entrevista terminou
         if (data.interviewCompleted) {
           setInterviewCompleted(true);
           stopListening();
         } else {
           // CORREÇÃO CRÍTICA: Reiniciar escuta automaticamente após IA falar
-          console.log('🔄 Reiniciando escuta após IA falar...');
           setTimeout(() => {
             if (!interviewCompleted && !isSpeaking) {
               startListening();
@@ -414,9 +394,8 @@ export default function NaturalInterviewPage() {
           }, 1000); // 1 segundo de pausa antes de reiniciar
         }
       }
-      
+
     } catch (error) {
-      console.error('❌ Erro ao gerar resposta da IA:', error);
       toast({
         title: "Erro",
         description: "Falha ao processar conversa",
@@ -428,33 +407,32 @@ export default function NaturalInterviewPage() {
   // Iniciar gravação da sessão completa
   const startSessionRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           sampleRate: 44100
-        } 
+        }
       });
-      
+
       const sessionRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
-      
+
       sessionRecorderRef.current = sessionRecorder;
       setSessionAudioChunks([]);
-      
+
       sessionRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           setSessionAudioChunks(prev => [...prev, event.data]);
         }
       };
-      
+
       sessionRecorder.start(1000); // Coleta dados a cada segundo
       setIsRecordingSession(true);
-      
-      console.log('🎙️ Gravação da sessão iniciada');
+
     } catch (error) {
-      console.error('❌ Erro ao iniciar gravação da sessão:', error);
+      // Erro ao iniciar gravação da sessão
     }
   };
 
@@ -463,7 +441,7 @@ export default function NaturalInterviewPage() {
     if (sessionRecorderRef.current && isRecordingSession) {
       sessionRecorderRef.current.stop();
       setIsRecordingSession(false);
-      
+
       // Aguardar processamento final dos chunks
       setTimeout(async () => {
         await saveSessionRecording();
@@ -474,39 +452,38 @@ export default function NaturalInterviewPage() {
   // Salvar gravação completa da sessão
   const saveSessionRecording = async () => {
     if (sessionAudioChunks.length === 0) return;
-    
+
     try {
       const audioBlob = new Blob(sessionAudioChunks, { type: 'audio/webm' });
       const formData = new FormData();
       formData.append('sessionAudio', audioBlob, `session_${token}_${Date.now()}.webm`);
       formData.append('conversationHistory', JSON.stringify(conversationHistory));
       formData.append('duration', String(Math.floor((Date.now() - interview?.createdAt?.getTime() || 0) / 1000)));
-      
+
       await fetch(`/api/interview/${token}/save-session`, {
         method: 'POST',
         body: formData,
       });
-      
-      console.log('💾 Sessão completa salva no banco');
+
     } catch (error) {
-      console.error('❌ Erro ao salvar sessão:', error);
+      // Erro ao salvar sessão
     }
   };
 
   // Iniciar entrevista
   const startInterview = async () => {
     if (!interview) return;
-    
+
     setIsInterviewStarted(true);
-    
+
     // Iniciar gravação automática da sessão completa
     await startSessionRecording();
-    
+
     // CORREÇÃO: Iniciar reconhecimento de voz IMEDIATAMENTE
     setTimeout(() => {
       startListening();
     }, 500);
-    
+
     // Gerar primeira resposta da IA automaticamente (sem input do usuário)
     await generateAIResponse('');
   };
@@ -517,7 +494,7 @@ export default function NaturalInterviewPage() {
       try {
         recognitionRef.current.start();
       } catch (error) {
-        console.log('Reconhecimento já ativo, ignorando...');
+        // Reconhecimento já ativo, ignorando
       }
     }
   };
@@ -538,7 +515,7 @@ export default function NaturalInterviewPage() {
     try {
       // Parar gravação da sessão
       await stopSessionRecording();
-      
+
       await fetch(`/api/interview/${token}/complete`, {
         method: 'POST',
         headers: {
@@ -549,17 +526,17 @@ export default function NaturalInterviewPage() {
           completedAt: new Date().toISOString()
         }),
       });
-      
+
       setInterviewCompleted(true);
       stopListening();
-      
+
       toast({
         title: "Entrevista finalizada",
         description: "Obrigado pela sua participação!",
       });
-      
+
     } catch (error) {
-      console.error('❌ Erro ao finalizar entrevista:', error);
+      // Erro ao finalizar entrevista
     }
   };
 
@@ -609,8 +586,8 @@ export default function NaturalInterviewPage() {
                 Conversa natural com nosso assistente virtual para a vaga de {interview.job.nomeVaga}
               </p>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={startInterview}
               size="lg"
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full"
@@ -631,7 +608,7 @@ export default function NaturalInterviewPage() {
                     </div>
                     <p className="text-gray-600">Assistente falando...</p>
                     <SpeakingWaves />
-                    
+
                     {/* Controles de áudio */}
                     <div className="flex items-center justify-center space-x-2 mt-4">
                       {isAudioPlaying ? (
@@ -655,7 +632,7 @@ export default function NaturalInterviewPage() {
                           <span>Continuar</span>
                         </Button>
                       ) : null}
-                      
+
                       {(isAudioPlaying || isAudioPaused) && (
                         <Button
                           variant="outline"
@@ -670,7 +647,7 @@ export default function NaturalInterviewPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {isListening && !isSpeaking && (
                   <div className="space-y-4">
                     <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
@@ -680,15 +657,15 @@ export default function NaturalInterviewPage() {
                     <VoiceVisualizer isActive={isListening} />
                   </div>
                 )}
-                
+
                 {!isSpeaking && !isListening && !interviewCompleted && (
                   <div className="space-y-4">
                     <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
                       <MessageCircle className="h-8 w-8 text-blue-600" />
                     </div>
                     <p className="text-blue-600">
-                      {isProcessing ? "Processando resposta..." : 
-                       isInterviewStarted ? "Aguardando..." : "Iniciando entrevista..."}
+                      {isProcessing ? "Processando resposta..." :
+                        isInterviewStarted ? "Aguardando..." : "Iniciando entrevista..."}
                     </p>
                   </div>
                 )}
