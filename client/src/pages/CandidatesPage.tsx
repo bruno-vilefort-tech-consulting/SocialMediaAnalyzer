@@ -44,24 +44,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { CandidateModal } from "@/components/CandidateModal";
 import type { CandidateList, InsertCandidateList, Candidate, InsertCandidate, Client } from "@shared/schema";
+import { insertCandidateListSchema, insertCandidateSchema } from "@shared/schema";
 
-// Schemas de validação
-const candidateListSchema = z.object({
-  name: z.string().min(1, "Nome da lista é obrigatório"),
-  description: z.string().optional(),
-  clientId: z.number().positive("Cliente é obrigatório")
+// Extended schema for forms that include listId for UI purposes
+const candidateFormSchema = insertCandidateSchema.extend({
+  listId: z.number().optional()
 });
 
-const candidateSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  email: z.string().email("Email inválido"),
-  whatsapp: z.string().regex(/^(55)?[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve ter formato brasileiro com ou sem código do país (ex: 5511987654321 ou 11987654321)"),
-  listId: z.number().positive("Lista é obrigatória"),
-  clientId: z.number().positive("Cliente é obrigatório")
-});
-
-type CandidateListFormData = z.infer<typeof candidateListSchema>;
-type CandidateFormData = z.infer<typeof candidateSchema>;
+type CandidateListFormData = z.infer<typeof insertCandidateListSchema>;
+type CandidateFormData = z.infer<typeof candidateFormSchema>;
 
 // ✅ FUNÇÃO CORRIGIDA: Remover o 9º dígito de números de Minas Gerais
 function removeDigitNine(phone: string): string {
@@ -518,7 +509,7 @@ export default function CandidatesPage() {
 
   // Forms
   const listForm = useForm<CandidateListFormData>({
-    resolver: zodResolver(candidateListSchema),
+    resolver: zodResolver(insertCandidateListSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -527,7 +518,7 @@ export default function CandidatesPage() {
   });
 
   const candidateForm = useForm<CandidateFormData>({
-    resolver: zodResolver(candidateSchema),
+    resolver: zodResolver(candidateFormSchema),
     defaultValues: {
       name: "",
       email: "",
@@ -539,7 +530,7 @@ export default function CandidatesPage() {
 
   // Form para editar lista
   const editListForm = useForm<{ name: string; description?: string }>({
-    resolver: zodResolver(candidateListSchema.omit({ clientId: true })),
+    resolver: zodResolver(insertCandidateListSchema.omit({ clientId: true })),
     defaultValues: {
       name: "",
       description: ""

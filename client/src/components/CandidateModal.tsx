@@ -21,17 +21,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { insertCandidateSchema } from "@shared/schema";
 
-// Schema de validação para candidato
-const candidateSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  email: z.string().email("Email inválido"),
-  whatsapp: z.string().min(10, "WhatsApp deve ter pelo menos 10 dígitos"),
-  listId: z.number().optional(),
-  clientId: z.number().min(1, "Cliente é obrigatório")
+// Extended schema for form that includes listId for UI purposes
+const candidateFormSchema = insertCandidateSchema.extend({
+  listId: z.number().optional()
 });
 
-type CandidateFormData = z.infer<typeof candidateSchema>;
+type CandidateFormData = z.infer<typeof candidateFormSchema>;
 
 interface Candidate {
   id: number;
@@ -178,7 +175,7 @@ export function CandidateModal({
   const [isValidating, setIsValidating] = useState(false);
 
   const form = useForm<CandidateFormData>({
-    resolver: zodResolver(candidateSchema),
+    resolver: zodResolver(candidateFormSchema),
     defaultValues: {
       name: editingCandidate?.name || "",
       email: editingCandidate?.email || "",
@@ -189,7 +186,7 @@ export function CandidateModal({
   });
 
   // Reset form when editingCandidate or modal state changes
-  useState(() => {
+  useEffect(() => {
     if (editingCandidate) {
       form.reset({
         name: editingCandidate.name,
@@ -207,7 +204,7 @@ export function CandidateModal({
         clientId: clientId
       });
     }
-  });
+  }, [editingCandidate, selectedListId, clientId, form]);
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {

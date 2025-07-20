@@ -252,9 +252,9 @@ export const insertQuestionSchema = z.object({
 });
 export const insertCandidateListSchema = createInsertSchema(candidateLists).omit({ id: true, createdAt: true });
 export const insertCandidateSchema = createInsertSchema(candidates).omit({ id: true, createdAt: true }).extend({
+  name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
-  whatsapp: z.string().regex(/^[1-9]{2}[0-9]{8,9}$/, "WhatsApp deve estar no formato brasileiro (ex: 11987654321)"),
-  listId: z.number().positive("Lista é obrigatória"),
+  whatsapp: z.string().min(10, "WhatsApp deve ter pelo menos 10 dígitos"),
   clientId: z.number().positive("Cliente é obrigatório")
 });
 export const insertCandidateListMembershipSchema = createInsertSchema(candidateListMemberships).omit({ id: true, createdAt: true });
