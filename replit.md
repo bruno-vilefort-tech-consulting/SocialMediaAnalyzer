@@ -127,6 +127,10 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
   - **Compatibilidade total**: Funciona com números antigos, novos, com/sem código do país, MG e outros estados
   - **Script de teste criado**: test_whatsapp_validation.js para validar todas as estratégias implementadas
   - **Estratégia escalável**: Funciona para TODOS os usuários, garantindo detecção correta de números válidos independente do formato
+  - **Correção automática implementada**: Frontend agora corrige números automaticamente e mostra notificação da mudança
+  - **Exemplo prático**: Número 551196612253 automaticamente corrigido para 5511996612253 se válido no WhatsApp
+  - **Toast de correção**: Sistema mostra "Número corrigido automaticamente! 551196612253 → 5511996612253"
+  - **Banco salva número correto**: Armazena sempre o número validado pelo WhatsApp, não o digitado pelo usuário
 
 - July 17, 2025: ✅ PROBLEMA CRÍTICO DE LOOP INFINITO NA ENTREVISTA RESOLVIDO DEFINITIVAMENTE - Três correções específicas aplicadas com sucesso
   - **Problema 1 - Incremento da pergunta**: Confirmado que `interview.currentQuestion++` já estava funcionando corretamente no processResponse()

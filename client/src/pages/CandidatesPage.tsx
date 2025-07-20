@@ -538,7 +538,7 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      // 🎯 VALIDAÇÃO WHATSAPP: Verificar se número existe no WhatsApp antes de salvar
+      // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
       toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
       
       const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
@@ -547,7 +547,15 @@ export default function CandidatesPage() {
         throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
       }
       
-      // Usar o número validado retornado pelo Baileys
+      // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e correto retornado pelo Baileys
+      if (validatedWhatsApp !== data.whatsapp) {
+        toast({ 
+          title: "Número corrigido automaticamente!", 
+          description: `${data.whatsapp} → ${validatedWhatsApp}`,
+          duration: 3000
+        });
+      }
+      
       const candidateData = {
         ...data,
         whatsapp: validatedWhatsApp
@@ -580,7 +588,7 @@ export default function CandidatesPage() {
         throw new Error("Nenhum candidato selecionado para edição");
       }
 
-      // 🎯 VALIDAÇÃO WHATSAPP: Verificar se número existe no WhatsApp antes de atualizar
+      // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
       // Só validar se o WhatsApp foi alterado
       if (data.whatsapp !== editingCandidate.whatsapp) {
         toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
@@ -591,7 +599,15 @@ export default function CandidatesPage() {
           throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
         }
         
-        // Usar o número validado
+        // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e mostrar correção se houve mudança
+        if (validatedWhatsApp !== data.whatsapp) {
+          toast({ 
+            title: "Número corrigido automaticamente!", 
+            description: `${data.whatsapp} → ${validatedWhatsApp}`,
+            duration: 3000
+          });
+        }
+        
         data.whatsapp = validatedWhatsApp;
         toast({ title: "Número validado com sucesso!", description: "Atualizando candidato..." });
       }
