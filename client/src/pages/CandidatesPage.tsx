@@ -862,16 +862,22 @@ export default function CandidatesPage() {
         data.clientId = user.clientId;
       }
 
-      // Garantir que listId e clientId estão corretos
-      if (!data.listId || !data.clientId) {
+      // ✅ CORREÇÃO: Para candidatos individuais (não em lista), só precisamos de clientId
+      if (!data.clientId) {
         toast({
           title: "Erro",
-          description: "Erro interno: IDs da lista ou cliente não definidos",
+          description: "Erro interno: Cliente não identificado",
           variant: "destructive"
         });
         return;
       }
 
+      // Se não há listId (candidato individual), definir como 0
+      if (!data.listId) {
+        data.listId = 0;
+      }
+
+      console.log(`🔍 [DEBUG] Chamando createCandidateMutation.mutate com dados:`, data);
       createCandidateMutation.mutate(data);
     }
   };
