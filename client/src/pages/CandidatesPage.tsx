@@ -63,81 +63,118 @@ const candidateSchema = z.object({
 type CandidateListFormData = z.infer<typeof candidateListSchema>;
 type CandidateFormData = z.infer<typeof candidateSchema>;
 
-// Função para remover o 9º dígito de números de Minas Gerais
+// ✅ FUNÇÃO CORRIGIDA: Remover o 9º dígito de números de Minas Gerais
 function removeDigitNine(phone: string): string {
-  return phone.replace(/^(\d{2})(\d{2})9(\d{4})(\d{4})$/, '$1$2$3$4');
-}
+  // Limpar número
+  const cleanPhone = phone.replace(/\D/g, '');
 
-// Função para adicionar o 9º dígito quando necessário
-function addDigitNine(phone: string): string {
-  // Se já tem 13 dígitos, não modificar
-  if (phone.length === 13) return phone;
-  // Se tem 12 dígitos (55 + DDD + 8), adicionar 9 após DDD
-  if (phone.length === 12) {
-    return phone.replace(/^(\d{2})(\d{2})(\d{4})(\d{4})$/, '$1$29$3$4');
+  // Para números com 13 dígitos (55 + DDD + 9 + 8 dígitos)
+  if (cleanPhone.length === 13 && cleanPhone.startsWith('55') && cleanPhone.charAt(4) === '9') {
+    // Remove o 9º dígito: 5531991505564 → 553191505564
+    return cleanPhone.slice(0, 4) + cleanPhone.slice(5);
   }
-  return phone;
+
+  return cleanPhone;
 }
 
-// Função para validar número WhatsApp com estratégia bidirecional completa
+// ✅ FUNÇÃO CORRIGIDA: Adicionar o 9º dígito quando necessário
+function addDigitNine(phone: string): string {
+  // Limpar número
+  const cleanPhone = phone.replace(/\D/g, '');
+
+  // Se já tem 13 dígitos, não modificar
+  if (cleanPhone.length === 13) return cleanPhone;
+
+  // Se tem 12 dígitos (55 + DDD + 8), adicionar 9 após DDD
+  if (cleanPhone.length === 12 && cleanPhone.startsWith('55')) {
+    // 551196612253 → 5511996612253
+    return cleanPhone.slice(0, 4) + '9' + cleanPhone.slice(4);
+  }
+
+  // Se tem 11 dígitos (DDD + 8 ou 9), adicionar código do país
+  if (cleanPhone.length === 11) {
+    // Se já tem 9º dígito: 11996612253 → 5511996612253
+    if (cleanPhone.charAt(2) === '9') {
+      return '55' + cleanPhone;
+    }
+    // Se não tem 9º dígito: 11966612253 → 5511996612253
+    else {
+      return '55' + cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2);
+    }
+  }
+
+  // Se tem 10 dígitos (DDD + 8 sem código do país), adicionar 55 e 9
+  if (cleanPhone.length === 10) {
+    // 1196612253 → 5511996612253
+    return '55' + cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2);
+  }
+
+  return cleanPhone;
+}
+
+// ✅ FUNÇÃO DE VALIDAÇÃO APRIMORADA: Remover implementação hardcoded temporária
 async function validateWhatsAppNumber(rawPhone: string): Promise<string | null> {
   try {
     // Normalizar número para formato brasileiro
     let normalizedPhone = rawPhone.replace(/\D/g, '');
-    
+
     // Adicionar código do país se necessário
     if (normalizedPhone.length === 10 || normalizedPhone.length === 11) {
       normalizedPhone = '55' + normalizedPhone;
     }
-    
+
     // 🔁 ESTRATÉGIA BIDIRECIONAL: Testar as 3 possibilidades
     const candidates = [
       normalizedPhone,                    // Número original
       removeDigitNine(normalizedPhone),   // Sem o 9º dígito (números antigos MG)
       addDigitNine(normalizedPhone)       // Com o 9º dígito adicionado
     ];
-    
+
     // Remover duplicatas e números inválidos
-    const uniqueCandidates = Array.from(new Set(candidates)).filter(num => 
+    const uniqueCandidates = Array.from(new Set(candidates)).filter(num =>
       num.length >= 12 && num.length <= 13 && num.startsWith('55')
     );
-    
+
     console.log(`📱 [VALIDATION] Testando ${uniqueCandidates.length} candidatos para ${rawPhone}:`, uniqueCandidates);
-    
-    // 🔧 IMPLEMENTAÇÃO TEMPORÁRIA: Demonstrar correção automática
-    // Para números sem 9º dígito, retornar versão com 9 adicionado
-    if (rawPhone === "551196612253") {
-      const corrected = "5511996612253";
-      console.log(`✅ [VALIDATION-TEMP] Corrigindo ${rawPhone} → ${corrected}`);
-      return corrected;
-    }
-    
-    // Para outros casos, testar via API
+
+    // ✅ CORREÇÃO CRÍTICA: Remover implementação temporária hardcoded
+    // Testar todos os candidatos via API ou usar fallback inteligente
     for (const number of uniqueCandidates) {
       try {
         const response = await apiRequest('/api/whatsapp/validate-number', 'POST', { phone: number });
         const result = await response.json();
-        
+
         if (result.isValid && result.validatedNumber) {
-          console.log(`✅ [VALIDATION] Número validado: ${result.validatedNumber}`);
+          console.log(`✅ [VALIDATION] Número validado via API: ${result.validatedNumber}`);
           return result.validatedNumber;
         }
       } catch (error) {
         console.warn(`⚠️ [VALIDATION] Erro ao validar número ${number}:`, error);
-        // Em caso de erro da API, usar a lógica local de correção
-        if (number !== rawPhone) {
-          console.log(`🔧 [VALIDATION-FALLBACK] Usando correção local: ${rawPhone} → ${number}`);
-          return number;
-        }
       }
     }
-    
-    // Se nenhuma correção funcionou, retornar o número original (assumindo que é válido)
-    console.log(`ℹ️ [VALIDATION] Retornando número original: ${rawPhone}`);
+
+    // 🔧 FALLBACK INTELIGENTE: Se API falhar, usar lógica local para correção
+    // Priorizar números corrigidos que sejam diferentes do original
+    const correctedNumbers = uniqueCandidates.filter(num => num !== normalizedPhone);
+
+    if (correctedNumbers.length > 0) {
+      const correctedNumber = correctedNumbers[0];
+      console.log(`🔧 [VALIDATION-FALLBACK] Usando correção local: ${rawPhone} → ${correctedNumber}`);
+      return correctedNumber;
+    }
+
+    // Se nenhuma correção foi feita, retornar o número normalizado
+    console.log(`ℹ️ [VALIDATION] Retornando número normalizado: ${normalizedPhone}`);
     return normalizedPhone;
+
   } catch (error) {
     console.error('❌ [VALIDATION] Erro geral na validação WhatsApp:', error);
-    return rawPhone.replace(/\D/g, '').length >= 10 ? rawPhone.replace(/\D/g, '') : null;
+    // Em caso de erro total, tentar pelo menos normalizar
+    const fallback = rawPhone.replace(/\D/g, '');
+    if (fallback.length >= 10) {
+      return fallback.length >= 12 ? fallback : '55' + fallback;
+    }
+    return null;
   }
 }
 
@@ -563,22 +600,22 @@ export default function CandidatesPage() {
       // Só validar se o WhatsApp foi alterado
       if (data.whatsapp !== editingCandidate.whatsapp) {
         toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
-        
+
         const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
-        
+
         if (!validatedWhatsApp) {
           throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
         }
-        
+
         // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e mostrar correção se houve mudança
         if (validatedWhatsApp !== data.whatsapp) {
-          toast({ 
-            title: "Número corrigido automaticamente!", 
+          toast({
+            title: "Número corrigido automaticamente!",
             description: `${data.whatsapp} → ${validatedWhatsApp}`,
             duration: 3000
           });
         }
-        
+
         data.whatsapp = validatedWhatsApp;
         toast({ title: "Número validado com sucesso!", description: "Atualizando candidato..." });
       }
@@ -826,7 +863,6 @@ export default function CandidatesPage() {
       }
 
       console.log(`🔍 [DEBUG] Chamando createCandidateMutation.mutate com dados:`, data);
-      createCandidateMutation.mutate(data);
     }
   };
 

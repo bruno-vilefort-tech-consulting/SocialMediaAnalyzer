@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -46,98 +46,122 @@ interface CandidateModalProps {
   onOpenChange: (open: boolean) => void;
   editingCandidate?: Candidate | null;
   selectedListId?: number | null;
-  clientId: number;
+  clientId?: number;
   onSuccess?: () => void;
 }
 
-// Função para remover o 9º dígito (números antigos MG)
+// ✅ FUNÇÃO CORRIGIDA: Remover o 9º dígito de números de Minas Gerais
 function removeDigitNine(phone: string): string {
-  // Remove todos os caracteres não numéricos
+  // Limpar número
   const cleanPhone = phone.replace(/\D/g, '');
-  
-  // Para números com 13 dígitos (55 + 11 + 9 + 8 dígitos)
+
+  // Para números com 13 dígitos (55 + DDD + 9 + 8 dígitos)
   if (cleanPhone.length === 13 && cleanPhone.startsWith('55') && cleanPhone.charAt(4) === '9') {
-    // Remove o 9º dígito: 5511987654321 → 5511987654321 (sem alteração se já está correto)
-    // Na verdade remove: 55119XXXXXXXX → 5511XXXXXXXX
+    // Remove o 9º dígito: 5531991505564 → 553191505564
     return cleanPhone.slice(0, 4) + cleanPhone.slice(5);
   }
-  
-  return phone;
+
+  return cleanPhone;
 }
 
-// Função para adicionar o 9º dígito (números que precisam do novo formato)
+// ✅ FUNÇÃO CORRIGIDA: Adicionar o 9º dígito quando necessário
 function addDigitNine(phone: string): string {
-  // Remove todos os caracteres não numéricos
+  // Limpar número
   const cleanPhone = phone.replace(/\D/g, '');
-  
-  // Para números com 12 dígitos (55 + 11 + 8 dígitos) - adicionar o 9
+
+  // Se já tem 13 dígitos, não modificar
+  if (cleanPhone.length === 13) return cleanPhone;
+
+  // Se tem 12 dígitos (55 + DDD + 8), adicionar 9 após DDD
   if (cleanPhone.length === 12 && cleanPhone.startsWith('55')) {
-    // Adiciona o 9º dígito: 551187654321 → 5511987654321
+    // 551196612253 → 5511996612253
     return cleanPhone.slice(0, 4) + '9' + cleanPhone.slice(4);
   }
-  
-  return phone;
+
+  // Se tem 11 dígitos (DDD + 8 ou 9), adicionar código do país
+  if (cleanPhone.length === 11) {
+    // Se já tem 9º dígito: 11996612253 → 5511996612253
+    if (cleanPhone.charAt(2) === '9') {
+      return '55' + cleanPhone;
+    }
+    // Se não tem 9º dígito: 11966612253 → 5511996612253
+    else {
+      return '55' + cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2);
+    }
+  }
+
+  // Se tem 10 dígitos (DDD + 8 sem código do país), adicionar 55 e 9
+  if (cleanPhone.length === 10) {
+    // 1196612253 → 5511996612253
+    return '55' + cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2);
+  }
+
+  return cleanPhone;
 }
 
-// Função para validar número WhatsApp com estratégia bidirecional completa
+// ✅ FUNÇÃO DE VALIDAÇÃO APRIMORADA: Remover implementação hardcoded temporária
 async function validateWhatsAppNumber(rawPhone: string): Promise<string | null> {
   try {
     // Normalizar número para formato brasileiro
     let normalizedPhone = rawPhone.replace(/\D/g, '');
-    
+
     // Adicionar código do país se necessário
     if (normalizedPhone.length === 10 || normalizedPhone.length === 11) {
       normalizedPhone = '55' + normalizedPhone;
     }
-    
+
     // 🔁 ESTRATÉGIA BIDIRECIONAL: Testar as 3 possibilidades
     const candidates = [
       normalizedPhone,                    // Número original
       removeDigitNine(normalizedPhone),   // Sem o 9º dígito (números antigos MG)
       addDigitNine(normalizedPhone)       // Com o 9º dígito adicionado
     ];
-    
+
     // Remover duplicatas e números inválidos
-    const uniqueCandidates = Array.from(new Set(candidates)).filter(num => 
+    const uniqueCandidates = Array.from(new Set(candidates)).filter(num =>
       num.length >= 12 && num.length <= 13 && num.startsWith('55')
     );
-    
+
     console.log(`📱 [VALIDATION] Testando ${uniqueCandidates.length} candidatos para ${rawPhone}:`, uniqueCandidates);
-    
-    // 🔧 IMPLEMENTAÇÃO TEMPORÁRIA: Demonstrar correção automática
-    // Para números sem 9º dígito, retornar versão com 9 adicionado
-    if (rawPhone === "551196612253") {
-      const corrected = "5511996612253";
-      console.log(`✅ [VALIDATION-TEMP] Corrigindo ${rawPhone} → ${corrected}`);
-      return corrected;
-    }
-    
-    // Para outros casos, testar via API
+
+    // ✅ CORREÇÃO CRÍTICA: Remover implementação temporária hardcoded
+    // Testar todos os candidatos via API ou usar fallback inteligente
     for (const number of uniqueCandidates) {
       try {
         const response = await apiRequest('/api/whatsapp/validate-number', 'POST', { phone: number });
         const result = await response.json();
-        
+
         if (result.isValid && result.validatedNumber) {
-          console.log(`✅ [VALIDATION] Número validado: ${result.validatedNumber}`);
+          console.log(`✅ [VALIDATION] Número validado via API: ${result.validatedNumber}`);
           return result.validatedNumber;
         }
       } catch (error) {
         console.warn(`⚠️ [VALIDATION] Erro ao validar número ${number}:`, error);
-        // Em caso de erro da API, usar a lógica local de correção
-        if (number !== rawPhone) {
-          console.log(`🔧 [VALIDATION-FALLBACK] Usando correção local: ${rawPhone} → ${number}`);
-          return number;
-        }
       }
     }
-    
-    // Se nenhuma correção funcionou, retornar o número original (assumindo que é válido)
-    console.log(`ℹ️ [VALIDATION] Retornando número original: ${rawPhone}`);
+
+    // 🔧 FALLBACK INTELIGENTE: Se API falhar, usar lógica local para correção
+    // Priorizar números corrigidos que sejam diferentes do original
+    const correctedNumbers = uniqueCandidates.filter(num => num !== normalizedPhone);
+
+    if (correctedNumbers.length > 0) {
+      const correctedNumber = correctedNumbers[0];
+      console.log(`🔧 [VALIDATION-FALLBACK] Usando correção local: ${rawPhone} → ${correctedNumber}`);
+      return correctedNumber;
+    }
+
+    // Se nenhuma correção foi feita, retornar o número normalizado
+    console.log(`ℹ️ [VALIDATION] Retornando número normalizado: ${normalizedPhone}`);
     return normalizedPhone;
+
   } catch (error) {
     console.error('❌ [VALIDATION] Erro geral na validação WhatsApp:', error);
-    return rawPhone.replace(/\D/g, '').length >= 10 ? rawPhone.replace(/\D/g, '') : null;
+    // Em caso de erro total, tentar pelo menos normalizar
+    const fallback = rawPhone.replace(/\D/g, '');
+    if (fallback.length >= 10) {
+      return fallback.length >= 12 ? fallback : '55' + fallback;
+    }
+    return null;
   }
 }
 
@@ -188,40 +212,40 @@ export function CandidateModal({
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
       console.log(`🔍 [DEBUG] Iniciando criação de candidato com WhatsApp: ${data.whatsapp}`);
-      
+
       // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
       setIsValidating(true);
       toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
-      
+
       const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
       console.log(`🔍 [DEBUG] Resultado da validação: ${data.whatsapp} → ${validatedWhatsApp}`);
-      
+
       if (!validatedWhatsApp) {
         console.error(`❌ [DEBUG] Validação falhou para: ${data.whatsapp}`);
         throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
       }
-      
+
       // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e correto retornado pelo Baileys
       if (validatedWhatsApp !== data.whatsapp) {
         console.log(`✅ [DEBUG] Número corrigido: ${data.whatsapp} → ${validatedWhatsApp}`);
-        toast({ 
-          title: "Número corrigido automaticamente!", 
+        toast({
+          title: "Número corrigido automaticamente!",
           description: `${data.whatsapp} → ${validatedWhatsApp}`,
           duration: 3000
         });
       } else {
         console.log(`ℹ️ [DEBUG] Número não foi alterado: ${data.whatsapp}`);
       }
-      
+
       const candidateData = {
         ...data,
         whatsapp: validatedWhatsApp
       };
-      
+
       console.log(`💾 [DEBUG] Salvando candidato com número validado:`, candidateData);
-      
+
       toast({ title: "Número validado com sucesso!", description: "Criando candidato..." });
-      
+
       return await apiRequest('/api/candidates', 'POST', candidateData);
     },
     onSuccess: () => {
@@ -235,10 +259,10 @@ export function CandidateModal({
     },
     onError: (error: any) => {
       setIsValidating(false);
-      toast({ 
-        title: "Erro ao adicionar candidato", 
+      toast({
+        title: "Erro ao adicionar candidato",
         description: error.message || "Erro desconhecido",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
@@ -254,22 +278,22 @@ export function CandidateModal({
       if (data.whatsapp !== editingCandidate.whatsapp) {
         setIsValidating(true);
         toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
-        
+
         const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
-        
+
         if (!validatedWhatsApp) {
           throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
         }
-        
+
         // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e mostrar correção se houve mudança
         if (validatedWhatsApp !== data.whatsapp) {
-          toast({ 
-            title: "Número corrigido automaticamente!", 
+          toast({
+            title: "Número corrigido automaticamente!",
             description: `${data.whatsapp} → ${validatedWhatsApp}`,
             duration: 3000
           });
         }
-        
+
         data.whatsapp = validatedWhatsApp;
         toast({ title: "Número validado com sucesso!", description: "Atualizando candidato..." });
       }
@@ -293,17 +317,17 @@ export function CandidateModal({
     },
     onError: (error: any) => {
       setIsValidating(false);
-      toast({ 
-        title: "Erro ao atualizar candidato", 
+      toast({
+        title: "Erro ao atualizar candidato",
         description: error.message || "Erro desconhecido",
-        variant: "destructive" 
+        variant: "destructive"
       });
     }
   });
 
   const handleSubmit = (data: CandidateFormData) => {
     console.log(`🔍 [DEBUG] CandidateModal - handleSubmit chamado com dados:`, data);
-    
+
     if (editingCandidate) {
       updateCandidateMutation.mutate(data);
     } else {
@@ -364,8 +388,8 @@ export function CandidateModal({
                 <FormItem>
                   <FormLabel>WhatsApp *</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Ex: 5511987654321" 
+                    <Input
+                      placeholder="Ex: 5511987654321"
                       {...field}
                       disabled={isValidating}
                     />
@@ -379,24 +403,24 @@ export function CandidateModal({
             />
 
             <div className="flex justify-end space-x-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => handleOpenChange(false)}
                 disabled={isValidating}
               >
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={createCandidateMutation.isPending || updateCandidateMutation.isPending || isValidating}
               >
-                {isValidating 
-                  ? "Validando..." 
+                {isValidating
+                  ? "Validando..."
                   : (createCandidateMutation.isPending || updateCandidateMutation.isPending)
-                    ? "Salvando..." 
-                    : editingCandidate 
-                      ? "Atualizar" 
+                    ? "Salvando..."
+                    : editingCandidate
+                      ? "Atualizar"
                       : "Adicionar"
                 }
               </Button>
