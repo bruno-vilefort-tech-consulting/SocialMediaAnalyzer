@@ -6728,6 +6728,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🗑️ FORCE DELETE: Endpoint para deletar forçadamente Bruno Vilefort
+  app.delete("/api/force-delete/bruno-vilefort", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user?.clientId?.toString();
+      if (!clientId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cliente não identificado'
+        });
+      }
+      
+      console.log(`🗑️ [FORCE DELETE] Iniciando deleção forçada do Bruno Vilefort para cliente ${clientId}`);
+      
+      // Buscar candidatos do cliente
+      const allCandidates = await storage.getCandidatesByClientId(parseInt(clientId));
+      console.log(`📊 Total de candidatos encontrados: ${allCandidates.length}`);
+      
+      // Filtrar por critérios específicos do Bruno Vilefort
+      const brunoMatches = allCandidates.filter(candidate => {
+        const nameMatch = candidate.name && (
+          candidate.name.toLowerCase().includes('bruno') && candidate.name.toLowerCase().includes('vilefort')
+        );
+        const emailMatch = candidate.email && candidate.email.toLowerCase().includes('bruno.clara@yahoo.com');
+        const phoneMatch = candidate.phone && candidate.phone.includes('31991505564');
+        
+        console.log(`🔍 Testando: ${candidate.name} | ${candidate.email} | ${candidate.phone}`);
+        console.log(`   NameMatch: ${nameMatch}, EmailMatch: ${emailMatch}, PhoneMatch: ${phoneMatch}`);
+        
+        return nameMatch || emailMatch || phoneMatch;
+      });
+      
+      console.log(`🎯 Candidatos que correspondem aos critérios: ${brunoMatches.length}`);
+      
+      if (brunoMatches.length === 0) {
+        // Busca mais ampla
+        const broadMatches = allCandidates.filter(candidate => {
+          const hasVilefort = candidate.name && candidate.name.toLowerCase().includes('vilefort');
+          const hasEmail = candidate.email && candidate.email.toLowerCase().includes('bruno.clara');
+          const hasPhone = candidate.phone && candidate.phone.includes('91505564');
+          
+          return hasVilefort || hasEmail || hasPhone;
+        });
+        
+        console.log(`🔍 Busca ampla encontrou: ${broadMatches.length} candidatos`);
+        
+        if (broadMatches.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'Candidato Bruno Vilefort não encontrado',
+            totalCandidates: allCandidates.length
+          });
+        }
+        
+        brunoMatches.push(...broadMatches);
+      }
+      
+      // Deletar candidatos encontrados
+      const deletedCandidates = [];
+      for (const candidate of brunoMatches) {
+        try {
+          console.log(`🗑️ Deletando candidato ID: ${candidate.id} (${candidate.name})`);
+          await storage.deleteCandidate(candidate.id);
+          deletedCandidates.push({
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.phone
+          });
+          console.log(`✅ Candidato ${candidate.id} deletado com sucesso`);
+        } catch (error) {
+          console.error(`❌ Erro ao deletar candidato ${candidate.id}:`, error);
+        }
+      }
+      
+      console.log(`🎉 [FINALIZADO] ${deletedCandidates.length} candidatos deletados`);
+      
+      res.json({
+        success: true,
+        message: `Bruno Vilefort removido com sucesso`,
+        deletedCandidates,
+        totalDeleted: deletedCandidates.length
+      });
+      
+    } catch (error) {
+      console.error('❌ [FORCE DELETE] Erro na deleção forçada:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor'
+      });
+    }
+  });
+
   // 🔥 NOVO: Endpoint para testar detecção de "1" manualmente
   app.post("/api/user-round-robin/test-trigger", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {
