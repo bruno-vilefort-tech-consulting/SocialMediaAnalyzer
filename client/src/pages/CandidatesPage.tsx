@@ -42,6 +42,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { CandidateModal } from "@/components/CandidateModal";
 import type { CandidateList, InsertCandidateList, Candidate, InsertCandidate, Client } from "@shared/schema";
 
 // Schemas de validação
@@ -550,60 +551,7 @@ export default function CandidatesPage() {
     }
   });
 
-  const createCandidateMutation = useMutation({
-    mutationFn: async (data: CandidateFormData) => {
-      console.log(`🔍 [DEBUG] Iniciando criação de candidato com WhatsApp: ${data.whatsapp}`);
-      
-      // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
-      toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
-      
-      const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
-      console.log(`🔍 [DEBUG] Resultado da validação: ${data.whatsapp} → ${validatedWhatsApp}`);
-      
-      if (!validatedWhatsApp) {
-        console.error(`❌ [DEBUG] Validação falhou para: ${data.whatsapp}`);
-        throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
-      }
-      
-      // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e correto retornado pelo Baileys
-      if (validatedWhatsApp !== data.whatsapp) {
-        console.log(`✅ [DEBUG] Número corrigido: ${data.whatsapp} → ${validatedWhatsApp}`);
-        toast({ 
-          title: "Número corrigido automaticamente!", 
-          description: `${data.whatsapp} → ${validatedWhatsApp}`,
-          duration: 3000
-        });
-      } else {
-        console.log(`ℹ️ [DEBUG] Número não foi alterado: ${data.whatsapp}`);
-      }
-      
-      const candidateData = {
-        ...data,
-        whatsapp: validatedWhatsApp
-      };
-      
-      console.log(`💾 [DEBUG] Salvando candidato com número validado:`, candidateData);
-      
-      toast({ title: "Número validado com sucesso!", description: "Criando candidato..." });
-      
-      return await apiRequest('/api/candidates', 'POST', candidateData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/lists', selectedListId, 'candidates'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
-      setShowCandidateForm(false);
-      candidateForm.reset();
-      toast({ title: "Candidato adicionado com sucesso!", description: "Número WhatsApp validado e candidato criado." });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Erro ao adicionar candidato", 
-        description: error.message || "Erro desconhecido",
-        variant: "destructive" 
-      });
-    }
-  });
+  // ✅ REMOVIDO: createCandidateMutation movido para CandidateModal
 
   const updateCandidateMutation = useMutation({
     mutationFn: async (data: { name: string; email: string; whatsapp: string }) => {
@@ -1870,158 +1818,26 @@ export default function CandidatesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para adicionar/editar candidato */}
-      <Dialog open={showCandidateForm} onOpenChange={(open) => {
-        setShowCandidateForm(open);
-        if (!open) {
-          setEditingCandidate(null);
-          candidateForm.reset({
-            name: "",
-            email: "",
-            whatsapp: "",
-            listId: 0,
-            clientId: 0
-          });
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingCandidate ? "Editar Candidato" : "Novo Candidato"}
-            </DialogTitle>
-          </DialogHeader>
+      {/* ✅ NOVO: CandidateModal com validação WhatsApp integrada */}
+      <CandidateModal
+        open={showCandidateForm}
+        onOpenChange={(open) => {
+          setShowCandidateForm(open);
+          if (!open) {
+            setEditingCandidate(null);
+          }
+        }}
+        editingCandidate={editingCandidate}
+        selectedListId={selectedListId}
+        clientId={user?.role === 'client' ? user.clientId! : 1749849987543} // Usar clientId correto baseado no usuário
+        onSuccess={() => {
+          // Callback de sucesso - dados já invalidados no modal
+          console.log('✅ [DEBUG] Candidato criado/atualizado com sucesso via CandidateModal');
+        }}
+      />
 
-          <Form {...candidateForm}>
-            <form onSubmit={candidateForm.handleSubmit(handleSubmitCandidate)} className="space-y-4">
-              {/* Campos básicos do candidato */}
-              <FormField
-                control={candidateForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: João Silva" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={candidateForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="joao@email.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={candidateForm.control}
-                name="whatsapp"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>WhatsApp *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="11987654321 ou 5511987654321" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Seleção de cliente (master only) - apenas quando não estiver dentro de lista específica */}
-              {user?.role === 'master' && !selectedListId && (
-                <FormField
-                  control={candidateForm.control}
-                  name="clientId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cliente *</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o cliente" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {clients?.map((client) => (
-                            <SelectItem key={client.id} value={client.id.toString()}>
-                              {client.companyName}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Seleção de lista - apenas quando não estiver dentro de lista específica */}
-              {!selectedListId && (
-                <FormField
-                  control={candidateForm.control}
-                  name="listId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Lista de Candidatos *</FormLabel>
-                      <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a lista" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {candidateLists
-                            ?.filter(list => user?.role === 'master' ?
-                              (candidateForm.watch('clientId') ? list.clientId === candidateForm.watch('clientId') : true) :
-                              list.clientId === user?.clientId
-                            )
-                            .map((list) => (
-                              <SelectItem key={list.id} value={list.id.toString()}>
-                                {list.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Contexto visual quando dentro de lista específica */}
-              {selectedListId && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <div className="font-medium">Adicionando à lista atual:</div>
-                    <div className="mt-1 font-semibold">
-                      {candidateLists?.find(list => list.id === selectedListId)?.name}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setShowCandidateForm(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={createCandidateMutation.isPending || updateCandidateMutation.isPending}>
-                  {editingCandidate ? "Salvar" : "Adicionar"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
+      {/* ✅ REMOVIDO: Modal antigo substituído pelo CandidateModal */}
+      {/* Dialog para adicionar/editar candidato - REMOVIDO */}
       {/* Dialog para adicionar candidatos existentes */}
       <Dialog open={showExistingCandidatesDialog} onOpenChange={(open) => {
         setShowExistingCandidatesDialog(open);
