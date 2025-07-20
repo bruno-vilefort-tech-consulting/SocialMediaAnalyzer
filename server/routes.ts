@@ -6671,26 +6671,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Funções auxiliares para manipulação do 9º dígito
+      function removeDigitNine(phone: string): string {
+        return phone.replace(/^(\d{2})(\d{2})9(\d{4})(\d{4})$/, '$1$2$3$4');
+      }
+      
+      function addDigitNine(phone: string): string {
+        // Se já tem 13 dígitos, não modificar
+        if (phone.length === 13) return phone;
+        // Se tem 12 dígitos (55 + DDD + 8), adicionar 9 após DDD
+        if (phone.length === 12) {
+          return phone.replace(/^(\d{2})(\d{2})(\d{4})(\d{4})$/, '$1$29$3$4');
+        }
+        return phone;
+      }
+      
       // Formatar número no formato internacional
       let normalizedPhone = phone.replace(/\D/g, '');
       if (!normalizedPhone.startsWith('55')) {
         normalizedPhone = '55' + normalizedPhone;
       }
       
-      // Gerar candidatos de números para testar conforme estratégia especificada
-      const candidates = [normalizedPhone];
+      // 🔁 ESTRATÉGIA BIDIRECIONAL COMPLETA: Testar todas as possibilidades
+      const candidates = [
+        normalizedPhone,                    // Número original
+        removeDigitNine(normalizedPhone),   // Sem o 9º dígito (números antigos MG)
+        addDigitNine(normalizedPhone)       // Com o 9º dígito adicionado
+      ];
       
-      // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), testar também sem o 9 (para números de MG)
-      if (normalizedPhone.length === 13) {
-        const withoutNine = normalizedPhone.replace(/^(\d{2})(\d{2})9(\d{4})(\d{4})$/, '$1$2$3$4');
-        candidates.push(withoutNine);
-        console.log(`📱 [VALIDATE-WHATSAPP] Testando candidatos: ${normalizedPhone} e ${withoutNine} (sem 9º dígito)`);
-      } else {
-        console.log(`📱 [VALIDATE-WHATSAPP] Testando candidato: ${normalizedPhone}`);
-      }
+      // Remover duplicatas e números inválidos
+      const uniqueCandidates = Array.from(new Set(candidates)).filter(num => 
+        num.length >= 12 && num.length <= 13 && num.startsWith('55')
+      );
       
-      // Testar cada candidato usando resolveValidNumber strategy
-      for (const candidate of candidates) {
+      console.log(`📱 [VALIDATE-WHATSAPP] Estratégia bidirecional: testando ${uniqueCandidates.length} candidatos para ${phone}:`, uniqueCandidates);
+      
+      // Testar cada candidato usando estratégia resolveValidNumber aprimorada
+      for (const candidate of uniqueCandidates) {
         try {
           const jid = candidate + '@s.whatsapp.net';
           const [result] = await activeConnection.socket.onWhatsApp(jid);
@@ -6712,11 +6729,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Se chegou até aqui, nenhum candidato foi válido
-      console.log(`❌ [VALIDATE-WHATSAPP] Nenhum dos candidatos para ${phone} existe no WhatsApp`);
+      console.log(`❌ [VALIDATE-WHATSAPP] Nenhum dos ${uniqueCandidates.length} candidatos para ${phone} existe no WhatsApp`);
       return res.json({
         isValid: false,
         error: 'Número não está registrado no WhatsApp',
-        testedNumbers: candidates
+        testedNumbers: uniqueCandidates
       });
       
     } catch (error) {
