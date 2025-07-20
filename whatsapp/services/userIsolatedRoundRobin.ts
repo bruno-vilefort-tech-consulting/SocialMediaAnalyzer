@@ -59,6 +59,9 @@ class UserIsolatedRoundRobin {
   private userConfigs: Map<string, CadenceConfig> = new Map(); // userId -> config
   private activeDistributions: Map<string, RoundRobinDistribution[]> = new Map(); // userId -> distributions
   
+  // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA
+  private processingCadences: Set<string> = new Set(); // userId_candidatePhone para evitar processamento duplo
+  
   constructor() {
   }
 
@@ -153,8 +156,18 @@ class UserIsolatedRoundRobin {
    * 🔄 CORREÇÃO: Acumula candidatos em vez de sobrescrever cadência existente
    */
   async activateImmediateCadence(userId: string, clientId: string, candidatePhone: string): Promise<void> {
+    const processKey = `${userId}_${candidatePhone}`;
     
-    // Configurar modo imediato
+    // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo da mesma cadência
+    if (this.processingCadences.has(processKey)) {
+      console.log(`⚠️ Cadência já sendo processada para ${userId}_${candidatePhone}, pulando duplicata`);
+      return;
+    }
+    
+    this.processingCadences.add(processKey);
+    
+    try {
+      // Configurar modo imediato
     const config = this.userConfigs.get(userId) || {
       userId,
       baseDelay: 500, // Delay reduzido para modo imediato
@@ -268,6 +281,11 @@ class UserIsolatedRoundRobin {
         console.error(`❌ Erro ao processar cadência para usuário ${userId}:`, error);
       }
     }, 500);
+    
+    } finally {
+      // 🔒 SEMPRE remover da lista de processamento para evitar travamento
+      this.processingCadences.delete(processKey);
+    }
   }
 
   /**

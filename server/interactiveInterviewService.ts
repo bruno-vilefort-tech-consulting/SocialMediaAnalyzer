@@ -25,8 +25,49 @@ interface ActiveInterview {
 
 class InteractiveInterviewService {
   private activeInterviews: Map<string, ActiveInterview> = new Map();
+  
+  // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo
+  private processingRequests: Set<string> = new Set(); // phone_action para evitar duplicatas
 
   constructor() {}
+  
+  /**
+   * 🔒 CORREÇÃO DE CONCORRÊNCIA: Limpeza seletiva por telefone
+   * Remove apenas entrevistas antigas do mesmo telefone, preservando outras pessoas
+   */
+  private async cleanupStaleInterviewsForPhone(phone: string): Promise<void> {
+    try {
+      const existingInterview = this.activeInterviews.get(phone);
+      
+      if (existingInterview) {
+        // Verificar se entrevista é muito antiga (mais de 1 hora)
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        const interviewStartTime = new Date(existingInterview.startTime).getTime();
+        
+        if (interviewStartTime < oneHourAgo) {
+          console.log(`🧹 Limpando entrevista antiga para ${phone} (${Math.round((Date.now() - interviewStartTime) / (60 * 1000))} min atrás)`);
+          
+          // Tentar salvar progresso antes de limpar
+          if (existingInterview.interviewDbId) {
+            try {
+              await storage.updateInterview(parseInt(existingInterview.interviewDbId), { 
+                status: 'timeout' 
+              });
+            } catch (error) {
+              console.error(`❌ Erro ao salvar entrevista antiga:`, error);
+            }
+          }
+          
+          this.activeInterviews.delete(phone);
+          console.log(`✅ Entrevista antiga removida para ${phone}`);
+        } else {
+          console.log(`⚠️ Entrevista recente detectada para ${phone}, mantendo ativa`);
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Erro na limpeza seletiva para ${phone}:`, error);
+    }
+  }
   
   /**
    * 🔍 MÉTODO DE DETECÇÃO ROBUSTA DE CLIENTE
@@ -361,7 +402,17 @@ class InteractiveInterviewService {
   async handleMessage(from: string, text: string, audioMessage?: any, clientId?: string): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
     
-    // 🔒 ISOLAMENTO CORRIGIDO: Usar o método detectClientIdRobust para determinar cliente
+    // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo do mesmo telefone
+    const requestKey = `${phone}_${text}`;
+    if (this.processingRequests.has(requestKey)) {
+      console.log(`⚠️ Requisição já sendo processada para ${phone} (${text}), ignorando duplicata`);
+      return;
+    }
+    
+    this.processingRequests.add(requestKey);
+    
+    try {
+      // 🔒 ISOLAMENTO CORRIGIDO: Usar o método detectClientIdRobust para determinar cliente
     // Se clientId não fornecido, detectar automaticamente respeitando isolamento
     if (!clientId) {
       clientId = await this.detectClientIdRobust(phone);
@@ -393,8 +444,9 @@ class InteractiveInterviewService {
       // 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
       await this.activateUserImmediateCadence(phone, clientId);
       
-      // CORREÇÃO CRÍTICA: Limpar TODAS as entrevistas ativas para garantir uso da seleção mais recente
-      this.activeInterviews.clear();
+      // 🔒 CORREÇÃO DE CONCORRÊNCIA: Limpar apenas entrevistas antigas do MESMO telefone
+      // em vez de limpar TODAS as entrevistas (que quebrava outras pessoas)
+      await this.cleanupStaleInterviewsForPhone(phone);
       await this.startInterview(phone, clientId);
     } else if (text === '2') {
       await this.sendMessage(from, "Entendido. Obrigado!", clientId);
@@ -431,6 +483,11 @@ class InteractiveInterviewService {
       await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
       await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar", clientId);
+    }
+    
+    } finally {
+      // 🔒 SEMPRE remover da lista de processamento para evitar travamento
+      this.processingRequests.delete(requestKey);
     }
   }
 
