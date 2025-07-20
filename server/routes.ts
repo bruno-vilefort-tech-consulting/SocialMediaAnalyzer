@@ -6620,6 +6620,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🎯 NOVO: Endpoint para validar números WhatsApp via Baileys
+  app.post("/api/whatsapp/validate-number", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { phone } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({
+          isValid: false,
+          error: 'Número de telefone é obrigatório'
+        });
+      }
+      
+      console.log(`📱 [VALIDATE-WHATSAPP] Validando número: ${phone}`);
+      
+      await lazyLoadWhatsAppServices();
+      
+      if (!simpleMultiBaileyService) {
+        console.log('⚠️ [VALIDATE-WHATSAPP] Simple Multi Bailey Service não disponível');
+        return res.status(503).json({
+          isValid: false,
+          error: 'Serviço WhatsApp não disponível'
+        });
+      }
+      
+      // Obter cliente ID do usuário autenticado
+      const clientId = req.user?.clientId?.toString();
+      if (!clientId) {
+        return res.status(400).json({
+          isValid: false,
+          error: 'Cliente não identificado'
+        });
+      }
+      
+      // Verificar se há conexões ativas para este cliente
+      const connections = await simpleMultiBaileyService.getClientConnections(clientId);
+      if (connections.activeConnections === 0) {
+        return res.status(400).json({
+          isValid: false,
+          error: 'Nenhuma conexão WhatsApp ativa. Conecte o WhatsApp primeiro nas Configurações.'
+        });
+      }
+      
+      // Validar número usando o primeiro slot ativo
+      const activeConnection = connections.connections.find(conn => conn.isConnected);
+      if (!activeConnection || !activeConnection.socket) {
+        return res.status(400).json({
+          isValid: false,
+          error: 'Socket WhatsApp não disponível'
+        });
+      }
+      
+      // Formatar número no formato internacional
+      let normalizedPhone = phone.replace(/\D/g, '');
+      if (!normalizedPhone.startsWith('55')) {
+        normalizedPhone = '55' + normalizedPhone;
+      }
+      
+      // Gerar candidatos de números para testar conforme estratégia especificada
+      const candidates = [normalizedPhone];
+      
+      // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), testar também sem o 9 (para números de MG)
+      if (normalizedPhone.length === 13) {
+        const withoutNine = normalizedPhone.replace(/^(\d{2})(\d{2})9(\d{4})(\d{4})$/, '$1$2$3$4');
+        candidates.push(withoutNine);
+        console.log(`📱 [VALIDATE-WHATSAPP] Testando candidatos: ${normalizedPhone} e ${withoutNine} (sem 9º dígito)`);
+      } else {
+        console.log(`📱 [VALIDATE-WHATSAPP] Testando candidato: ${normalizedPhone}`);
+      }
+      
+      // Testar cada candidato usando resolveValidNumber strategy
+      for (const candidate of candidates) {
+        try {
+          const jid = candidate + '@s.whatsapp.net';
+          const [result] = await activeConnection.socket.onWhatsApp(jid);
+          
+          if (result && result.exists) {
+            console.log(`✅ [VALIDATE-WHATSAPP] Número ${candidate} é válido: ${result.jid}`);
+            return res.json({
+              isValid: true,
+              validatedNumber: result.jid.replace('@s.whatsapp.net', ''),
+              originalNumber: phone,
+              testedNumber: candidate
+            });
+          } else {
+            console.log(`❌ [VALIDATE-WHATSAPP] Número ${candidate} não existe no WhatsApp`);
+          }
+        } catch (error) {
+          console.error(`❌ [VALIDATE-WHATSAPP] Erro testando ${candidate}:`, error);
+        }
+      }
+      
+      // Se chegou até aqui, nenhum candidato foi válido
+      console.log(`❌ [VALIDATE-WHATSAPP] Nenhum dos candidatos para ${phone} existe no WhatsApp`);
+      return res.json({
+        isValid: false,
+        error: 'Número não está registrado no WhatsApp',
+        testedNumbers: candidates
+      });
+      
+    } catch (error) {
+      console.error('❌ [VALIDATE-WHATSAPP] Erro na validação:', error);
+      res.status(500).json({
+        isValid: false,
+        error: 'Erro interno do servidor'
+      });
+    }
+  });
+
   // 🔥 NOVO: Endpoint para testar detecção de "1" manualmente
   app.post("/api/user-round-robin/test-trigger", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
     try {

@@ -62,6 +62,51 @@ const candidateSchema = z.object({
 type CandidateListFormData = z.infer<typeof candidateListSchema>;
 type CandidateFormData = z.infer<typeof candidateSchema>;
 
+// Função para remover o 9º dígito de números de Minas Gerais
+function removeDigitNine(phone: string): string {
+  return phone.replace(/^(\d{2})9(\d{4})(\d{4})$/, '$1$2$3');
+}
+
+// Função para validar número WhatsApp via Baileys
+async function validateWhatsAppNumber(rawPhone: string): Promise<string | null> {
+  try {
+    // Normalizar número para formato brasileiro
+    let normalizedPhone = rawPhone.replace(/\D/g, '');
+    
+    // Adicionar código do país se necessário
+    if (normalizedPhone.length === 10 || normalizedPhone.length === 11) {
+      normalizedPhone = '55' + normalizedPhone;
+    }
+    
+    // Gerar candidatos de números para testar
+    const candidates = [normalizedPhone];
+    
+    // Se tem 13 dígitos (55 + DDD + 9 + 8 dígitos), testar também sem o 9
+    if (normalizedPhone.length === 13) {
+      candidates.push(removeDigitNine(normalizedPhone));
+    }
+    
+    // Testar cada candidato via API
+    for (const number of candidates) {
+      try {
+        const response = await apiRequest('/api/whatsapp/validate-number', 'POST', { phone: number });
+        const result = await response.json();
+        
+        if (result.isValid && result.validatedNumber) {
+          return result.validatedNumber;
+        }
+      } catch (error) {
+        console.warn(`Erro ao validar número ${number}:`, error);
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Erro na validação WhatsApp:', error);
+    return null;
+  }
+}
+
 export default function CandidatesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -474,7 +519,24 @@ export default function CandidatesPage() {
 
   const createCandidateMutation = useMutation({
     mutationFn: async (data: CandidateFormData) => {
-      return await apiRequest('/api/candidates', 'POST', data);
+      // 🎯 VALIDAÇÃO WHATSAPP: Verificar se número existe no WhatsApp antes de salvar
+      toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
+      
+      const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
+      
+      if (!validatedWhatsApp) {
+        throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
+      }
+      
+      // Usar o número validado retornado pelo Baileys
+      const candidateData = {
+        ...data,
+        whatsapp: validatedWhatsApp
+      };
+      
+      toast({ title: "Número validado com sucesso!", description: "Criando candidato..." });
+      
+      return await apiRequest('/api/candidates', 'POST', candidateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/candidates'] });
@@ -482,10 +544,14 @@ export default function CandidatesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/candidate-list-memberships'] });
       setShowCandidateForm(false);
       candidateForm.reset();
-      toast({ title: "Candidato adicionado com sucesso!" });
+      toast({ title: "Candidato adicionado com sucesso!", description: "Número WhatsApp validado e candidato criado." });
     },
-    onError: (error) => {
-      toast({ title: "Erro ao adicionar candidato", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Erro ao adicionar candidato", 
+        description: error.message || "Erro desconhecido",
+        variant: "destructive" 
+      });
     }
   });
 
@@ -493,6 +559,22 @@ export default function CandidatesPage() {
     mutationFn: async (data: { name: string; email: string; whatsapp: string }) => {
       if (!editingCandidate) {
         throw new Error("Nenhum candidato selecionado para edição");
+      }
+
+      // 🎯 VALIDAÇÃO WHATSAPP: Verificar se número existe no WhatsApp antes de atualizar
+      // Só validar se o WhatsApp foi alterado
+      if (data.whatsapp !== editingCandidate.whatsapp) {
+        toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
+        
+        const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
+        
+        if (!validatedWhatsApp) {
+          throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
+        }
+        
+        // Usar o número validado
+        data.whatsapp = validatedWhatsApp;
+        toast({ title: "Número validado com sucesso!", description: "Atualizando candidato..." });
       }
 
       const response = await apiRequest(`/api/candidates/${editingCandidate.id}`, 'PATCH', data);

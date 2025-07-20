@@ -115,6 +115,18 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 20, 2025: ✅ SISTEMA DE VALIDAÇÃO WHATSAPP IMPLEMENTADO COMPLETAMENTE - Estratégia robusta com teste do 9º dígito aplicada na página /candidatos
+  - **Validação dupla implementada**: Sistema testa primeiro número com 9º dígito, depois sem 9º dígito (especial para Minas Gerais)
+  - **Endpoint backend criado**: `/api/whatsapp/validate-number` usando Baileys onWhatsApp() para validação real
+  - **Frontend atualizado**: CandidatesPage.tsx com validação automática na criação e edição de candidatos
+  - **Função validateWhatsAppNumber**: Testa candidatos de números e retorna apenas números validados pelo WhatsApp
+  - **Função removeDigitNine**: Remove 9º dígito conforme padrão Anatel para números de MG
+  - **Mensagens informativas**: Toast notifications durante validação ("Validando número WhatsApp...", "Número validado com sucesso!")
+  - **Tratamento de erros**: Mensagens claras quando número não está registrado no WhatsApp
+  - **Integração com conexões**: Sistema verifica se há conexões WhatsApp ativas antes de validar
+  - **Logs detalhados**: Monitoramento completo do processo de validação no backend
+  - **Estratégia escalável**: Funciona para TODOS os usuários, testando múltiplos formatos por número
+
 - July 17, 2025: ✅ PROBLEMA CRÍTICO DE LOOP INFINITO NA ENTREVISTA RESOLVIDO DEFINITIVAMENTE - Três correções específicas aplicadas com sucesso
   - **Problema 1 - Incremento da pergunta**: Confirmado que `interview.currentQuestion++` já estava funcionando corretamente no processResponse()
   - **Problema 2 - Validação de seleções antigas**: Implementada validação temporal de 1 hora para evitar reinicializações desnecessárias
