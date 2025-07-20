@@ -96,69 +96,39 @@ function addDigitNine(phone: string): string {
   return cleanPhone;
 }
 
-// ✅ FUNÇÃO DE VALIDAÇÃO APRIMORADA: Remover implementação hardcoded temporária
+// ✅ VALIDAÇÃO WHATSAPP COM BAILEYS: Usando endpoint real com estratégia bidirecional
 async function validateWhatsAppNumber(rawPhone: string): Promise<string | null> {
   try {
-    // Normalizar número para formato brasileiro
-    let normalizedPhone = rawPhone.replace(/\D/g, '');
+    console.log(`📱 [VALIDATION] Iniciando validação Baileys para: ${rawPhone}`);
 
-    // Adicionar código do país se necessário
-    if (normalizedPhone.length === 10 || normalizedPhone.length === 11) {
-      normalizedPhone = '55' + normalizedPhone;
+    // Usar o endpoint real de validação WhatsApp
+    const response = await apiRequest('/api/whatsapp/validate-number', 'POST', { phone: rawPhone });
+    const result = await response.json();
+
+    if (result.isValid && result.validatedNumber) {
+      console.log(`✅ [VALIDATION] Número validado via Baileys: ${rawPhone} → ${result.validatedNumber}`);
+      return result.validatedNumber;
+    } else {
+      console.log(`❌ [VALIDATION] Número ${rawPhone} não existe no WhatsApp. Testados: ${result.testedNumbers?.join(', ')}`);
+      return null;
     }
 
-    // 🔁 ESTRATÉGIA BIDIRECIONAL: Testar as 3 possibilidades
-    const candidates = [
-      normalizedPhone,                    // Número original
-      removeDigitNine(normalizedPhone),   // Sem o 9º dígito (números antigos MG)
-      addDigitNine(normalizedPhone)       // Com o 9º dígito adicionado
-    ];
-
-    // Remover duplicatas e números inválidos
-    const uniqueCandidates = Array.from(new Set(candidates)).filter(num =>
-      num.length >= 12 && num.length <= 13 && num.startsWith('55')
-    );
-
-    console.log(`📱 [VALIDATION] Testando ${uniqueCandidates.length} candidatos para ${rawPhone}:`, uniqueCandidates);
-
-    // ✅ CORREÇÃO CRÍTICA: Remover implementação temporária hardcoded
-    // Testar todos os candidatos via API ou usar fallback inteligente
-    for (const number of uniqueCandidates) {
-      try {
-        const response = await apiRequest('/api/whatsapp/validate-number', 'POST', { phone: number });
-        const result = await response.json();
-
-        if (result.isValid && result.validatedNumber) {
-          console.log(`✅ [VALIDATION] Número validado via API: ${result.validatedNumber}`);
-          return result.validatedNumber;
-        }
-      } catch (error) {
-        console.warn(`⚠️ [VALIDATION] Erro ao validar número ${number}:`, error);
+  } catch (error: any) {
+    console.error('❌ [VALIDATION] Erro na validação Baileys:', error);
+    
+    // Verificar se é erro de resposta HTTP
+    if (error instanceof Response || (error.response && !error.response.ok)) {
+      const errorData = await error.json?.() || await error.response?.json?.() || {};
+      
+      // Se for erro específico de conexão WhatsApp
+      if (errorData.error?.includes('conexão WhatsApp') || errorData.error?.includes('WhatsApp ativa')) {
+        throw new Error('Para validar números WhatsApp, é necessário ter uma conexão WhatsApp ativa. Acesse as Configurações e conecte seu WhatsApp primeiro.');
       }
+      
+      throw new Error(errorData.error || 'Erro ao validar número WhatsApp');
     }
-
-    // 🔧 FALLBACK INTELIGENTE: Se API falhar, usar lógica local para correção
-    // Priorizar números corrigidos que sejam diferentes do original
-    const correctedNumbers = uniqueCandidates.filter(num => num !== normalizedPhone);
-
-    if (correctedNumbers.length > 0) {
-      const correctedNumber = correctedNumbers[0];
-      console.log(`🔧 [VALIDATION-FALLBACK] Usando correção local: ${rawPhone} → ${correctedNumber}`);
-      return correctedNumber;
-    }
-
-    // Se nenhuma correção foi feita, retornar o número normalizado
-    console.log(`ℹ️ [VALIDATION] Retornando número normalizado: ${normalizedPhone}`);
-    return normalizedPhone;
-
-  } catch (error) {
-    console.error('❌ [VALIDATION] Erro geral na validação WhatsApp:', error);
-    // Em caso de erro total, tentar pelo menos normalizar
-    const fallback = rawPhone.replace(/\D/g, '');
-    if (fallback.length >= 10) {
-      return fallback.length >= 12 ? fallback : '55' + fallback;
-    }
-    return null;
+    
+    throw new Error(`Erro ao validar número WhatsApp: ${error.message || 'Serviço temporariamente indisponível'}`);
   }
 }
 
@@ -210,16 +180,19 @@ export function CandidateModal({
     mutationFn: async (data: CandidateFormData) => {
       console.log(`🔍 [DEBUG] Iniciando criação de candidato com WhatsApp: ${data.whatsapp}`);
 
-      // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
+      // 🎯 VALIDAÇÃO WHATSAPP BAILEYS: Verificar número usando onWhatsApp real
       setIsValidating(true);
-      toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
+      toast({ 
+        title: "Validando número WhatsApp via Baileys...", 
+        description: "Testando se o número existe no WhatsApp..."
+      });
 
       const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
-      console.log(`🔍 [DEBUG] Resultado da validação: ${data.whatsapp} → ${validatedWhatsApp}`);
+      console.log(`🔍 [DEBUG] Resultado da validação Baileys: ${data.whatsapp} → ${validatedWhatsApp}`);
 
       if (!validatedWhatsApp) {
-        console.error(`❌ [DEBUG] Validação falhou para: ${data.whatsapp}`);
-        throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
+        console.error(`❌ [DEBUG] Validação Baileys falhou para: ${data.whatsapp}`);
+        throw new Error(`Número WhatsApp ${data.whatsapp} não está registrado no WhatsApp. Verifique o número e tente novamente.`);
       }
 
       // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e correto retornado pelo Baileys
@@ -270,16 +243,19 @@ export function CandidateModal({
         throw new Error("Nenhum candidato selecionado para edição");
       }
 
-      // 🎯 VALIDAÇÃO WHATSAPP: Verificar e corrigir número automaticamente
+      // 🎯 VALIDAÇÃO WHATSAPP BAILEYS: Verificar número usando onWhatsApp real
       // Só validar se o WhatsApp foi alterado
       if (data.whatsapp !== editingCandidate.whatsapp) {
         setIsValidating(true);
-        toast({ title: "Validando número WhatsApp...", description: "Aguarde..." });
+        toast({ 
+          title: "Validando número WhatsApp via Baileys...", 
+          description: "Testando se o número existe no WhatsApp..."
+        });
 
         const validatedWhatsApp = await validateWhatsAppNumber(data.whatsapp);
 
         if (!validatedWhatsApp) {
-          throw new Error(`Número WhatsApp ${data.whatsapp} não é válido ou não está registrado no WhatsApp. Verifique o número e tente novamente.`);
+          throw new Error(`Número WhatsApp ${data.whatsapp} não está registrado no WhatsApp. Verifique o número e tente novamente.`);
         }
 
         // ✅ CORREÇÃO AUTOMÁTICA: Usar número validado e mostrar correção se houve mudança
@@ -292,7 +268,7 @@ export function CandidateModal({
         }
 
         data.whatsapp = validatedWhatsApp;
-        toast({ title: "Número validado com sucesso!", description: "Atualizando candidato..." });
+        toast({ title: "Número validado via Baileys!", description: "Atualizando candidato..." });
       }
 
       const updatedData = {
