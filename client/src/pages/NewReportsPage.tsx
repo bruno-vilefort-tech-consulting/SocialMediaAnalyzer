@@ -355,9 +355,48 @@ export default function NewReportsPage() {
     enabled: !!selectedSelection
   });
 
+  // 🔧 FUNÇÃO PARA NORMALIZAR URLS DE ÁUDIO (CORREÇÃO CRÍTICA)
+  const normalizeAudioUrl = (audioUrl: string | undefined): string => {
+    if (!audioUrl || audioUrl === "") {
+      return "";
+    }
+
+    // Se já é uma URL HTTP válida, retornar como está
+    if (audioUrl.startsWith('/api/audio/') || audioUrl.startsWith('http')) {
+      return audioUrl;
+    }
+
+    // Se é um caminho absoluto do sistema, extrair apenas o nome do arquivo
+    if (audioUrl.includes('/uploads/') || audioUrl.includes('\\uploads\\')) {
+      try {
+        // Extrair nome do arquivo do caminho absoluto
+        const filename = audioUrl.split(/[/\\]/).pop();
+        
+        if (filename && filename.includes('.ogg')) {
+          const httpUrl = `/api/audio/${filename}`;
+          console.log(`🔗 [FRONTEND-FIX] Convertendo audioUrl: ${audioUrl} → ${httpUrl}`);
+          return httpUrl;
+        }
+      } catch (error) {
+        console.error(`❌ [FRONTEND-FIX] Erro ao converter audioUrl:`, error);
+      }
+    }
+
+    return audioUrl; // Fallback para URL original
+  };
+
   // Combinar todos os candidatos da lista com os dados de entrevista (otimizado)
   const allCandidatesWithStatus = React.useMemo(() => {
-    if (!allCandidatesInList.length) return interviewCandidates;
+    if (!allCandidatesInList.length) {
+      // 🔧 CORREÇÃO: Normalizar URLs de áudio mesmo quando só há dados de entrevista
+      return interviewCandidates.map(candidate => ({
+        ...candidate,
+        responses: candidate.responses.map((response: any) => ({
+          ...response,
+          audioUrl: normalizeAudioUrl(response.audioUrl)
+        }))
+      }));
+    }
 
     // Criar um map dos candidatos que já fizeram entrevista
     const interviewMap = new Map();
@@ -370,8 +409,16 @@ export default function NewReportsPage() {
       const existingInterview = interviewMap.get(candidate.id);
 
       if (existingInterview) {
-        // Candidato já tem entrevista registrada
-        return existingInterview;
+        // 🔧 CORREÇÃO: Normalizar URLs de áudio nas respostas
+        const normalizedResponses = existingInterview.responses.map((response: any) => ({
+          ...response,
+          audioUrl: normalizeAudioUrl(response.audioUrl)
+        }));
+
+        return {
+          ...existingInterview,
+          responses: normalizedResponses
+        };
       } else {
         // Candidato ainda não fez entrevista - criar estrutura padrão
         return {
@@ -1674,6 +1721,10 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
   // Controlar reprodução do áudio
   const toggleAudio = (audioUrl: string, responseId: string) => {
     try {
+      // 🔧 CORREÇÃO CRÍTICA: Normalizar URL de entrada
+      const normalizedUrl = normalizeAudioUrl(audioUrl);
+      console.log(`🎵 [AUDIO-TOGGLE] Iniciando player para: ${normalizedUrl}`);
+      
       const currentState = audioStates[responseId];
 
       // Parar todos os outros áudios
@@ -1731,17 +1782,13 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
         });
 
         audio.addEventListener('error', (e) => {
-          // Tentar URL alternativa ou conversão
-          if (audioUrl.includes('.ogg')) {
-            const directUrl = audioUrl.replace('/uploads/', '/uploads/');
-            audio.src = directUrl;
-          }
-
+          console.error(`❌ [AUDIO-ERROR] Falha ao carregar: ${normalizedUrl}`, e);
           updateAudioState(responseId, { isPlaying: false });
         });
 
-        // Definir URL após configurar eventos
-        audio.src = audioUrl;
+        // 🔧 CORREÇÃO: Usar URL já normalizada
+        console.log(`🎵 [AUDIO-PLAYER] Configurando src: ${normalizedUrl}`);
+        audio.src = normalizedUrl;
       }
 
       const audio = audioRefs.current[responseId];
@@ -2046,7 +2093,7 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => toggleAudio(response.audioUrl!, responseId)}
+                            onClick={() => toggleAudio(normalizeAudioUrl(response.audioUrl!), responseId)}
                             className="flex items-center gap-2"
                           >
                             {audioState.isPlaying ? (
