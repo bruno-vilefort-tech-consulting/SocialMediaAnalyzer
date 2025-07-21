@@ -3690,6 +3690,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint alternativo que o frontend está chamando
+  app.post("/api/api-config/:entityType/:entityId", authenticate, authorize(['master', 'client']), async (req, res) => {
+    try {
+      const { entityType, entityId } = req.params;
+      const { openaiVoice } = req.body;
+      console.log(`💾 [PARAMS] Salvando API Config: ${entityType}/${entityId}, voz: ${openaiVoice}`);
+      
+      const configData = {
+        entityType,
+        entityId,
+        openaiVoice: openaiVoice || null,
+        updatedAt: new Date()
+      };
+
+      const config = await storage.upsertApiConfig(configData);
+      console.log(`✅ [PARAMS] API Config salva com sucesso:`, config);
+      res.json(config);
+    } catch (error) {
+      console.error('❌ [PARAMS] Erro ao salvar API config:', error);
+      res.status(500).json({ error: 'Failed to save configuration' });
+    }
+  });
+
   // TTS Preview endpoint
   app.post("/api/tts/preview", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {

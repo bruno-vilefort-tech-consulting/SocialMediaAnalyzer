@@ -653,6 +653,9 @@ class InteractiveInterviewService {
       // Buscar configuração de voz do cliente
       const clientConfig = await storage.getApiConfig('client', clientId);
       const voice = clientConfig?.openaiVoice || 'nova';
+      
+      console.log(`🔊 [TTS-CONFIG] Cliente ${clientId}: configuração encontrada =`, clientConfig);
+      console.log(`🔊 [TTS-CONFIG] Voz selecionada para entrevista: "${voice}"`);
 
       const ttsRequest = {
         model: "tts-1",

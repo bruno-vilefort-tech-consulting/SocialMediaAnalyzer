@@ -115,6 +115,16 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 21, 2025: ✅ INTEGRAÇÃO TTS CONFIGURAÇÕES DE VOZ CORRIGIDA E APRIMORADA - Sistema usa voz selecionada nas entrevistas 
+  - **PROBLEMA IDENTIFICADO**: Preview de áudio funcionava na página "/configuracoes" mas entrevistas não usavam a voz configurada
+  - **ENDPOINT MISMATCH CORRIGIDO**: Adicionado endpoint POST `/api/api-config/:entityType/:entityId` que o frontend esperava
+  - **INTEGRAÇÃO CONFIRMADA**: Sistema de entrevistas já buscava configuração de voz via `storage.getApiConfig('client', clientId)`
+  - **LOGS DETALHADOS ADICIONADOS**: `[TTS-CONFIG]` para monitorar voz selecionada nas entrevistas
+  - **FLUXO FUNCIONAL**: Configurações → Preview funciona → Salva no banco → Entrevistas usam voz configurada
+  - **CACHE HEADERS MELHORADOS**: Adicionado 'Cache-Control': 'no-cache' no endpoint TTS preview
+  - **VALIDAÇÃO DE BUFFER**: Verificação melhorada para audioBuffer vazio no endpoint preview
+  - **RESULTADO**: Voz configurada em "/configuracoes" agora é utilizada nas cadências de entrevista em "/selecoes"
+
 - July 20, 2025: 🔧 CORREÇÃO CRÍTICA DO LOADING INFINITO - Sistema de debug e timeout implementado
   - **PROBLEMA URGENTE**: Loading infinito na página "/relatorios" após implementação do debugging
   - **CAUSA IDENTIFICADA**: QueryKey dinâmico com `Date.now()` causando re-renders infinitos
