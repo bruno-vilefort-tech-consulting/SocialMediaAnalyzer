@@ -373,17 +373,13 @@ class UserIsolatedRoundRobin {
           // ✅ CORREÇÃO CRÍTICA: Implementar envio real de mensagens na cadência
           console.log(`📋 [CADENCIA] Enviando mensagem para candidato ${candidatePhone} no slot ${distribution.slotNumber} (usuário: ${userId})`);
           
-          // 🔥 CORREÇÃO: Não enviar mensagens vazias na cadência
+          // 🔥 CORREÇÃO: Enviar mensagem da cadência automaticamente
           try {
-            // 🛑 PROTEÇÃO: Não enviar mensagens na cadência automática
-            // A cadência deve apenas processar candidatos, não enviar mensagens vazias
-            console.log(`⏭️ [CADENCIA] Processando candidato ${candidatePhone} - sem envio de mensagem vazia`);
+            // 🚀 CADÊNCIA REATIVADA: Enviar mensagem real via WhatsApp
+            const messageText = `🎯 Olá! Temos uma oportunidade de trabalho para você. Responda:\n1 - Quero participar da entrevista\n2 - Não tenho interesse`;
             
-            // Contabilizar como processado com sucesso (sem envio real)
-            cadence.totalSent++;
+            console.log(`📩 [CADENCIA] Enviando mensagem real para ${candidatePhone} via slot ${distribution.slotNumber}`);
             
-            // COMENTADO: Envio de mensagem vazia removido
-            /*
             const result = await simpleMultiBaileyService.sendTestMessage(
               clientId,
               distribution.slotNumber,
@@ -398,7 +394,6 @@ class UserIsolatedRoundRobin {
               console.log(`❌ [CADENCIA] Falha no envio para ${candidatePhone}: ${result?.error || 'Erro desconhecido'}`);
               cadence.totalErrors++;
             }
-            */
           } catch (sendError) {
             console.error(`❌ [CADENCIA] Erro no processamento para ${candidatePhone}:`, sendError);
             cadence.totalErrors++;

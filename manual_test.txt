@@ -1,0 +1,1 @@
+await interactiveInterviewService.handleMessage('553182230538@s.whatsapp.net', '1')

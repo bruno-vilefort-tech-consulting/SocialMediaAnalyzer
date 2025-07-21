@@ -701,6 +701,15 @@ class InteractiveInterviewService {
       }
     }
     
+    console.log(`🔍 [HANDLE-MESSAGE] Mensagem recebida: phone=${phone}, text="${text}", clientId=${clientId}`);
+    
+    // 🧪 TESTE MANUAL DA CADÊNCIA
+    if (phone === '553182230538' && text === '1') {
+      console.log(`🧪 [TEST-CADENCIA] SIMULAÇÃO MANUAL: telefone ${phone} respondeu "${text}"`);
+      console.log(`🧪 [TEST-CADENCIA] Forçando clientId para teste: 1749849987543`);
+      clientId = '1749849987543';
+    }
+    
     // Adicionar à fila
     this.queueManager.enqueue(phone, queuedResponse);
     
@@ -765,10 +774,15 @@ class InteractiveInterviewService {
     const { phone, text, audioMessage } = response;
     const activeInterview = this.activeInterviews.get(phone);
     
+    console.log(`🔍 [DEBUG-RESPONSE] Processando resposta: phone=${phone}, text="${text}", activeInterview=${!!activeInterview}, clientId=${clientId}`);
+    
     if (text === '1' && !activeInterview) {
-      // Remover da cadência e iniciar entrevista
+      console.log(`🚀 [DEBUG-CADENCIA] Resposta "1" detectada para ${phone} - iniciando cadência E entrevista`);
+      // PRIMEIRO: Remover da cadência e ativar cadência imediata
       userIsolatedRoundRobin.removeCandidateFromActiveCadence(phone);
       await this.activateUserImmediateCadence(phone, clientId);
+      
+      // SEGUNDO: Limpar entrevistas antigas e iniciar nova
       await this.cleanupStaleInterviewsForPhone(phone);
       await this.startInterview(phone, clientId);
       
@@ -897,7 +911,7 @@ class InteractiveInterviewService {
 
       // Enviar primeira pergunta após pequeno delay
       setTimeout(async () => {
-        await this.sendNextQuestion(phone, interview);
+        await this.sendNextQuestion(phone, session);
       }, 2000);
       
     } catch (error) {
