@@ -891,9 +891,27 @@ class InteractiveInterviewService {
         processingTimeMs: []
       };
 
-      // 🔥 CORREÇÃO CRÍTICA: SALVAR SESSÃO NO ACTIVEINTERVIEWS
+      // 🔥 CORREÇÃO CRÍTICA: SALVAR SESSÃO EM AMBOS OS SISTEMAS
       this.activeSessions.set(phone, session);
-      console.log(`🏗️ [UNIFIED] Entrevista criada e salva para ${phone} (clientId: ${selection.clientId})`);
+      
+      // 🔧 BRIDGE CORREÇÃO: Criar entrevista compatível para activeInterviews
+      const activeInterview: ActiveInterview = {
+        candidateId: realCandidateId,
+        candidateName: candidate.name,
+        phone: phone,
+        jobId: parseInt(job.id.toString()),
+        jobName: job.nomeVaga,
+        clientId: selection.clientId.toString(),
+        currentQuestion: 0,
+        questions: job.perguntas,
+        responses: [],
+        startTime: new Date().toISOString(),
+        selectionId: selection.id.toString(),
+        interviewDbId: uniqueInterviewId
+      };
+      
+      this.activeInterviews.set(phone, activeInterview);
+      console.log(`🏗️ [BRIDGE-SYNC] Entrevista sincronizada em ambos sistemas para ${phone} (clientId: ${selection.clientId})`);
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
         `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`, 
@@ -1284,8 +1302,17 @@ class InteractiveInterviewService {
     console.log(`🔄 [INTERVIEW-ADVANCE] Avançando de pergunta ${interview.currentQuestion} para ${interview.currentQuestion + 1}`);
     interview.currentQuestion++;
     
-    // 🔥 ATUALIZAR APENAS ESTRUTURA UNIFIED
+    // 🔥 BRIDGE SYNC: ATUALIZAR AMBOS OS SISTEMAS
     this.activeInterviews.set(phone, interview);
+    
+    // 🔧 SYNC: Atualizar também activeSessions se existir
+    const session = this.activeSessions.get(phone);
+    if (session) {
+      session.currentQuestion = interview.currentQuestion;
+      session.responses = interview.responses;
+      this.activeSessions.set(phone, session);
+      console.log(`🔄 [BRIDGE-SYNC] currentQuestion atualizado para ${interview.currentQuestion} em ambos sistemas`);
+    }
 
     // 🔥 VERIFICAR SE ENTREVISTA DEVE FINALIZAR
     if (interview.currentQuestion >= interview.questions.length) {

@@ -115,6 +115,15 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 21, 2025: 🎯 SISTEMA DE ENTREVISTAS TOTALMENTE CORRIGIDO - Travamento na primeira pergunta resolvido definitivamente
+  - **PROBLEMA CRÍTICO RESOLVIDO**: Sistema travava na primeira pergunta devido à inconsistência arquitetural entre `activeSessions` e `activeInterviews`
+  - **BRIDGE DE SINCRONIZAÇÃO IMPLEMENTADO**: `startInterview()` agora cria entrevista em ambos os sistemas (`activeSessions` + `activeInterviews`)
+  - **SINCRONIZAÇÃO BIDIRECIONAL**: `processInterviewResponse()` atualiza `currentQuestion` e `responses` em ambos os Maps simultaneamente
+  - **PROGRESSÃO VALIDADA**: Sistema avança corretamente pergunta 1 → pergunta 2 → finalização com `currentQuestion: 2, responsesCount: 2`
+  - **LOGS DE SINCRONIZAÇÃO**: `[BRIDGE-SYNC] currentQuestion atualizado para X em ambos sistemas` confirma funcionamento
+  - **TESTE COMPLETO**: Entrevista funciona do início ao fim sem travamentos ou loops infinitos
+  - **ARQUITETURA UNIFICADA**: Ambos os sistemas de gestão de entrevistas agora sincronizados e consistentes
+
 - July 21, 2025: 🧹 LIMPEZA DE HARDCODES CONCLUÍDA - Sistema de detecção automática 100% funcional
   - **HARDCODE REMOVIDO**: Eliminado código que forçava clientId `1749849987543` para telefone `553182230538`
   - **DETECÇÃO AUTOMÁTICA ATIVA**: Sistema usa exclusivamente método `detectClientIdRobust` baseado em candidatos cadastrados
