@@ -462,8 +462,77 @@ export class WhatsAppService {
     return null;
   }
 
+  /**
+   * 🔥 ETAPA 3: IMPLEMENTAÇÃO COMPLETA DO SAVE RESPONSE TO FIRESTORE
+   * Salva resposta estruturada no Firebase com chave padronizada
+   */
   private async saveResponseToFirestore(response: any): Promise<void> {
-    // Implementar salvamento estruturado no Firestore
+    try {
+      console.log(`💾 [SAVE-FIRESTORE] Iniciando salvamento estruturado:`, {
+        candidateId: response.candidateId,
+        selectionId: response.selectionId,
+        questionNumber: response.questionNumber,
+        clientId: response.clientId
+      });
+
+      // ETAPA 2: Gerar chave padronizada
+      const responseKey = this.generateStandardResponseKey(
+        response.candidateId,
+        response.selectionId,
+        response.questionNumber
+      );
+
+      const responseData = {
+        // IDs padronizados
+        id: responseKey,
+        candidateId: response.candidateId,
+        selectionId: response.selectionId,
+        questionNumber: response.questionNumber,
+        clientId: response.clientId,
+        
+        // Dados da pergunta
+        questionId: response.questionId,
+        questionText: response.questionText,
+        
+        // Dados da resposta
+        transcription: response.transcription || 'Aguardando processamento',
+        audioUrl: response.audioUrl || '',
+        
+        // Metadados
+        phone: response.candidatePhone,
+        candidatePhone: response.candidatePhone,
+        timestamp: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        
+        // Status e score
+        score: response.score || 0,
+        status: response.status || 'completed',
+        recordingDuration: response.recordingDuration || 0,
+        aiAnalysis: response.aiAnalysis || 'Processando análise...'
+      };
+
+      // Salvar em collection padronizada 'interviewResponses'
+      const { doc, setDoc } = await import('firebase/firestore');
+      const { firebaseDb } = await import('../../server/db');
+      
+      await setDoc(doc(firebaseDb, "interviewResponses", responseKey), responseData);
+      
+      console.log(`✅ [SAVE-FIRESTORE] Resposta salva com chave: ${responseKey}`);
+      console.log(`✅ [SAVE-FIRESTORE] Collection: interviewResponses, Transcription: ${responseData.transcription.substring(0, 50)}...`);
+      
+    } catch (error: any) {
+      console.error(`❌ [SAVE-FIRESTORE] Erro ao salvar resposta:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * 🔧 ETAPA 2: GERADOR DE CHAVE PADRONIZADA
+   * Cria chave única consistente para salvamento e busca
+   */
+  private generateStandardResponseKey(candidateId: number, selectionId: string, questionNumber: number): string {
+    return `${candidateId}_${selectionId}_R${questionNumber}`;
   }
 
   private async downloadWhatsAppAudio(audioId: string): Promise<string | null> {

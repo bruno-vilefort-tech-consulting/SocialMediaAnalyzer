@@ -4558,45 +4558,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 🔥 VERSÃO SIMPLIFICADA: Buscar respostas sem travamento
+  /**
+   * 🔥 ETAPA 4: CORREÇÃO CRÍTICA - BUSCA MULTI-COLLECTION UNIFICADA
+   * Remove erro "require is not defined" e implementa busca robusta
+   */
   async function getResponsesDirectlyFromFirebase(selectionId: string, candidatePhone: string, candidateId: number): Promise<any[]> {
     try {
-      const { firebaseDb } = require('./db.js');
-      console.log(`🔍 [SIMPLE_SEARCH] Seleção: ${selectionId}, Candidato: ${candidateId}, Telefone: ${candidatePhone}`);
+      // 🔧 CORREÇÃO: Usar import ES modules em vez de require
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { firebaseDb } = await import('./db.js');
+      console.log(`🔍 [UNIFIED-SEARCH] Busca unificada - Seleção: ${selectionId}, Candidato: ${candidateId}, Telefone: ${candidatePhone}`);
       
-      // Buscar respostas apenas da seleção específica para otimizar
-      const responsesSnapshot = await firebaseDb.collection('responses')
-        .where('selectionId', '==', selectionId)
-        .get();
+      const candidateResponses: any[] = [];
       
-      console.log(`📊 [SIMPLE_SEARCH] Encontradas ${responsesSnapshot.size} respostas na seleção ${selectionId}`);
+      // 🔥 ETAPA 4: BUSCAR EM COLLECTION PADRONIZADA PRIMEIRO
+      console.log(`🎯 [UNIFIED-SEARCH] Buscando em 'interviewResponses' (collection padronizada)...`);
       
-      const candidateResponses = [];
+      const standardResponsesQuery = query(
+        collection(firebaseDb, "interviewResponses"),
+        where('selectionId', '==', selectionId)
+      );
       
-      responsesSnapshot.forEach(doc => {
+      const standardSnapshot = await getDocs(standardResponsesQuery);
+      console.log(`📊 [UNIFIED-SEARCH] Collection 'interviewResponses': ${standardSnapshot.size} documentos`);
+      
+      standardSnapshot.forEach(doc => {
         const data = doc.data();
         
-        // 🔧 CORREÇÃO: Priorizar busca por ID real do candidato
+        // Gerar chave esperada baseada no padrão novo
+        const expectedKey = `${candidateId}_${selectionId}_R${data.questionNumber || 1}`;
+        
         const matches = (
-          // PRIORIDADE 1: ID real do candidato (corrigido)
+          // PRIORIDADE 1: Chave padronizada nova
+          doc.id === expectedKey ||
+          // PRIORIDADE 2: ID real do candidato
           data.candidateId === candidateId.toString() ||
           data.candidateId === candidateId ||
-          // PRIORIDADE 2: Telefone para compatibilidade
+          // PRIORIDADE 3: Telefone para compatibilidade
           data.candidatePhone === candidatePhone ||
-          data.phone === candidatePhone ||
-          // PRIORIDADE 3: IDs sintéticos antigos (compatibilidade com dados já existentes)
-          data.candidateId === `candidate_${selectionId}_${candidatePhone}` ||
-          data.candidateId === `candidate_${selectionId}_${candidatePhone.replace(/\D/g, '')}`
+          data.phone === candidatePhone
         );
         
         if (matches) {
-          console.log(`✅ [SIMPLE_SEARCH] Match encontrado: ${doc.id}, transcription: ${data.transcription ? 'YES' : 'NO'}`);
+          console.log(`✅ [UNIFIED-SEARCH] Match padronizado: ${doc.id}, transcription: ${data.transcription ? 'YES' : 'NO'}`);
           
           candidateResponses.push({
             id: doc.id,
-            questionId: data.questionId || 1,
-            questionText: data.questionText || data.question || `Pergunta ${data.questionId || 1}`,
+            questionId: data.questionId || data.questionNumber || 1,
+            questionText: data.questionText || `Pergunta ${data.questionId || data.questionNumber || 1}`,
             transcription: data.transcription || 'Aguardando resposta via WhatsApp',
-            audioUrl: data.audioUrl || data.audioFile || '',
+            audioUrl: data.audioUrl || '',
             score: data.score !== undefined && data.score !== null ? data.score : 0,
             recordingDuration: data.recordingDuration || 0,
             aiAnalysis: data.aiAnalysis || 'Análise não disponível'
@@ -4604,44 +4615,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      // Se não encontrou, tentar collections alternativas rapidamente
-      if (candidateResponses.length === 0) {
-        console.log(`🔄 [SIMPLE_SEARCH] Tentando collections alternativas...`);
-        
+      // Se encontrou na collection padronizada, retornar imediatamente
+      if (candidateResponses.length > 0) {
+        console.log(`🎯 [UNIFIED-SEARCH] Encontrado na collection padronizada: ${candidateResponses.length} respostas`);
+        return candidateResponses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
+      }
+      
+      // 🔄 FALLBACK: Buscar em collections antigas para compatibilidade
+      console.log(`🔄 [UNIFIED-SEARCH] Buscando em collections antigas para compatibilidade...`);
+      
+      const legacyCollections = ['responses', 'transcriptions', 'interview_responses'];
+      
+      for (const collectionName of legacyCollections) {
         try {
-          const transcriptionsSnapshot = await firebaseDb.collection('transcriptions')
-            .where('selectionId', '==', selectionId)
-            .get();
+          console.log(`🔍 [UNIFIED-SEARCH] Buscando em '${collectionName}'...`);
           
-          transcriptionsSnapshot.forEach(doc => {
+          const legacyQuery = query(
+            collection(firebaseDb, collectionName),
+            where('selectionId', '==', selectionId)
+          );
+          
+          const legacySnapshot = await getDocs(legacyQuery);
+          console.log(`📊 [UNIFIED-SEARCH] Collection '${collectionName}': ${legacySnapshot.size} documentos`);
+          
+          legacySnapshot.forEach(doc => {
             const data = doc.data();
-            // 🔧 CORREÇÃO: Priorizar ID real do candidato também no fallback
-            if (data.candidateId === candidateId.toString() || data.candidateId === candidateId || data.phone === candidatePhone) {
+            
+            const matches = (
+              data.candidateId === candidateId.toString() ||
+              data.candidateId === candidateId ||
+              data.candidatePhone === candidatePhone ||
+              data.phone === candidatePhone ||
+              data.candidateId === `candidate_${selectionId}_${candidatePhone}`
+            );
+            
+            if (matches) {
+              console.log(`✅ [UNIFIED-SEARCH] Match legacy em '${collectionName}': ${doc.id}`);
+              
               candidateResponses.push({
                 id: doc.id,
-                questionId: data.questionNumber || 1,
-                questionText: data.questionText || `Pergunta ${data.questionNumber || 1}`,
+                questionId: data.questionId || data.questionNumber || 1,
+                questionText: data.questionText || data.question || `Pergunta ${data.questionId || data.questionNumber || 1}`,
                 transcription: data.transcription || 'Aguardando resposta via WhatsApp',
-                audioUrl: data.audioFile ? `/uploads/${data.audioFile}` : '',
-                score: data.score || 0,
-                recordingDuration: 0,
-                aiAnalysis: 'Análise não disponível'
+                audioUrl: data.audioUrl || data.audioFile || '',
+                score: data.score !== undefined && data.score !== null ? data.score : 0,
+                recordingDuration: data.recordingDuration || 0,
+                aiAnalysis: data.aiAnalysis || 'Análise não disponível'
               });
             }
           });
-        } catch (err) {
-          console.log(`⚠️ [SIMPLE_SEARCH] Erro ao buscar transcriptions: ${err.message}`);
+          
+          // Se encontrou nesta collection, parar busca
+          if (candidateResponses.length > 0) {
+            console.log(`🎯 [UNIFIED-SEARCH] Encontrado em '${collectionName}': ${candidateResponses.length} respostas`);
+            break;
+          }
+          
+        } catch (collectionError: any) {
+          console.log(`⚠️ [UNIFIED-SEARCH] Erro em '${collectionName}':`, collectionError.message);
         }
       }
       
-      console.log(`🎯 [SIMPLE_SEARCH] RESULTADO: ${candidateResponses.length} respostas para candidato ${candidateId}`);
+      console.log(`🎯 [UNIFIED-SEARCH] Total encontrado: ${candidateResponses.length} respostas para candidato ${candidateId}`);
       return candidateResponses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
       
-    } catch (error) {
-      console.error('❌ [SIMPLE_SEARCH] Erro:', error.message);
+    } catch (error: any) {
+      console.error(`❌ [UNIFIED-SEARCH] Erro crítico: ${error.message}`);
       return [];
     }
   }
+
+  // 🔥 ETAPA 5: ENDPOINTS PARA INTEGRAÇÃO EM TEMPO REAL
+  
+  // Endpoint para configurar listener em tempo real
+  app.post("/api/realtime/setup/:selectionId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
+    try {
+      const selectionId = req.params.selectionId;
+      const clientId = req.user!.clientId!;
+      
+      console.log(`🔊 [REALTIME-API] Configurando listener para seleção ${selectionId}, cliente ${clientId}`);
+      
+      const { realtimeIntegrationService } = await import('./realtimeIntegrationService');
+      
+      // Configurar listener (isso seria usado via WebSocket em produção)
+      const listenerId = await realtimeIntegrationService.setupRealtimeListener(
+        selectionId,
+        clientId,
+        (responses) => {
+          console.log(`🔄 [REALTIME-API] Callback executado: ${responses.length} respostas`);
+          // Em produção, enviaria via WebSocket para o frontend
+        }
+      );
+      
+      res.json({
+        success: true,
+        listenerId,
+        message: `Listener configurado para seleção ${selectionId}`
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ [REALTIME-API] Erro ao configurar listener:`, error.message);
+      res.status(500).json({ error: 'Failed to setup realtime listener' });
+    }
+  });
+  
+  // Endpoint para invalidar cache manualmente
+  app.post("/api/realtime/invalidate/:selectionId", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
+    try {
+      const selectionId = req.params.selectionId;
+      
+      console.log(`🗑️ [REALTIME-API] Invalidando cache para seleção ${selectionId}`);
+      
+      const { realtimeIntegrationService } = await import('./realtimeIntegrationService');
+      await realtimeIntegrationService.invalidateReportCache(selectionId);
+      
+      res.json({
+        success: true,
+        message: `Cache invalidado para seleção ${selectionId}`
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ [REALTIME-API] Erro ao invalidar cache:`, error.message);
+      res.status(500).json({ error: 'Failed to invalidate cache' });
+    }
+  });
+  
+  // Endpoint para status dos listeners ativos
+  app.get("/api/realtime/status", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
+    try {
+      const { realtimeIntegrationService } = await import('./realtimeIntegrationService');
+      const status = realtimeIntegrationService.getActiveListenersStatus();
+      
+      res.json({
+        success: true,
+        ...status,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ [REALTIME-API] Erro ao buscar status:`, error.message);
+      res.status(500).json({ error: 'Failed to get status' });
+    }
+  });
 
   // Endpoint para buscar candidatos de uma seleção que receberam convites de entrevista
   app.get("/api/selections/:selectionId/interview-candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {

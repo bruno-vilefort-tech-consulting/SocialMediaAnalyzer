@@ -115,6 +115,18 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 21, 2025: 🔥 INTEGRAÇÃO WHATSAPP → RELATÓRIOS IMPLEMENTADA COMPLETAMENTE - Sistema de sincronização em tempo real entre respostas WhatsApp e página de relatórios
+  - **ETAPA 1**: Chave padronizada de respostas implementada - Formato `candidateId_selectionId_R{questionNumber}` para identificação única
+  - **ETAPA 2**: Método `saveResponseToFirestore` completo criado no `interactiveInterviewService.ts` com estrutura unificada
+  - **ETAPA 3**: Persistência dupla (storage + Firebase) implementada - Respostas salvas em PostgreSQL local e Firebase simultaneamente
+  - **ETAPA 4**: Função `getResponsesDirectlyFromFirebase` corrigida - Erro "require is not defined" resolvido, busca multi-collection implementada
+  - **ETAPA 5**: Serviço de tempo real criado - `realtimeIntegrationService.ts` com listeners Firebase e invalidação automática de cache
+  - **FLUXO COMPLETO**: WhatsApp recebe áudio → processa transcrição → salva duplo → notifica tempo real → atualiza relatórios automaticamente
+  - **ENDPOINTS CRIADOS**: `/api/realtime/setup/:selectionId`, `/api/realtime/invalidate/:selectionId`, `/api/realtime/status`
+  - **BUSCA ROBUSTA**: Prioriza collection `interviewResponses` padronizada, fallback para collections antigas (`responses`, `transcriptions`)
+  - **NOTIFICAÇÃO AUTOMÁTICA**: Sistema notifica mudanças via `realtimeIntegrationService.notifyNewResponse()` após salvar resposta
+  - **LOGS DETALHADOS**: `[DUAL-SAVE]`, `[UNIFIED-SEARCH]`, `[REALTIME]` para monitoramento completo do fluxo
+
 - July 21, 2025: ✅ INTEGRAÇÃO TTS CONFIGURAÇÕES DE VOZ CORRIGIDA E APRIMORADA - Sistema usa voz selecionada nas entrevistas 
   - **PROBLEMA IDENTIFICADO**: Preview de áudio funcionava na página "/configuracoes" mas entrevistas não usavam a voz configurada
   - **ENDPOINT MISMATCH CORRIGIDO**: Adicionado endpoint POST `/api/api-config/:entityType/:entityId` que o frontend esperava

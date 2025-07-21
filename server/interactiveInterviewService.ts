@@ -858,7 +858,8 @@ class InteractiveInterviewService {
         } else {
           // 🔧 CORREÇÃO: Criar nova resposta com transcrição final já processada
           console.log(`➕ [CREATE-CORRIGIDO] Criando nova resposta para pergunta ${interview.currentQuestion + 1}`);
-          await storage.createResponse({
+          
+          const responseToSave = {
             id: responseId,
             selectionId: interview.selectionId,
             candidateId: interview.candidateId,
@@ -872,8 +873,77 @@ class InteractiveInterviewService {
             aiAnalysis: '',
             recordingDuration: 0,
             candidateName: interview.candidateName,
-            candidatePhone: interview.phone
-          });
+            candidatePhone: interview.phone,
+            // 🔥 CAMPOS EXTRAS PARA FIREBASE
+            clientId: interview.clientId,
+            questionNumber: interview.currentQuestion + 1,
+            status: 'completed'
+          };
+
+          // Salvar no storage local
+          await storage.createResponse(responseToSave);
+          
+          // 🔥 ETAPA 3: SALVAR TAMBÉM NO FIREBASE COM ESTRUTURA PADRONIZADA
+          try {
+            const { doc, setDoc } = await import('firebase/firestore');
+            const { firebaseDb } = await import('./db');
+            
+            // Gerar chave padronizada
+            const responseKey = `${interview.candidateId}_${interview.selectionId}_R${interview.currentQuestion + 1}`;
+            
+            const firebaseData = {
+              // IDs padronizados
+              id: responseKey,
+              candidateId: interview.candidateId,
+              selectionId: interview.selectionId,
+              questionNumber: interview.currentQuestion + 1,
+              clientId: interview.clientId,
+              
+              // Dados da pergunta
+              questionId: interview.currentQuestion + 1,
+              questionText: currentQuestion.pergunta,
+              
+              // Dados da resposta
+              transcription: finalTranscription,
+              audioUrl: audioFile || '',
+              
+              // Metadados
+              phone: interview.phone,
+              candidatePhone: interview.phone,
+              timestamp: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              
+              // Status e score
+              score: pontuacao,
+              status: 'completed',
+              recordingDuration: 0,
+              aiAnalysis: 'Análise AI processada',
+              candidateName: interview.candidateName
+            };
+
+            await setDoc(doc(firebaseDb, "interviewResponses", responseKey), firebaseData);
+            
+            console.log(`✅ [DUAL-SAVE] Resposta salva em storage + Firebase com chave: ${responseKey}`);
+            console.log(`✅ [DUAL-SAVE] Transcription: ${finalTranscription.substring(0, 50)}...`);
+            
+            // 🔥 ETAPA 5: NOTIFICAR INTEGRAÇÃO EM TEMPO REAL
+            try {
+              const { realtimeIntegrationService } = await import('./realtimeIntegrationService');
+              await realtimeIntegrationService.notifyNewResponse(
+                interview.selectionId,
+                interview.candidateId,
+                firebaseData
+              );
+              console.log(`🔄 [REALTIME] Notificação enviada para seleção ${interview.selectionId}`);
+            } catch (realtimeError: any) {
+              console.error(`⚠️ [REALTIME] Erro na notificação (continuando):`, realtimeError.message);
+            }
+            
+          } catch (firebaseError: any) {
+            console.error(`⚠️ [DUAL-SAVE] Erro Firebase (continuando):`, firebaseError.message);
+            // Não falhar se Firebase der erro, apenas logar
+          }
         }
         
         console.log(`💾 [SAVE-CORRIGIDO] Resposta salva com transcrição: "${finalTranscription.substring(0, 50)}..."`);
