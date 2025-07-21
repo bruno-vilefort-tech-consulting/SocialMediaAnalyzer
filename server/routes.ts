@@ -7303,6 +7303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await Promise.all(promises);
       const processingTime = Date.now() - startTime;
       
+      // O service já foi importado acima, então usar a referência correta
       const metrics = interactiveInterviewService.getSystemMetrics();
       
       res.json({
@@ -7331,6 +7332,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`🧪 [TEST] Processando mensagem teste: ${phone} -> "${message}"`);
+      
+      // Carregar o serviço dinamicamente
+      const { interactiveInterviewService } = await import('./interactiveInterviewService.js');
       
       // Simular processamento direto
       await interactiveInterviewService.handleMessage(phone, message, null, clientId);

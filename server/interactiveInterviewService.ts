@@ -898,11 +898,13 @@ class InteractiveInterviewService {
         processingTimeMs: []
       };
 
-      // 🔥 USAR APENAS ACTIVEINTERVIEWS - REMOVER ESTRUTURA MISTA
-      console.log(`🏗️ [UNIFIED] Entrevista única criada para ${phone} (clientId: ${selection.clientId})`);
+      // 🔥 CORREÇÃO CRÍTICA: SALVAR SESSÃO NO ACTIVEINTERVIEWS
+      this.activeSessions.set(phone, session);
+      console.log(`🏗️ [UNIFIED] Entrevista criada e salva para ${phone} (clientId: ${selection.clientId})`);
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
-        `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
+        `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`, 
+        clientId
       );
 
       // Enviar primeira pergunta após pequeno delay
