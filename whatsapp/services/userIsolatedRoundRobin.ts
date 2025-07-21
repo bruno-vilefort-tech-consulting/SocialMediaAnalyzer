@@ -375,7 +375,7 @@ class UserIsolatedRoundRobin {
           
           // 🔥 ENVIO REAL: Usar simpleMultiBaileyService para enviar mensagem
           try {
-            const messageText = `🔔 Você foi selecionado para uma entrevista!\n\nDigite:\n1 - Iniciar entrevista agora\n2 - Não quero participar`;
+            const messageText = ``;
             
             const result = await simpleMultiBaileyService.sendTestMessage(
               clientId,

@@ -6964,6 +6964,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint para investigar transcrições
+  app.get("/api/debug/transcriptions", authenticate, authorize(['master', 'client']), async (req: AuthRequest, res: Response) => {
+    try {
+      console.log('🔍 [DEBUG] Investigando transcrições...');
+      
+      // Buscar todas as respostas
+      const { firebaseDb } = require('./db.js');
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
+      
+      const responsesSnapshot = await getDocs(collection(firebaseDb, 'responses'));
+      
+      let withTranscription = 0;
+      let withoutTranscription = 0;
+      let examples = [];
+      
+      responsesSnapshot.forEach(doc => {
+        const data = doc.data();
+        
+        if (data.transcription && data.transcription !== 'Aguardando resposta via WhatsApp') {
+          withTranscription++;
+          
+          if (examples.length < 5) {
+            examples.push({
+              id: doc.id,
+              candidateId: data.candidateId,
+              selectionId: data.selectionId,
+              transcription: data.transcription?.substring(0, 100),
+              questionId: data.questionId,
+              audioUrl: data.audioUrl,
+              score: data.score
+            });
+          }
+        } else {
+          withoutTranscription++;
+        }
+      });
+      
+      // Testar busca de uma seleção específica se houver exemplos
+      let selectionTest = null;
+      if (examples.length > 0) {
+        const testSelectionId = examples[0].selectionId;
+        const testCandidateId = examples[0].candidateId;
+        
+        const selectionQuery = query(
+          collection(firebaseDb, 'responses'),
+          where('selectionId', '==', testSelectionId.toString())
+        );
+        
+        const selectionSnapshot = await getDocs(selectionQuery);
+        
+        const matches = [];
+        selectionSnapshot.forEach(doc => {
+          const data = doc.data();
+          
+          const isMatch = (
+            data.candidateId === testCandidateId.toString() ||
+            data.candidateId === testCandidateId ||
+            data.candidateId === `candidate_${testSelectionId}_${testCandidateId}`
+          );
+          
+          if (isMatch) {
+            matches.push({
+              id: doc.id,
+              candidateId: data.candidateId,
+              questionId: data.questionId,
+              hasTranscription: !!data.transcription,
+              transcription: data.transcription?.substring(0, 50)
+            });
+          }
+        });
+        
+        selectionTest = {
+          selectionId: testSelectionId,
+          candidateId: testCandidateId,
+          totalInSelection: selectionSnapshot.size,
+          matches: matches
+        };
+      }
+      
+      res.json({
+        summary: {
+          total: responsesSnapshot.size,
+          withTranscription,
+          withoutTranscription,
+          percentageWithTranscription: Math.round((withTranscription / responsesSnapshot.size) * 100)
+        },
+        examples,
+        selectionTest,
+        message: `Total: ${responsesSnapshot.size}, Com transcrição: ${withTranscription}, Sem: ${withoutTranscription}`
+      });
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] Erro:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Endpoint já existe acima - não duplicar
+  
   const httpServer = createServer(app);
   return httpServer;
 }
