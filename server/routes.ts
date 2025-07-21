@@ -3691,7 +3691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // TTS Preview endpoint
-  app.post("/api/preview-tts", authenticate, authorize(['master', 'client']), async (req, res) => {
+  app.post("/api/tts/preview", authenticate, authorize(['master', 'client']), async (req, res) => {
     try {
       const { text, voice } = req.body;
       
@@ -3727,9 +3727,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const audioBuffer = await response.arrayBuffer();
       
+      // Verificar se o audioBuffer é válido
+      if (!audioBuffer || audioBuffer.byteLength === 0) {
+        return res.status(500).json({ error: 'Resposta de áudio vazia do OpenAI' });
+      }
+      
       res.set({
         'Content-Type': 'audio/mpeg',
         'Content-Length': audioBuffer.byteLength.toString(),
+        'Cache-Control': 'no-cache',
       });
       
       res.send(Buffer.from(audioBuffer));

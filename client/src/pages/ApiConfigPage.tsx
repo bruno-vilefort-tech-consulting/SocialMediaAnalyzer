@@ -166,33 +166,64 @@ export default function ApiConfigPage() {
 
       if (response.ok) {
         const blob = await response.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
         
+        // Verificar se o blob é válido
+        if (!blob || blob.size === 0) {
+          throw new Error('Resposta de áudio vazia');
+        }
+        
+        // Verificar se é um tipo de áudio válido
+        if (!blob.type.startsWith('audio/')) {
+          throw new Error('Formato de áudio não suportado');
+        }
+        
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio();
+        
+        // Configurar event listeners antes de definir src
         audio.onended = () => {
           setIsPlayingVoice(false);
           URL.revokeObjectURL(audioUrl);
         };
         
-        audio.onerror = () => {
+        audio.onerror = (e) => {
+          console.error('Erro específico do áudio:', e);
           setIsPlayingVoice(false);
           URL.revokeObjectURL(audioUrl);
           toast({
             title: "Erro na reprodução",
-            description: "Não foi possível reproduzir a prévia da voz",
+            description: "Não foi possível reproduzir a prévia da voz. Verifique se o áudio está disponível.",
             variant: "destructive"
           });
         };
         
-        await audio.play();
+        audio.oncanplaythrough = () => {
+          // Só tocar quando o áudio estiver completamente carregado
+          audio.play().catch(playError => {
+            console.error('Erro ao reproduzir áudio:', playError);
+            setIsPlayingVoice(false);
+            URL.revokeObjectURL(audioUrl);
+            toast({
+              title: "Erro na reprodução",
+              description: "Falha ao iniciar reprodução. Tente novamente.",
+              variant: "destructive"
+            });
+          });
+        };
+        
+        // Definir source após configurar event listeners
+        audio.src = audioUrl;
+        audio.load(); // Forçar carregamento
+        
       } else {
-        throw new Error(`HTTP ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
     } catch (error) {
       console.error('Erro ao reproduzir preview:', error);
       toast({
         title: "Erro na prévia",
-        description: "Falha ao gerar preview da voz",
+        description: error instanceof Error ? error.message : "Falha ao gerar preview da voz",
         variant: "destructive"
       });
       setIsPlayingVoice(false);

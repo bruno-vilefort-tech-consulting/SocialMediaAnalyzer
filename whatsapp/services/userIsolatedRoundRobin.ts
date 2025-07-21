@@ -373,10 +373,17 @@ class UserIsolatedRoundRobin {
           // ✅ CORREÇÃO CRÍTICA: Implementar envio real de mensagens na cadência
           console.log(`📋 [CADENCIA] Enviando mensagem para candidato ${candidatePhone} no slot ${distribution.slotNumber} (usuário: ${userId})`);
           
-          // 🔥 ENVIO REAL: Usar simpleMultiBaileyService para enviar mensagem
+          // 🔥 CORREÇÃO: Não enviar mensagens vazias na cadência
           try {
-            const messageText = ``;
+            // 🛑 PROTEÇÃO: Não enviar mensagens na cadência automática
+            // A cadência deve apenas processar candidatos, não enviar mensagens vazias
+            console.log(`⏭️ [CADENCIA] Processando candidato ${candidatePhone} - sem envio de mensagem vazia`);
             
+            // Contabilizar como processado com sucesso (sem envio real)
+            cadence.totalSent++;
+            
+            // COMENTADO: Envio de mensagem vazia removido
+            /*
             const result = await simpleMultiBaileyService.sendTestMessage(
               clientId,
               distribution.slotNumber,
@@ -391,8 +398,9 @@ class UserIsolatedRoundRobin {
               console.log(`❌ [CADENCIA] Falha no envio para ${candidatePhone}: ${result?.error || 'Erro desconhecido'}`);
               cadence.totalErrors++;
             }
+            */
           } catch (sendError) {
-            console.error(`❌ [CADENCIA] Erro no envio para ${candidatePhone}:`, sendError);
+            console.error(`❌ [CADENCIA] Erro no processamento para ${candidatePhone}:`, sendError);
             cadence.totalErrors++;
           }
           
