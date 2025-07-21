@@ -115,6 +115,20 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 21, 2025: 🏗️ SISTEMA DE CONTROLE DE CONCORRÊNCIA IMPLEMENTADO COMPLETAMENTE - Solução definitiva para race conditions em entrevistas simultâneas
+  - **PROBLEMA RESOLVIDO**: Race conditions quando candidatos enviam múltiplas respostas rápidas durante entrevistas WhatsApp
+  - **ETAPA 1**: Análise e mapeamento completo do fluxo - Identificados 3 arquivos críticos que alteram estado da entrevista
+  - **ETAPA 2**: Estrutura centralizada InterviewSession criada - Combina estado legado + controle de concorrência + monitoramento
+  - **ETAPA 3**: ResponseQueueManager implementado - Sistema de filas com mutex locks por telefone para processamento sequencial
+  - **ETAPA 4**: Fluxo round-robin ajustado - Respostas processadas individualmente com lock automático evitando race conditions
+  - **ETAPA 5**: Sistema de monitoramento criado - Limpeza automática de sessões antigas + alertas de gargalos + métricas em tempo real
+  - **ENDPOINTS CRIADOS**: `/api/concurrency/metrics` para monitoramento e `/api/concurrency/test` para simulação de concorrência
+  - **COMPATIBILIDADE TOTAL**: Sistema legado preservado com property getter para `activeInterviews` mantendo zero breaking changes
+  - **FUNCIONALIDADES AVANÇADAS**: Mutex locks automáticos, filas FIFO por telefone, isolamento entre candidatos, alertas de performance
+  - **MONITORAMENTO REAL-TIME**: Estatísticas a cada 30s, detecção de filas grandes (>5), limpeza de sessões inativas (>30min)
+  - **RESULTADO**: Sistema robusto que elimina race conditions, garante estado consistente e fornece observabilidade completa
+  - **STATUS**: SISTEMA PRONTO PARA PRODUÇÃO com documentação completa em `SISTEMA_CONTROLE_CONCORRENCIA_COMPLETO.md`
+
 - July 21, 2025: 🔥 INTEGRAÇÃO WHATSAPP → RELATÓRIOS IMPLEMENTADA COMPLETAMENTE - Sistema de sincronização em tempo real entre respostas WhatsApp e página de relatórios
   - **ETAPA 1**: Chave padronizada de respostas implementada - Formato `candidateId_selectionId_R{questionNumber}` para identificação única
   - **ETAPA 2**: Método `saveResponseToFirestore` completo criado no `interactiveInterviewService.ts` com estrutura unificada

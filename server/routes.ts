@@ -7247,6 +7247,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // SISTEMA DE MONITORAMENTO DE CONCORRÊNCIA
+  // ========================================
+  
+  // 📊 ENDPOINT: Obter métricas do sistema de filas
+  app.get("/api/concurrency/metrics", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res) => {
+    try {
+      const { interactiveInterviewService } = await import('./interactiveInterviewService');
+      const metrics = interactiveInterviewService.getSystemMetrics();
+      
+      // Converter Map para objeto para JSON
+      const response = {
+        ...metrics,
+        queues: Object.fromEntries(metrics.queues)
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error('❌ Erro ao obter métricas do sistema:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
+  // 🔄 ENDPOINT: Simular teste de concorrência (para debugging)
+  app.post("/api/concurrency/test", authenticate, authorize(['master']), async (req: AuthRequest, res) => {
+    try {
+      const { phone, messageCount = 5, concurrentRequests = 3 } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({ error: 'Telefone é obrigatório' });
+      }
+      
+      const { interactiveInterviewService } = await import('./interactiveInterviewService');
+      
+      console.log(`🧪 [TEST] Iniciando teste de concorrência: ${concurrentRequests} requests simultâneas para ${phone}`);
+      
+      // Simular múltiplas requisições simultâneas
+      const promises = [];
+      for (let i = 0; i < concurrentRequests; i++) {
+        for (let j = 0; j < messageCount; j++) {
+          const testMessage = `Teste ${i}-${j} ${Date.now()}`;
+          promises.push(
+            interactiveInterviewService.handleMessage(
+              `${phone}@s.whatsapp.net`, 
+              testMessage, 
+              null, 
+              req.user?.clientId?.toString()
+            )
+          );
+        }
+      }
+      
+      const startTime = Date.now();
+      await Promise.all(promises);
+      const processingTime = Date.now() - startTime;
+      
+      const metrics = interactiveInterviewService.getSystemMetrics();
+      
+      res.json({
+        success: true,
+        testConfig: { phone, messageCount, concurrentRequests },
+        processingTime: `${processingTime}ms`,
+        metrics: {
+          ...metrics,
+          queues: Object.fromEntries(metrics.queues)
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Erro no teste de concorrência:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // Endpoint já existe acima - não duplicar
   
   const httpServer = createServer(app);

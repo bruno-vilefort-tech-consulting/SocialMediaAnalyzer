@@ -2,7 +2,23 @@ import { storage } from './storage';
 import { userIsolatedRoundRobin } from '../whatsapp/services/userIsolatedRoundRobin';
 import { isValidAudio, isValidAudioBuffer, MIN_AUDIO_SIZE, MAX_AUDIO_SIZE } from './utils/audio';
 
-// Estado em memória das entrevistas ativas
+// 🎯 ETAPA 1: ANÁLISE E MAPEAMENTO DO FLUXO ATUAL
+// Arquivos que alteram estado da entrevista:
+// - interactiveInterviewService.ts: Gerencia activeInterviews Map, processa respostas, avança perguntas
+// - simpleMultiBailey.ts: Recebe mensagens WhatsApp e direciona para handleMessage
+// - userIsolatedRoundRobin.ts: Controla cadência de mensagens round-robin
+
+// 🏗️ ETAPA 2: ESTRUTURA CENTRALIZADA DE ESTADO DA SESSÃO
+interface QueuedResponse {
+  id: string;
+  phone: string;
+  text: string;
+  audioMessage?: any;
+  timestamp: number;
+  processed: boolean;
+}
+
+// Legacy ActiveInterview para compatibilidade
 interface ActiveInterview {
   candidateId: number;
   candidateName: string;
@@ -24,13 +40,220 @@ interface ActiveInterview {
   interviewDbId?: string;
 }
 
-class InteractiveInterviewService {
-  private activeInterviews: Map<string, ActiveInterview> = new Map();
+interface InterviewSession {
+  // Estado da entrevista
+  candidateId: number;
+  candidateName: string;
+  phone: string;
+  jobId: number;
+  jobName: string;
+  clientId: string;
+  currentQuestion: number;
+  questions: any[];
+  responses: Array<{
+    questionId: number;
+    questionText: string;
+    responseText?: string;
+    audioFile?: string;
+    timestamp: string;
+  }>;
+  startTime: string;
+  selectionId: string;
+  interviewDbId?: string;
   
-  // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo
+  // 🔒 ETAPA 3: CONTROLE DE CONCORRÊNCIA
+  responseQueue: QueuedResponse[];
+  isProcessing: boolean;
+  lock: boolean;
+  lastActivity: number;
+  
+  // 📊 ETAPA 5: MONITORAMENTO
+  totalResponses: number;
+  queuePeakSize: number;
+  processingTimeMs: number[];
+}
+
+// 🔄 ETAPA 4: GERENCIADOR DE FILA E MUTEX
+class ResponseQueueManager {
+  private queues: Map<string, QueuedResponse[]> = new Map();
+  private locks: Map<string, boolean> = new Map();
+  private processing: Map<string, boolean> = new Map();
+  
+  // Adicionar resposta à fila
+  enqueue(phone: string, response: QueuedResponse): void {
+    if (!this.queues.has(phone)) {
+      this.queues.set(phone, []);
+    }
+    this.queues.get(phone)!.push(response);
+    console.log(`📝 [QUEUE] Resposta adicionada à fila ${phone}: ${this.queues.get(phone)!.length} total`);
+  }
+  
+  // Processar próxima resposta da fila (com lock)
+  async dequeue(phone: string): Promise<QueuedResponse | null> {
+    // Verificar se já está processando
+    if (this.processing.get(phone) || this.locks.get(phone)) {
+      console.log(`🔒 [QUEUE] Sessão ${phone} bloqueada, aguardando...`);
+      return null;
+    }
+    
+    const queue = this.queues.get(phone);
+    if (!queue || queue.length === 0) {
+      return null;
+    }
+    
+    // Aplicar lock
+    this.locks.set(phone, true);
+    this.processing.set(phone, true);
+    
+    const response = queue.shift()!;
+    console.log(`🔓 [QUEUE] Processando resposta ${response.id} para ${phone}: ${queue.length} restantes`);
+    return response;
+  }
+  
+  // Liberar lock após processamento
+  unlock(phone: string): void {
+    this.locks.set(phone, false);
+    this.processing.set(phone, false);
+    console.log(`✅ [QUEUE] Lock liberado para ${phone}`);
+  }
+  
+  // Obter status da fila
+  getQueueStatus(phone: string): { size: number; isLocked: boolean; isProcessing: boolean } {
+    return {
+      size: this.queues.get(phone)?.length || 0,
+      isLocked: this.locks.get(phone) || false,
+      isProcessing: this.processing.get(phone) || false
+    };
+  }
+  
+  // Limpar fila antiga
+  clearStaleQueue(phone: string): void {
+    this.queues.delete(phone);
+    this.locks.delete(phone);
+    this.processing.delete(phone);
+    console.log(`🧹 [QUEUE] Fila limpa para ${phone}`);
+  }
+}
+
+class InteractiveInterviewService {
+  private activeSessions: Map<string, InterviewSession> = new Map();
+  private queueManager: ResponseQueueManager = new ResponseQueueManager();
+  
+  // Legacy support para código existente
+  private get activeInterviews(): Map<string, any> {
+    const legacyMap = new Map();
+    this.activeSessions.forEach((session, phone) => {
+      legacyMap.set(phone, {
+        candidateId: session.candidateId,
+        candidateName: session.candidateName,
+        phone: session.phone,
+        jobId: session.jobId,
+        jobName: session.jobName,
+        clientId: session.clientId,
+        currentQuestion: session.currentQuestion,
+        questions: session.questions,
+        responses: session.responses,
+        startTime: session.startTime,
+        selectionId: session.selectionId,
+        interviewDbId: session.interviewDbId
+      });
+    });
+    return legacyMap;
+  }
+  
+  // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo (LEGACY)
   private processingRequests: Set<string> = new Set(); // phone_action para evitar duplicatas
 
-  constructor() {}
+  constructor() {
+    // 🔄 ETAPA 5: MONITORAMENTO - Limpeza periódica de filas antigas
+    this.startQueueMonitoring();
+  }
+
+  // 📊 ETAPA 5: SISTEMA DE MONITORAMENTO E ALERTAS
+  private startQueueMonitoring(): void {
+    setInterval(() => {
+      this.monitorQueuePerformance();
+    }, 30000); // Monitorar a cada 30 segundos
+  }
+
+  private monitorQueuePerformance(): void {
+    const now = Date.now();
+    const stats = {
+      activeSessions: this.activeSessions.size,
+      totalQueues: 0,
+      maxQueueSize: 0,
+      avgProcessingTime: 0,
+      staleQueues: 0
+    };
+
+    // Analisar performance das sessões ativas
+    this.activeSessions.forEach((session, phone) => {
+      const queueStatus = this.queueManager.getQueueStatus(phone);
+      stats.totalQueues++;
+      
+      if (queueStatus.size > stats.maxQueueSize) {
+        stats.maxQueueSize = queueStatus.size;
+      }
+
+      // Alertar sobre filas grandes (possível gargalo)
+      if (queueStatus.size > 5) {
+        console.warn(`⚠️ [MONITOR] Fila grande detectada para ${phone}: ${queueStatus.size} respostas pendentes`);
+      }
+
+      // Calcular tempo médio de processamento
+      if (session.processingTimeMs.length > 0) {
+        const avgTime = session.processingTimeMs.reduce((a, b) => a + b) / session.processingTimeMs.length;
+        stats.avgProcessingTime += avgTime;
+      }
+
+      // Detectar sessões inativas (mais de 30 minutos sem atividade)
+      if (now - session.lastActivity > 30 * 60 * 1000) {
+        stats.staleQueues++;
+        console.log(`🧹 [MONITOR] Sessão inativa detectada: ${phone} (${Math.round((now - session.lastActivity) / 60000)} min atrás)`);
+        
+        // Limpar sessão antiga
+        this.queueManager.clearStaleQueue(phone);
+        this.activeSessions.delete(phone);
+      }
+    });
+
+    stats.avgProcessingTime = stats.totalQueues > 0 ? stats.avgProcessingTime / stats.totalQueues : 0;
+
+    // Log de estatísticas periódicas
+    if (stats.activeSessions > 0) {
+      console.log(`📊 [MONITOR] Estatísticas do sistema:`, {
+        ...stats,
+        avgProcessingTime: `${Math.round(stats.avgProcessingTime)}ms`
+      });
+    }
+  }
+
+  // 📊 MÉTODO PÚBLICO PARA OBTER MÉTRICAS DO SISTEMA
+  public getSystemMetrics(): any {
+    const metrics = {
+      activeSessions: this.activeSessions.size,
+      queues: new Map(),
+      totalProcessingTime: 0,
+      totalResponses: 0
+    };
+
+    this.activeSessions.forEach((session, phone) => {
+      const queueStatus = this.queueManager.getQueueStatus(phone);
+      metrics.queues.set(phone, {
+        queueSize: queueStatus.size,
+        isProcessing: queueStatus.isProcessing,
+        totalResponses: session.totalResponses,
+        avgProcessingTime: session.processingTimeMs.length > 0 
+          ? session.processingTimeMs.reduce((a, b) => a + b) / session.processingTimeMs.length 
+          : 0,
+        lastActivity: session.lastActivity
+      });
+
+      metrics.totalResponses += session.totalResponses;
+    });
+
+    return metrics;
+  }
   
   /**
    * 🔒 CORREÇÃO DE CONCORRÊNCIA: Limpeza seletiva por telefone
@@ -454,112 +677,131 @@ class InteractiveInterviewService {
     }
   }
 
+  // 🚀 NOVO SISTEMA DE CONTROLE DE CONCORRÊNCIA COM FILAS
   async handleMessage(from: string, text: string, audioMessage?: any, clientId?: string): Promise<void> {
     const phone = from.replace('@s.whatsapp.net', '');
     
-    // 🔒 PROTEÇÃO CONTRA CONCORRÊNCIA: Evitar processamento simultâneo do mesmo telefone
-    const requestKey = `${phone}_${text}`;
-    if (this.processingRequests.has(requestKey)) {
-      console.log(`⚠️ Requisição já sendo processada para ${phone} (${text}), ignorando duplicata`);
-    }
+    // 📝 ETAPA 3: ADICIONAR RESPOSTA À FILA COM CONTROLE DE CONCORRÊNCIA
+    const responseId = `${phone}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const queuedResponse: QueuedResponse = {
+      id: responseId,
+      phone,
+      text,
+      audioMessage,
+      timestamp: Date.now(),
+      processed: false
+    };
     
-    this.processingRequests.add(requestKey);
-    
-    try {
-      // 🔒 ISOLAMENTO CORRIGIDO: Usar o método detectClientIdRobust para determinar cliente
-    // Se clientId não fornecido, detectar automaticamente respeitando isolamento
+    // Detectar clientId se não fornecido
     if (!clientId) {
       clientId = await this.detectClientIdRobust(phone);
-      
       if (!clientId) {
-        console.log(`⚠️ ClientId não detectado para telefone ${phone} - mensagem ignorada para manter isolamento`);
-        return; // Não processar mensagens sem contexto de cliente válido
+        console.log(`⚠️ [QUEUE] ClientId não detectado para ${phone} - mensagem ignorada`);
+        return;
       }
-    } else {
-      // Se clientId foi fornecido, validar se o telefone pertence a esse cliente
-      const validatedClientId = await this.detectClientIdRobust(phone, clientId);
-      
-      if (!validatedClientId) {
-        console.log(`⚠️ Telefone ${phone} não pertence ao cliente ${clientId} - isolamento respeitado`);
-        return; // Não processar violações de isolamento
-      }
-      
-      clientId = validatedClientId;
     }
     
-    if (audioMessage) {
-      // Verificar se é mensagem completa do Baileys ou apenas audioMessage
-      // const audioData = audioMessage.message?.audioMessage || audioMessage;
+    // Adicionar à fila
+    this.queueManager.enqueue(phone, queuedResponse);
+    
+    // 🔄 PROCESSAR FILA COM LOCK AUTOMÁTICO
+    await this.processQueueForPhone(phone, clientId);
+  }
+  
+  // 🔄 NOVO MÉTODO: PROCESSAR FILA DE RESPOSTAS COM MUTEX
+  private async processQueueForPhone(phone: string, clientId: string): Promise<void> {
+    const queueStatus = this.queueManager.getQueueStatus(phone);
+    
+    // Se já está processando, não fazer nada (evita race condition)
+    if (queueStatus.isProcessing || queueStatus.isLocked) {
+      console.log(`🔒 [QUEUE] Telefone ${phone} já em processamento (fila: ${queueStatus.size})`);
+      return;
     }
-
+    
+    // Processar respostas uma por uma até esvaziar a fila
+    while (true) {
+      const response = await this.queueManager.dequeue(phone);
+      
+      if (!response) {
+        break; // Fila vazia ou lock em outro processo
+      }
+      
+      try {
+        const startTime = Date.now();
+        
+        // 📊 ETAPA 5: MONITORAMENTO DE PERFORMANCE
+        console.log(`⚡ [QUEUE] Processando resposta ${response.id} (fila: ${this.queueManager.getQueueStatus(phone).size})`);
+        
+        // PROCESSAR A RESPOSTA INDIVIDUALMENTE
+        await this.handleSingleResponse(response, clientId);
+        
+        const processingTime = Date.now() - startTime;
+        console.log(`✅ [QUEUE] Resposta ${response.id} processada em ${processingTime}ms`);
+        
+        // Atualizar métricas de performance na sessão
+        const session = this.activeSessions.get(phone);
+        if (session) {
+          session.totalResponses++;
+          session.processingTimeMs.push(processingTime);
+          session.lastActivity = Date.now();
+          
+          // Manter apenas últimas 10 métricas
+          if (session.processingTimeMs.length > 10) {
+            session.processingTimeMs = session.processingTimeMs.slice(-10);
+          }
+        }
+        
+      } catch (error) {
+        console.error(`❌ [QUEUE] Erro ao processar resposta ${response.id}:`, error);
+      } finally {
+        // 🔓 SEMPRE liberar lock
+        this.queueManager.unlock(phone);
+      }
+    }
+  }
+  
+  // 🎯 MÉTODO INDIVIDUAL PARA PROCESSAR UMA RESPOSTA (SEM CONCORRÊNCIA)
+  private async handleSingleResponse(response: QueuedResponse, clientId: string): Promise<void> {
+    const { phone, text, audioMessage } = response;
     const activeInterview = this.activeInterviews.get(phone);
     
     if (text === '1' && !activeInterview) {
-      // 🗑️ CORREÇÃO CRÍTICA: Remover candidato da cadência ativa quando responde "1" 
-      // (se já estava numa cadência, ele agora quer iniciar entrevista)
+      // Remover da cadência e iniciar entrevista
       userIsolatedRoundRobin.removeCandidateFromActiveCadence(phone);
-      
-      // 🔥 CRÍTICO: Ativar cadência imediata com isolamento por usuário
       await this.activateUserImmediateCadence(phone, clientId);
-      
-      // 🔒 CORREÇÃO DE CONCORRÊNCIA: Limpar apenas entrevistas antigas do MESMO telefone
-      // em vez de limpar TODAS as entrevistas (que quebrava outras pessoas)
       await this.cleanupStaleInterviewsForPhone(phone);
       await this.startInterview(phone, clientId);
-    } else if (text === '2') {
-      // 🗑️ CORREÇÃO CRÍTICA: Remover candidato da cadência ativa quando responde "2"
-      // (ele não quer participar)
-      userIsolatedRoundRobin.removeCandidateFromActiveCadence(phone);
       
-      await this.sendMessage(from, "Entendido. Obrigado!", clientId);
+    } else if (text === '2') {
+      userIsolatedRoundRobin.removeCandidateFromActiveCadence(phone);
+      await this.sendMessage(phone + '@s.whatsapp.net', "Entendido. Obrigado!", clientId);
+      
     } else if (text.toLowerCase() === 'parar' || text.toLowerCase() === 'sair') {
       await this.stopInterview(phone, clientId);
-    } else if (activeInterview && text !== '1') {
       
-      // 🔥 CORREÇÃO CRÍTICA: Verificar se entrevista está em estado válido
+    } else if (activeInterview && text !== '1') {
+      // Verificar estado válido
       if (activeInterview.currentQuestion >= activeInterview.questions.length) {
         this.activeInterviews.delete(phone);
         return;
       }
       
-      // VERIFICAÇÃO CRÍTICA: Se a entrevista ativa usa IDs antigos, reiniciar com seleção mais recente
+      // 🔄 ETAPA 4: AJUSTAR ROUND-ROBIN - SÓ AVANÇAR APÓS GRAVAR RESPOSTA
       try {
-        const { storage } = await import('./storage.js');
-        const allSelections = await storage.getAllSelections();
-        const latestSelection = allSelections
-          .filter(s => clientId ? s.clientId.toString() === clientId : true)
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-          
-        // 🔥 CORREÇÃO CRÍTICA: Tornar mais restritiva - apenas se entrevista for de mais de 1 hora atrás
-        const oneHourAgo = Date.now() - (60 * 60 * 1000);
-        const interviewStartTime = new Date(activeInterview.startTime).getTime();
-        
-        if (latestSelection && parseInt(activeInterview.selectionId) !== parseInt(latestSelection.id.toString()) && interviewStartTime < oneHourAgo) {
-          this.activeInterviews.delete(phone);
-          await this.startInterview(phone, clientId);
-          return;
-        }
+        await this.processResponse(phone + '@s.whatsapp.net', activeInterview, text, audioMessage);
+        console.log(`✅ [ROUND-ROBIN] Resposta gravada com sucesso - entrevista pode avançar`);
       } catch (error) {
+        console.error(`❌ [ROUND-ROBIN] Erro ao gravar resposta - entrevista não avança:`, error);
+        // Em caso de erro, manter pergunta atual para retry
       }
       
-      await this.processResponse(from, activeInterview, text, audioMessage);
     } else {
-      // 🔍 CORREÇÃO CRÍTICA: Verificar se telefone está numa cadência ativa antes de enviar mensagem padrão
+      // Mensagem padrão apenas se não estiver em cadência
       const isInActiveCadence = userIsolatedRoundRobin.isPhoneInActiveCadence(phone);
       
-      if (isInActiveCadence) {
-        console.log(`📞 [CADENCIA-BLOCK] Telefone ${phone} está numa cadência ativa - NÃO enviando mensagem padrão`);
-        // Se está numa cadência ativa, não enviar mensagem padrão para não interferir
-        return;
+      if (!isInActiveCadence) {
+        await this.sendMessage(phone + '@s.whatsapp.net', "Digite:\n1 - Iniciar entrevista\n2 - Não participar", clientId);
       }
-      
-      console.log(`📞 [DEFAULT-MSG] Telefone ${phone} não está numa cadência ativa - enviando mensagem padrão`);
-      await this.sendMessage(from, "Digite:\n1 - Iniciar entrevista\n2 - Não participar", clientId);
-    }
-    
-    } finally {
-      // 🔒 SEMPRE remover da lista de processamento para evitar travamento
-      this.processingRequests.delete(requestKey);
     }
   }
 
@@ -613,9 +855,10 @@ class InteractiveInterviewService {
         status: 'in_progress'
       });
 
-      // Criar entrevista ativa em memória com ID real do candidato
-      const interview: ActiveInterview = {
-        candidateId: realCandidateId, // Usar ID real do candidato
+      // 🏗️ CRIAR NOVA SESSÃO CENTRALIZADA COM CONTROLE DE CONCORRÊNCIA
+      const session: InterviewSession = {
+        // Estado da entrevista (legado)
+        candidateId: realCandidateId,
         candidateName: candidate.name,
         phone: phone,
         jobId: parseInt(job.id.toString()),
@@ -626,10 +869,27 @@ class InteractiveInterviewService {
         responses: [],
         startTime: new Date().toISOString(),
         selectionId: selection.id.toString(),
-        interviewDbId: uniqueInterviewId // ID único de entrevista
+        interviewDbId: uniqueInterviewId,
+        
+        // 🔒 Controle de concorrência
+        responseQueue: [],
+        isProcessing: false,
+        lock: false,
+        lastActivity: Date.now(),
+        
+        // 📊 Monitoramento
+        totalResponses: 0,
+        queuePeakSize: 0,
+        processingTimeMs: []
       };
 
-      this.activeInterviews.set(phone, interview);
+      // Adicionar à nova estrutura centralizada
+      this.activeSessions.set(phone, session);
+      
+      // Limpar fila antiga se existir
+      this.queueManager.clearStaleQueue(phone);
+
+      console.log(`🏗️ [SESSION] Nova sessão centralizada criada para ${phone} (clientId: ${selection.clientId})`);
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
         `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
