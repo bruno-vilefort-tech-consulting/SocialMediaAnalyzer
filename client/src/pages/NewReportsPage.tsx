@@ -1710,6 +1710,36 @@ interface CandidateDetailsInlineProps {
 function CandidateDetailsInline({ candidate, audioStates, setAudioStates, reportData, isSpecificReport, expandedPerfectAnswers, setExpandedPerfectAnswers, selectedSelection }: CandidateDetailsInlineProps) {
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
 
+  // 🔧 FUNÇÃO PARA NORMALIZAR URLS DE ÁUDIO (ESCOPO LOCAL)
+  const normalizeAudioUrl = (audioUrl: string | undefined): string => {
+    if (!audioUrl || audioUrl === "") {
+      return "";
+    }
+
+    // Se já é uma URL HTTP válida, retornar como está
+    if (audioUrl.startsWith('/api/audio/') || audioUrl.startsWith('http')) {
+      return audioUrl;
+    }
+
+    // Se é um caminho absoluto do sistema, extrair apenas o nome do arquivo
+    if (audioUrl.includes('/uploads/') || audioUrl.includes('\\uploads\\')) {
+      try {
+        // Extrair nome do arquivo do caminho absoluto
+        const filename = audioUrl.split(/[/\\]/).pop();
+        
+        if (filename && filename.includes('.ogg')) {
+          const httpUrl = `/api/audio/${filename}`;
+          console.log(`🔗 [FRONTEND-FIX] Convertendo audioUrl: ${audioUrl} → ${httpUrl}`);
+          return httpUrl;
+        }
+      } catch (error) {
+        console.error(`❌ [FRONTEND-FIX] Erro ao converter audioUrl:`, error);
+      }
+    }
+
+    return audioUrl; // Fallback para URL original
+  };
+
   // Atualizar estado do áudio
   const updateAudioState = (responseId: string, updates: Partial<typeof audioStates[string]>) => {
     setAudioStates(prev => ({
