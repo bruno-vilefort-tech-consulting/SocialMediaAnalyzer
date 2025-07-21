@@ -1415,23 +1415,39 @@ export class FirebaseStorage implements IStorage {
 
   // API Config - configurações específicas por cliente/master (voz TTS + WhatsApp QR)
   async getApiConfig(entityType: string, entityId: string): Promise<ApiConfig | undefined> {
+    console.log(`🔍 [API-CONFIG] Buscando configuração para: ${entityType}/${entityId}`);
+    
     const configsSnapshot = await getDocs(collection(firebaseDb, "apiConfigs"));
+    console.log(`📊 [API-CONFIG] Total de configurações no Firebase: ${configsSnapshot.docs.length}`);
 
     for (const configDoc of configsSnapshot.docs) {
       const data = configDoc.data();
+      console.log(`🔍 [API-CONFIG] Verificando doc: entityType="${data.entityType}", entityId="${data.entityId}", openaiVoice="${data.openaiVoice}"`);
 
       if (data.entityType === entityType && data.entityId === entityId) {
-        return { id: parseInt(configDoc.id) || Date.now(), ...data } as ApiConfig;
+        const config = { id: parseInt(configDoc.id) || Date.now(), ...data } as ApiConfig;
+        console.log(`✅ [API-CONFIG] Configuração encontrada:`, config);
+        return config;
       }
     }
 
-    console.log(`❌ [DEBUG] Nenhuma configuração encontrada para ${entityType}/${entityId}`);
+    console.log(`❌ [API-CONFIG] Nenhuma configuração encontrada para ${entityType}/${entityId}`);
+    console.log(`🔍 [API-CONFIG] Todas as configurações disponíveis:`);
+    configsSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      console.log(`  - Doc ID: ${doc.id}, entityType: "${data.entityType}", entityId: "${data.entityId}", openaiVoice: "${data.openaiVoice}"`);
+    });
+    
     return undefined;
   }
 
   async upsertApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
+    console.log(`💾 [UPSERT-CONFIG] Iniciando upsert para ${config.entityType}/${config.entityId}`);
+    console.log(`💾 [UPSERT-CONFIG] Dados recebidos:`, config);
+    
     // Busca configuração existente
     const existingConfig = await this.getApiConfig(config.entityType, config.entityId);
+    console.log(`💾 [UPSERT-CONFIG] Configuração existente:`, existingConfig);
 
     // IMPORTANTE: Preservar campos existentes que não estão sendo atualizados
     const configData = { 
@@ -1440,13 +1456,18 @@ export class FirebaseStorage implements IStorage {
       id: existingConfig?.id || Date.now(), 
       updatedAt: new Date() 
     };
+    console.log(`💾 [UPSERT-CONFIG] Dados finais para salvar:`, configData);
 
     // Se existe, usa mesmo documento. Se não existe, cria novo
     const docId = existingConfig ? 
       `${config.entityType}_${config.entityId}` : 
       `${config.entityType}_${config.entityId}_${Date.now()}`;
+    
+    console.log(`💾 [UPSERT-CONFIG] Document ID usado: "${docId}"`);
 
     await setDoc(doc(firebaseDb, "apiConfigs", docId), configData);
+    console.log(`✅ [UPSERT-CONFIG] Configuração salva com sucesso no Firebase`);
+    
     return configData as ApiConfig;
   }
 
