@@ -898,13 +898,8 @@ class InteractiveInterviewService {
         processingTimeMs: []
       };
 
-      // Adicionar à nova estrutura centralizada
-      this.activeSessions.set(phone, session);
-      
-      // Limpar fila antiga se existir
-      this.queueManager.clearStaleQueue(phone);
-
-      console.log(`🏗️ [SESSION] Nova sessão centralizada criada para ${phone} (clientId: ${selection.clientId})`);
+      // 🔥 USAR APENAS ACTIVEINTERVIEWS - REMOVER ESTRUTURA MISTA
+      console.log(`🏗️ [UNIFIED] Entrevista única criada para ${phone} (clientId: ${selection.clientId})`);
 
       await this.sendMessage(`${phone}@s.whatsapp.net`, 
         `🎯 Entrevista iniciada para: ${job.nomeVaga}\n👋 Olá ${candidate.name}!\n📝 ${job.perguntas.length} perguntas\n\n⏳ Preparando primeira pergunta...`
@@ -912,7 +907,11 @@ class InteractiveInterviewService {
 
       // Enviar primeira pergunta após pequeno delay
       setTimeout(async () => {
-        await this.sendNextQuestion(phone, session);
+        const currentInterview = this.activeInterviews.get(phone);
+        if (currentInterview) {
+          console.log(`📤 [START-QUESTION] Enviando primeira pergunta para ${phone}`);
+          await this.sendNextQuestion(phone, currentInterview);
+        }
       }, 2000);
       
     } catch (error) {
@@ -1289,6 +1288,8 @@ class InteractiveInterviewService {
     // 🔥 CORREÇÃO CRÍTICA: Avançar para próxima pergunta APENAS APÓS SALVAR
     console.log(`🔄 [INTERVIEW-ADVANCE] Avançando de pergunta ${interview.currentQuestion} para ${interview.currentQuestion + 1}`);
     interview.currentQuestion++;
+    
+    // 🔥 ATUALIZAR APENAS ESTRUTURA UNIFIED
     this.activeInterviews.set(phone, interview);
 
     // 🔥 VERIFICAR SE ENTREVISTA DEVE FINALIZAR
@@ -1303,7 +1304,14 @@ class InteractiveInterviewService {
     await this.sendMessage(`${phone}@s.whatsapp.net`, `✅ Resposta recebida! Preparando próxima pergunta...`, interview.clientId);
     
     setTimeout(async () => {
-      await this.sendNextQuestion(phone, interview);
+      // 🔥 BUSCAR ENTREVISTA ATUALIZADA PARA ENVIO
+      const currentInterview = this.activeInterviews.get(phone);
+      if (currentInterview) {
+        console.log(`📤 [NEXT-QUESTION] Enviando pergunta ${currentInterview.currentQuestion + 1} para ${phone}`);
+        await this.sendNextQuestion(phone, currentInterview);
+      } else {
+        console.log(`❌ [NEXT-QUESTION] Entrevista não encontrada para ${phone} - pode ter sido finalizada`);
+      }
     }, 2000);
   }
 
@@ -1383,9 +1391,8 @@ class InteractiveInterviewService {
       interview.clientId
     );
 
-    // 🔥 LIMPEZA COMPLETA: Remover de todas as estruturas
+    // 🔥 LIMPEZA COMPLETA: Remover entrevista
     this.activeInterviews.delete(phone);
-    this.activeSessions.delete(phone);
     
     console.log(`✅ [FINISH] Entrevista finalizada e removida para ${phone}`);
   }

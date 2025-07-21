@@ -7321,7 +7321,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint já existe acima - não duplicar
+  // Endpoint de teste para verificar correção do loop infinito
+  app.post("/api/test-interview-message", async (req, res) => {
+    try {
+      const { phone, message, clientId } = req.body;
+      
+      if (!phone || !message) {
+        return res.status(400).json({ error: 'phone e message são obrigatórios' });
+      }
+      
+      console.log(`🧪 [TEST] Processando mensagem teste: ${phone} -> "${message}"`);
+      
+      // Simular processamento direto
+      await interactiveInterviewService.handleMessage(phone, message, null, clientId);
+      
+      // Verificar estado atual das entrevistas
+      const activeInterviews = interactiveInterviewService.getActiveInterviews();
+      const interview = activeInterviews.get(phone);
+      
+      const response = {
+        success: true,
+        message: 'Mensagem processada',
+        phone,
+        currentInterview: interview ? {
+          currentQuestion: interview.currentQuestion,
+          totalQuestions: interview.questions.length,
+          candidateName: interview.candidateName,
+          jobName: interview.jobName,
+          responsesCount: interview.responses.length
+        } : null
+      };
+      
+      console.log(`🧪 [TEST] Resultado:`, response);
+      res.json(response);
+      
+    } catch (error) {
+      console.error(`❌ [TEST] Erro:`, error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   const httpServer = createServer(app);
   return httpServer;

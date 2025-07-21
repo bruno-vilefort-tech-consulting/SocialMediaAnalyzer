@@ -1,44 +1,39 @@
-#!/usr/bin/env node
+// Teste manual para verificar se o loop infinito foi definitivamente corrigido
+console.log('🧪 TESTE MANUAL DO LOOP INFINITO - VERSÃO 2');
+console.log('==========================================');
 
-/**
- * 🧪 TESTE MANUAL DA CADÊNCIA DE MENSAGENS
- * Este script simula uma mensagem "1" para testar se a cadência está funcionando
- */
+// Simular mensagem "1" via curl
+const testPhone = '553182956616';
+const testClientId = '1749849987543';
 
-import { interactiveInterviewService } from './server/interactiveInterviewService.js';
+console.log(`📱 Enviando mensagem "1" para ${testPhone}...`);
 
-async function testCadenceManual() {
-  console.log('🧪 [TEST] Iniciando teste manual da cadência...');
-  
-  try {
-    // Parâmetros do teste
-    const phone = '553182230538';
-    const clientId = '1749849987543'; 
-    const message = '1';
-    
-    console.log(`🧪 [TEST] Simulando mensagem "${message}" de ${phone} para cliente ${clientId}`);
-    
-    // Simular handleMessage diretamente 
-    await interactiveInterviewService.handleMessage(
-      `${phone}@s.whatsapp.net`, 
-      message, 
-      null, 
-      clientId
-    );
-    
-    console.log('✅ [TEST] Mensagem processada com sucesso');
-    
-    // Aguardar processamento
-    setTimeout(() => {
-      console.log('🧪 [TEST] Teste concluído - verificar logs acima para detalhes da cadência');
-      process.exit(0);
-    }, 3000);
-    
-  } catch (error) {
-    console.error('❌ [TEST] Erro no teste:', error);
-    process.exit(1);
-  }
-}
+// Este script será chamado manualmente para testar
+console.log(`
+COMANDOS PARA TESTE MANUAL:
 
-// Executar teste
-testCadenceManual();
+1. Enviar mensagem "1":
+curl -X POST http://localhost:5000/api/process-message \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone": "${testPhone}", "message": "1", "clientId": "${testClientId}"}'
+
+2. Simular primeira resposta de áudio:
+curl -X POST http://localhost:5000/api/process-message \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone": "${testPhone}", "message": "Primeira resposta", "clientId": "${testClientId}"}'
+
+3. Simular segunda resposta de áudio:
+curl -X POST http://localhost:5000/api/process-message \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone": "${testPhone}", "message": "Segunda resposta", "clientId": "${testClientId}"}'
+
+4. Verificar logs do servidor para ver se avança corretamente.
+`);
+
+console.log('\n🔍 PONTOS A VERIFICAR NOS LOGS:');
+console.log('- [UNIFIED] Entrevista única criada');
+console.log('- [START-QUESTION] Enviando primeira pergunta');
+console.log('- [INTERVIEW-ADVANCE] Avançando de pergunta');
+console.log('- [NEXT-QUESTION] Enviando pergunta 2');
+console.log('- [INTERVIEW-FINISH] Todas as perguntas respondidas');
+console.log('- [FINISH] Entrevista finalizada e removida');

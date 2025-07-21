@@ -1,13 +1,12 @@
 // Teste direto do sistema de entrevistas para verificar se o loop foi corrigido
-const { createRequire } = require('module');
 
 async function testInterviewLoop() {
   console.log('🧪 TESTE DIRETO DO LOOP INFINITO - VERSÃO CORRIGIDA');
   console.log('===============================================');
   
   try {
-    // Importar diretamente o serviço
-    const { interactiveInterviewService } = await import('./server/interactiveInterviewService.js');
+    // Importar diretamente o serviço usando import dinâmico
+    const { interactiveInterviewService } = await import('./server/interactiveInterviewService.ts');
     
     const testPhone = '553182956616';
     const testClientId = '1749849987543';
