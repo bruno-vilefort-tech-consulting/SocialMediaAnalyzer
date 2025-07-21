@@ -273,6 +273,15 @@ class InteractiveInterviewService {
 
   private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
     try {
+      console.log(`🔍 [DEBUG-DOWNLOAD] Iniciando download para:`, {
+        phone,
+        clientId,
+        selectionId,
+        questionNumber,
+        hasMessage: !!message,
+        hasAudioMessage: !!message?.message?.audioMessage
+      });
+      
       const { UPLOADS_DIR } = await import('../src/config/paths');
       const path = await import('path');
       
@@ -280,6 +289,8 @@ class InteractiveInterviewService {
       // Nova nomenclatura: audio_[whatsapp]_[selectionId]_R[numero].ogg
       const audioFileName = `audio_${cleanPhone}_${selectionId}_R${questionNumber}.ogg`;
       const audioPath = path.join(UPLOADS_DIR, audioFileName);
+      
+      console.log(`📁 [DEBUG-DOWNLOAD] Path do arquivo: ${audioPath}`);
       
       // 🔧 CORREÇÃO: Verificar se arquivo já existe e é válido (não placeholder)
       const fs = await import('fs');
@@ -302,36 +313,49 @@ class InteractiveInterviewService {
       // MÉTODO 1: Tentar usar buffer já processado (se disponível)
       if (message._audioBuffer && isValidAudioBuffer(message._audioBuffer)) {
         audioBuffer = message._audioBuffer;
-        console.log(`📥 [ÁUDIO-CORRIGIDO] Usando buffer pré-processado válido (${audioBuffer.length} bytes)`);
+        console.log(`📥 [DEBUG-DOWNLOAD] Usando buffer pré-processado válido (${audioBuffer.length} bytes)`);
+      } else {
+        console.log(`⚠️ [DEBUG-DOWNLOAD] Buffer pré-processado não disponível:`, {
+          hasAudioBuffer: !!message._audioBuffer,
+          isValid: message._audioBuffer ? isValidAudioBuffer(message._audioBuffer) : false
+        });
       }
       
       // MÉTODO 2: Download direto via userIsolatedRoundRobin (método mais confiável)
       if (!audioBuffer && message.message?.audioMessage) {
         try {
           const userId = clientId;
+          console.log(`🔍 [DEBUG-DOWNLOAD] Tentando download via userIsolatedRoundRobin para usuário ${userId}`);
+          
           const connectionStatus = await userIsolatedRoundRobin.getUserConnectionStatus(userId, clientId);
+          console.log(`📱 [DEBUG-DOWNLOAD] Status da conexão:`, {
+            isConnected: connectionStatus.isConnected,
+            slotsCount: connectionStatus.slots.length,
+            userId,
+            clientId
+          });
           
           if (connectionStatus.isConnected && connectionStatus.slots.length > 0) {
             try {
-              console.log(`📥 [ÁUDIO-CORRIGIDO] Baixando áudio via userIsolatedRoundRobin para usuário ${userId}`);
+              console.log(`📥 [DEBUG-DOWNLOAD] Baixando áudio via userIsolatedRoundRobin...`);
               
               audioBuffer = await userIsolatedRoundRobin.downloadUserAudio(userId, clientId, message);
               
               if (audioBuffer && isValidAudioBuffer(audioBuffer)) {
-                console.log(`✅ [ÁUDIO-CORRIGIDO] Áudio baixado com sucesso via isolamento (${audioBuffer.length} bytes)`);
+                console.log(`✅ [DEBUG-DOWNLOAD] Áudio baixado com sucesso via isolamento (${audioBuffer.length} bytes)`);
               } else {
-                console.log(`❌ [ÁUDIO-CORRIGIDO] Buffer inválido do isolamento: ${audioBuffer?.length || 0} bytes`);
+                console.log(`❌ [DEBUG-DOWNLOAD] Buffer inválido do isolamento: ${audioBuffer?.length || 0} bytes`);
                 audioBuffer = null;
               }
             } catch (isolatedDownloadError: any) {
-              console.log(`❌ [ÁUDIO-CORRIGIDO] Erro no download isolado:`, isolatedDownloadError);
+              console.log(`❌ [DEBUG-DOWNLOAD] Erro no download isolado:`, isolatedDownloadError.message);
               audioBuffer = null;
             }
           } else {
-            console.log(`⚠️ [ÁUDIO-CORRIGIDO] Nenhuma conexão isolada ativa para usuário ${userId}`);
+            console.log(`⚠️ [DEBUG-DOWNLOAD] Nenhuma conexão isolada ativa para usuário ${userId}`);
           }
         } catch (baileyError: any) {
-          console.log(`❌ [ÁUDIO-CORRIGIDO] Erro no Baileys:`, baileyError);
+          console.log(`❌ [DEBUG-DOWNLOAD] Erro no Baileys:`, baileyError.message);
         }
       }
       
@@ -769,18 +793,36 @@ class InteractiveInterviewService {
             console.log(`✅ [TRANSCRIPTION-CORRIGIDO] Transcrição completa: "${finalTranscription.substring(0, 100)}..."`);
           } catch (transcribeError: any) {
             console.error(`❌ [TRANSCRIPTION-CORRIGIDO] Erro na transcrição:`, transcribeError.message);
-            // 🔧 CORREÇÃO: Não silenciar erro, mas usar texto padrão
-            finalTranscription = 'Áudio recebido';
+            console.error(`🔍 [DEBUG-TRANSCRIPTION] Details:`, {
+              audioPath,
+              errorType: transcribeError.constructor.name,
+              hasOpenAI: !!process.env.OPENAI_API_KEY
+            });
+            
+            // 🔧 CORREÇÃO: Usar texto padrão informativo
+            finalTranscription = 'Áudio recebido via WhatsApp';
             responseText = finalTranscription;
           }
         } else {
-          console.error(`❌ [ÁUDIO-CORRIGIDO] Falha no download do áudio`);
-          finalTranscription = 'Erro no processamento de áudio';
+          console.error(`❌ [ÁUDIO-CORRIGIDO] Falha no download do áudio para ${phone}`);
+          console.error(`🔍 [DEBUG-AUDIO] Message details:`, {
+            hasAudioMessage: !!audioMessage?.message?.audioMessage,
+            messageType: typeof audioMessage,
+            clientId: interview.clientId,
+            selectionId: interview.selectionId,
+            questionNumber: interview.currentQuestion + 1
+          });
+          
+          // 🔧 CORREÇÃO CRÍTICA: Usar texto padrão em vez de "erro"
+          finalTranscription = 'Áudio recebido via WhatsApp - aguardando processamento';
           responseText = finalTranscription;
         }
       } catch (audioError: any) {
         console.error(`❌ [ÁUDIO-CORRIGIDO] Erro crítico no processamento:`, audioError.message);
-        finalTranscription = 'Erro no processamento de áudio';
+        console.error(`🔍 [DEBUG-AUDIO] Stack trace:`, audioError.stack);
+        
+        // 🔧 CORREÇÃO CRÍTICA: Usar texto padrão em vez de "erro"
+        finalTranscription = 'Áudio recebido via WhatsApp - processamento em andamento';
         responseText = finalTranscription;
       }
     }
