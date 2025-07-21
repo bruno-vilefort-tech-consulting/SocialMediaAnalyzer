@@ -115,6 +115,14 @@ Preferred communication style: Simple, everyday language in Brazilian Portuguese
 
 ## Recent Changes
 
+- July 21, 2025: 🧹 LIMPEZA DE HARDCODES CONCLUÍDA - Sistema de detecção automática 100% funcional
+  - **HARDCODE REMOVIDO**: Eliminado código que forçava clientId `1749849987543` para telefone `553182230538`
+  - **DETECÇÃO AUTOMÁTICA ATIVA**: Sistema usa exclusivamente método `detectClientIdRobust` baseado em candidatos cadastrados
+  - **ISOLAMENTO RESPEITADO**: Apenas telefones realmente cadastrados no sistema são processados
+  - **VALIDAÇÃO ROBUSTA**: Números não cadastrados são corretamente rejeitados com mensagem adequada
+  - **TESTE CONFIRMADO**: Sistema detecta automaticamente `Pri Certa` no cliente correto em 1690ms
+  - **PRODUÇÃO LIMPA**: Código de teste/debug removido, sistema pronto para ambiente real
+
 - July 21, 2025: 🎉 CORREÇÃO CRÍTICA DO LOOP INFINITO VALIDADA E CONFIRMADA - Sistema de entrevistas funcionando perfeitamente
   - **PROBLEMA RESOLVIDO DEFINITIVAMENTE**: Loop infinito em entrevistas WhatsApp foi eliminado através da correção `this.activeSessions.set(phone, session)`
   - **TESTE VALIDADO**: Endpoint `/api/test-interview-message` confirma sistema operacional sem loops

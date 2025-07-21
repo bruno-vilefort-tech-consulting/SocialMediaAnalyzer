@@ -703,13 +703,6 @@ class InteractiveInterviewService {
     
     console.log(`🔍 [HANDLE-MESSAGE] Mensagem recebida: phone=${phone}, text="${text}", clientId=${clientId}`);
     
-    // 🧪 TESTE MANUAL DA CADÊNCIA
-    if (phone === '553182230538' && text === '1') {
-      console.log(`🧪 [TEST-CADENCIA] SIMULAÇÃO MANUAL: telefone ${phone} respondeu "${text}"`);
-      console.log(`🧪 [TEST-CADENCIA] Forçando clientId para teste: 1749849987543`);
-      clientId = '1749849987543';
-    }
-    
     // Adicionar à fila
     this.queueManager.enqueue(phone, queuedResponse);
     
