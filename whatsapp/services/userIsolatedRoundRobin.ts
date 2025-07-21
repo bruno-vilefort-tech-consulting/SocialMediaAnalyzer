@@ -370,23 +370,41 @@ class UserIsolatedRoundRobin {
         const candidatePhone = distribution.candidates[i];
         
         try {
-          // 🔄 CORREÇÃO: Remover envio automático de mensagens da cadência
-          // O userIsolatedRoundRobin é responsável apenas por organizar e distribuir candidatos
-          // O envio real de mensagens é feito pelo interactiveInterviewService
+          // ✅ CORREÇÃO CRÍTICA: Implementar envio real de mensagens na cadência
+          console.log(`📋 [CADENCIA] Enviando mensagem para candidato ${candidatePhone} no slot ${distribution.slotNumber} (usuário: ${userId})`);
           
-          console.log(`📋 Processando candidato ${candidatePhone} no slot ${distribution.slotNumber} (usuário: ${userId})`);
-          
-          // Simular processamento bem-sucedido sem enviar mensagem
-          cadence.totalSent++;
+          // 🔥 ENVIO REAL: Usar simpleMultiBaileyService para enviar mensagem
+          try {
+            const messageText = `🔔 Você foi selecionado para uma entrevista!\n\nDigite:\n1 - Iniciar entrevista agora\n2 - Não quero participar`;
+            
+            const result = await simpleMultiBaileyService.sendTestMessage(
+              clientId,
+              distribution.slotNumber,
+              candidatePhone,
+              messageText
+            );
+            
+            if (result?.success) {
+              console.log(`✅ [CADENCIA] Mensagem enviada com sucesso para ${candidatePhone} via slot ${distribution.slotNumber}`);
+              cadence.totalSent++;
+            } else {
+              console.log(`❌ [CADENCIA] Falha no envio para ${candidatePhone}: ${result?.error || 'Erro desconhecido'}`);
+              cadence.totalErrors++;
+            }
+          } catch (sendError) {
+            console.error(`❌ [CADENCIA] Erro no envio para ${candidatePhone}:`, sendError);
+            cadence.totalErrors++;
+          }
           
           // Aplicar delay específico do usuário (não interfere com outros usuários)
           if (i < distribution.candidates.length - 1) {
             const delay = userConfig?.immediateMode ? 500 : (userConfig?.baseDelay || 1000);
+            console.log(`⏱️ [CADENCIA] Aguardando ${delay}ms antes da próxima mensagem`);
             await new Promise(resolve => setTimeout(resolve, delay));
           }
           
         } catch (error) {
-          console.error(`❌ Erro ao processar candidato ${candidatePhone}:`, error);
+          console.error(`❌ [CADENCIA] Erro ao processar candidato ${candidatePhone}:`, error);
           cadence.totalErrors++;
         }
       }
@@ -394,6 +412,8 @@ class UserIsolatedRoundRobin {
     
     // Atualizar taxa de sucesso
     cadence.successRate = cadence.totalSent / (cadence.totalSent + cadence.totalErrors);
+    
+    console.log(`✅ [CADENCIA] Processamento de mensagens completo para usuário ${userId}`);
   }
 
   /**
@@ -421,6 +441,26 @@ class UserIsolatedRoundRobin {
   }
 
   /**
+   * Remover candidato específico da cadência ativa (quando ele responde)
+   */
+  removeCandidateFromActiveCadence(phone: string): void {
+    this.userCadences.forEach((cadence, userId) => {
+      if (cadence.isActive && cadence.currentBatch.includes(phone)) {
+        const index = cadence.currentBatch.indexOf(phone);
+        cadence.currentBatch.splice(index, 1);
+        console.log(`🗑️ [CADENCIA] Candidato ${phone} removido da cadência do usuário ${userId}`);
+        
+        // Se não há mais candidatos na cadência, desativar
+        if (cadence.currentBatch.length === 0) {
+          cadence.isActive = false;
+          this.activeDistributions.delete(userId);
+          console.log(`🏁 [CADENCIA] Cadência do usuário ${userId} finalizada - sem mais candidatos`);
+        }
+      }
+    });
+  }
+
+  /**
    * Parar cadência de um usuário específico
    */
   stopUserCadence(userId: string): void {
@@ -439,6 +479,39 @@ class UserIsolatedRoundRobin {
     this.userQueues.delete(userId);
     this.userConfigs.delete(userId);
     this.activeDistributions.delete(userId);
+  }
+
+  /**
+   * Verificar se um telefone específico está numa cadência ativa
+   */
+  isPhoneInActiveCadence(phone: string): boolean {
+    let found = false;
+    this.userCadences.forEach((cadence, userId) => {
+      if (cadence.isActive && cadence.currentBatch.includes(phone)) {
+        console.log(`📞 [CADENCIA-CHECK] Telefone ${phone} está na cadência ativa do usuário ${userId}`);
+        found = true;
+      }
+    });
+    
+    if (!found) {
+      console.log(`📞 [CADENCIA-CHECK] Telefone ${phone} NÃO está em nenhuma cadência ativa`);
+    }
+    return found;
+  }
+
+  /**
+   * Obter detalhes da cadência ativa para um telefone específico
+   */
+  getActiveCadenceForPhone(phone: string): { userId: string; cadence: UserCadence } | null {
+    let result: { userId: string; cadence: UserCadence } | null = null;
+    
+    this.userCadences.forEach((cadence, userId) => {
+      if (cadence.isActive && cadence.currentBatch.includes(phone)) {
+        result = { userId, cadence };
+      }
+    });
+    
+    return result;
   }
 
   /**
@@ -468,6 +541,269 @@ class UserIsolatedRoundRobin {
     }
     
     return true;
+  }
+
+  /**
+   * Enviar mensagem de texto via slot isolado do usuário
+   */
+  async sendUserMessage(userId: string, clientId: string, phoneNumber: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string; usedSlot?: number }> {
+    try {
+      // Garantir que slots estão inicializados
+      await this.initializeUserSlots(userId, clientId);
+      const activeSlots = this.getUserActiveSlots(userId);
+      
+      if (activeSlots.length === 0) {
+        return { 
+          success: false, 
+          error: `Nenhum slot ativo para usuário ${userId}` 
+        };
+      }
+      
+      // 🎯 ISOLAMENTO: Usar primeiro slot ativo isolado do usuário
+      const userSlot = activeSlots[0];
+      
+      console.log(`📤 [USER-ISOLATED] Enviando mensagem para ${phoneNumber} via slot ${userSlot.slotNumber} (usuário: ${userId})`);
+      
+      const result = await simpleMultiBaileyService.sendTestMessage(
+        clientId, 
+        userSlot.slotNumber, 
+        phoneNumber, 
+        message
+      );
+      
+      // Atualizar carga do slot
+      if (result.success) {
+        userSlot.currentLoad++;
+        userSlot.lastMessageTime = new Date();
+        console.log(`✅ [USER-ISOLATED] Mensagem enviada com sucesso via slot ${userSlot.slotNumber}`);
+      }
+      
+      return {
+        ...result,
+        usedSlot: userSlot.slotNumber
+      };
+      
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao enviar mensagem para usuário ${userId}:`, error);
+      return { 
+        success: false, 
+        error: `Erro de envio: ${error.message}` 
+      };
+    }
+  }
+
+  /**
+   * Enviar áudio via slot isolado do usuário
+   */
+  async sendUserAudio(userId: string, clientId: string, phoneNumber: string, audioBuffer: Buffer): Promise<{ success: boolean; messageId?: string; error?: string; usedSlot?: number }> {
+    try {
+      // Garantir que slots estão inicializados
+      await this.initializeUserSlots(userId, clientId);
+      const activeSlots = this.getUserActiveSlots(userId);
+      
+      if (activeSlots.length === 0) {
+        return { 
+          success: false, 
+          error: `Nenhum slot ativo para usuário ${userId}` 
+        };
+      }
+      
+      // 🎯 ISOLAMENTO: Usar primeiro slot ativo isolado do usuário
+      const userSlot = activeSlots[0];
+      
+      console.log(`🎵 [USER-ISOLATED] Enviando áudio para ${phoneNumber} via slot ${userSlot.slotNumber} (usuário: ${userId})`);
+      
+      const result = await simpleMultiBaileyService.sendAudioMessage(
+        clientId,
+        userSlot.slotNumber,
+        phoneNumber,
+        audioBuffer
+      );
+      
+      // Atualizar carga do slot
+      if (result.success) {
+        userSlot.currentLoad++;
+        userSlot.lastMessageTime = new Date();
+        console.log(`✅ [USER-ISOLATED] Áudio enviado com sucesso via slot ${userSlot.slotNumber}`);
+      }
+      
+      return {
+        ...result,
+        usedSlot: userSlot.slotNumber
+      };
+      
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao enviar áudio para usuário ${userId}:`, error);
+      return { 
+        success: false, 
+        error: `Erro de envio: ${error.message}` 
+      };
+    }
+  }
+
+  /**
+   * Obter status de conexão isolado do usuário
+   */
+  async getUserConnectionStatus(userId: string, clientId: string): Promise<{ 
+    isConnected: boolean; 
+    activeSlots: number; 
+    totalSlots: number;
+    slots: UserSlot[];
+    cadenceActive: boolean;
+  }> {
+    try {
+      // Garantir que slots estão inicializados
+      await this.initializeUserSlots(userId, clientId);
+      
+      const userSlots = this.userSlots.get(userId) || [];
+      const activeSlots = this.getUserActiveSlots(userId);
+      const cadence = this.userCadences.get(userId);
+      
+      console.log(`🔍 [USER-ISOLATED] Status para usuário ${userId}: ${activeSlots.length}/${userSlots.length} slots ativos`);
+      
+      return {
+        isConnected: activeSlots.length > 0,
+        activeSlots: activeSlots.length,
+        totalSlots: userSlots.length,
+        slots: userSlots,
+        cadenceActive: cadence?.isActive || false
+      };
+      
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao verificar status para usuário ${userId}:`, error);
+      return {
+        isConnected: false,
+        activeSlots: 0,
+        totalSlots: 0,
+        slots: [],
+        cadenceActive: false
+      };
+    }
+  }
+
+  /**
+   * Verificar se slot específico está ativo para o usuário
+   */
+  async getUserSlotStatus(userId: string, clientId: string, slotNumber: number): Promise<{ 
+    isActive: boolean; 
+    isConnected: boolean; 
+    phoneNumber?: string;
+    currentLoad: number;
+  }> {
+    try {
+      await this.initializeUserSlots(userId, clientId);
+      const userSlots = this.userSlots.get(userId) || [];
+      const slot = userSlots.find(s => s.slotNumber === slotNumber);
+      
+      if (!slot) {
+        return {
+          isActive: false,
+          isConnected: false,
+          currentLoad: 0
+        };
+      }
+      
+      // 🔥 VERIFICAÇÃO REAL: Consultar simpleMultiBaileyService para status atual
+      const connectionStatus = await simpleMultiBaileyService.getConnectionStatus(clientId, slotNumber);
+      
+      // Atualizar slot com status real
+      slot.isConnected = connectionStatus.isConnected;
+      slot.isActive = connectionStatus.isConnected;
+      
+      return {
+        isActive: slot.isActive,
+        isConnected: slot.isConnected,
+        phoneNumber: slot.phoneNumber || undefined,
+        currentLoad: slot.currentLoad
+      };
+      
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao verificar slot ${slotNumber} para usuário ${userId}:`, error);
+      return {
+        isActive: false,
+        isConnected: false,
+        currentLoad: 0
+      };
+    }
+  }
+
+  /**
+   * Download de áudio via slot isolado do usuário
+   */
+  async downloadUserAudio(userId: string, clientId: string, audioMessage: any): Promise<Buffer | null> {
+    try {
+      // Garantir que slots estão inicializados
+      await this.initializeUserSlots(userId, clientId);
+      const activeSlots = this.getUserActiveSlots(userId);
+      
+      if (activeSlots.length === 0) {
+        console.log(`❌ [USER-ISOLATED] Nenhum slot ativo para download de áudio - usuário ${userId}`);
+        return null;
+      }
+      
+      // 🎯 ISOLAMENTO: Usar primeiro slot ativo isolado do usuário
+      const userSlot = activeSlots[0];
+      
+      console.log(`📥 [USER-ISOLATED] Baixando áudio via slot ${userSlot.slotNumber} (usuário: ${userId})`);
+      
+      // Acessar socket isolado através do simpleMultiBaileyService
+      const connectionId = `${clientId}_slot_${userSlot.slotNumber}`;
+      const connections = (simpleMultiBaileyService as any).connections;
+      const connection = connections.get(connectionId);
+      
+      if (!connection?.socket) {
+        console.log(`❌ [USER-ISOLATED] Socket não disponível para slot ${userSlot.slotNumber}`);
+        return null;
+      }
+      
+      // Download via Baileys
+      const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+      
+      const stream = await downloadContentFromMessage(audioMessage.message.audioMessage, 'audio');
+      
+      const chunks: Buffer[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      
+      const audioBuffer = Buffer.concat(chunks);
+      
+      if (audioBuffer && audioBuffer.length > 1024) {
+        console.log(`✅ [USER-ISOLATED] Áudio baixado com sucesso via slot ${userSlot.slotNumber} (${audioBuffer.length} bytes)`);
+        return audioBuffer;
+      } else {
+        console.log(`⚠️ [USER-ISOLATED] Áudio muito pequeno ou inválido via slot ${userSlot.slotNumber}`);
+        return null;
+      }
+      
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao baixar áudio para usuário ${userId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Obter socket isolado do usuário (método interno para casos especiais)
+   */
+  async getUserSocket(userId: string, clientId: string): Promise<any | null> {
+    try {
+      await this.initializeUserSlots(userId, clientId);
+      const activeSlots = this.getUserActiveSlots(userId);
+      
+      if (activeSlots.length === 0) {
+        return null;
+      }
+      
+      const userSlot = activeSlots[0];
+      const connectionId = `${clientId}_slot_${userSlot.slotNumber}`;
+      const connections = (simpleMultiBaileyService as any).connections;
+      const connection = connections.get(connectionId);
+      
+      return connection?.socket || null;
+    } catch (error: any) {
+      console.error(`❌ [USER-ISOLATED] Erro ao obter socket para usuário ${userId}:`, error);
+      return null;
+    }
   }
 }
 

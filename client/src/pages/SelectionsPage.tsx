@@ -201,18 +201,72 @@ Sou Ana, assistente virtual do [nome do cliente]. Você se inscreveu na vaga [no
 
 
 
-  // Mutation apenas para salvar seleção (rápida)
+  // Mutation apenas para salvar seleção (rápida) com atualização otimística
   const saveOnlyMutation = useMutation({
     mutationFn: async (selectionData: any) => {
       const response = await apiRequest('/api/selections', 'POST', selectionData);
       return await response.json();
     },
-    onSuccess: (data) => {
+    // ✅ ATUALIZAÇÃO OTIMÍSTICA: Adiciona seleção imediatamente à lista
+    onMutate: async (selectionData) => {
+      // Cancelar queries em andamento para evitar sobrescrever nosso update otimístico
+      await queryClient.cancelQueries({ queryKey: ['/api/selections'] });
+
+      // Pegar dados atuais das seleções
+      const previousSelections = queryClient.getQueryData<Selection[]>(['/api/selections']) || [];
+
+      // Criar seleção temporária com ID único negativo
+      const tempId = -(Date.now());
+      const optimisticSelection: Selection = {
+        id: tempId,
+        name: selectionData.name,
+        candidateListId: selectionData.candidateListId,
+        jobId: selectionData.jobId,
+        whatsappTemplate: selectionData.whatsappTemplate,
+        emailTemplate: selectionData.emailTemplate,
+        sendVia: selectionData.sendVia || 'whatsapp',
+        scheduledFor: selectionData.scheduledFor ? new Date(selectionData.scheduledFor) : undefined,
+        deadline: selectionData.deadline ? new Date(selectionData.deadline) : undefined,
+        status: 'active', // Mostra como ativa mesmo sendo temporária
+        clientId: selectionData.clientId,
+        createdAt: new Date()
+      };
+
+      // Adicionar seleção otimística no topo da lista
+      const newSelections = [optimisticSelection, ...previousSelections];
+      queryClient.setQueryData(['/api/selections'], newSelections);
+
+      console.log(`✅ [OPTIMISTIC] Seleção "${selectionData.name}" adicionada otimisticamente com ID temporário: ${tempId}`);
+
+      // Retornar contexto para rollback se necessário
+      return { previousSelections, tempId };
+    },
+    onSuccess: (data, selectionData, context) => {
+      // Invalidar queries para obter dados reais do servidor
       queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
+      console.log(`✅ [REAL] Seleção "${data.name}" salva no servidor com ID real: ${data.id}`);
+
       toast({
         title: "Seleção salva!",
         description: "Processando envio em background...",
       });
+    },
+    onError: (error, selectionData, context) => {
+      // Reverter mudanças otimísticas em caso de erro
+      if (context?.previousSelections) {
+        queryClient.setQueryData(['/api/selections'], context.previousSelections);
+        console.log(`❌ [ROLLBACK] Erro ao salvar seleção "${selectionData.name}", revertendo mudanças otimísticas`);
+      }
+
+      toast({
+        title: "Erro ao salvar seleção",
+        description: "Tente novamente",
+        variant: "destructive"
+      });
+    },
+    onSettled: () => {
+      // Garantir que os dados estejam atualizados independentemente do resultado
+      queryClient.invalidateQueries({ queryKey: ['/api/selections'] });
     }
   });
 

@@ -1623,6 +1623,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         candidateListId: selection.candidateListId
       });
       
+      // ✅ RESPOSTA IMEDIATA - OTIMIZAÇÃO DE PERFORMANCE
+      res.status(201).json(selection);
+      
+      // ⚡ PROCESSAR ENVIOS EM BACKGROUND - SEM BLOQUEAR RESPOSTA
       // Enviar convites automaticamente se a seleção for criada como "active"
       if (selection.status === 'active' && selection.sendVia) {
         console.log('🚀 INICIANDO ENVIO AUTOMÁTICO - Selection ID:', selection.id, 'Via:', selection.sendVia);
@@ -1815,7 +1819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.status(201).json(selection);
+      // Resposta já foi enviada acima para otimizar performance
     } catch (error) {
       console.error('Error creating selection:', error);
       res.status(400).json({ 
@@ -4524,6 +4528,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🔥 VERSÃO SIMPLIFICADA: Buscar respostas sem travamento
+  async function getResponsesDirectlyFromFirebase(selectionId: string, candidatePhone: string, candidateId: number): Promise<any[]> {
+    try {
+      const { firebaseDb } = require('./db.js');
+      console.log(`🔍 [SIMPLE_SEARCH] Seleção: ${selectionId}, Candidato: ${candidateId}, Telefone: ${candidatePhone}`);
+      
+      // Buscar respostas apenas da seleção específica para otimizar
+      const responsesSnapshot = await firebaseDb.collection('responses')
+        .where('selectionId', '==', selectionId)
+        .get();
+      
+      console.log(`📊 [SIMPLE_SEARCH] Encontradas ${responsesSnapshot.size} respostas na seleção ${selectionId}`);
+      
+      const candidateResponses = [];
+      
+      responsesSnapshot.forEach(doc => {
+        const data = doc.data();
+        
+        // 🔧 CORREÇÃO: Priorizar busca por ID real do candidato
+        const matches = (
+          // PRIORIDADE 1: ID real do candidato (corrigido)
+          data.candidateId === candidateId.toString() ||
+          data.candidateId === candidateId ||
+          // PRIORIDADE 2: Telefone para compatibilidade
+          data.candidatePhone === candidatePhone ||
+          data.phone === candidatePhone ||
+          // PRIORIDADE 3: IDs sintéticos antigos (compatibilidade com dados já existentes)
+          data.candidateId === `candidate_${selectionId}_${candidatePhone}` ||
+          data.candidateId === `candidate_${selectionId}_${candidatePhone.replace(/\D/g, '')}`
+        );
+        
+        if (matches) {
+          console.log(`✅ [SIMPLE_SEARCH] Match encontrado: ${doc.id}, transcription: ${data.transcription ? 'YES' : 'NO'}`);
+          
+          candidateResponses.push({
+            id: doc.id,
+            questionId: data.questionId || 1,
+            questionText: data.questionText || data.question || `Pergunta ${data.questionId || 1}`,
+            transcription: data.transcription || 'Aguardando resposta via WhatsApp',
+            audioUrl: data.audioUrl || data.audioFile || '',
+            score: data.score !== undefined && data.score !== null ? data.score : 0,
+            recordingDuration: data.recordingDuration || 0,
+            aiAnalysis: data.aiAnalysis || 'Análise não disponível'
+          });
+        }
+      });
+      
+      // Se não encontrou, tentar collections alternativas rapidamente
+      if (candidateResponses.length === 0) {
+        console.log(`🔄 [SIMPLE_SEARCH] Tentando collections alternativas...`);
+        
+        try {
+          const transcriptionsSnapshot = await firebaseDb.collection('transcriptions')
+            .where('selectionId', '==', selectionId)
+            .get();
+          
+          transcriptionsSnapshot.forEach(doc => {
+            const data = doc.data();
+            // 🔧 CORREÇÃO: Priorizar ID real do candidato também no fallback
+            if (data.candidateId === candidateId.toString() || data.candidateId === candidateId || data.phone === candidatePhone) {
+              candidateResponses.push({
+                id: doc.id,
+                questionId: data.questionNumber || 1,
+                questionText: data.questionText || `Pergunta ${data.questionNumber || 1}`,
+                transcription: data.transcription || 'Aguardando resposta via WhatsApp',
+                audioUrl: data.audioFile ? `/uploads/${data.audioFile}` : '',
+                score: data.score || 0,
+                recordingDuration: 0,
+                aiAnalysis: 'Análise não disponível'
+              });
+            }
+          });
+        } catch (err) {
+          console.log(`⚠️ [SIMPLE_SEARCH] Erro ao buscar transcriptions: ${err.message}`);
+        }
+      }
+      
+      console.log(`🎯 [SIMPLE_SEARCH] RESULTADO: ${candidateResponses.length} respostas para candidato ${candidateId}`);
+      return candidateResponses.sort((a, b) => (a.questionId || 0) - (b.questionId || 0));
+      
+    } catch (error) {
+      console.error('❌ [SIMPLE_SEARCH] Erro:', error.message);
+      return [];
+    }
+  }
+
   // Endpoint para buscar candidatos de uma seleção que receberam convites de entrevista
   app.get("/api/selections/:selectionId/interview-candidates", authenticate, authorize(['client', 'master']), async (req: AuthRequest, res: Response) => {
     try {
@@ -4552,11 +4642,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Para cada candidato, criar estrutura com entrevista (real ou pendente)
       const candidatesWithInterviews = await Promise.all(candidatesInList.map(async (candidate) => {
-        // Buscar respostas reais específicas por seleção + candidato + cliente
-        const realResponses = await storage.getResponsesBySelectionAndCandidate(
-          selectionId, 
-          candidate.id, 
-          selection.clientId
+        // 🔥 CORREÇÃO CRÍTICA: Buscar respostas DIRETAMENTE do Firebase
+        const realResponses = await getResponsesDirectlyFromFirebase(
+          selectionId.toString(), 
+          candidate.whatsapp,
+          candidate.id
         );
         console.log(`🔍 [DEBUG_NOVA_SELEÇÃO] RELATÓRIO - Respostas para ${candidate.name} na seleção ${selection.name}:`, {
           candidateId: candidate.id,

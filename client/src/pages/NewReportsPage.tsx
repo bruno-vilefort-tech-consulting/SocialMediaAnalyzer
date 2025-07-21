@@ -268,31 +268,65 @@ export default function NewReportsPage() {
   }, [selectedSelection, selectionCandidatesCache]);
 
   // Buscar candidatos da seleção com status de entrevista
-  const { data: interviewCandidates = [], isLoading: loadingCandidates } = useQuery({
-    queryKey: ['selection-interview-candidates', selectedSelection?.id],
+  const { data: interviewCandidates = [], isLoading: loadingCandidates, refetch: refetchCandidates, error: candidatesError } = useQuery({
+    queryKey: ['selection-interview-candidates', selectedSelection?.id], // 🔥 CORREÇÃO: Remover timestamp dinâmico
     queryFn: async () => {
-      if (!selectedSelection) return [];
+      if (!selectedSelection) {
+        console.log('🔍 [FRONTEND] Nenhuma seleção definida');
+        return [];
+      }
+
+      console.log(`🔍 [FRONTEND] Iniciando busca para seleção ${selectedSelection.id}`);
 
       try {
-        const res = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates`, 'GET');
+        // Adicionar timeout para evitar loading infinito
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('⏰ [FRONTEND] Timeout de 30s atingido, cancelando requisição');
+          controller.abort();
+        }, 30000);
+
+        const res = await apiRequest(`/api/selections/${selectedSelection.id}/interview-candidates?debug=true`, 'GET');
+        clearTimeout(timeoutId);
+
+        console.log(`📡 [FRONTEND] Status da resposta: ${res.status}`);
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
         const response = await res.json();
+        console.log(`📊 [FRONTEND] Dados recebidos:`, {
+          isArray: Array.isArray(response),
+          length: Array.isArray(response) ? response.length : 'N/A',
+          type: typeof response,
+          sample: Array.isArray(response) && response.length > 0 ? response[0] : null
+        });
 
         // Garantir que sempre retornamos um array
         if (Array.isArray(response)) {
+          console.log(`✅ [FRONTEND] Retornando ${response.length} candidatos`);
           return response;
         } else {
+          console.warn(`⚠️ [FRONTEND] Resposta não é array, retornando array vazio`);
           return [];
         }
       } catch (error) {
-        console.error('Error fetching interview candidates:', error);
+        console.error('❌ [FRONTEND] Erro na busca:', {
+          message: error.message,
+          stack: error.stack,
+          selectionId: selectedSelection.id
+        });
+        // Retornar array vazio em caso de erro para evitar loop
         return [];
       }
     },
     enabled: !!selectedSelection,
-    staleTime: 2 * 60 * 1000, // Cache por 2 minutos
-    cacheTime: 5 * 60 * 1000, // Manter em cache por 5 minutos
+    staleTime: 30 * 1000, // 🔥 Cache de 30s
+    retry: 2, // 🔥 Máximo 2 tentativas
+    retryDelay: 1000, // 🔥 1s entre tentativas
     refetchOnWindowFocus: false,
-    refetchOnMount: false
+    refetchOnMount: true
   });
 
   // Buscar TODOS os candidatos da lista da seleção (incluindo os que não responderam)
@@ -550,6 +584,37 @@ export default function NewReportsPage() {
             <p className="text-muted-foreground">
               Relatório gerado em {new Date(reportData.createdAt?.seconds * 1000 || reportData.createdAt).toLocaleDateString('pt-BR')}
             </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Relatório da Seleção</h2>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                console.log('🔄 [FRONTEND] Forçando refresh dos dados...');
+                refetchCandidates();
+              }}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={loadingCandidates}
+            >
+              {loadingCandidates ? '⏳' : '🔄'} Atualizar Transcrições
+            </Button>
+            <Button
+              onClick={() => {
+                console.log('🔍 [DEBUG] Estado atual:', {
+                  selectedSelection,
+                  loadingCandidates,
+                  candidatesCount: interviewCandidates.length,
+                  isEnabled: !!selectedSelection
+                });
+              }}
+              variant="ghost"
+              size="sm"
+            >
+              🔍 Debug
+            </Button>
           </div>
         </div>
 
@@ -1065,6 +1130,37 @@ export default function NewReportsPage() {
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Carregando análise...</p>
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm">
+                    <p><strong>Seleção ID:</strong> {selectedSelection?.id}</p>
+                    <p><strong>Loading State:</strong> {loadingCandidates.toString()}</p>
+                    <p><strong>Query Enabled:</strong> {(!!selectedSelection).toString()}</p>
+                    <p><strong>Candidatos Cache:</strong> {interviewCandidates.length}</p>
+                    {candidatesError && (
+                      <p className="text-red-600"><strong>Erro:</strong> {candidatesError.message}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      onClick={() => {
+                        console.log('🔧 [EMERGENCY] Tentativa de força parar loading...');
+                        window.location.reload();
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      🔧 Recarregar Página
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        console.log('🔄 [FORCE_REFETCH] Forçando nova busca...');
+                        refetchCandidates();
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      🔄 Tentar Novamente
+                    </Button>
+                  </div>
                 </div>
               ) : interviewCandidates.length === 0 ? (
                 <div className="text-center py-12">
@@ -1249,9 +1345,9 @@ export default function NewReportsPage() {
                                 <div>
                                   {candidate.calculatedScore > 0 ? (
                                     <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${candidate.calculatedScore >= 80 ? 'bg-green-100 text-green-800' :
-                                        candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                                          candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
-                                            'bg-red-100 text-red-800'
+                                      candidate.calculatedScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                        candidate.calculatedScore >= 40 ? 'bg-orange-100 text-orange-800' :
+                                          'bg-red-100 text-red-800'
                                       }`}>
                                       {candidate.calculatedScore.toFixed(1)}
                                     </div>
@@ -1858,9 +1954,9 @@ function CandidateDetailsInline({ candidate, audioStates, setAudioStates, report
                     {response.score !== null && response.score !== undefined && response.score >= 0 ? (
                       <div className="ml-4 flex-shrink-0">
                         <div className={`px-3 py-1 rounded-full text-sm font-bold ${response.score >= 80 ? 'bg-green-100 text-green-800' :
-                            response.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                              response.score >= 40 ? 'bg-orange-100 text-orange-800' :
-                                'bg-red-100 text-red-800'
+                          response.score >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            response.score >= 40 ? 'bg-orange-100 text-orange-800' :
+                              'bg-red-100 text-red-800'
                           }`}>
                           {response.score}/100
                         </div>

@@ -10,7 +10,8 @@ import {
   type MessageLog, type InsertMessageLog,
   type Report, type InsertReport,
   type ReportFolder, type InsertReportFolder,
-  type ReportFolderAssignment, type InsertReportFolderAssignment
+  type ReportFolderAssignment, type InsertReportFolderAssignment,
+  candidates
 } from "@shared/schema";
 import { collection, doc, getDocs, getDoc, updateDoc, deleteDoc, query, where, setDoc, addDoc, orderBy, writeBatch, Timestamp } from "firebase/firestore";
 import bcrypt from "bcrypt";
@@ -187,6 +188,15 @@ export class FirebaseStorage implements IStorage {
     // Initialize db lazily to avoid initialization order issues
     this.db = null as any;
   }
+    createResponseWithSelection(response: InsertResponse & { selectionId: string; clientId: number; }): Promise<Response> {
+        throw new Error("Method not implemented.");
+    }
+    getReportById(id: string): Promise<Report | undefined> {
+        throw new Error("Method not implemented.");
+    }
+    createReportFromSelection(selectionId: number): Promise<Report> {
+        throw new Error("Method not implemented.");
+    }
 
   private getDb(): admin.firestore.Firestore {
     if (!this.db) {
@@ -1072,11 +1082,34 @@ export class FirebaseStorage implements IStorage {
 
         const candidateData = candidateDoc.data();
 
-        // Buscar respostas diretamente por telefone e seleção
-        const responsesSnapshot = await firebaseDb.collection('interviewResponses')
-          .where('phone', '==', candidateData.whatsapp)
+        // 🔥 CORREÇÃO CRÍTICA: Buscar respostas usando múltiplas estratégias
+        console.log(`🔍 [DEBUG] Buscando respostas para candidato ${candidateData.name}, telefone: ${candidateData.whatsapp}, seleção: ${selectionId}`);
+        
+        // Estratégia 1: Buscar por candidatePhone
+        let responsesSnapshot = await firebaseDb.collection('responses')
+          .where('candidatePhone', '==', candidateData.whatsapp)
           .where('selectionId', '==', selectionId.toString())
           .get();
+        
+        console.log(`📊 [DEBUG] Estratégia 1 (candidatePhone): ${responsesSnapshot.size} documentos`);
+        
+        // Estratégia 2: Se não encontrou, buscar por phone
+        if (responsesSnapshot.size === 0) {
+          responsesSnapshot = await firebaseDb.collection('responses')
+            .where('phone', '==', candidateData.whatsapp)
+            .where('selectionId', '==', selectionId.toString())
+            .get();
+          console.log(`📊 [DEBUG] Estratégia 2 (phone): ${responsesSnapshot.size} documentos`);
+        }
+        
+        // Estratégia 3: Se ainda não encontrou, buscar por candidateId
+        if (responsesSnapshot.size === 0) {
+          responsesSnapshot = await firebaseDb.collection('responses')
+            .where('candidateId', '==', candidateData.id.toString())
+            .where('selectionId', '==', selectionId.toString())
+            .get();
+          console.log(`📊 [DEBUG] Estratégia 3 (candidateId): ${responsesSnapshot.size} documentos`);
+        }
 
         const responses = responsesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
