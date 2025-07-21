@@ -271,6 +271,24 @@ class InteractiveInterviewService {
 
 
 
+  // 🔧 MÉTODO PARA CONVERTER CAMINHO ABSOLUTO EM URL HTTP
+  private convertToHttpPath(absolutePath: string): string {
+    try {
+      // Extrair apenas o nome do arquivo do caminho absoluto
+      const path = require('path');
+      const filename = path.basename(absolutePath);
+      
+      // Retornar URL HTTP que será servida pela rota /api/audio/:filename
+      const httpUrl = `/api/audio/${filename}`;
+      
+      console.log(`🔗 [HTTP-PATH] Convertendo: ${absolutePath} → ${httpUrl}`);
+      return httpUrl;
+    } catch (error) {
+      console.error(`❌ [HTTP-PATH] Erro na conversão:`, error);
+      return absolutePath; // Fallback para caminho original
+    }
+  }
+
   private async downloadAudioDirect(message: any, phone: string, clientId: string, selectionId: string, questionNumber: number): Promise<string | null> {
     try {
       console.log(`🔍 [DEBUG-DOWNLOAD] Iniciando download para:`, {
@@ -833,7 +851,7 @@ class InteractiveInterviewService {
       questionId: interview.currentQuestion + 1, // 🔧 CORREÇÃO: +1 para match com frontend
       questionText: currentQuestion.pergunta,
       transcription: finalTranscription, // 🔧 CORREÇÃO: usar nome que o frontend espera
-      audioUrl: audioFile, // 🔧 CORREÇÃO: usar nome que o frontend espera
+      audioUrl: audioFile ? this.convertToHttpPath(audioFile) : '', // 🔧 CORREÇÃO: converter para URL HTTP
       timestamp: new Date().toISOString()
     };
 
@@ -894,7 +912,7 @@ class InteractiveInterviewService {
           console.log(`🔄 [UPDATE-CORRIGIDO] Atualizando resposta existente ${duplicateResponse.id}`);
           await storage.updateResponse(duplicateResponse.id, {
             transcription: finalTranscription,
-            audioUrl: audioFile || duplicateResponse.audioUrl,
+            audioUrl: audioFile ? this.convertToHttpPath(audioFile) : (duplicateResponse.audioUrl || ''),
             score: pontuacao
           });
         } else {
@@ -907,7 +925,7 @@ class InteractiveInterviewService {
             candidateId: interview.candidateId,
             questionId: interview.currentQuestion + 1,
             questionText: currentQuestion.pergunta,
-            audioUrl: audioFile || '', // 🔧 CORREÇÃO: usar audioUrl em vez de audioFile
+            audioUrl: audioFile ? this.convertToHttpPath(audioFile) : '', // 🔧 CORREÇÃO: converter para URL HTTP
             transcription: finalTranscription, // 🔧 CORREÇÃO: finalTranscription já é o texto final
             transcriptionId: transcriptionId,
             timestamp: new Date().toISOString(),
@@ -947,7 +965,7 @@ class InteractiveInterviewService {
               
               // Dados da resposta
               transcription: finalTranscription,
-              audioUrl: audioFile || '',
+              audioUrl: audioFile ? this.convertToHttpPath(audioFile) : '',
               
               // Metadados
               phone: interview.phone,

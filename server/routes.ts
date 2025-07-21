@@ -4157,6 +4157,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🔊 ROTA PARA SERVIR ARQUIVOS DE ÁUDIO
+  app.get("/api/audio/:filename", (req, res) => {
+    try {
+      const filename = req.params.filename;
+      
+      // Validar nome do arquivo para segurança
+      if (!/^audio_\d+_\d+_R\d+\.ogg$/.test(filename)) {
+        return res.status(400).json({ error: 'Nome de arquivo inválido' });
+      }
+      
+      const audioPath = path.join(process.cwd(), 'uploads', filename);
+      console.log(`🔊 [AUDIO-SERVE] Servindo arquivo: ${audioPath}`);
+      
+      // Verificar se arquivo existe
+      if (!fs.existsSync(audioPath)) {
+        console.log(`❌ [AUDIO-SERVE] Arquivo não encontrado: ${audioPath}`);
+        return res.status(404).json({ error: 'Arquivo de áudio não encontrado' });
+      }
+      
+      // Configurar headers para áudio
+      res.setHeader('Content-Type', 'audio/ogg');
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache por 1 hora
+      res.setHeader('Accept-Ranges', 'bytes');
+      
+      // Enviar arquivo
+      res.sendFile(audioPath, (err) => {
+        if (err) {
+          console.error(`❌ [AUDIO-SERVE] Erro ao enviar arquivo ${filename}:`, err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro ao enviar arquivo de áudio' });
+          }
+        } else {
+          console.log(`✅ [AUDIO-SERVE] Arquivo enviado com sucesso: ${filename}`);
+        }
+      });
+      
+    } catch (error) {
+      console.error(`❌ [AUDIO-SERVE] Erro geral:`, error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // Evolution API Routes
   app.post("/api/evolution/connect", authenticate, authorize(['client']), async (req: AuthRequest, res) => {
     try {
