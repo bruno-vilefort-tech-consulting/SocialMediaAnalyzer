@@ -800,12 +800,13 @@ class InteractiveInterviewService {
         return;
       }
       
-      // 🔄 ETAPA 4: AJUSTAR ROUND-ROBIN - SÓ AVANÇAR APÓS GRAVAR RESPOSTA
+      // 🔄 ETAPA 4: PROCESSAR RESPOSTA E AVANÇAR ENTREVISTA
       try {
-        await this.processResponse(phone + '@s.whatsapp.net', activeInterview, text, audioMessage);
-        console.log(`✅ [ROUND-ROBIN] Resposta gravada com sucesso - entrevista pode avançar`);
+        console.log(`🔍 [INTERVIEW] Processando resposta para pergunta ${activeInterview.currentQuestion + 1}/${activeInterview.questions.length}`);
+        await this.processInterviewResponse(phone, activeInterview, text, audioMessage);
+        console.log(`✅ [INTERVIEW] Resposta processada com sucesso para ${phone}`);
       } catch (error) {
-        console.error(`❌ [ROUND-ROBIN] Erro ao gravar resposta - entrevista não avança:`, error);
+        console.error(`❌ [INTERVIEW] Erro ao processar resposta:`, error);
         // Em caso de erro, manter pergunta atual para retry
       }
       
@@ -1049,8 +1050,7 @@ class InteractiveInterviewService {
     }
   }
 
-  private async processResponse(from: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
-    const phone = from.replace('@s.whatsapp.net', '');
+  private async processInterviewResponse(phone: string, interview: ActiveInterview, text: string, audioMessage?: any): Promise<void> {
 
     let responseText = text;
     let audioFile: string | undefined;
@@ -1286,18 +1286,21 @@ class InteractiveInterviewService {
       console.error(`❌ [SAVE-CORRIGIDO] Erro ao salvar resposta para ${interview.phone}:`, saveError);
     }
 
-    // Avançar para próxima pergunta
+    // 🔥 CORREÇÃO CRÍTICA: Avançar para próxima pergunta APENAS APÓS SALVAR
+    console.log(`🔄 [INTERVIEW-ADVANCE] Avançando de pergunta ${interview.currentQuestion} para ${interview.currentQuestion + 1}`);
     interview.currentQuestion++;
     this.activeInterviews.set(phone, interview);
 
-    // 🔥 CORREÇÃO CRÍTICA: Verificar se ainda há perguntas antes de enviar confirmação
+    // 🔥 VERIFICAR SE ENTREVISTA DEVE FINALIZAR
     if (interview.currentQuestion >= interview.questions.length) {
+      console.log(`🏁 [INTERVIEW-FINISH] Todas as perguntas respondidas (${interview.currentQuestion}/${interview.questions.length}) - finalizando entrevista`);
       await this.finishInterview(phone, interview);
       return;
     }
 
-    // Enviar confirmação apenas se houver mais perguntas
-    await this.sendMessage(from, `✅ Resposta recebida! Preparando próxima pergunta...`, interview.clientId);
+    // Enviar confirmação e próxima pergunta apenas se houver mais perguntas
+    console.log(`➡️ [INTERVIEW-NEXT] Enviando próxima pergunta ${interview.currentQuestion + 1}/${interview.questions.length}`);
+    await this.sendMessage(`${phone}@s.whatsapp.net`, `✅ Resposta recebida! Preparando próxima pergunta...`, interview.clientId);
     
     setTimeout(async () => {
       await this.sendNextQuestion(phone, interview);
@@ -1360,14 +1363,18 @@ class InteractiveInterviewService {
   }
 
   private async finishInterview(phone: string, interview: ActiveInterview): Promise<void> {
+    console.log(`🏁 [FINISH] Finalizando entrevista para ${phone} - ${interview.responses.length} respostas coletadas`);
+    
     // Atualizar status da entrevista no banco
     try {
       if (interview.interviewDbId) {
         await storage.updateInterview(parseInt(interview.interviewDbId), { 
           status: 'completed'
         });
+        console.log(`💾 [FINISH] Status da entrevista ${interview.interviewDbId} atualizado para 'completed'`);
       }
     } catch (error) {
+      console.error(`❌ [FINISH] Erro ao atualizar status da entrevista:`, error);
     }
 
     // Mensagem final
@@ -1376,8 +1383,11 @@ class InteractiveInterviewService {
       interview.clientId
     );
 
-    // Remover entrevista ativa
+    // 🔥 LIMPEZA COMPLETA: Remover de todas as estruturas
     this.activeInterviews.delete(phone);
+    this.activeSessions.delete(phone);
+    
+    console.log(`✅ [FINISH] Entrevista finalizada e removida para ${phone}`);
   }
 
   private async stopInterview(phone: string, clientId?: string): Promise<void> {
